@@ -140,7 +140,6 @@ void op_par_loop_all__WeightParticlesToFields(
 		int map1idx = arg0.map_data[map0idx * arg0.map->dim + 0]; //LHS node
 		int map2idx = arg1.map_data[map0idx * arg1.map->dim + 1]; //RHS node
 
-// printf("XXX %+2.30lE %+2.30lE %+2.30lE\n", ((double*)arg0.data)[map1idx], ((double*)arg1.data)[map2idx], ((double*)arg2.data)[n]);
 		weight_particles_to_fields__kernel(
 			&((double*)arg0.data)[map1idx],
 			&((double*)arg1.data)[map2idx],
@@ -165,3 +164,4 @@ void op_par_loop_all__FieldSolveSumLaplace(
 	}
 }
 
+//*************************************************************************************************
