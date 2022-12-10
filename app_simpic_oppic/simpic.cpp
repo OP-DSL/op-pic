@@ -150,7 +150,7 @@ int main( int argc, char* argv[] )
 		}
 
 		std::chrono::duration<double> diff = std::chrono::system_clock::now() - start;
-		std::cout << "\nFEMPIC - Time to iterate " << loop_count << " takes <chrono>: " << diff.count() << " s\n\n";
+		std::cout << "\nSIMPIC - Time to iterate " << loop_count << " takes <chrono>: " << diff.count() << " s\n\n";
 
 		op_exit();
 
