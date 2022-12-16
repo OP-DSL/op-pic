@@ -1,0 +1,13 @@
+*.o
+*.so
+
+fempic_seq
+fempic_genseq*
+fempic_openmp*
+
+simpic_seq
+simpic_genseq*
+simpic_openmp*
+
+*.log
+files/

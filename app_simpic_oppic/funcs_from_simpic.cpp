@@ -76,183 +76,183 @@ void gradient(double *grad, double *arr, int n, double scale)
 
 void parsecmdline(int argc, char **argv)
 {
-	int i;
-	int nnppcc;   // number of particles per cell
-	int nnccpppp; // number of cells per processor 
-	int nnnttt;   // number of time steps
+    int i;
+    int nnppcc;   // number of particles per cell
+    int nnccpppp; // number of cells per processor 
+    int nnnttt;   // number of time steps
 
-	double ddttff, lhsdefault;
+    double ddttff, lhsdefault;
 
-	ddttff = lhsdefault = 0.;
-	nnppcc = nnccpppp = nnnttt = 0;
+    ddttff = lhsdefault = 0.;
+    nnppcc = nnccpppp = nnnttt = 0;
 
-	for(i=1; i < argc; i++)
-	{
-		#ifdef DEBUG
-		//      fprintf(stderr, "arg %d : %s\n", i, argv[i]);
-		#endif
+    for(i=1; i < argc; i++)
+    {
+        #ifdef DEBUG
+        //      fprintf(stderr, "arg %d : %s\n", i, argv[i]);
+        #endif
 
-		if(strcmp(argv[i], "-ppc") == 0)
-		{
-			i++;
-			sscanf(argv[i], "%d", &nnppcc);
-		}
-		else if(strcmp(argv[i], "-ncpp") == 0)
-		{
-			i++; 
-			sscanf(argv[i], "%d", &nnccpppp);
-		}
-		else if(strcmp(argv[i], "-nt") == 0)
-		{
-			i++;
-			sscanf(argv[i], "%d", &nnnttt);
-		}
-		else if(strcmp(argv[i], "-dtfactor") == 0)
-		{
-			i++;
-			sscanf(argv[i], "%lf", &ddttff);
-		}
-		else if(strcmp(argv[i], "-lhsv") == 0)
-		{
-			i++;
-			sscanf(argv[i], "%lf", &lhsdefault);
-		}
-		else // default case
-		{
-			fprintf(stderr, "\nError:\n");
-			fprintf(stderr, "Unrecognized argument \"%s\"\n", argv[i]);
-			//Quit();
-		}
-	}
+        if(strcmp(argv[i], "-ppc") == 0)
+        {
+            i++;
+            sscanf(argv[i], "%d", &nnppcc);
+        }
+        else if(strcmp(argv[i], "-ncpp") == 0)
+        {
+            i++; 
+            sscanf(argv[i], "%d", &nnccpppp);
+        }
+        else if(strcmp(argv[i], "-nt") == 0)
+        {
+            i++;
+            sscanf(argv[i], "%d", &nnnttt);
+        }
+        else if(strcmp(argv[i], "-dtfactor") == 0)
+        {
+            i++;
+            sscanf(argv[i], "%lf", &ddttff);
+        }
+        else if(strcmp(argv[i], "-lhsv") == 0)
+        {
+            i++;
+            sscanf(argv[i], "%lf", &lhsdefault);
+        }
+        else // default case
+        {
+            fprintf(stderr, "\nError:\n");
+            fprintf(stderr, "Unrecognized argument \"%s\"\n", argv[i]);
+            //Quit();
+        }
+    }
 
-	if((nnppcc < 1) || (nnccpppp < 1) || (nnnttt < 1))
-	{
-		fprintf(stderr, "\nError, input arguments must be entered!\n");
-		//Quit();
-	}
+    if((nnppcc < 1) || (nnccpppp < 1) || (nnnttt < 1))
+    {
+        fprintf(stderr, "\nError, input arguments must be entered!\n");
+        //Quit();
+    }
 
-	if(ddttff <= 0.)
-	{
-		fprintf(stderr, "\nError, dtfactor MUST BE positive!\n");
-		//Quit();
-	}
+    if(ddttff <= 0.)
+    {
+        fprintf(stderr, "\nError, dtfactor MUST BE positive!\n");
+        //Quit();
+    }
 
-	// set simulation variables from input data
-	ntimesteps = nnnttt;
-	nc = nnccpppp;
-	ng = nc + 1;
-	npart = nc*nnppcc;
-	dtfactor = ddttff;
-	lhsvoltage = lhsdefault;
+    // set simulation variables from input data
+    ntimesteps = nnnttt;
+    nc = nnccpppp;
+    ng = nc + 1;
+    npart = nc*nnppcc;
+    dtfactor = ddttff;
+    lhsvoltage = lhsdefault;
 
 }
 
 void init(void)
 {
-	nparttot = 0.; // not used
-	density = 1.E13;
-	epsilon = 8.85E-12;
-	area = 1.;
-	L = 1.;
-	q = 1.602E-19;
-	m = 9.1E-31;
+    nparttot = 0.; // not used
+    density = 1.E13;
+    epsilon = 8.85E-12;
+    area = 1.;
+    L = 1.;
+    q = 1.602E-19;
+    m = 9.1E-31;
 
     rank = 0;
     nproc = 1;
 
-	xl = rank/double(nproc);
-	xr = (rank + 1.)/double(nproc);
-	xl *= L;
-	xr *= L;
-	
-	Ll = xr - xl;
-	dx = Ll / double(nc);
+    xl = rank/double(nproc);
+    xr = (rank + 1.)/double(nproc);
+    xl *= L;
+    xr *= L;
+    
+    Ll = xr - xl;
+    dx = Ll / double(nc);
 
-	nl = rank - 1;
-	nr = rank + 1;
-	last = nproc - 1;
-	if(rank == 0)
-	{
-		nl = last;
-	}
-	if(rank == last)
-	{
-		nr = 0;
-	}
+    nl = rank - 1;
+    nr = rank + 1;
+    last = nproc - 1;
+    if(rank == 0)
+    {
+        nl = last;
+    }
+    if(rank == last)
+    {
+        nr = 0;
+    }
 
-	np2c = density*area*Ll/double(npart);
+    np2c = density*area*Ll/double(npart);
 
-	// calculate time step from plasma frequency
-	wp = density*q*q/(epsilon*m);
-	wp = sqrt(wp);
+    // calculate time step from plasma frequency
+    wp = density*q*q/(epsilon*m);
+    wp = sqrt(wp);
 
-	dt = dtfactor/wp;
+    dt = dtfactor/wp;
 
-	qscale = np2c/(area*dx);
+    qscale = np2c/(area*dx);
 
-	t = ntimesteps*dt;
-	qm = q*dt/m;
+    t = ntimesteps*dt;
+    qm = q*dt/m;
 
-	diagnosticsflag = true;
+    diagnosticsflag = true;
 }
 
 double rhsV(double t)
 {
-	return 0.;
+    return 0.;
 }
 
 double lhsV(double t)
 {
-	return lhsvoltage;
+    return lhsvoltage;
 }
 
 void setcoeffs(double scale)
 {
-	if(rank == 0)
-	{
-		tri_a[0] = 0.0;
-		tri_b[0] = 1.0;
-		tri_c[0] = 0.0;
-	}
-	else
-	{
-		tri_b[0] = -scale*(1.0 + dx/xl);
-		tri_c[0] = scale;
-			
-	}
-	
-	if(rank == last)
-	{
-		tri_a[nc] = 0.0;
-		tri_b[nc] = 1.0;
-		tri_c[nc] = 0.0;
-	}
-	else
-	{
-		tri_a[nc] = scale;
-		tri_b[nc] = -scale*(1.0 + dx/(L - xr));
-	}
+    if(rank == 0)
+    {
+        tri_a[0] = 0.0;
+        tri_b[0] = 1.0;
+        tri_c[0] = 0.0;
+    }
+    else
+    {
+        tri_b[0] = -scale*(1.0 + dx/xl);
+        tri_c[0] = scale;
+            
+    }
+    
+    if(rank == last)
+    {
+        tri_a[nc] = 0.0;
+        tri_b[nc] = 1.0;
+        tri_c[nc] = 0.0;
+    }
+    else
+    {
+        tri_a[nc] = scale;
+        tri_b[nc] = -scale*(1.0 + dx/(L - xr));
+    }
 
-	for(int i=1; i < nc; i++)
-	{
-		tri_a[i] = scale;
-		tri_b[i] = (-2.0 * scale);
-		tri_c[i] = scale;
-	}
+    for(int i=1; i < nc; i++)
+    {
+        tri_a[i] = scale;
+        tri_b[i] = (-2.0 * scale);
+        tri_c[i] = scale;
+    }
 }
 
 
 //*************************************************************************************************
 void init_particles(
-	double *&particle_position_x_tmp, 
-	double *&particle_velocity_x_tmp, 
-	double *&particle_field_E_tmp, 
-	int *&particle_cell_index_tmp)
+    double *&particle_position_x_tmp, 
+    double *&particle_velocity_x_tmp, 
+    double *&particle_field_E_tmp, 
+    int *&particle_cell_index_tmp)
 {
-	particle_position_x_tmp	= new double[npart];
-	particle_velocity_x_tmp	= new double[npart];
-	particle_field_E_tmp	= new double[npart];
-	particle_cell_index_tmp = new int[npart];
+    particle_position_x_tmp    = new double[npart];
+    particle_velocity_x_tmp    = new double[npart];
+    particle_field_E_tmp    = new double[npart];
+    particle_cell_index_tmp = new int[npart];
 
     for (int i=0; i < npart; i++)
     {
@@ -267,26 +267,26 @@ void init_particles(
 
 //*************************************************************************************************
 void init_fields(
-	double *&node_field_E_tmp, 
-	double *&node_field_J_tmp, 
-	double *&node_field_P_tmp,
-	double *&node_xlocal_tmp, 
-	int *&node_index_tmp, 
-	int *&cell_to_nodes_tmp)
+    double *&node_field_E_tmp, 
+    double *&node_field_J_tmp, 
+    double *&node_field_P_tmp,
+    double *&node_xlocal_tmp, 
+    int *&node_index_tmp, 
+    int *&cell_to_nodes_tmp)
 {
-    node_field_E_tmp 	= new double[ng];
-	node_field_J_tmp 	= new double[ng];
-	node_field_P_tmp 	= new double[ng];
-	node_xlocal_tmp 	= new double[ng];
-	node_index_tmp 		= new int[ng];
-    cell_to_nodes_tmp 	= new int[nc * 2];
+    node_field_E_tmp     = new double[ng];
+    node_field_J_tmp     = new double[ng];
+    node_field_P_tmp     = new double[ng];
+    node_xlocal_tmp     = new double[ng];
+    node_index_tmp         = new int[ng];
+    cell_to_nodes_tmp     = new int[nc * 2];
     double xlocal = xl;
 
-	for (int i=0, j=0; i < nc; i++, j+=2)
-	{
-		cell_to_nodes_tmp[j]     = i;
-		cell_to_nodes_tmp[j+1]   = (i+1);
-	}
+    for (int i=0, j=0; i < nc; i++, j+=2)
+    {
+        cell_to_nodes_tmp[j]     = i;
+        cell_to_nodes_tmp[j+1]   = (i+1);
+    }
 
     for (int i=0; i < ng; i++, xlocal +=dx)
     {
@@ -294,7 +294,7 @@ void init_fields(
         node_field_J_tmp[i] = 0.0;      // narray (Current density)
         node_field_P_tmp[i] = 0.0;      // phiarray (Potential)
         node_xlocal_tmp[i]  = xlocal;   // Local position of the node
-		node_index_tmp[i]   = i;
+        node_index_tmp[i]   = i;
     }
 
     {    
@@ -315,22 +315,22 @@ void init_fields(
 
 //*************************************************************************************************
 void printDataToFiles(
-	int n_nodes,
-	int n_particles,
-	double* node0_field_E,
-	double* node0_field_J,
-	double* node0_field_P,
-	double* particle0_position_x,
-	double* particle0_velocity_x,
-	int* particle_cell_index,
-	const std::string suffix)
+    int n_nodes,
+    int n_particles,
+    double* node0_field_E,
+    double* node0_field_J,
+    double* node0_field_P,
+    double* particle0_position_x,
+    double* particle0_velocity_x,
+    int* particle_cell_index,
+    const std::string suffix)
 {
     std::string fileNames[NDIAGNOSTICS] = {"_density.dat", "_E.dat", "_phi.dat", "_vxx.dat"};
 
     FILE *fp[NDIAGNOSTICS];
     for(int i = 0; i < NDIAGNOSTICS; i++)
-    {	
-		std::string file_name = std::string("files/") + suffix + fileNames[i]; 
+    {    
+        std::string file_name = std::string("files/") + suffix + fileNames[i]; 
         fp[i] = fopen(file_name.c_str(), "w");
     }
     
@@ -354,77 +354,77 @@ void printDataToFiles(
 
 //*************************************************************************************************
 void seq_field_solve_poissons_equation(
-	int set_size,
-	double* node0_field_J,
-	double* node0_field_P)
+    int set_size,
+    double* node0_field_J,
+    double* node0_field_P)
 {
-	// modify density array
-	double nlold, nrold;
-	if(rank == 0)
-	{
-		nlold = node0_field_J[0];
-		node0_field_J[0] = 0.;
-	}
-	else
-	{
-		node0_field_J[0] *= 2;
-	}
-	if(rank == last)
-	{
-		nrold = node0_field_J[nc];
-		node0_field_J[nc] = 0.;
-	}
-	else
-	{
-		node0_field_J[nc] *= 2;
-	}
+    // modify density array
+    double nlold, nrold;
+    if(rank == 0)
+    {
+        nlold = node0_field_J[0];
+        node0_field_J[0] = 0.;
+    }
+    else
+    {
+        node0_field_J[0] *= 2;
+    }
+    if(rank == last)
+    {
+        nrold = node0_field_J[nc];
+        node0_field_J[nc] = 0.;
+    }
+    else
+    {
+        node0_field_J[nc] *= 2;
+    }
 
-	int nstrt = 0;
+    int nstrt = 0;
 
-	// Tridiagonal matrix of Poisson equation 𝜙𝑗+1−2𝜙𝑗+𝜙𝑗−1=𝑝𝑗 is solved with Gaussian elimination by each processor
-	{
-		int j;
-		double bet = tri_b[nstrt];
-		node0_field_P[nstrt] = node0_field_J[nstrt]/bet;
+    // Tridiagonal matrix of Poisson equation 𝜙𝑗+1−2𝜙𝑗+𝜙𝑗−1=𝑝𝑗 is solved with Gaussian elimination by each processor
+    {
+        int j;
+        double bet = tri_b[nstrt];
+        node0_field_P[nstrt] = node0_field_J[nstrt]/bet;
 
-		for(j = nstrt + 1; j < set_size; j++) 
-		{
-			gam[j]			  = tri_c[j-1]/bet;
-			bet				 = tri_b[j] - tri_a[j]*gam[j];
-			node0_field_P[j]	= (node0_field_J[j] - tri_a[j]*node0_field_P[j-1])/bet;
-		}
+        for(j = nstrt + 1; j < set_size; j++) 
+        {
+            gam[j]              = tri_c[j-1]/bet;
+            bet                 = tri_b[j] - tri_a[j]*gam[j];
+            node0_field_P[j]    = (node0_field_J[j] - tri_a[j]*node0_field_P[j-1])/bet;
+        }
 
-		for(j = nc - 1; j >= nstrt; j--)
-		{
-			node0_field_P[j] -= (gam[j+1] * node0_field_P[j+1]);
-		}
-	}
+        for(j = nc - 1; j >= nstrt; j--)
+        {
+            node0_field_P[j] -= (gam[j+1] * node0_field_P[j+1]);
+        }
+    }
 
-	// restore density array
-	if(rank == 0)
-	{
-		node0_field_J[0] = 2*nlold;
-	}
-	if(rank == last)
-	{
-		node0_field_J[nc] = 2*nrold;
-	}
+    // restore density array
+    if(rank == 0)
+    {
+        node0_field_J[0] = 2*nlold;
+    }
+    if(rank == last)
+    {
+        node0_field_J[nc] = 2*nrold;
+    }
 
 }
 
 //*************************************************************************************************
 void seq_field_solve_get_potential_gradient(
-	int set_size,
-	double* nodes_field_E,
-	const double* nodes_field_P)
+    int set_size,
+    double* nodes_field_E,
+    const double* nodes_field_P)
 {
-	double scale = -0.5/dx;
+    double scale = -0.5/dx;
 
-	for(int i = 0; i < (set_size - 1); i++)
-	{
-		nodes_field_E[i] = scale * (nodes_field_P[i+1] - nodes_field_P[i-1]);
-	}
+    for(int i = 0; i < (set_size - 1); i++)
+    {
+        nodes_field_E[i] = scale * (nodes_field_P[i+1] - nodes_field_P[i-1]);
+    }
 
-	nodes_field_E[0]  = -(nodes_field_P[1] - nodes_field_P[0])/dx;
-	nodes_field_E[nc] = -(nodes_field_P[nc] - nodes_field_P[nc-1])/dx;
+    nodes_field_E[0]  = -(nodes_field_P[1] - nodes_field_P[0])/dx;
+    nodes_field_E[nc] = -(nodes_field_P[nc] - nodes_field_P[nc-1])/dx;
 }

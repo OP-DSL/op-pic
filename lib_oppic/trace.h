@@ -29,46 +29,46 @@
 double _walltime();
 
 struct TraceElement {
-	std::string name;
-	int num_calls = 0;
-	double total_time = 0;
-	double child_time = 0;
-	double start_time = 0;
+    std::string name;
+    int num_calls = 0;
+    double total_time = 0;
+    double child_time = 0;
+    double start_time = 0;
 };
 
 class Trace {
-	private:
-		double entry_time = 0;
-		double exit_time = 0;
-		double trace_start;
-		std::string name;
-		std::vector<TraceElement*> callstack;
-		std::unordered_map<std::string, TraceElement> function_list;
+    private:
+        double entry_time = 0;
+        double exit_time = 0;
+        double trace_start;
+        std::string name;
+        std::vector<TraceElement*> callstack;
+        std::unordered_map<std::string, TraceElement> function_list;
 
-	public:
-		Trace(std::string name_);
+    public:
+        Trace(std::string name_);
 
-		void write_callstack();
-		void write_profile(std::string filename);
-		void enter(std::string func_name);
-		void exit(std::string func_name);
+        void write_callstack();
+        void write_profile(std::string filename);
+        void enter(std::string func_name);
+        void exit(std::string func_name);
 };
 
 struct TraceCaller {
-	std::string name;
-	TraceCaller(std::string name_);
-	~TraceCaller();
+    std::string name;
+    TraceCaller(std::string name_);
+    ~TraceCaller();
 
-	void add(std::string name_);
+    void add(std::string name_);
 };
 
 namespace trace {
-	extern int enabled;
-	extern Trace current;
+    extern int enabled;
+    extern Trace current;
 }
 #else /* !USE_TRACE */
-	#define TRACE_ME
-	#define TRACE(x)
+    #define TRACE_ME
+    #define TRACE(x)
 #endif 
 
 #endif /* !TRACE_H */

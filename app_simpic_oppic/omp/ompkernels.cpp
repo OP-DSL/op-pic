@@ -36,64 +36,64 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 //*************************************************************************************************
 void op_par_loop_all__ResetCurrentDensity(
-	op_set set, 	// nodes_set
-	op_arg arg0		// node_charge_density
-	)
+    op_set set,     // nodes_set
+    op_arg arg0     // node_charge_density
+    )
 { TRACE_ME;
-	
-	if (OP_DEBUG) printf("SIMPIC - op_par_loop_all__ResetCurrentDensity [%d]\n", set->size);
-	
+    
+    if (OP_DEBUG) printf("SIMPIC - op_par_loop_all__ResetCurrentDensity [%d]\n", set->size);
+    
 }
 
 //*************************************************************************************************
 void op_par_loop_all__WeightFieldsToParticles(
-	op_set set, 	// particles
-	op_arg arg0,	// lhs node0_field_E
-	op_arg arg1,	// rhs node1_field_E
-	op_arg arg2,	// particle0_position_x
-	op_arg arg3  	// particle0_field_E
-	)
+    op_set set,     // particles
+    op_arg arg0,    // lhs node0_field_E
+    op_arg arg1,    // rhs node1_field_E
+    op_arg arg2,    // particle0_position_x
+    op_arg arg3     // particle0_field_E
+    )
 { TRACE_ME;
 
-	if (OP_DEBUG) printf("SIMPIC - op_par_loop_all__WeightFieldsToParticles [%d]\n", set->size);
+    if (OP_DEBUG) printf("SIMPIC - op_par_loop_all__WeightFieldsToParticles [%d]\n", set->size);
 
 }
 
 //*************************************************************************************************
 void op_par_loop_particle_all__PushParticles( 
-	op_set set, 	// particles
-	op_arg arg0,	// particle0_field_E
-	op_arg arg1,	// particle0_velocity_x
-	op_arg arg2,	// particle0_position_x
-	op_arg arg3		// particle0_cell_index
-	)
+    op_set set,     // particles
+    op_arg arg0,    // particle0_field_E
+    op_arg arg1,    // particle0_velocity_x
+    op_arg arg2,    // particle0_position_x
+    op_arg arg3     // particle0_cell_index
+    )
 { TRACE_ME;
 
-	if (OP_DEBUG) printf("SIMPIC - op_par_loop_particle_all__PushParticles [%d]\n", set->size);
+    if (OP_DEBUG) printf("SIMPIC - op_par_loop_particle_all__PushParticles [%d]\n", set->size);
 
 }
 
 //*************************************************************************************************
 void op_par_loop_all__WeightParticlesToFields(
-	op_set set, 	// particles
-	op_arg arg0,	// lhs node0_field_J
-	op_arg arg1,	// rhs node1_field_J
-	op_arg arg2		// particle0_position_x
-	)
+    op_set set,     // particles
+    op_arg arg0,    // lhs node0_field_J
+    op_arg arg1,    // rhs node1_field_J
+    op_arg arg2     // particle0_position_x
+    )
 { TRACE_ME;
 
-	if (OP_DEBUG) printf("SIMPIC - op_par_loop_all__WeightParticlesToFields [%d]\n", set->size);
+    if (OP_DEBUG) printf("SIMPIC - op_par_loop_all__WeightParticlesToFields [%d]\n", set->size);
 
 }
 
 //*************************************************************************************************
 void op_par_loop_all__FieldSolveSumLaplace(
-	op_set set,   // nodes
-	op_arg arg0,  // node0_xlocal
-	op_arg arg1)  // node0_field_P
+    op_set set,   // nodes
+    op_arg arg0,  // node0_xlocal
+    op_arg arg1)  // node0_field_P
 { TRACE_ME;
 
-	if (OP_DEBUG) printf("SIMPIC - op_par_loop__FieldSolveSumLaplace [%d]\n", set->size);
+    if (OP_DEBUG) printf("SIMPIC - op_par_loop__FieldSolveSumLaplace [%d]\n", set->size);
 
 }
 
