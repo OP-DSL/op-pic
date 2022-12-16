@@ -8,6 +8,8 @@ rm -rf fempic
 export OMP_NUM_THREADS=4
 export OMP_PROC_BIND=close
 
+# module load gnu-9.3.0/openmpi-4.0.4
+# export LD_LIBRARY_PATH=/ext-home/zl/phd/OP-PIC/app_simpic_oppic:$LD_LIBRARY_PATH
 
 NT=50               # of time steps
 PPC=100             # of particles per cell

@@ -52,7 +52,7 @@ void op_exit() {
 
     for (auto a : op_dats) {
         free(a->data);
-        for (int thr = 0; thr < (int)a->thread_data.size(); thr++) free(a->thread_data[thr]);
+        for (int thr = 0; thr < (int)a->thread_data.size(); thr++) { free(a->thread_data[thr]); }
         free(a);
     }
     op_dats.clear();
@@ -114,6 +114,7 @@ op_dat op_decl_dat(op_set set, int dim, char const *type, int size, char *data, 
     dat->name = copy_str(name);
     dat->type = copy_str(type);
     dat->size = dim * size;
+    dat->thread_data.clear();
 
     op_dats.push_back(dat);
     return dat;
@@ -241,6 +242,7 @@ op_dat op_decl_particle_dat(op_set set, int dim, char const *type, int size, cha
     dat->type = copy_str(type);
     dat->size = dim * size;
     dat->is_cell_index = cell_index;
+    dat->thread_data.clear();
 
     if (cell_index) set->cell_index_dat = dat;
     set->particle_dats.push_back(dat);

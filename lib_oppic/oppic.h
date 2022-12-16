@@ -38,6 +38,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <algorithm>
 #include <numeric>
 #include "trace.h"
+#include <cstring>
 
 #define OP_PARTICLES
 #define OP_DEBUG  false

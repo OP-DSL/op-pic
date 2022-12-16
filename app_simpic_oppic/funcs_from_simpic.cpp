@@ -1,4 +1,5 @@
 #include "simpic.h"
+#include <cstring>
 
 double dtfactor;
 
