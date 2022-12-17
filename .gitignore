@@ -4,6 +4,7 @@
 fempic_seq
 fempic_genseq*
 fempic_openmp*
+fempic_cuda
 
 simpic_seq
 simpic_genseq*

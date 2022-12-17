@@ -57,6 +57,14 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #define OP_ARG_GBL     0
 #define OP_ARG_DAT     1
 
+#define ZERO_double     0.0
+#define ZERO_float      0.0f
+#define ZERO_int        0
+#define ZERO_uint       0
+#define ZERO_ll         0
+#define ZERO_ull        0
+#define ZERO_bool       0
+
 enum op_iterate_type
 {
     OP_ITERATE_ALL = 1,
@@ -97,6 +105,8 @@ struct op_arg {
     int size;                   /* size (for sequential execution) */
     char *data;                 /* data on host */
     int *map_data;              /* data on host */
+    char *data_d;               /* data on device */
+    int *map_data_d;            /* data on device */
     char const *type;           /* datatype */
     op_arg_type argtype;
     op_access acc;              /* op_accessor OP_READ, OP_WRITE, OP_RW, OP_INC, OP_MIN, OP_MAX */
@@ -125,6 +135,7 @@ struct op_map_core {
     int dim;                    /* dimension of pointer */
     int *map;                   /* array defining pointer */
     char const *name;           /* name of pointer */
+    int *map_data_d;            /* device array defining pointer */
 };
 
 struct op_dat_core {
@@ -135,6 +146,7 @@ struct op_dat_core {
     char *data;                 /* data */
     char const *type;           /* datatype */
     char const *name;           /* name of dataset */
+    char *data_d;               /* device data */
 
 #ifdef OP_PARTICLES
     std::vector<char*> thread_data;

@@ -33,7 +33,6 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 // USER WRITTEN CODE
 
 #include "fempic.h"
-#include "../lib_oppic/oppic.h"
 #include "kernels.h"
 
 const int num_iterations = 50;

@@ -15,6 +15,7 @@
 #include <chrono>
 #include <algorithm> 
 #include "../lib_oppic/trace.h"
+#include "../lib_oppic/oppic.h"
 
 #define USE_PETSC
 #define USE_PARTICLE_SORTING
