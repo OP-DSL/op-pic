@@ -3,7 +3,7 @@
 # module load gnu-6.3.0/ompi-1.10.6
 # module load cuda/toolkit-10.2.89
 
-# module load intel-oneapi-2021.3/impi-classic-2021.3
+# module load intel-oneapi-2021.3/intel-classic-2021.3 intel-oneapi-2021.3/impi-classic-2021.3
 # module load cuda/toolkit-10.2.89
 
 # export LD_LIBRARY_PATH=/ext-home/zl/phd/OP-PIC/app_fempic_oppic/lib:/ext-home/zl/lib_install/petsc-3.18.2-oneapi-2021.3/lib:$LD_LIBRARY_PATH
@@ -36,8 +36,8 @@ OP2_INC    = # -I$(OP2_PATH)/include
 OP2_LIB    = # -L$(OP2_PATH)/lib
 
 OPPIC_PATH = /ext-home/zl/phd/OP-PIC/lib_oppic
-ALL_INC  = -I$(OPPIC_PATH) $(PETSC_INC) $(CUDA_INC)
-ALL_LIBS  = $(PETSC_LIB) $(CUDA_LIB)
+ALL_INC    = -I$(OPPIC_PATH)/include $(PETSC_INC) $(CUDA_INC)
+ALL_LIBS   = -L$(OPPIC_PATH)/lib $(PETSC_LIB) $(CUDA_LIB)
 
 .PHONY: clean mklib
 
@@ -46,47 +46,41 @@ ALL_TARGETS = clean oppic_seq fempic_seq fempic_genseq fempic_openmp fempic_gens
 all: $(ALL_TARGETS)
 
 mklib:
-	@mkdir -p $(LIB) $(OBJ) $(BIN)
-
-
-oppic_seq: mklib
-	     $(CPP) $(CPPFLAGS) -c $(OPPIC_PATH)/oppic.cpp -o $(OBJ)/oppic.o $(ALL_INC)
-	     $(CPP) $(CPPFLAGS) -c $(OPPIC_PATH)/trace.cpp -o $(OBJ)/trace.o $(ALL_INC)
-	     $(CPP) $(CPPFLAGS) -shared -o $(LIB)/liboppic_seq.so $(OBJ)/oppic.o $(OBJ)/trace.o $(ALL_INC) $(ALL_LIBS)
+	@mkdir -p $(OBJ) $(BIN)
 
 fempic_seq: mklib
 	     $(CPP) $(CPPFLAGS) -c fempic.cpp -o $(OBJ)/fempic.o $(ALL_INC)
 	     $(CPP) $(CPPFLAGS) -c funcs_from_fempic.cpp -o $(OBJ)/funcs_from_fempic.o $(ALL_INC)
-	     $(CPP) $(CPPFLAGS) -c field_solver_petsc.cpp -o $(OBJ)/field_solver_petsc.o $(ALL_INC)
-	     $(CPP) $(CPPFLAGS) -o $(BIN)/fempic_seq $(OBJ)/fempic.o $(OBJ)/funcs_from_fempic.o $(OBJ)/field_solver_petsc.o $(ALL_INC) $(ALL_LIBS) -L./$(LIB) -loppic_seq
+	     $(CPP) $(CPPFLAGS) -c field_solver_original.cpp -o $(OBJ)/field_solver_original.o $(ALL_INC)
+	     $(CPP) $(CPPFLAGS) -o $(BIN)/fempic_seq $(OBJ)/fempic.o $(OBJ)/funcs_from_fempic.o $(OBJ)/field_solver_original.o $(ALL_INC) $(ALL_LIBS) -loppic_seq
 
 fempic_genseq: mklib
 	     $(CPP) $(CPPFLAGS) -c fempic_op.cpp -o $(OBJ)/fempic_op.o $(ALL_INC)
 	     $(CPP) $(CPPFLAGS) -c funcs_from_fempic.cpp -o $(OBJ)/funcs_from_fempic.o $(ALL_INC)
 	     $(CPP) $(CPPFLAGS) -c field_solver_petsc.cpp -o $(OBJ)/field_solver_petsc.o $(ALL_INC)
 	     $(CPP) $(CPPFLAGS) -c seq/seqkernels.cpp -o $(OBJ)/seqkernels.o $(ALL_INC)
-	     $(CPP) $(CPPFLAGS) -o $(BIN)/fempic_genseq $(OBJ)/fempic_op.o $(OBJ)/funcs_from_fempic.o $(OBJ)/field_solver_petsc.o $(OBJ)/seqkernels.o $(ALL_INC) $(ALL_LIBS) -L./$(LIB) -loppic_seq 
+	     $(CPP) $(CPPFLAGS) -o $(BIN)/fempic_genseq $(OBJ)/fempic_op.o $(OBJ)/funcs_from_fempic.o $(OBJ)/field_solver_petsc.o $(OBJ)/seqkernels.o $(ALL_INC) $(ALL_LIBS) -loppic_seq 
 
 fempic_openmp: mklib
 	     $(CPP) $(CPPFLAGS) -c fempic_op.cpp -o $(OBJ)/fempic_op.o $(ALL_INC)
 	     $(CPP) $(CPPFLAGS) -c funcs_from_fempic.cpp -o $(OBJ)/funcs_from_fempic.o $(ALL_INC)
 	     $(CPP) $(CPPFLAGS) -c field_solver_petsc.cpp -o $(OBJ)/field_solver_petsc.o $(ALL_INC)
 	     $(CPP) $(CPPFLAGS) -c omp/ompkernels.cpp -o $(OBJ)/ompkernels.o $(ALL_INC)
-	     $(CPP) $(CPPFLAGS) -o $(BIN)/fempic_openmp $(OBJ)/fempic_op.o $(OBJ)/funcs_from_fempic.o $(OBJ)/field_solver_petsc.o $(OBJ)/ompkernels.o $(ALL_INC) $(ALL_LIBS) -L./$(LIB) -loppic_seq 
+	     $(CPP) $(CPPFLAGS) -o $(BIN)/fempic_openmp $(OBJ)/fempic_op.o $(OBJ)/funcs_from_fempic.o $(OBJ)/field_solver_petsc.o $(OBJ)/ompkernels.o $(ALL_INC) $(ALL_LIBS) -loppic_omp 
 
 fempic_genseq_wopet: mklib
 	     $(CPP) $(CPPFLAGS) -c fempic_op.cpp -o $(OBJ)/fempic_op.o $(ALL_INC)
 	     $(CPP) $(CPPFLAGS) -c funcs_from_fempic.cpp -o $(OBJ)/funcs_from_fempic.o $(ALL_INC)
 	     $(CPP) $(CPPFLAGS) -c field_solver_original.cpp -o $(OBJ)/field_solver_original.o $(ALL_INC)
 	     $(CPP) $(CPPFLAGS) -c seq/seqkernels.cpp -o $(OBJ)/seqkernels.o $(ALL_INC)
-	     $(CPP) $(CPPFLAGS) -o $(BIN)/fempic_genseq_wopet $(OBJ)/fempic_op.o $(OBJ)/funcs_from_fempic.o $(OBJ)/field_solver_original.o $(OBJ)/seqkernels.o  $(ALL_INC) $(ALL_LIBS) -L./$(LIB) -loppic_seq 
+	     $(CPP) $(CPPFLAGS) -o $(BIN)/fempic_genseq_wopet $(OBJ)/fempic_op.o $(OBJ)/funcs_from_fempic.o $(OBJ)/field_solver_original.o $(OBJ)/seqkernels.o  $(ALL_INC) $(ALL_LIBS) -loppic_seq 
 
 fempic_openmp_wopet: mklib
 	     $(CPP) $(CPPFLAGS) -c fempic_op.cpp -o $(OBJ)/fempic_op.o $(ALL_INC)
 	     $(CPP) $(CPPFLAGS) -c funcs_from_fempic.cpp -o $(OBJ)/funcs_from_fempic.o $(ALL_INC)
 	     $(CPP) $(CPPFLAGS) -c field_solver_original.cpp -o $(OBJ)/field_solver_original.o $(ALL_INC)
 	     $(CPP) $(CPPFLAGS) -c omp/ompkernels.cpp -o $(OBJ)/ompkernels.o $(ALL_INC)
-	     $(CPP) $(CPPFLAGS) -o $(BIN)/fempic_openmp_wopet $(OBJ)/fempic_op.o $(OBJ)/funcs_from_fempic.o $(OBJ)/field_solver_original.o $(OBJ)/ompkernels.o $(ALL_INC) $(ALL_LIBS) -L./$(LIB) -loppic_seq 
+	     $(CPP) $(CPPFLAGS) -o $(BIN)/fempic_openmp_wopet $(OBJ)/fempic_op.o $(OBJ)/funcs_from_fempic.o $(OBJ)/field_solver_original.o $(OBJ)/ompkernels.o $(ALL_INC) $(ALL_LIBS) -loppic_omp 
 
 
 # fempic_cuda: fempic_op.o funcs_from_fempic.o field_solver_original.o cudakernels.o

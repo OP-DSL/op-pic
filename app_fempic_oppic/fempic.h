@@ -14,8 +14,7 @@
 #include <array>
 #include <chrono>
 #include <algorithm> 
-#include "../lib_oppic/trace.h"
-#include "../lib_oppic/oppic.h"
+#include <trace.h>
 
 #define USE_PETSC
 #define USE_PARTICLE_SORTING

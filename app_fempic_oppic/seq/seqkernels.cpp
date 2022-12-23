@@ -31,20 +31,20 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 // AUTO GENERATED CODE
 
-#include "../../lib_oppic/oppic.h"
+#include "oppic_seq.h"
 #include "../kernels.h"
 
 //*************************************************************************************************
-void op_par_loop_inject__InjectIons(
-    op_set set,      // particles_set
-    op_arg arg0,     // part_position,
-    op_arg arg1,     // part_velocity,
-    op_arg arg2,     // part_electric_field,
-    op_arg arg3,     // part_weights,
-    op_arg arg4      // part_cell_index,
+void oppic_par_loop_inject__InjectIons(
+    oppic_set set,      // particles_set
+    oppic_arg arg0,     // part_position,
+    oppic_arg arg1,     // part_velocity,
+    oppic_arg arg2,     // part_electric_field,
+    oppic_arg arg3,     // part_weights,
+    oppic_arg arg4      // part_cell_index,
     )
 { TRACE_ME;
-    if (OP_DEBUG) printf("FEMPIC - op_par_loop_inject__InjectIons num_particles %d diff %d\n", set->size, set->diff);
+    if (OP_DEBUG) printf("FEMPIC - oppic_par_loop_inject__InjectIons num_particles %d diff %d\n", set->size, set->diff);
 
     for (int i = (set->size - set->diff); i < set->size; i++)
     {    
@@ -59,19 +59,19 @@ void op_par_loop_inject__InjectIons(
 }
 
 //*************************************************************************************************
-void op_par_loop_particle_inject__MoveToCells(
-    op_set set,      // particles_set
-    op_arg arg0,     // part_position,
-    op_arg arg1,     // part_weights,
-    op_arg arg2,     // part_cell_index,
-    op_arg arg3,     // cell_volume,
-    op_arg arg4,     // cell_det,
-    op_arg arg5,     // cell_connectivity_map,
-    op_arg arg6      // particles_injected
+void oppic_par_loop_particle_inject__MoveToCells(
+    oppic_set set,      // particles_set
+    oppic_arg arg0,     // part_position,
+    oppic_arg arg1,     // part_weights,
+    oppic_arg arg2,     // part_cell_index,
+    oppic_arg arg3,     // cell_volume,
+    oppic_arg arg4,     // cell_det,
+    oppic_arg arg5,     // cell_connectivity_map,
+    oppic_arg arg6      // particles_injected
     )
 { TRACE_ME;
 
-    if (OP_DEBUG) printf("FEMPIC - op_par_loop_particle_inject__MoveToCells num_particles %d diff %d\n", set->size, set->diff);
+    if (OP_DEBUG) printf("FEMPIC - oppic_par_loop_particle_inject__MoveToCells num_particles %d diff %d\n", set->size, set->diff);
 
     const int num_cells    = set->cells_set->size; 
 
@@ -97,7 +97,7 @@ void op_par_loop_particle_inject__MoveToCells(
 
         if (move_status == (int)NEED_REMOVE) /*outside the mesh*/
         {                
-            op_mark_particle_to_remove(set, i);
+            oppic_mark_particle_to_remove(set, i);
         }
         else if (move_status != (int)MOVE_DONE) 
         {
@@ -105,23 +105,23 @@ void op_par_loop_particle_inject__MoveToCells(
         }
     }
 
-    op_remove_marked_particles_from_set(set);
+    oppic_remove_marked_particles_from_set(set);
 }
 
 //*************************************************************************************************
-void op_par_loop_particle_all__MoveToCells(
-    op_set set,      // particles_set
-    op_arg arg0,     // part_position,
-    op_arg arg1,     // part_weights,
-    op_arg arg2,     // part_cell_index,
-    op_arg arg3,     // cell_volume,
-    op_arg arg4,     // cell_det,
-    op_arg arg5,     // cell_connectivity_map,
-    op_arg arg6      // particles_injected
+void oppic_par_loop_particle_all__MoveToCells(
+    oppic_set set,      // particles_set
+    oppic_arg arg0,     // part_position,
+    oppic_arg arg1,     // part_weights,
+    oppic_arg arg2,     // part_cell_index,
+    oppic_arg arg3,     // cell_volume,
+    oppic_arg arg4,     // cell_det,
+    oppic_arg arg5,     // cell_connectivity_map,
+    oppic_arg arg6      // particles_injected
     )
 { TRACE_ME;
 
-    if (OP_DEBUG) printf("FEMPIC - op_par_loop_particle_all__MoveToCells num_particles %d diff %d\n", set->size, set->diff);
+    if (OP_DEBUG) printf("FEMPIC - oppic_par_loop_particle_all__MoveToCells num_particles %d diff %d\n", set->size, set->diff);
 
     const int num_cells    = set->cells_set->size; 
 
@@ -147,7 +147,7 @@ void op_par_loop_particle_all__MoveToCells(
 
         if (move_status == (int)NEED_REMOVE) /*outside the mesh*/
         {                
-            op_mark_particle_to_remove(set, i);
+            oppic_mark_particle_to_remove(set, i);
         }
         else if (move_status != (int)MOVE_DONE) 
         {
@@ -155,18 +155,18 @@ void op_par_loop_particle_all__MoveToCells(
         }
     }
 
-    op_remove_marked_particles_from_set(set);
+    oppic_remove_marked_particles_from_set(set);
 }
 
 //*************************************************************************************************
-void op_par_loop_inject__EnrichVelocity(
-    op_set set,     // particles_set
-    op_arg arg0,    // part_velocity,
-    op_arg arg1,    // cell_electric_field,
-    op_arg arg2     // const dt,    
+void oppic_par_loop_inject__EnrichVelocity(
+    oppic_set set,     // particles_set
+    oppic_arg arg0,    // part_velocity,
+    oppic_arg arg1,    // cell_electric_field,
+    oppic_arg arg2     // const dt,    
     )
 { TRACE_ME;
-    if (OP_DEBUG) printf("FEMPIC - op_par_loop_inject__EnrichVelocity num_particles %d\n", set->size);
+    if (OP_DEBUG) printf("FEMPIC - oppic_par_loop_inject__EnrichVelocity num_particles %d\n", set->size);
 
     for (int i = (set->size - set->diff); i < set->size; i++)
     {
@@ -181,13 +181,13 @@ void op_par_loop_inject__EnrichVelocity(
 }
 
 //*************************************************************************************************
-void op_par_loop_all__WeightFieldsToParticles(
-    op_set set,     // particles_set
-    op_arg arg0,    // particle_ef
-    op_arg arg1     // cell_electric_field
+void oppic_par_loop_all__WeightFieldsToParticles(
+    oppic_set set,     // particles_set
+    oppic_arg arg0,    // particle_ef
+    oppic_arg arg1     // cell_electric_field
     )
 { TRACE_ME;
-    if (OP_DEBUG) printf("FEMPIC - op_par_loop_all__WeightFieldsToParticles num_particles %d\n", set->size);
+    if (OP_DEBUG) printf("FEMPIC - oppic_par_loop_all__WeightFieldsToParticles num_particles %d\n", set->size);
 
     for (int i = 0; i < set->size; i++)
     {
@@ -201,15 +201,15 @@ void op_par_loop_all__WeightFieldsToParticles(
 }
 
 //*************************************************************************************************
-void op_par_loop_all__MoveParticles(
-    op_set set,     // particles_set
-    op_arg arg0,    // part_position,
-    op_arg arg1,    // part_velocity,
-    op_arg arg2,    // part_electric_field,
-    op_arg arg3     // const dt 
+void oppic_par_loop_all__MoveParticles(
+    oppic_set set,     // particles_set
+    oppic_arg arg0,    // part_position,
+    oppic_arg arg1,    // part_velocity,
+    oppic_arg arg2,    // part_electric_field,
+    oppic_arg arg3     // const dt 
     )
 { TRACE_ME;
-    if (OP_DEBUG) printf("FEMPIC - op_par_loop_all__MoveParticles num_particles %d\n", set->size);
+    if (OP_DEBUG) printf("FEMPIC - oppic_par_loop_all__MoveParticles num_particles %d\n", set->size);
 
     for (int i = 0; i < set->size; i++)
     {
@@ -223,12 +223,12 @@ void op_par_loop_all__MoveParticles(
 }
 
 //*************************************************************************************************
-void op_par_loop_all__ResetIonDensity(
-    op_set set,     // nodes_set
-    op_arg arg0     // node_charge_density
+void oppic_par_loop_all__ResetIonDensity(
+    oppic_set set,     // nodes_set
+    oppic_arg arg0     // node_charge_density
     )
 { TRACE_ME;
-    if (OP_DEBUG) printf("FEMPIC - op_par_loop_all__ResetIonDensity num_nodes %d\n", set->size);
+    if (OP_DEBUG) printf("FEMPIC - oppic_par_loop_all__ResetIonDensity num_nodes %d\n", set->size);
 
     for (int i=0; i<set->size; i++) 
     {
@@ -239,20 +239,20 @@ void op_par_loop_all__ResetIonDensity(
 }
 
 //*************************************************************************************************
-void op_par_loop_all__WeightParticleToMeshNodes(
-    op_set set,         // particles_set
-    op_arg arg0,        // particle_lc
-    op_arg arg1,        // node_charge_density
-    op_arg arg2,        // node_charge_density
-    op_arg arg3,        // node_charge_density
-    op_arg arg4,        // node_charge_density
-    op_arg arg5,        // node_volumes
-    op_arg arg6,        // node_volumes
-    op_arg arg7,        // node_volumes
-    op_arg arg8         // node_volumes        
+void oppic_par_loop_all__WeightParticleToMeshNodes(
+    oppic_set set,         // particles_set
+    oppic_arg arg0,        // particle_lc
+    oppic_arg arg1,        // node_charge_density
+    oppic_arg arg2,        // node_charge_density
+    oppic_arg arg3,        // node_charge_density
+    oppic_arg arg4,        // node_charge_density
+    oppic_arg arg5,        // node_volumes
+    oppic_arg arg6,        // node_volumes
+    oppic_arg arg7,        // node_volumes
+    oppic_arg arg8         // node_volumes        
     )
 { TRACE_ME;
-    if (OP_DEBUG) printf("FEMPIC - op_par_loop_all__WeightParticleToMeshNodes num_particles %d\n", set->size);
+    if (OP_DEBUG) printf("FEMPIC - oppic_par_loop_all__WeightParticleToMeshNodes num_particles %d\n", set->size);
 
     for (int i = 0; i < set->size; i++)
     {

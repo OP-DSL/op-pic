@@ -31,7 +31,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 // AUTO GENERATED CODE
 
-#include "../../lib_oppic/oppic.h"
+#include "oppic_omp.h"
 #include "../kernels.h"
 
 #define REMOVE_PER_THREAD 10000
@@ -41,16 +41,16 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #define USE_VECTORS 1
 
 //*************************************************************************************************
-void op_par_loop_inject__InjectIons(
-    op_set set,      // particles_set
-    op_arg arg0,     // part_position,
-    op_arg arg1,     // part_velocity,
-    op_arg arg2,     // part_electric_field,
-    op_arg arg3,     // part_weights,
-    op_arg arg4      // part_cell_index,
+void oppic_par_loop_inject__InjectIons(
+    oppic_set set,      // particles_set
+    oppic_arg arg0,     // part_position,
+    oppic_arg arg1,     // part_velocity,
+    oppic_arg arg2,     // part_electric_field,
+    oppic_arg arg3,     // part_weights,
+    oppic_arg arg4      // part_cell_index,
     )
 { TRACE_ME;
-    if (OP_DEBUG) printf("FEMPIC - op_par_loop_inject__InjectIons num_particles %d diff %d\n", set->size, set->diff);
+    if (OP_DEBUG) printf("FEMPIC - oppic_par_loop_inject__InjectIons num_particles %d diff %d\n", set->size, set->diff);
 
     int nthreads = omp_get_max_threads();
 
@@ -77,19 +77,19 @@ void op_par_loop_inject__InjectIons(
 }
 
 //*************************************************************************************************
-void op_par_loop_particle_inject__MoveToCells(
-    op_set set,      // particles_set
-    op_arg arg0,     // part_position,
-    op_arg arg1,     // part_weights,
-    op_arg arg2,     // part_cell_index,
-    op_arg arg3,     // cell_volume,
-    op_arg arg4,     // cell_det,
-    op_arg arg5,     // cell_connectivity_map,
-    op_arg arg6      // particles_injected
+void oppic_par_loop_particle_inject__MoveToCells(
+    oppic_set set,      // particles_set
+    oppic_arg arg0,     // part_position,
+    oppic_arg arg1,     // part_weights,
+    oppic_arg arg2,     // part_cell_index,
+    oppic_arg arg3,     // cell_volume,
+    oppic_arg arg4,     // cell_det,
+    oppic_arg arg5,     // cell_connectivity_map,
+    oppic_arg arg6      // particles_injected
     )
 { TRACE_ME;
 
-    if (OP_DEBUG) printf("FEMPIC - op_par_loop_particle_inject__MoveToCells num_particles %d diff %d\n", set->size, set->diff);
+    if (OP_DEBUG) printf("FEMPIC - oppic_par_loop_particle_inject__MoveToCells num_particles %d diff %d\n", set->size, set->diff);
 
     const int num_cells    = set->cells_set->size; 
     int nthreads = omp_get_max_threads();
@@ -137,7 +137,7 @@ void op_par_loop_particle_inject__MoveToCells(
             {    
                 #ifdef USE_LOCKS
                     omp_set_lock(&writelock);            
-                    op_mark_particle_to_remove(set, n);     // TODO : KNOWN ISSUE : THIS HAS A RACE CONDITION
+                    oppic_mark_particle_to_remove(set, n);     // TODO : KNOWN ISSUE : THIS HAS A RACE CONDITION
                     omp_unset_lock(&writelock);
                 #elif USE_ARRAYS == 1
                     remove_index[REMOVE_PER_THREAD * thr + num_remove_indexes[thr]] = n;
@@ -165,40 +165,40 @@ void op_par_loop_particle_inject__MoveToCells(
     }
 
     #ifdef USE_LOCKS
-        op_remove_marked_particles_from_set(set);
+        oppic_remove_marked_particles_from_set(set);
     #elif USE_ARRAYS == 1
         for (int i = 0; i < nthreads; i++)
         {
             for (int j = 0; j < num_remove_indexes[i]; j++)
             {
-                op_mark_particle_to_remove(set, remove_index[REMOVE_PER_THREAD * i + j]);
+                oppic_mark_particle_to_remove(set, remove_index[REMOVE_PER_THREAD * i + j]);
             }
         }
-        op_remove_marked_particles_from_set(set);
+        oppic_remove_marked_particles_from_set(set);
     #elif USE_VECTORS == 1
         std::vector<int> remove_index_vec;
         for (int i = 0; i < nthreads; i++)
         {
             remove_index_vec.insert(remove_index_vec.end(), remove_index[i].begin(), remove_index[i].begin() + num_remove_indexes[i]);
         }
-        op_remove_marked_particles_from_set(set, remove_index_vec);
+        oppic_remove_marked_particles_from_set(set, remove_index_vec);
     #endif
 }
 
 //*************************************************************************************************
-void op_par_loop_particle_all__MoveToCells(
-    op_set set,      // particles_set
-    op_arg arg0,     // part_position,
-    op_arg arg1,     // part_weights,
-    op_arg arg2,     // part_cell_index,
-    op_arg arg3,     // cell_volume,
-    op_arg arg4,     // cell_det,
-    op_arg arg5,     // cell_connectivity_map,
-    op_arg arg6      // particles_injected
+void oppic_par_loop_particle_all__MoveToCells(
+    oppic_set set,      // particles_set
+    oppic_arg arg0,     // part_position,
+    oppic_arg arg1,     // part_weights,
+    oppic_arg arg2,     // part_cell_index,
+    oppic_arg arg3,     // cell_volume,
+    oppic_arg arg4,     // cell_det,
+    oppic_arg arg5,     // cell_connectivity_map,
+    oppic_arg arg6      // particles_injected
     )
 { TRACE_ME;
 
-    if (OP_DEBUG) printf("FEMPIC - op_par_loop_particle_all__MoveToCells num_particles %d diff %d\n", set->size, set->diff);
+    if (OP_DEBUG) printf("FEMPIC - oppic_par_loop_particle_all__MoveToCells num_particles %d diff %d\n", set->size, set->diff);
 
     const int num_cells    = set->cells_set->size; 
     int nthreads = omp_get_max_threads();
@@ -246,7 +246,7 @@ void op_par_loop_particle_all__MoveToCells(
             {    
                 #ifdef USE_LOCKS
                     omp_set_lock(&writelock);            
-                    op_mark_particle_to_remove(set, n);     // TODO : KNOWN ISSUE : THIS HAS A RACE CONDITION
+                    oppic_mark_particle_to_remove(set, n);     // TODO : KNOWN ISSUE : THIS HAS A RACE CONDITION
                     omp_unset_lock(&writelock);
                 #elif USE_ARRAYS == 1
                     remove_index[REMOVE_PER_THREAD * thr + num_remove_indexes[thr]] = n;
@@ -274,32 +274,32 @@ void op_par_loop_particle_all__MoveToCells(
     }
 
     #ifdef USE_LOCKS
-        op_remove_marked_particles_from_set(set);
+        oppic_remove_marked_particles_from_set(set);
     #elif USE_ARRAYS == 1
         for (int i = 0; i < nthreads; i++)
         {
             for (int j = 0; j < num_remove_indexes[i]; j++)
             {
-                op_mark_particle_to_remove(set, remove_index[REMOVE_PER_THREAD * i + j]);
+                oppic_mark_particle_to_remove(set, remove_index[REMOVE_PER_THREAD * i + j]);
             }
         }
-        op_remove_marked_particles_from_set(set);
+        oppic_remove_marked_particles_from_set(set);
     #elif USE_VECTORS == 1
         std::vector<int> remove_index_vec;
         for (int i = 0; i < nthreads; i++)
         {
             remove_index_vec.insert(remove_index_vec.end(), remove_index[i].begin(), remove_index[i].begin() + num_remove_indexes[i]);
         }
-        op_remove_marked_particles_from_set(set, remove_index_vec);
+        oppic_remove_marked_particles_from_set(set, remove_index_vec);
     #endif
 }
 
 //*************************************************************************************************
-void op_par_loop_inject__EnrichVelocity(
-    op_set set,     // particles_set
-    op_arg arg0,    // part_velocity,
-    op_arg arg1,    // cell_electric_field,
-    op_arg arg2     // const dt,    
+void oppic_par_loop_inject__EnrichVelocity(
+    oppic_set set,     // particles_set
+    oppic_arg arg0,    // part_velocity,
+    oppic_arg arg1,    // cell_electric_field,
+    oppic_arg arg2     // const dt,    
     )
 { TRACE_ME;
     int nthreads = omp_get_max_threads();
@@ -327,13 +327,13 @@ void op_par_loop_inject__EnrichVelocity(
 }
 
 //*************************************************************************************************
-void op_par_loop_all__WeightFieldsToParticles(
-    op_set set,             // particles_set
-    op_arg arg0,            // particle_ef
-    op_arg arg1             // cell_electric_field
+void oppic_par_loop_all__WeightFieldsToParticles(
+    oppic_set set,             // particles_set
+    oppic_arg arg0,            // particle_ef
+    oppic_arg arg1             // cell_electric_field
     )
 { TRACE_ME;
-    if (OP_DEBUG) printf("FEMPIC - op_par_loop_all__WeightFieldsToParticles num_particles %d\n", set->size);
+    if (OP_DEBUG) printf("FEMPIC - oppic_par_loop_all__WeightFieldsToParticles num_particles %d\n", set->size);
 
     int nthreads = omp_get_max_threads();
 
@@ -360,15 +360,15 @@ void op_par_loop_all__WeightFieldsToParticles(
 
 //*************************************************************************************************
 /*updates ion velocities and positions*/
-void op_par_loop_all__MoveParticles(
-    op_set set,      // particles_set
-    op_arg arg0,     // part_position,
-    op_arg arg1,     // part_velocity,
-    op_arg arg2,     // part_electric_field,
-    op_arg arg3      // const dt 
+void oppic_par_loop_all__MoveParticles(
+    oppic_set set,      // particles_set
+    oppic_arg arg0,     // part_position,
+    oppic_arg arg1,     // part_velocity,
+    oppic_arg arg2,     // part_electric_field,
+    oppic_arg arg3      // const dt 
     )
 { TRACE_ME;    
-    if (OP_DEBUG) printf("FEMPIC - op_par_loop_all__MoveParticles num_particles %d\n", set->size);
+    if (OP_DEBUG) printf("FEMPIC - oppic_par_loop_all__MoveParticles num_particles %d\n", set->size);
 
     int nthreads = omp_get_max_threads();
 
@@ -394,12 +394,12 @@ void op_par_loop_all__MoveParticles(
 }
 
 //*************************************************************************************************
-void op_par_loop_all__ResetIonDensity(
-    op_set set,     // nodes_set
-    op_arg arg0     // node_charge_density
+void oppic_par_loop_all__ResetIonDensity(
+    oppic_set set,     // nodes_set
+    oppic_arg arg0     // node_charge_density
     )
 { TRACE_ME;
-    if (OP_DEBUG) printf("FEMPIC - op_par_loop_all__ResetIonDensity num_nodes %d\n", set->size);
+    if (OP_DEBUG) printf("FEMPIC - oppic_par_loop_all__ResetIonDensity num_nodes %d\n", set->size);
 
     int nthreads = omp_get_max_threads();
 
@@ -422,24 +422,24 @@ void op_par_loop_all__ResetIonDensity(
 }
 
 //*************************************************************************************************
-void op_par_loop_all__WeightParticleToMeshNodes(
-    op_set set,         // particles_set
-    op_arg arg0,        // particle_lc
-    op_arg arg1,        // node_charge_density
-    op_arg arg2,        // node_charge_density
-    op_arg arg3,        // node_charge_density
-    op_arg arg4,        // node_charge_density
-    op_arg arg5,        // node_volumes
-    op_arg arg6,        // node_volumes
-    op_arg arg7,        // node_volumes
-    op_arg arg8         // node_volumes        
+void oppic_par_loop_all__WeightParticleToMeshNodes(
+    oppic_set set,         // particles_set
+    oppic_arg arg0,        // particle_lc
+    oppic_arg arg1,        // node_charge_density
+    oppic_arg arg2,        // node_charge_density
+    oppic_arg arg3,        // node_charge_density
+    oppic_arg arg4,        // node_charge_density
+    oppic_arg arg5,        // node_volumes
+    oppic_arg arg6,        // node_volumes
+    oppic_arg arg7,        // node_volumes
+    oppic_arg arg8         // node_volumes        
     )
 { TRACE_ME;
-    if (OP_DEBUG) printf("FEMPIC - op_par_loop_all__WeightParticleToMeshNodes num_particles %d\n", set->size);
+    if (OP_DEBUG) printf("FEMPIC - oppic_par_loop_all__WeightParticleToMeshNodes num_particles %d\n", set->size);
 
     int nthreads = omp_get_max_threads();
 
-    op_create_thread_level_data<double>(arg1, 0.0);
+    oppic_create_thread_level_data<double>(arg1, 0.0);
 
     if (set->size > 0) 
     {
@@ -478,7 +478,7 @@ void op_par_loop_all__WeightParticleToMeshNodes(
         }
     }
 
-    op_reduce_thread_level_data<double>(arg1);
+    oppic_reduce_thread_level_data<double>(arg1);
 }
 
 //*************************************************************************************************

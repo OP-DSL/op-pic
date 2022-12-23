@@ -13,3 +13,6 @@ simpic_openmp*
 *.log
 files/
 trace/
+bin/
+obj/
+lib/
