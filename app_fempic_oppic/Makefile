@@ -50,8 +50,8 @@ mklib:
 
 
 oppic_seq: mklib
-	     $(CPP) $(CPPFLAGS) -c ../lib_oppic/oppic.cpp -o $(OBJ)/oppic.o $(ALL_INC)
-	     $(CPP) $(CPPFLAGS) -c ../lib_oppic/trace.cpp -o $(OBJ)/trace.o $(ALL_INC)
+	     $(CPP) $(CPPFLAGS) -c $(OPPIC_PATH)/oppic.cpp -o $(OBJ)/oppic.o $(ALL_INC)
+	     $(CPP) $(CPPFLAGS) -c $(OPPIC_PATH)/trace.cpp -o $(OBJ)/trace.o $(ALL_INC)
 	     $(CPP) $(CPPFLAGS) -shared -o $(LIB)/liboppic_seq.so $(OBJ)/oppic.o $(OBJ)/trace.o $(ALL_INC) $(ALL_LIBS)
 
 fempic_seq: mklib
