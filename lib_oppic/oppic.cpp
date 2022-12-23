@@ -142,7 +142,7 @@ op_arg op_arg_dat(op_dat dat, int idx, op_map map, int dim, const char *typ, op_
     arg.idx = idx;
     
     arg.size = ((dat == NULL) ? 0 : dat->size);
-    arg.data = ((dat == NULL) ? 0 : dat->data);
+    arg.data = ((dat == NULL) ? nullptr : dat->data);
     arg.map_data = ((idx == -1 || idx == -2) ? NULL : map->map);
     arg.type = typ;
     arg.acc = acc;
@@ -216,6 +216,9 @@ op_set op_decl_particle_set(int size, char const *name, op_set cells_set) { // o
     set->is_particle = true;
     set->particle_dats.clear();
     set->cells_set = cells_set;
+    set->diff = 0;
+    set->cell_index_dat = nullptr;
+    set->cell_index_v_part_index_map.clear();
     return set;
 }
 
@@ -236,6 +239,10 @@ op_dat op_decl_particle_dat(op_set set, int dim, char const *type, int size, cha
     {
         dat->data = (char *)malloc((size_t)dim * (size_t)size * (size_t)(set->size) * sizeof(char));
         memcpy(dat->data, data, (size_t)dim * (size_t)size * (size_t)set->size * sizeof(char));
+    }
+    else
+    {
+        dat->data = nullptr;
     }
 
     dat->name = copy_str(name);
@@ -420,7 +427,7 @@ void op_particle_sort(op_set set)
     std::vector<size_t> idx_before_sort = sort_indexes<int>(cell_index_data, set->size);
 
     #pragma omp parallel for
-    for (int i = 0; i < set->particle_dats.size(); i++)
+    for (int i = 0; i < (int)set->particle_dats.size(); i++)
     {    
         auto& dat = set->particle_dats[i];
         char *new_data = (char *)malloc(set->size * dat->size);

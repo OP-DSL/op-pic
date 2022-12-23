@@ -39,6 +39,12 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <numeric>
 #include "trace.h"
 #include <cstring>
+#include <iostream>
+#include <fstream>
+#include <string>
+#include <vector>
+#include <chrono>
+#include <omp.h>
 
 #define OP_PARTICLES
 #define OP_DEBUG  false

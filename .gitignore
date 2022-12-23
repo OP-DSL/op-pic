@@ -12,3 +12,4 @@ simpic_openmp*
 
 *.log
 files/
+trace/

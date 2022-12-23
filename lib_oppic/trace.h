@@ -11,10 +11,6 @@
 #ifndef TRACE_H
 #define TRACE_H
 
-#define USE_TRACE
-
-#ifdef USE_TRACE
-
 #include <iostream>
 #include <fstream>
 #include <string>
@@ -22,6 +18,11 @@
 #include <unordered_map>
 #include <chrono>
 #include <omp.h>
+
+#define USE_TRACE
+
+#ifdef USE_TRACE
+
 
 #define TRACE_ME TraceCaller _TRACE_OBJECT(__func__);
 #define TRACE(x) TraceCaller _TRACE_OBJECT(x);
@@ -54,6 +55,17 @@ class Trace {
         void exit(std::string func_name);
 };
 
+namespace trace {
+    extern int enabled;
+    extern Trace current;
+}
+
+#else /* !USE_TRACE */
+
+    #define TRACE_ME
+    #define TRACE(x)
+#endif 
+
 struct TraceCaller {
     std::string name;
     TraceCaller(std::string name_);
@@ -61,14 +73,5 @@ struct TraceCaller {
 
     void add(std::string name_);
 };
-
-namespace trace {
-    extern int enabled;
-    extern Trace current;
-}
-#else /* !USE_TRACE */
-    #define TRACE_ME
-    #define TRACE(x)
-#endif 
 
 #endif /* !TRACE_H */

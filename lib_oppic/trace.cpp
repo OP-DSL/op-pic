@@ -111,4 +111,14 @@ TraceCaller::~TraceCaller() {
     }
 }
 
+#else
+
+TraceCaller::TraceCaller(std::string name_) : name(std::move(name_)) {
+
+}
+
+TraceCaller::~TraceCaller() {
+
+}
+
 #endif
