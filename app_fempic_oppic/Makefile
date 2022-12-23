@@ -57,35 +57,35 @@ oppic_seq: mklib
 fempic_seq: mklib
 	     $(CPP) $(CPPFLAGS) -c fempic.cpp -o $(OBJ)/fempic.o $(ALL_INC)
 	     $(CPP) $(CPPFLAGS) -c funcs_from_fempic.cpp -o $(OBJ)/funcs_from_fempic.o $(ALL_INC)
-		 $(CPP) $(CPPFLAGS) -c field_solver_petsc.cpp -o $(OBJ)/field_solver_petsc.o $(ALL_INC)
+	     $(CPP) $(CPPFLAGS) -c field_solver_petsc.cpp -o $(OBJ)/field_solver_petsc.o $(ALL_INC)
 	     $(CPP) $(CPPFLAGS) -o $(BIN)/fempic_seq $(OBJ)/fempic.o $(OBJ)/funcs_from_fempic.o $(OBJ)/field_solver_petsc.o $(ALL_INC) $(ALL_LIBS) -L./$(LIB) -loppic_seq
 
 fempic_genseq: mklib
 	     $(CPP) $(CPPFLAGS) -c fempic_op.cpp -o $(OBJ)/fempic_op.o $(ALL_INC)
 	     $(CPP) $(CPPFLAGS) -c funcs_from_fempic.cpp -o $(OBJ)/funcs_from_fempic.o $(ALL_INC)
-		 $(CPP) $(CPPFLAGS) -c field_solver_petsc.cpp -o $(OBJ)/field_solver_petsc.o $(ALL_INC)
-		 $(CPP) $(CPPFLAGS) -c seq/seqkernels.cpp -o $(OBJ)/seqkernels.o $(ALL_INC)
+	     $(CPP) $(CPPFLAGS) -c field_solver_petsc.cpp -o $(OBJ)/field_solver_petsc.o $(ALL_INC)
+	     $(CPP) $(CPPFLAGS) -c seq/seqkernels.cpp -o $(OBJ)/seqkernels.o $(ALL_INC)
 	     $(CPP) $(CPPFLAGS) -o $(BIN)/fempic_genseq $(OBJ)/fempic_op.o $(OBJ)/funcs_from_fempic.o $(OBJ)/field_solver_petsc.o $(OBJ)/seqkernels.o $(ALL_INC) $(ALL_LIBS) -L./$(LIB) -loppic_seq 
 
 fempic_openmp: mklib
 	     $(CPP) $(CPPFLAGS) -c fempic_op.cpp -o $(OBJ)/fempic_op.o $(ALL_INC)
 	     $(CPP) $(CPPFLAGS) -c funcs_from_fempic.cpp -o $(OBJ)/funcs_from_fempic.o $(ALL_INC)
-		 $(CPP) $(CPPFLAGS) -c field_solver_petsc.cpp -o $(OBJ)/field_solver_petsc.o $(ALL_INC)
-		 $(CPP) $(CPPFLAGS) -c omp/ompkernels.cpp -o $(OBJ)/ompkernels.o $(ALL_INC)
+	     $(CPP) $(CPPFLAGS) -c field_solver_petsc.cpp -o $(OBJ)/field_solver_petsc.o $(ALL_INC)
+	     $(CPP) $(CPPFLAGS) -c omp/ompkernels.cpp -o $(OBJ)/ompkernels.o $(ALL_INC)
 	     $(CPP) $(CPPFLAGS) -o $(BIN)/fempic_openmp $(OBJ)/fempic_op.o $(OBJ)/funcs_from_fempic.o $(OBJ)/field_solver_petsc.o $(OBJ)/ompkernels.o $(ALL_INC) $(ALL_LIBS) -L./$(LIB) -loppic_seq 
 
 fempic_genseq_wopet: mklib
 	     $(CPP) $(CPPFLAGS) -c fempic_op.cpp -o $(OBJ)/fempic_op.o $(ALL_INC)
 	     $(CPP) $(CPPFLAGS) -c funcs_from_fempic.cpp -o $(OBJ)/funcs_from_fempic.o $(ALL_INC)
-		 $(CPP) $(CPPFLAGS) -c field_solver_original.cpp -o $(OBJ)/field_solver_original.o $(ALL_INC)
-		 $(CPP) $(CPPFLAGS) -c seq/seqkernels.cpp -o $(OBJ)/seqkernels.o $(ALL_INC)
-		 $(CPP) $(CPPFLAGS) -o $(BIN)/fempic_genseq_wopet $(OBJ)/fempic_op.o $(OBJ)/funcs_from_fempic.o $(OBJ)/field_solver_original.o $(OBJ)/seqkernels.o  $(ALL_INC) $(ALL_LIBS) -L./$(LIB) -loppic_seq 
+	     $(CPP) $(CPPFLAGS) -c field_solver_original.cpp -o $(OBJ)/field_solver_original.o $(ALL_INC)
+	     $(CPP) $(CPPFLAGS) -c seq/seqkernels.cpp -o $(OBJ)/seqkernels.o $(ALL_INC)
+	     $(CPP) $(CPPFLAGS) -o $(BIN)/fempic_genseq_wopet $(OBJ)/fempic_op.o $(OBJ)/funcs_from_fempic.o $(OBJ)/field_solver_original.o $(OBJ)/seqkernels.o  $(ALL_INC) $(ALL_LIBS) -L./$(LIB) -loppic_seq 
 
 fempic_openmp_wopet: mklib
 	     $(CPP) $(CPPFLAGS) -c fempic_op.cpp -o $(OBJ)/fempic_op.o $(ALL_INC)
 	     $(CPP) $(CPPFLAGS) -c funcs_from_fempic.cpp -o $(OBJ)/funcs_from_fempic.o $(ALL_INC)
-		 $(CPP) $(CPPFLAGS) -c field_solver_original.cpp -o $(OBJ)/field_solver_original.o $(ALL_INC)
-		 $(CPP) $(CPPFLAGS) -c omp/ompkernels.cpp -o $(OBJ)/ompkernels.o $(ALL_INC)
+	     $(CPP) $(CPPFLAGS) -c field_solver_original.cpp -o $(OBJ)/field_solver_original.o $(ALL_INC)
+	     $(CPP) $(CPPFLAGS) -c omp/ompkernels.cpp -o $(OBJ)/ompkernels.o $(ALL_INC)
 	     $(CPP) $(CPPFLAGS) -o $(BIN)/fempic_openmp_wopet $(OBJ)/fempic_op.o $(OBJ)/funcs_from_fempic.o $(OBJ)/field_solver_original.o $(OBJ)/ompkernels.o $(ALL_INC) $(ALL_LIBS) -L./$(LIB) -loppic_seq 
 
 
@@ -96,13 +96,13 @@ fempic_openmp_wopet: mklib
 # 	     $(CPP) $(CPPFLAGS) $(PETSC_INC) $(PETSC_LIB) -c %.cpp -o %.o
 
 cudakernels.o:	
-		nvcc $(VAR) $(INC) $(NVCCFLAGS) -c cuda/cudakernels.cu
+	     nvcc $(VAR) $(INC) $(NVCCFLAGS) -c cuda/cudakernels.cu
 
 
 
 clean: 
-		rm -f *.o *.d *.a
-		rm -f $(OBJ)/*
-		rm -f $(BIN)/*
-		rm -f $(LIB)/*
+	     rm -f *.o *.d *.a
+	     rm -f $(OBJ)/*
+	     rm -f $(BIN)/*
+	     rm -f $(LIB)/*
 
