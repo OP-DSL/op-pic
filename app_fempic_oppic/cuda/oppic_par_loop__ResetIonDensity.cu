@@ -44,7 +44,7 @@ __device__ void reset_ion_density__kernel_gpu(
 
 // CUDA kernel function
 //*************************************************************************************************
-__global__ void op_cuda_ResetIonDensity(
+__global__ void oppic_cuda_ResetIonDensity(
     double *__restrict dir_arg0,
     int start,
     int end,
@@ -66,28 +66,40 @@ __global__ void op_cuda_ResetIonDensity(
 
 
 //*************************************************************************************************
-void op_par_loop_all__ResetIonDensity(
-    op_set set,     // nodes_set
-    op_arg arg0     // node_charge_density
+void oppic_par_loop_all__ResetIonDensity(
+    oppic_set set,     // nodes_set
+    oppic_arg arg0     // node_charge_density
     )
 { TRACE_ME;
 
-    if (OP_DEBUG) printf("FEMPIC - op_par_loop_all__ResetIonDensity num_nodes %d\n", set->size);
+    if (OP_DEBUG) printf("FEMPIC - oppic_par_loop_all__ResetIonDensity num_nodes %d\n", set->size);
 
-    int start = 0;
-    int end   = set->size;
+    int nargs = 1;
+    oppic_arg args[1];
 
-    if (end - start > 0) 
+    args[0] = arg0;
+
+    int set_size = op_mpi_halo_exchanges_grouped(set, nargs, args, Device_GPU);
+    if (set_size > 0) 
     {
-        int nthread = GPU_THREADS_PER_BLOCK;
-        int nblocks = (end - start - 1) / nthread + 1;
+        int start = 0;
+        int end   = set->size;
 
-        op_cuda_ResetIonDensity <<<nblocks, nthread>>> (
-            (double *)  arg0.data_d,
-            start, 
-            end, 
-            set->size);
-    }  
+        if (end - start > 0) 
+        {
+            int nthread = GPU_THREADS_PER_BLOCK;
+            int nblocks = (end - start - 1) / nthread + 1;
+
+            oppic_cuda_ResetIonDensity <<<nblocks, nthread>>> (
+                (double *)  arg0.data_d,
+                start, 
+                end, 
+                set->size);
+        }  
+    }
+
+    op_mpi_set_dirtybit_cuda(nargs, args);
+    cutilSafeCall(cudaDeviceSynchronize());
 }
 
 //*************************************************************************************************

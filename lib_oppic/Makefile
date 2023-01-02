@@ -22,8 +22,8 @@ MPIFLAGS   = -std=c++11 -Wall -O3 -fopenmp -fPIC
 NVCCFLAGS  = -O3 -m64 -Xptxas -dlcm=ca -Xptxas=-v -use_fast_math -arch=compute_60 -code=sm_60
 
 CUDA_INSTALL_PATH = /opt/cuda/10.2.89/toolkit
-CUDA_INC   = # -I$(CUDA_INSTALL_PATH)/include
-CUDA_LIB   = # -L$(CUDA_INSTALL_PATH)/lib64 -lcudart
+CUDA_INC   = -I$(CUDA_INSTALL_PATH)/include
+CUDA_LIB   = -L$(CUDA_INSTALL_PATH)/lib64 -lcudart
 
 PETSC_PATH = /ext-home/zl/lib_install/petsc-3.18.2-oneapi-2021.3-release
 # PETSC_PATH = /ext-home/zl/lib_install/petsc-3.18.2-oneapi-2021.3
@@ -40,7 +40,7 @@ ALL_LIBS       = $(PETSC_LIB) $(CUDA_LIB)
 
 .PHONY: clean mklib
 
-ALL_TARGETS = clean oppic_seq
+ALL_TARGETS = clean oppic_seq oppic_omp oppic_cuda
 
 all: $(ALL_TARGETS)
 
@@ -61,17 +61,9 @@ oppic_omp: mklib oppic_core
 	     $(CPP) $(CPPFLAGS) -c $(OPPIC_PATH)/$(SRC)/omp/oppic_omp.cpp -o $(OBJ)/oppic_omp.o $(ALL_INC)
 	     ar -r $(LIB)/liboppic_omp.a $(OBJ)/oppic_lib_core.o $(OBJ)/oppic_util.o $(OBJ)/trace.o $(OBJ)/oppic_omp.o
 
-
-# fempic_cuda: fempic_op.o funcs_from_fempic.o field_solver_original.o cudakernels.o
-# 	     $(CPP) $(CPPFLAGS) $(PETSC_INC) $(PETSC_LIB) $(CUDA_INC) $(CUDA_LIB) -I. -L. -loppic_seq $^ -lcudart -o $@
-
-# %:
-# 	     $(CPP) $(CPPFLAGS) $(PETSC_INC) $(PETSC_LIB) -c %.cpp -o %.o
-
-cudakernels.o:	
-	     nvcc $(VAR) $(INC) $(NVCCFLAGS) -c cuda/cudakernels.cu
-
-
+oppic_cuda: mklib oppic_core
+	     $(CPP) $(CPPFLAGS) -c $(OPPIC_PATH)/$(SRC)/cuda/oppic_cuda.cpp -o $(OBJ)/oppic_cuda.o $(ALL_INC)
+	     ar -r $(LIB)/liboppic_cuda.a $(OBJ)/oppic_lib_core.o $(OBJ)/oppic_util.o $(OBJ)/trace.o $(OBJ)/oppic_cuda.o
 
 clean: 
 	     rm -f *.o *.d *.a

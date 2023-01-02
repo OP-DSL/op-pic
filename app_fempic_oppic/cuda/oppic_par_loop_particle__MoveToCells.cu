@@ -108,7 +108,7 @@ __device__ void move_particle_to_cell__kernel(
 
 // CUDA kernel function
 //*************************************************************************************************
-__global__ void op_cuda_MoveToCells(
+__global__ void oppic_cuda_MoveToCells(
     const int *__restrict d_cell_index,
     double *__restrict dir_arg0,
     double *__restrict dir_arg1,
@@ -161,99 +161,135 @@ __global__ void op_cuda_MoveToCells(
 
 
 //*************************************************************************************************
-void op_par_loop_particle_inject__MoveToCells(
-    op_set set,      // particles_set
-    op_arg arg0,     // part_position,
-    op_arg arg1,     // part_weights,
-    op_arg arg2,     // part_cell_index,
-    op_arg arg3,     // cell_volume,
-    op_arg arg4,     // cell_det,
-    op_arg arg5,     // cell_connectivity_map,
-    op_arg arg6      // particles_injected       
+void oppic_par_loop_particle_inject__MoveToCells(
+    oppic_set set,      // particles_set
+    oppic_arg arg0,     // part_position,
+    oppic_arg arg1,     // part_weights,
+    oppic_arg arg2,     // part_cell_index,
+    oppic_arg arg3,     // cell_volume,
+    oppic_arg arg4,     // cell_det,
+    oppic_arg arg5,     // cell_connectivity_map,
+    oppic_arg arg6      // particles_injected       
     )
 { TRACE_ME;
     
-    if (OP_DEBUG) printf("FEMPIC - op_par_loop_particle_inject__MoveToCells num_particles %d\n", set->size);
+    if (OP_DEBUG) printf("FEMPIC - oppic_par_loop_particle_inject__MoveToCells num_particles %d\n", set->size);
 
-    opDat0_MoveToCells_stride_OPPIC_HOST = arg0.dat->set->size;
-    opDat1_MoveToCells_stride_OPPIC_HOST = arg1.dat->set->size;
-    opDat4_MoveToCells_stride_OPPIC_HOST = arg4.dat->set->size;
-    opDat5_MoveToCells_stride_OPPIC_HOST = arg5.map->from->size;
+    int nargs = 7;
+    oppic_arg args[7];
 
-    cudaMemcpyToSymbol(opDat0_MoveToCells_stride_OPPIC_CONSTANT, &opDat0_MoveToCells_stride_OPPIC_HOST, sizeof(int));
-    cudaMemcpyToSymbol(opDat1_MoveToCells_stride_OPPIC_CONSTANT, &opDat1_MoveToCells_stride_OPPIC_HOST, sizeof(int));
-    cudaMemcpyToSymbol(opDat4_MoveToCells_stride_OPPIC_CONSTANT, &opDat4_MoveToCells_stride_OPPIC_HOST, sizeof(int));
-    cudaMemcpyToSymbol(opDat5_MoveToCells_stride_OPPIC_CONSTANT, &opDat5_MoveToCells_stride_OPPIC_HOST, sizeof(int));
+    args[0] = arg0;
+    args[1] = arg1;
+    args[2] = arg2;
+    args[3] = arg3;
+    args[4] = arg4;
+    args[5] = arg5;
+    args[6] = arg6;
+printf("FEMPIC - oppic_par_loop_particle_inject__MoveToCells 0\n");
+    int set_size = op_mpi_halo_exchanges_grouped(set, nargs, args, Device_GPU);
+    if (set_size > 0) 
+    {printf("FEMPIC - oppic_par_loop_particle_inject__MoveToCells 1\n");
+        opDat0_MoveToCells_stride_OPPIC_HOST = arg0.dat->set->size;
+        opDat1_MoveToCells_stride_OPPIC_HOST = arg1.dat->set->size;
+        opDat4_MoveToCells_stride_OPPIC_HOST = arg4.dat->set->size;
+        opDat5_MoveToCells_stride_OPPIC_HOST = arg5.map->from->size;
 
-    int start   = (set->size - set->diff);
-    int end     = set->size;
+        cudaMemcpyToSymbol(opDat0_MoveToCells_stride_OPPIC_CONSTANT, &opDat0_MoveToCells_stride_OPPIC_HOST, sizeof(int));
+        cudaMemcpyToSymbol(opDat1_MoveToCells_stride_OPPIC_CONSTANT, &opDat1_MoveToCells_stride_OPPIC_HOST, sizeof(int));
+        cudaMemcpyToSymbol(opDat4_MoveToCells_stride_OPPIC_CONSTANT, &opDat4_MoveToCells_stride_OPPIC_HOST, sizeof(int));
+        cudaMemcpyToSymbol(opDat5_MoveToCells_stride_OPPIC_CONSTANT, &opDat5_MoveToCells_stride_OPPIC_HOST, sizeof(int));
+    printf("FEMPIC - oppic_par_loop_particle_inject__MoveToCells 2\n");
+        int start   = (set->size - set->diff);
+        int end     = set->size;
 
-    if (end - start > 0) 
-    {
-        int nthread = GPU_THREADS_PER_BLOCK;
-        int nblocks = (end - start - 1) / nthread + 1;
-
-        op_cuda_MoveToCells <<<nblocks, nthread>>> (
-            (int *)     set->cell_index_dat->data_d,
-            (double *)  arg0.data_d,
-            (double *)  arg1.data_d,
-            (int *)     arg2.data_d,
-            (double *)  arg3.data_d,
-            (double *)  arg4.data_d,
-            (int *)     arg5.data_d,
-            (bool *)    arg6.data_d,
-            start, 
-            end, 
-            set->cells_set->size);
+        if (end - start > 0) 
+        {
+            int nthread = GPU_THREADS_PER_BLOCK;
+            int nblocks = (end - start - 1) / nthread + 1;
+        printf("FEMPIC - oppic_par_loop_particle_inject__MoveToCells 3\n");
+            oppic_cuda_MoveToCells <<<nblocks, nthread>>> (
+                (int *)     set->cell_index_dat->data_d,
+                (double *)  arg0.data_d,
+                (double *)  arg1.data_d,
+                (int *)     arg2.data_d,
+                (double *)  arg3.data_d,
+                (double *)  arg4.data_d,
+                (int *)     arg5.data_d,
+                (bool *)    arg6.data_d,
+                start, 
+                end, 
+                set->cells_set->size); printf("FEMPIC - oppic_par_loop_particle_inject__MoveToCells 4\n");
+        }
     }
+printf("FEMPIC - oppic_par_loop_particle_inject__MoveToCells 5\n");
+    op_mpi_set_dirtybit_cuda(nargs, args);printf("FEMPIC - oppic_par_loop_particle_inject__MoveToCells 6\n");
+    cutilSafeCall(cudaDeviceSynchronize()); printf("FEMPIC - oppic_par_loop_particle_inject__MoveToCells 7\n");
 }
 
 //*************************************************************************************************
-void op_par_loop_particle_all__MoveToCells(
-    op_set set,      // particles_set
-    op_arg arg0,     // part_position,
-    op_arg arg1,     // part_weights,
-    op_arg arg2,     // part_cell_index,
-    op_arg arg3,     // cell_volume,
-    op_arg arg4,     // cell_det,
-    op_arg arg5,     // cell_connectivity_map,
-    op_arg arg6      // particles_injected       
+void oppic_par_loop_particle_all__MoveToCells(
+    oppic_set set,      // particles_set
+    oppic_arg arg0,     // part_position,
+    oppic_arg arg1,     // part_weights,
+    oppic_arg arg2,     // part_cell_index,
+    oppic_arg arg3,     // cell_volume,
+    oppic_arg arg4,     // cell_det,
+    oppic_arg arg5,     // cell_connectivity_map,
+    oppic_arg arg6      // particles_injected       
     )
 { TRACE_ME;
     
-    if (OP_DEBUG) printf("FEMPIC - op_par_loop_particle_all__MoveToCells num_particles %d\n", set->size);
+    if (OP_DEBUG) printf("FEMPIC - oppic_par_loop_particle_all__MoveToCells num_particles %d\n", set->size);
 
-    opDat0_MoveToCells_stride_OPPIC_HOST = arg0.dat->set->size;
-    opDat1_MoveToCells_stride_OPPIC_HOST = arg1.dat->set->size;
-    opDat4_MoveToCells_stride_OPPIC_HOST = arg4.dat->set->size;
-    opDat5_MoveToCells_stride_OPPIC_HOST = arg5.map->from->size;
+    int nargs = 7;
+    oppic_arg args[7];
 
-    cudaMemcpyToSymbol(opDat0_MoveToCells_stride_OPPIC_CONSTANT, &opDat0_MoveToCells_stride_OPPIC_HOST, sizeof(int));
-    cudaMemcpyToSymbol(opDat1_MoveToCells_stride_OPPIC_CONSTANT, &opDat1_MoveToCells_stride_OPPIC_HOST, sizeof(int));
-    cudaMemcpyToSymbol(opDat4_MoveToCells_stride_OPPIC_CONSTANT, &opDat4_MoveToCells_stride_OPPIC_HOST, sizeof(int));
-    cudaMemcpyToSymbol(opDat5_MoveToCells_stride_OPPIC_CONSTANT, &opDat5_MoveToCells_stride_OPPIC_HOST, sizeof(int));
+    args[0] = arg0;
+    args[1] = arg1;
+    args[2] = arg2;
+    args[3] = arg3;
+    args[4] = arg4;
+    args[5] = arg5;
+    args[6] = arg6;
 
-    int start   = 0;
-    int end     = set->size;
-
-    if (end - start > 0) 
+    int set_size = op_mpi_halo_exchanges_grouped(set, nargs, args, Device_GPU);
+    if (set_size > 0) 
     {
-        int nthread = GPU_THREADS_PER_BLOCK;
-        int nblocks = (end - start - 1) / nthread + 1;
+        opDat0_MoveToCells_stride_OPPIC_HOST = arg0.dat->set->size;
+        opDat1_MoveToCells_stride_OPPIC_HOST = arg1.dat->set->size;
+        opDat4_MoveToCells_stride_OPPIC_HOST = arg4.dat->set->size;
+        opDat5_MoveToCells_stride_OPPIC_HOST = arg5.map->from->size;
 
-        op_cuda_MoveToCells <<<nblocks, nthread>>> (
-            (int *)     set->cell_index_dat->data_d,
-            (double *)  arg0.data_d,
-            (double *)  arg1.data_d,
-            (int *)     arg2.data_d,
-            (double *)  arg3.data_d,
-            (double *)  arg4.data_d,
-            (int *)     arg5.data_d,
-            (bool *)    arg6.data_d,
-            start, 
-            end, 
-            set->cells_set->size);
+        cudaMemcpyToSymbol(opDat0_MoveToCells_stride_OPPIC_CONSTANT, &opDat0_MoveToCells_stride_OPPIC_HOST, sizeof(int));
+        cudaMemcpyToSymbol(opDat1_MoveToCells_stride_OPPIC_CONSTANT, &opDat1_MoveToCells_stride_OPPIC_HOST, sizeof(int));
+        cudaMemcpyToSymbol(opDat4_MoveToCells_stride_OPPIC_CONSTANT, &opDat4_MoveToCells_stride_OPPIC_HOST, sizeof(int));
+        cudaMemcpyToSymbol(opDat5_MoveToCells_stride_OPPIC_CONSTANT, &opDat5_MoveToCells_stride_OPPIC_HOST, sizeof(int));
+
+        int start   = 0;
+        int end     = set->size;
+
+        if (end - start > 0) 
+        {
+            int nthread = GPU_THREADS_PER_BLOCK;
+            int nblocks = (end - start - 1) / nthread + 1;
+
+            oppic_cuda_MoveToCells <<<nblocks, nthread>>> (
+                (int *)     set->cell_index_dat->data_d,
+                (double *)  arg0.data_d,
+                (double *)  arg1.data_d,
+                (int *)     arg2.data_d,
+                (double *)  arg3.data_d,
+                (double *)  arg4.data_d,
+                (int *)     arg5.data_d,
+                (bool *)    arg6.data_d,
+                start, 
+                end, 
+                set->cells_set->size);
+        }
     }
+
+    op_mpi_set_dirtybit_cuda(nargs, args);
+    cutilSafeCall(cudaDeviceSynchronize());
 }
 
 //*************************************************************************************************

@@ -32,6 +32,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 // AUTO GENERATED CODE
 
 #include "../fempic.h"
+#include <oppic_cuda.h>
 
 #define GPU_THREADS_PER_BLOCK 16
 
@@ -41,18 +42,18 @@ __constant__ double OP_CONST_CUDA_spwt   = 2e2;                      // TODO : M
 
 //*************************************************************************************************
 
-#include "op_par_loop__InjectIons.cu"
+#include "oppic_par_loop__InjectIons.cu"
 
-#include "op_par_loop_particle__MoveToCells.cu"
+#include "oppic_par_loop_particle__MoveToCells.cu"
 
-#include "op_par_loop__EnrichVelocity.cu"
+#include "oppic_par_loop__EnrichVelocity.cu"
 
-#include "op_par_loop__WeightFieldsToParticles.cu"
+#include "oppic_par_loop__WeightFieldsToParticles.cu"
 
-#include "op_par_loop__MoveParticles.cu"
+#include "oppic_par_loop__MoveParticles.cu"
 
-#include "op_par_loop__ResetIonDensity.cu"
+#include "oppic_par_loop__ResetIonDensity.cu"
 
-#include "op_par_loop__WeightParticleToMeshNodes.cu"
+#include "oppic_par_loop__WeightParticleToMeshNodes.cu"
 
 //*************************************************************************************************

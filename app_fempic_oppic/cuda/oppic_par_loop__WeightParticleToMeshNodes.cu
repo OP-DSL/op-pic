@@ -59,7 +59,7 @@ __device__ void weight_particle_to_mesh_nodes__kernel_gpu(
 
 // CUDA kernel function
 //*************************************************************************************************
-__global__ void op_cuda_WeightParticleToMeshNodes(
+__global__ void oppic_cuda_WeightParticleToMeshNodes(
     const int *__restrict d_cell_index,
     const double *__restrict dir_arg0,
     double *__restrict ind_arg1,
@@ -115,44 +115,64 @@ __global__ void op_cuda_WeightParticleToMeshNodes(
 }
 
 //*************************************************************************************************
-void op_par_loop_all__WeightParticleToMeshNodes(
-    op_set set,         // particles_set
-    op_arg arg0,        // particle_lc
-    op_arg arg1,        // node_charge_density
-    op_arg arg2,        // node_charge_density
-    op_arg arg3,        // node_charge_density
-    op_arg arg4,        // node_charge_density
-    op_arg arg5,        // node_volumes
-    op_arg arg6,        // node_volumes
-    op_arg arg7,        // node_volumes
-    op_arg arg8         // node_volumes        
+void oppic_par_loop_all__WeightParticleToMeshNodes(
+    oppic_set set,         // particles_set
+    oppic_arg arg0,        // particle_lc
+    oppic_arg arg1,        // node_charge_density
+    oppic_arg arg2,        // node_charge_density
+    oppic_arg arg3,        // node_charge_density
+    oppic_arg arg4,        // node_charge_density
+    oppic_arg arg5,        // node_volumes
+    oppic_arg arg6,        // node_volumes
+    oppic_arg arg7,        // node_volumes
+    oppic_arg arg8         // node_volumes        
     )
 { TRACE_ME;
     
-    if (OP_DEBUG) printf("FEMPIC - op_par_loop_all__WeightParticleToMeshNodes num_particles %d\n", set->size);
+    if (OP_DEBUG) printf("FEMPIC - oppic_par_loop_all__WeightParticleToMeshNodes num_particles %d\n", set->size);
 
-    opDat0_WeightParticleToMeshNodes_stride_OPPIC_HOST = arg0.dat->set->size;
-    cudaMemcpyToSymbol(opDat0_WeightParticleToMeshNodes_stride_OPPIC_CONSTANT, &opDat0_WeightParticleToMeshNodes_stride_OPPIC_HOST, sizeof(int));
+    int nargs = 9;
+    oppic_arg args[9];
 
-    int start = 0;
-    int end   = set->size;
+    args[0] = arg0;
+    args[1] = arg1;
+    args[2] = arg2;
+    args[3] = arg3;
+    args[4] = arg4;
+    args[5] = arg5;
+    args[6] = arg6;
+    args[7] = arg7;
+    args[8] = arg8;
 
-    if (end - start > 0) 
+    int set_size = op_mpi_halo_exchanges_grouped(set, nargs, args, Device_GPU);
+    if (set_size > 0) 
     {
-        int nthread = GPU_THREADS_PER_BLOCK;
-        int nblocks = (end - start - 1) / nthread + 1;
+        opDat0_WeightParticleToMeshNodes_stride_OPPIC_HOST = arg0.dat->set->size;
+        cudaMemcpyToSymbol(opDat0_WeightParticleToMeshNodes_stride_OPPIC_CONSTANT, &opDat0_WeightParticleToMeshNodes_stride_OPPIC_HOST, sizeof(int));
 
-        op_cuda_WeightParticleToMeshNodes <<<nblocks, nthread>>> (
-            (int *)     set->cell_index_dat->data_d,
-            (double *)  arg0.data_d,
-            (double *)  arg1.data_d,
-            (int *)     arg1.map_data_d,
-            (double *)  arg5.data_d,
-            (int *)     arg5.map_data_d,
-            start, 
-            end, 
-            set->size);
+        int start = 0;
+        int end   = set->size;
+
+        if (end - start > 0) 
+        {
+            int nthread = GPU_THREADS_PER_BLOCK;
+            int nblocks = (end - start - 1) / nthread + 1;
+
+            oppic_cuda_WeightParticleToMeshNodes <<<nblocks, nthread>>> (
+                (int *)     set->cell_index_dat->data_d,
+                (double *)  arg0.data_d,
+                (double *)  arg1.data_d,
+                (int *)     arg1.map_data_d,
+                (double *)  arg5.data_d,
+                (int *)     arg5.map_data_d,
+                start, 
+                end, 
+                set->size);
+        }
     }
+
+    op_mpi_set_dirtybit_cuda(nargs, args);
+    cutilSafeCall(cudaDeviceSynchronize());
 }
 
 //*************************************************************************************************

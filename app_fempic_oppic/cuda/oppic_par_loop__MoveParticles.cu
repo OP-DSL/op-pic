@@ -65,7 +65,7 @@ __device__ void move_particles__kernel_gpu(
 
 // CUDA kernel function
 //*************************************************************************************************
-__global__ void op_cuda_MoveParticles(
+__global__ void oppic_cuda_MoveParticles(
     double *__restrict dir_arg0,
     double *__restrict dir_arg1,
     const double *__restrict dir_arg2,
@@ -93,42 +93,57 @@ __global__ void op_cuda_MoveParticles(
 
 
 //*************************************************************************************************
-void op_par_loop_all__MoveParticles(
-    op_set set,     // particles_set
-    op_arg arg0,    // part_position,
-    op_arg arg1,    // part_velocity,
-    op_arg arg2,    // part_electric_field,
-    op_arg arg3     // const dt 
+void oppic_par_loop_all__MoveParticles(
+    oppic_set set,     // particles_set
+    oppic_arg arg0,    // part_position,
+    oppic_arg arg1,    // part_velocity,
+    oppic_arg arg2,    // part_electric_field,
+    oppic_arg arg3     // const dt 
     )
 { TRACE_ME;
     
-    if (OP_DEBUG) printf("FEMPIC - op_par_loop_all__MoveParticles num_particles %d\n", set->size);
+    if (OP_DEBUG) printf("FEMPIC - oppic_par_loop_all__MoveParticles num_particles %d\n", set->size);
 
-    opDat0_MoveParticles_stride_OPPIC_HOST = arg0.dat->set->size;
-    opDat1_MoveParticles_stride_OPPIC_HOST = arg1.dat->set->size;
-    opDat2_MoveParticles_stride_OPPIC_HOST = arg2.dat->set->size;
+    int nargs = 4;
+    oppic_arg args[4];
 
-    cudaMemcpyToSymbol(opDat0_MoveParticles_stride_OPPIC_CONSTANT, &opDat0_MoveParticles_stride_OPPIC_HOST, sizeof(int));
-    cudaMemcpyToSymbol(opDat1_MoveParticles_stride_OPPIC_CONSTANT, &opDat1_MoveParticles_stride_OPPIC_HOST, sizeof(int));
-    cudaMemcpyToSymbol(opDat2_MoveParticles_stride_OPPIC_CONSTANT, &opDat2_MoveParticles_stride_OPPIC_HOST, sizeof(int));
+    args[0] = arg0;
+    args[1] = arg1;
+    args[2] = arg2;
+    args[3] = arg3;
 
-    int start = 0;
-    int end   = set->size;
-
-    if (end - start > 0) 
+    int set_size = op_mpi_halo_exchanges_grouped(set, nargs, args, Device_GPU);
+    if (set_size > 0) 
     {
-        int nthread = GPU_THREADS_PER_BLOCK;
-        int nblocks = (end - start - 1) / nthread + 1;
+        opDat0_MoveParticles_stride_OPPIC_HOST = arg0.dat->set->size;
+        opDat1_MoveParticles_stride_OPPIC_HOST = arg1.dat->set->size;
+        opDat2_MoveParticles_stride_OPPIC_HOST = arg2.dat->set->size;
 
-        op_cuda_MoveParticles <<<nblocks, nthread>>> (
-            (double *)  arg0.data_d,
-            (double *)  arg1.data_d,
-            (double *)  arg2.data_d,
-            (double *)  arg3.data_d,
-            start, 
-            end, 
-            set->size);
+        cudaMemcpyToSymbol(opDat0_MoveParticles_stride_OPPIC_CONSTANT, &opDat0_MoveParticles_stride_OPPIC_HOST, sizeof(int));
+        cudaMemcpyToSymbol(opDat1_MoveParticles_stride_OPPIC_CONSTANT, &opDat1_MoveParticles_stride_OPPIC_HOST, sizeof(int));
+        cudaMemcpyToSymbol(opDat2_MoveParticles_stride_OPPIC_CONSTANT, &opDat2_MoveParticles_stride_OPPIC_HOST, sizeof(int));
+
+        int start = 0;
+        int end   = set->size;
+
+        if (end - start > 0) 
+        {
+            int nthread = GPU_THREADS_PER_BLOCK;
+            int nblocks = (end - start - 1) / nthread + 1;
+
+            oppic_cuda_MoveParticles <<<nblocks, nthread>>> (
+                (double *)  arg0.data_d,
+                (double *)  arg1.data_d,
+                (double *)  arg2.data_d,
+                (double *)  arg3.data_d,
+                start, 
+                end, 
+                set->size);
+        }
     }
+
+    op_mpi_set_dirtybit_cuda(nargs, args);
+    cutilSafeCall(cudaDeviceSynchronize());
 }
 
 //*************************************************************************************************

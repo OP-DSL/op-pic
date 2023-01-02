@@ -59,7 +59,7 @@ __device__ void enrich_velocity__kernel_gpu(
 
 // CUDA kernel function
 //*************************************************************************************************
-__global__ void op_cuda_EnrichVelocity(
+__global__ void oppic_cuda_EnrichVelocity(
     const int *__restrict d_cell_index,
     double *__restrict dir_arg0,
     const double *__restrict ind_arg1,
@@ -88,39 +88,54 @@ __global__ void op_cuda_EnrichVelocity(
 
 
 //*************************************************************************************************
-void op_par_loop_inject__EnrichVelocity(
-    op_set set,     // particles_set
-    op_arg arg0,    // part_velocity,
-    op_arg arg1,    // cell_electric_field,
-    op_arg arg2     // const dt,    
+void oppic_par_loop_inject__EnrichVelocity(
+    oppic_set set,     // particles_set
+    oppic_arg arg0,    // part_velocity,
+    oppic_arg arg1,    // cell_electric_field,
+    oppic_arg arg2     // const dt,    
     )
 { TRACE_ME;
     
-    if (OP_DEBUG) printf("FEMPIC - op_par_loop_inject__EnrichVelocity num_particles %d\n", set->size);
+    if (OP_DEBUG) printf("FEMPIC - oppic_par_loop_inject__EnrichVelocity num_particles %d\n", set->size);
 
-    opDat0_EnrichVelocity_stride_OPPIC_HOST = arg0.dat->set->size;
-    opDat1_EnrichVelocity_stride_OPPIC_HOST = arg1.dat->set->size;
-    
-    cudaMemcpyToSymbol(opDat0_EnrichVelocity_stride_OPPIC_CONSTANT, &opDat0_EnrichVelocity_stride_OPPIC_HOST, sizeof(int));
-    cudaMemcpyToSymbol(opDat1_EnrichVelocity_stride_OPPIC_CONSTANT, &opDat1_EnrichVelocity_stride_OPPIC_HOST, sizeof(int));
+    int nargs = 3;
+    oppic_arg args[3];
 
-    int start = (set->size - set->diff);
-    int end   = set->size;
+    args[0] = arg0;
+    args[1] = arg1;
+    args[2] = arg2;
 
-    if (end - start > 0) 
+    int set_size = op_mpi_halo_exchanges_grouped(set, nargs, args, Device_GPU);
+    if (set_size > 0) 
     {
-        int nthread = GPU_THREADS_PER_BLOCK;
-        int nblocks = (end - start - 1) / nthread + 1;
+        opDat0_EnrichVelocity_stride_OPPIC_HOST = arg0.dat->set->size;
+        opDat1_EnrichVelocity_stride_OPPIC_HOST = arg1.dat->set->size;
+        
+        cudaMemcpyToSymbol(opDat0_EnrichVelocity_stride_OPPIC_CONSTANT, &opDat0_EnrichVelocity_stride_OPPIC_HOST, sizeof(int));
+        cudaMemcpyToSymbol(opDat1_EnrichVelocity_stride_OPPIC_CONSTANT, &opDat1_EnrichVelocity_stride_OPPIC_HOST, sizeof(int));
 
-        op_cuda_EnrichVelocity <<<nblocks, nthread>>> (
-            (int *)     set->cell_index_dat->data_d,
-            (double *)  arg0.data_d,
-            (double *)  arg1.data_d,
-            (double *)  arg2.data_d,
-            start, 
-            end, 
-            set->size);
+        int start = (set->size - set->diff);
+        int end   = set->size;
+
+        if (end - start > 0) 
+        {
+            int nthread = GPU_THREADS_PER_BLOCK;
+            int nblocks = (end - start - 1) / nthread + 1;
+
+            oppic_cuda_EnrichVelocity <<<nblocks, nthread>>> (
+                (int *)     set->cell_index_dat->data_d,
+                (double *)  arg0.data_d,
+                (double *)  arg1.data_d,
+                (double *)  arg2.data_d,
+                start, 
+                end, 
+                set->size);
+        }
     }
+
+  op_mpi_set_dirtybit_cuda(nargs, args);
+  cutilSafeCall(cudaDeviceSynchronize());
+
 }
 
 //*************************************************************************************************

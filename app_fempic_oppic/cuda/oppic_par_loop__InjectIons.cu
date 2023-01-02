@@ -82,7 +82,7 @@ __device__ void inject_ions__kernel_gpu(
 
 // CUDA kernel function
 //*************************************************************************************************
-__global__ void op_cuda_InjectIons(
+__global__ void oppic_cuda_InjectIons(
     double *__restrict dir_arg0,
     double *__restrict dir_arg1,
     double *__restrict dir_arg2,
@@ -112,46 +112,63 @@ __global__ void op_cuda_InjectIons(
 
 
 //*************************************************************************************************
-void op_par_loop_inject__InjectIons(
-    op_set set,      // particles_set
-    op_arg arg0,     // part_position,
-    op_arg arg1,     // part_velocity,
-    op_arg arg2,     // part_electric_field,
-    op_arg arg3,     // part_weights,
-    op_arg arg4      // part_cell_index,
+void oppic_par_loop_inject__InjectIons(
+    oppic_set set,      // particles_set
+    oppic_arg arg0,     // part_position,
+    oppic_arg arg1,     // part_velocity,
+    oppic_arg arg2,     // part_electric_field,
+    oppic_arg arg3,     // part_weights,
+    oppic_arg arg4      // part_cell_index,
     )
 { TRACE_ME;
 
-    if (OP_DEBUG) printf("FEMPIC - op_par_loop_inject__InjectIons num_particles %d diff %d\n", set->size, set->diff);
+    if (OP_DEBUG) printf("FEMPIC - oppic_par_loop_inject__InjectIons num_particles %d diff %d\n", set->size, set->diff);
 
-    opDat0_InjectIons_stride_OPPIC_HOST = arg0.dat->set->size;
-    opDat1_InjectIons_stride_OPPIC_HOST = arg1.dat->set->size;
-    opDat2_InjectIons_stride_OPPIC_HOST = arg2.dat->set->size;
-    opDat3_InjectIons_stride_OPPIC_HOST = arg3.dat->set->size;
+    int nargs = 5;
+    oppic_arg args[5];
 
-    cudaMemcpyToSymbol(opDat0_InjectIons_stride_OPPIC_CONSTANT, &opDat0_InjectIons_stride_OPPIC_HOST, sizeof(int));
-    cudaMemcpyToSymbol(opDat1_InjectIons_stride_OPPIC_CONSTANT, &opDat1_InjectIons_stride_OPPIC_HOST, sizeof(int));
-    cudaMemcpyToSymbol(opDat2_InjectIons_stride_OPPIC_CONSTANT, &opDat2_InjectIons_stride_OPPIC_HOST, sizeof(int));
-    cudaMemcpyToSymbol(opDat3_InjectIons_stride_OPPIC_CONSTANT, &opDat3_InjectIons_stride_OPPIC_HOST, sizeof(int));
+    args[0] = arg0;
+    args[1] = arg1;
+    args[2] = arg2;
+    args[3] = arg3;
+    args[4] = arg4;
 
-    int start = (set->size - set->diff);
-    int end   = set->size;
-
-    if (end - start > 0) 
+    int set_size = op_mpi_halo_exchanges_grouped(set, nargs, args, Device_GPU);
+    if (set_size > 0) 
     {
-        int nthread = GPU_THREADS_PER_BLOCK;
-        int nblocks = (end - start - 1) / nthread + 1;
+        opDat0_InjectIons_stride_OPPIC_HOST = arg0.dat->set->size;
+        opDat1_InjectIons_stride_OPPIC_HOST = arg1.dat->set->size;
+        opDat2_InjectIons_stride_OPPIC_HOST = arg2.dat->set->size;
+        opDat3_InjectIons_stride_OPPIC_HOST = arg3.dat->set->size;
 
-        op_cuda_InjectIons <<<nblocks, nthread>>> (
-            (double *)  arg0.data_d,
-            (double *)  arg1.data_d,
-            (double *)  arg2.data_d,
-            (double *)  arg3.data_d,
-            (int *)     arg4.data_d,
-            start, 
-            end, 
-            set->size);
+        cudaMemcpyToSymbol(opDat0_InjectIons_stride_OPPIC_CONSTANT, &opDat0_InjectIons_stride_OPPIC_HOST, sizeof(int));
+        cudaMemcpyToSymbol(opDat1_InjectIons_stride_OPPIC_CONSTANT, &opDat1_InjectIons_stride_OPPIC_HOST, sizeof(int));
+        cudaMemcpyToSymbol(opDat2_InjectIons_stride_OPPIC_CONSTANT, &opDat2_InjectIons_stride_OPPIC_HOST, sizeof(int));
+        cudaMemcpyToSymbol(opDat3_InjectIons_stride_OPPIC_CONSTANT, &opDat3_InjectIons_stride_OPPIC_HOST, sizeof(int));
+
+        int start = (set->size - set->diff);
+        int end   = set->size;
+
+        if (end - start > 0) 
+        {
+            int nthread = GPU_THREADS_PER_BLOCK;
+            int nblocks = (end - start - 1) / nthread + 1;
+
+            oppic_cuda_InjectIons <<<nblocks, nthread>>> (
+                (double *)  arg0.data_d,
+                (double *)  arg1.data_d,
+                (double *)  arg2.data_d,
+                (double *)  arg3.data_d,
+                (int *)     arg4.data_d,
+                start, 
+                end, 
+                set->size);
+        }
     }
+
+    op_mpi_set_dirtybit_cuda(nargs, args);
+    cutilSafeCall(cudaDeviceSynchronize());
+
 }
 
 //*************************************************************************************************

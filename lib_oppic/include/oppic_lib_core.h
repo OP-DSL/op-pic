@@ -1,3 +1,35 @@
+
+/* 
+BSD 3-Clause License
+
+Copyright (c) 2022, OP-DSL
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions are met:
+
+1. Redistributions of source code must retain the above copyright notice, this
+   list of conditions and the following disclaimer.
+
+2. Redistributions in binary form must reproduce the above copyright notice,
+   this list of conditions and the following disclaimer in the documentation
+   and/or other materials provided with the distribution.
+
+3. Neither the name of the copyright holder nor the names of its
+   contributors may be used to endorse or promote products derived from
+   this software without specific prior written permission.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+*/
+
 #pragma once
 
 #include <vector>
@@ -8,7 +40,7 @@
 #include <cstring>
 
 //*************************************************************************************************
-#define OP_DEBUG        false
+#define OP_DEBUG       false
 
 #define OP_READ        0
 #define OP_WRITE       1
@@ -19,6 +51,7 @@
 
 #define OP_ARG_GBL     0
 #define OP_ARG_DAT     1
+#define OP_ARG_MAP     2
 
 #define ZERO_double    0.0
 #define ZERO_float     0.0f
@@ -42,6 +75,19 @@ enum MoveStatus
     NEED_REMOVE,
 };
 
+enum DeviceType
+{
+    Device_CPU = 1,
+    Device_GPU = 2,
+};
+
+enum Dirty
+{
+    NotDirty = 0,
+    Device = 1,
+    Host = 2,
+};
+
 struct part_index {
     int start;
     int end;
@@ -58,7 +104,7 @@ struct oppic_dat_core;
 typedef struct oppic_dat_core *oppic_dat;
 
 typedef int oppic_access;       /* holds OP_READ, OP_WRITE, OP_RW, OP_INC, OP_MIN, OP_MAX */
-typedef int oppic_arg_type;     /* holds OP_ARG_GBL, OP_ARG_DAT */
+typedef int oppic_arg_type;     /* holds OP_ARG_GBL, OP_ARG_DAT, OP_ARG_MAP */
 
 struct oppic_arg {
     int index;                  /* index */
@@ -68,25 +114,30 @@ struct oppic_arg {
     int idx;                    /* size (for sequential execution) */
     int size;                   /* size (for sequential execution) */
     char *data;                 /* data on host */
+    char *data_d;               /* data on device (for CUDA execution) */
     int *map_data;              /* data on host */
-    char *data_d;               /* data on device */
-    int *map_data_d;            /* data on device */
+    int *map_data_d;            /* data on device (for CUDA execution) */
     char const *type;           /* datatype */
+    oppic_access acc;           /* oppic_accessor OP_READ, OP_WRITE, OP_RW, OP_INC, OP_MIN, OP_MAX */
     oppic_arg_type argtype;
-    oppic_access acc;              /* oppic_accessor OP_READ, OP_WRITE, OP_RW, OP_INC, OP_MIN, OP_MAX */
+    int sent;                   /* flag to indicate if this argument has data in flight under non-blocking MPI comms*/
+    int opt;                    /* flag to indicate if this argument is in use */
 };
 
 struct oppic_set_core {
-    int index;                   /* index */
-    int size;                    /* number of elements in set */
-    char const *name;            /* name of set */
+    int index;                  /* index */
+    int size;                   /* number of elements in set */
+    char const *name;           /* name of set */
+    int core_size;              /* number of core elements in an mpi process*/
+    int exec_size;              /* number of additional imported elements to be executed */
+    int nonexec_size;           /* number of additional imported elements that are not executed */
 
     bool is_particle = false;
     int diff = 0;                /*number of particles to change*/
-    std::vector<int> indexes_to_remove;
-    oppic_dat cell_index_dat = nullptr;
-    std::vector<oppic_dat> particle_dats;
-    std::map<int, part_index> cell_index_v_part_index_map;
+    std::vector<int>* indexes_to_remove;
+    oppic_dat cell_index_dat = NULL;
+    std::vector<oppic_dat>* particle_dats;
+    std::map<int, part_index>* cell_index_v_part_index_map;
     oppic_set cells_set;
 };
 
@@ -96,8 +147,9 @@ struct oppic_map_core {
     oppic_set to;               /* set pointed to */
     int dim;                    /* dimension of pointer */
     int *map;                   /* array defining pointer */
+    int *map_d;                 /* device array defining pointer */
     char const *name;           /* name of pointer */
-    int *map_data_d;            /* device array defining pointer */
+    int user_managed;           /* indicates whether the user is managing memory */
 };
 
 struct oppic_dat_core {
@@ -105,20 +157,20 @@ struct oppic_dat_core {
     oppic_set set;              /* set on which data is defined */
     int dim;                    /* dimension of data */
     int size;                   /* size of each element in dataset */
-    char *data;                 /* data */
+    char *data;                 /* data on host */
+    char *data_d;               /* data on device (GPU) */
     char const *type;           /* datatype */
     char const *name;           /* name of dataset */
-    char *data_d;               /* device data */
+    char *buffer_d;             /* buffer for MPI halo sends on the devidce */
+    char *buffer_d_r;           /* buffer for MPI halo receives on the devidce */
+    int dirtybit;               /* flag to indicate MPI halo exchange is needed*/
+    Dirty dirty_hd;             /* flag to indicate dirty status on host and device */
+    int user_managed;           /* indicates whether the user is managing memory */
+    void *mpi_buffer;           /* ponter to hold the mpi buffer struct for the op_dat*/    
 
-    std::vector<char*> thread_data;
-    bool is_cell_index = false;
+    std::vector<char*>* thread_data;
+    bool is_cell_index;
 };
-
-
-extern std::vector<oppic_set> oppic_sets;
-extern std::vector<oppic_map> oppic_maps;
-extern std::vector<oppic_dat> oppic_dats;
-
 
 //*************************************************************************************************
 // oppic API calls
@@ -158,3 +210,11 @@ void oppic_remove_marked_particles_from_set_core(oppic_set set, std::vector<int>
 void oppic_particle_sort_core(oppic_set set);
 
 //*************************************************************************************************
+
+extern int OP_hybrid_gpu;
+extern int OP_maps_base_index;
+extern int OP_auto_soa;
+
+extern std::vector<oppic_set> oppic_sets;
+extern std::vector<oppic_map> oppic_maps;
+extern std::vector<oppic_dat> oppic_dats;
