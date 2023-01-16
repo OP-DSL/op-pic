@@ -16,18 +16,20 @@ OBJ = obj
 BIN = bin
 
 CPP        = mpicxx
-# CPPFLAGS   = -std=c++11 -Wall -O0 -g -fopenmp -fPIC
-CPPFLAGS   = -std=c++11 -Wall -O3 -fopenmp -fPIC
+CPPFLAGS   = -std=c++11 -Wall -O0 -g -fopenmp -fPIC
+# CPPFLAGS   = -std=c++11 -Wall -O3 -fopenmp -fPIC
 MPICPP	   = mpicxx
 MPIFLAGS   = -std=c++11 -Wall -O3 -fopenmp -fPIC
-NVCCFLAGS  = -O3 -m64 -Xptxas -dlcm=ca -Xptxas=-v -use_fast_math -arch=compute_60 -code=sm_60
+NVCCFLAGS  = -O0 -g -m64 -Xptxas -dlcm=ca -Xptxas=-v -use_fast_math -arch=compute_70 -code=sm_70 -lineinfo
+# NVCCFLAGS  = -O3 -m64 -Xptxas -dlcm=ca -Xptxas=-v -use_fast_math -arch=compute_70 -code=sm_70
 
 CUDA_INSTALL_PATH = /opt/cuda/10.2.89/toolkit
 CUDA_INC   = -I$(CUDA_INSTALL_PATH)/include
-CUDA_LIB   = -L$(CUDA_INSTALL_PATH)/lib64 -lcudart
+CUDA_LIB   = -L$(CUDA_INSTALL_PATH)/lib64 -lcudart -lcuda
 
-PETSC_PATH = /ext-home/zl/lib_install/petsc-3.18.2-oneapi-2021.3-release
+# PETSC_PATH = /ext-home/zl/lib_install/petsc-3.18.2-oneapi-2021.3-release
 # PETSC_PATH = /ext-home/zl/lib_install/petsc-3.18.2-oneapi-2021.3
+PETSC_PATH = /ext-home/zl/lib_install/petsc-3.18.3-oneapi-2021.3-cuda-rel
 PETSC_INC  = -I$(PETSC_PATH)/include
 PETSC_LIB  = -L$(PETSC_PATH)/lib -lpetsc
 
@@ -85,9 +87,9 @@ fempic_openmp_wopet: mklib
 fempic_cuda:
 	     $(CPP) $(CPPFLAGS) -c fempic_op.cpp -o $(OBJ)/fempic_op.o $(ALL_INC)
 	     $(CPP) $(CPPFLAGS) -c funcs_from_fempic.cpp -o $(OBJ)/funcs_from_fempic.o $(ALL_INC)
-	     $(CPP) $(CPPFLAGS) -c field_solver_original.cpp -o $(OBJ)/field_solver_original.o $(ALL_INC)
+	     $(CPP) $(CPPFLAGS) -c cuda/field_solver_petsc_cuda.cpp -o $(OBJ)/field_solver_petsc_cuda.o $(ALL_INC)
 	     nvcc $(NVCCFLAGS) -c cuda/cudakernels.cu -o $(OBJ)/cudakernels.o $(ALL_INC)
-		 $(CPP) $(CPPFLAGS) -o $(BIN)/fempic_cuda $(OBJ)/fempic_op.o $(OBJ)/funcs_from_fempic.o $(OBJ)/field_solver_original.o $(OBJ)/cudakernels.o $(ALL_INC) $(ALL_LIBS) -loppic_cuda -lcudart
+		 $(CPP) $(CPPFLAGS) -o $(BIN)/fempic_cuda $(OBJ)/fempic_op.o $(OBJ)/funcs_from_fempic.o $(OBJ)/field_solver_petsc_cuda.o $(OBJ)/cudakernels.o $(ALL_INC) $(ALL_LIBS) -loppic_cuda -lcudart
 
 
 clean: 

@@ -32,9 +32,8 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 // AUTO GENERATED CODE
 
 #include "fempic.h"
-#include <oppic_lib.h>
 
-const int num_iterations = 50;
+const int num_iterations = 4;
 
 //*************************************************************************************************
 void oppic_par_loop_inject__InjectIons(oppic_set,oppic_arg,oppic_arg,oppic_arg,oppic_arg,oppic_arg);
@@ -52,10 +51,10 @@ int main(int argc, char **argv)
     int n_nodes = 0, n_cells = 0, ts = 0;
     double dt = 1e-7, particle_remainder = 0.0;
 
-    int *cell_to_nodes_tmp, *cell_to_cell_tmp;                                                        // cell related temporary fields arrays
+    int *cell_to_nodes_tmp, *cell_to_cell_tmp;                                                      // cell related temporary fields arrays
     double *cell_ef_tmp,*cell_det_tmp, *cell_volume_tmp;                                            // cell related temporary fields arrays
 
-    double *node_bnd_pot_tmp, *node_pot_tmp, *node_ion_den_tmp, *node_pos_tmp, *node_volume_tmp;     // node related temporary fields arrays
+    double *node_bnd_pot_tmp, *node_pot_tmp, *node_ion_den_tmp, *node_pos_tmp, *node_volume_tmp;    // node related temporary fields arrays
 
     Volume volume;
     EnrichArrays(
@@ -64,7 +63,7 @@ int main(int argc, char **argv)
         cell_to_nodes_tmp, cell_to_cell_tmp, cell_det_tmp, cell_volume_tmp, cell_ef_tmp
     );
 
-    FESolver solver(volume);
+    FESolver solver(volume, argc, argv);
     solver.startAssembly();
     solver.preAssembly(node_bnd_pot_tmp);
 
@@ -155,6 +154,7 @@ int main(int argc, char **argv)
                 oppic_arg_dat(part_electric_field,   OP_READ),
                 oppic_arg_gbl(&dt,  1,     "double", OP_READ)
             );
+ 
             oppic_par_loop_particle_all__MoveToCells(
                 particles_set,
                 oppic_arg_dat(part_position,            OP_WRITE),
@@ -166,7 +166,7 @@ int main(int argc, char **argv)
                 oppic_arg_gbl(&(bool_false), 1, "bool", OP_READ)
             );
             oppic_particle_sort(particles_set);
-            
+          
         // STEP 4 - Gather the contribution from particle movement to the mesh ************************************
             oppic_par_loop_all__WeightParticleToMeshNodes(
                 particles_set,
@@ -184,18 +184,24 @@ int main(int argc, char **argv)
         // STEP 5 - Solve field values on the mesh points ************************************
             //matrix | TODO : Try to make these in to kernels and use oppic_par_loop
             solver.SolveFields(
-                (double *)node_charge_density->data,
-                (double *)node_potential->data,
-                (double *)node_bnd_potential->data,
-                (double *)cell_electric_field->data
-            );    
+                node_charge_density,
+                node_potential,
+                node_bnd_potential,
+                cell_electric_field
+            );
 
         // STEP 6 - Log and/or print values to files ************************************ 
             if (print_all_to_file || ((ts + 1) == num_iterations))
             {
                 std::string f = std::string("F_") + std::to_string(ts + 1);
-                print_fields_m((double*)(node_charge_density->data), (double*)(node_potential->data), (double*)(cell_electric_field->data), n_nodes, n_cells, f.c_str());
-                print_particles_m((double*)(part_position->data), (double*)(part_velocity->data), (int*)(part_cell_index->data), particles_set->size, f.c_str());
+
+                oppic_print_dat_to_txtfile(node_charge_density, f.c_str(), "node_charge_density.dat");
+                oppic_print_dat_to_txtfile(node_potential, f.c_str(), "node_potential.dat");
+                oppic_print_dat_to_txtfile(cell_electric_field, f.c_str(), "cell_electric_field.dat");
+
+                oppic_print_dat_to_txtfile(part_position, f.c_str(), "part_position.dat");
+                oppic_print_dat_to_txtfile(part_velocity, f.c_str(), "part_velocity.dat");
+                oppic_print_dat_to_txtfile(part_cell_index, f.c_str(), "part_cell_index.dat");
             }
             std::cout << "ts: " << ts << "\t num_particles: " << particles_set->size << std::endl;
 

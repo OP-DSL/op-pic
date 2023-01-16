@@ -40,7 +40,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <cstring>
 
 //*************************************************************************************************
-#define OP_DEBUG       false
+#define OP_DEBUG       true
 
 #define OP_READ        0
 #define OP_WRITE       1
@@ -209,6 +209,9 @@ void oppic_remove_marked_particles_from_set_core(oppic_set set, std::vector<int>
 
 void oppic_particle_sort_core(oppic_set set);
 
+void oppic_print_dat_to_txtfile_core(oppic_dat dat, const char *file_name_prefix, const char *file_name_suffix);
+
+void oppic_dump_dat_core(oppic_dat data);
 //*************************************************************************************************
 
 extern int OP_hybrid_gpu;

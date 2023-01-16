@@ -48,18 +48,22 @@ __device__ void move_particles__kernel_gpu(
     const double *dt
 )
 {
-    vel[0 * opDat1_MoveParticles_stride_OPPIC_CONSTANT] += (OP_CONST_charge / OP_CONST_mass * 
-                                                            ef[0 * opDat2_MoveParticles_stride_OPPIC_CONSTANT] * (*dt));
-    vel[1 * opDat1_MoveParticles_stride_OPPIC_CONSTANT] += (OP_CONST_charge / OP_CONST_mass * 
-                                                            ef[1 * opDat2_MoveParticles_stride_OPPIC_CONSTANT] * (*dt));
-    vel[2 * opDat1_MoveParticles_stride_OPPIC_CONSTANT] += (OP_CONST_charge / OP_CONST_mass * 
-                                                            ef[2 * opDat2_MoveParticles_stride_OPPIC_CONSTANT] * (*dt));
-    
-    pos[0 * opDat0_MoveParticles_stride_OPPIC_CONSTANT] += vel[0 * opDat1_MoveParticles_stride_OPPIC_CONSTANT] * (*dt); // v = u + at
-    
-    pos[1 * opDat0_MoveParticles_stride_OPPIC_CONSTANT] += vel[1 * opDat1_MoveParticles_stride_OPPIC_CONSTANT] * (*dt); // v = u + at
-    
-    pos[2 * opDat0_MoveParticles_stride_OPPIC_CONSTANT] += vel[2 * opDat1_MoveParticles_stride_OPPIC_CONSTANT] * (*dt); // v = u + at
+    double v0_add = (OP_CONST_charge / OP_CONST_mass * ef[0 * opDat2_MoveParticles_stride_OPPIC_CONSTANT] * (*dt));
+    double v1_add = (OP_CONST_charge / OP_CONST_mass * ef[1 * opDat2_MoveParticles_stride_OPPIC_CONSTANT] * (*dt));
+    double v2_add = (OP_CONST_charge / OP_CONST_mass * ef[2 * opDat2_MoveParticles_stride_OPPIC_CONSTANT] * (*dt));
+
+    double v0 = (vel[0 * opDat1_MoveParticles_stride_OPPIC_CONSTANT] + v0_add);
+    double v1 = (vel[1 * opDat1_MoveParticles_stride_OPPIC_CONSTANT] + v1_add);
+    double v2 = (vel[2 * opDat1_MoveParticles_stride_OPPIC_CONSTANT] + v2_add);
+
+    atomicAdd(&vel[0 * opDat1_MoveParticles_stride_OPPIC_CONSTANT], v0_add);
+    atomicAdd(&vel[1 * opDat1_MoveParticles_stride_OPPIC_CONSTANT], v1_add);
+    atomicAdd(&vel[2 * opDat1_MoveParticles_stride_OPPIC_CONSTANT], v2_add);
+    atomicAdd(&pos[0 * opDat0_MoveParticles_stride_OPPIC_CONSTANT], (v0 * (*dt)));
+    atomicAdd(&pos[1 * opDat0_MoveParticles_stride_OPPIC_CONSTANT], (v1 * (*dt)));
+    atomicAdd(&pos[2 * opDat0_MoveParticles_stride_OPPIC_CONSTANT], (v2 * (*dt)));
+
+    // TODO : Unlikely, but can have a data race
 }
 
 
@@ -112,7 +116,11 @@ void oppic_par_loop_all__MoveParticles(
     args[2] = arg2;
     args[3] = arg3;
 
+    cutilSafeCall(cudaMalloc(&(arg3.data_d), arg3.size));
+    cutilSafeCall(cudaMemcpy(arg3.data_d, arg3.data, arg3.size, cudaMemcpyHostToDevice));
+
     int set_size = op_mpi_halo_exchanges_grouped(set, nargs, args, Device_GPU);
+// printf("oppic_par_loop_all__MoveParticles set size %d\n", set_size);
     if (set_size > 0) 
     {
         opDat0_MoveParticles_stride_OPPIC_HOST = arg0.dat->set->size;
@@ -142,6 +150,7 @@ void oppic_par_loop_all__MoveParticles(
         }
     }
 
+    cutilSafeCall(cudaFree(arg3.data_d));
     op_mpi_set_dirtybit_cuda(nargs, args);
     cutilSafeCall(cudaDeviceSynchronize());
 }

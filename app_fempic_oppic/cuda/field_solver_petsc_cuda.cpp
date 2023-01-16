@@ -1,12 +1,19 @@
 // TODO : To be converted to API with kernels
 
-#include "fempic.h"
+#include "../fempic.h"
+#include <oppic_cuda.h>
 
 //*************************************************************************************************
 /*FESolver*/
 FESolver::FESolver(Volume &volume, int argc, char **argv)
     : volume(volume)
 {
+    cout<<"FESolver PETSC RUNNING : ************************"<<endl;
+    
+    int dummy = 0;
+    //PetscInitialize(&dummy, NULL, (char *)0, "petsc FESolver");
+    PetscInitialize(&argc, &argv, PETSC_NULL, "petsc FESolver PP");
+
     /*count number of unknowns*/
     neq     = 0;
     phi0    = 0;
@@ -86,7 +93,7 @@ FESolver::FESolver(Volume &volume, int argc, char **argv)
     /*now set up the LM matrix*/
     for (int e=0; e<n_cells; e++)
     {
-        for (int a=0; a<4; a++)    /*tetrahedra*/
+        for (int a=0; a<4; a++)    /*tetrahedra*/ // Iterate over the attached 4 nodes of the cell, (volume.cells[e].con[a])
         {
             LM[e][a] = ID[volume.cells[e].con[a]];
         }
@@ -104,6 +111,41 @@ FESolver::FESolver(Volume &volume, int argc, char **argv)
 
     cout<<"FESolver : computeNX"<<endl;
     computeNX();
+
+    /* Petsc */
+    vecCol           = new int[neq];
+    matCol           = new int[neq];
+    matIndex         = new int*[neq];
+    matIndexValues   = new double*[neq];
+
+    for (int i = 0; i < neq; i++)
+    {
+        vecCol[i] = i;
+        matCol[i] = 0;
+    }
+
+    cout << "FESolver : Petsc Creating Matrix " << endl;
+
+    MatCreate(PETSC_COMM_WORLD, &A);
+    MatSetSizes(A, PETSC_DECIDE, PETSC_DECIDE, neq, neq);
+    MatSetFromOptions(A);
+    MatSetUp(A);
+
+    cout << "FESolver : Petsc Creating Vector " << endl;
+
+    VecCreate(PETSC_COMM_WORLD, &b);
+    VecSetSizes(b, PETSC_DECIDE, neq);
+    VecSetFromOptions(b);
+    VecDuplicate(b, &x);
+
+    cout << "FESolver : Petsc Creating KSP " << endl;
+
+    KSPCreate(PETSC_COMM_WORLD, &ksp);
+    KSPSetOperators(ksp, A, A);
+    KSPSetTolerances(ksp, 1.e-2 / (neq * neq), 1.e-50, PETSC_DEFAULT, PETSC_DEFAULT); 
+    KSPSetFromOptions(ksp);
+
+    cout << "FESolver : Petsc Done " << endl;
 }
 
 //*************************************************************************************************
@@ -127,6 +169,19 @@ FESolver::~FESolver()
     delete[] ID;
     delete[] p_d;
     delete[] detJ;
+
+    /* Petsc */
+    delete[] vecCol;
+    delete[] matCol;
+    for (int i=0; i<neq; i++) { delete[] matIndex[i]; delete[] matIndexValues[i];}
+    delete[] matIndex;
+    delete[] matIndexValues;
+    KSPDestroy(&ksp);
+    VecDestroy(&x);
+    VecDestroy(&b);
+    MatDestroy(&A);
+
+    PetscFinalize();
 }
 
 //*************************************************************************************************
@@ -289,7 +344,7 @@ void FESolver::inverse(double M[3][3], double V[3][3])
 void FESolver::solveNonLinear(const double *ion_den)
 {
     const double tol = 1e-2;
-    
+
     /*allocate memory for y*/
     double *y = new double[neq];
     double *G = new double[neq];
@@ -312,8 +367,10 @@ void FESolver::solveNonLinear(const double *ion_den)
 
         buildJmatrix();
 
-        /* CAN PCSOR or even with KSP*/ solveLinear(p_J,y,G); /*simple Gauss-Seidel solver for J*y=G, writing to y*/
-
+        /* CAN PCSOR or even with KSP*/ 
+        // solveLinear(p_J,y,G); /*simple Gauss-Seidel solver for J*y=G, writing to y*/
+        solveLinear_petsc(p_J,y,G);
+        
         /*now that we have y, update solution */
         for (int n=0; n<neq; n++) 
             p_d[n] -= y[n];
@@ -328,7 +385,7 @@ void FESolver::solveNonLinear(const double *ion_den)
 
         if (L2 < tol) 
         {
-            // cout<<" NR converged in "<<it+1<<" iterations with L2="<<setprecision(3)<<L2<<endl;
+            cout<<" NR converged in "<<it+1<<" iterations with L2="<<setprecision(3)<<L2<<endl;
             converged=true;
             break;
         }
@@ -362,8 +419,12 @@ void FESolver::buildJmatrix()
 
     /*now set J=K*/
     for (int i=0; i<neq; i++)
+    {
         for (int j=0; j<neq; j++)
+        {
             p_J[i][j] = p_K[i][j];
+        }
+    }
 
     /*build fprime vector*/
     double fe[4];
@@ -373,7 +434,7 @@ void FESolver::buildJmatrix()
         for (int a=0; a<4; a++)
         {    
             double ff=0;                
-            int A = LM[e][a];
+            int A = LM[e][a];    // Gives the equation number with respect to cell e and its a th node
             if (A>=0)    /*if unknown node*/
             {
                 /*perform quadrature*/
@@ -536,6 +597,81 @@ void FESolver::buildF1Vector(const double *ion_den)
 
 //*************************************************************************************************
 /*simple Gauss-Seidel solver for A*x=b*/
+void FESolver::solveLinear_petsc(double **p_A, double *p_x, double *p_b)
+{ TRACE_ME; 
+
+    // printf("At solveLinear_petsc neq %d\n", neq);
+
+    auto t1 = std::chrono::system_clock::now();
+
+    initialze_matrix(p_A);
+    
+    auto t2 = std::chrono::system_clock::now();
+    
+    VecSetValues(b, neq, vecCol, p_b, INSERT_VALUES);
+    VecAssemblyBegin(b); VecAssemblyEnd(b);
+    
+    auto t3 = std::chrono::system_clock::now();
+    
+    KSPSolve(ksp, b, x);
+    
+    auto t4 = std::chrono::system_clock::now();
+    
+    VecGetValues(x, neq, vecCol, p_x);
+    
+    auto t5 = std::chrono::system_clock::now();
+    
+    // PetscPrintf(PETSC_COMM_WORLD, "PETSC : Norm of error %g iterations %" PetscInt_FMT "\n", (double)norm, its);
+
+    std::chrono::duration<double> d1 = t2-t1;
+    std::chrono::duration<double> d2 = t3-t2;
+    std::chrono::duration<double> d3 = t4-t3;
+    std::chrono::duration<double> d4 = t5-t4;
+    std::chrono::duration<double> dt = t5-t1;
+    std::cout << "solveLinear_petsc - Time t1: " << d1.count() << " t2: " << d2.count() << " t3: " << d3.count() << " t4: " << d4.count() <<  std::endl;
+    std::cout << "solveLinear_petsc - Time <chrono>: " << dt.count() << " s" << std::endl;
+}
+
+//*************************************************************************************************
+void FESolver::initialze_matrix(double **p_A)
+{
+    if (!matIndexCreated)
+    {
+        int max_fields = 0;
+        for (int i=0; i<neq; i++)
+        {
+            std::vector<int> tempVec;    
+            for (int j=0; j<neq; j++)
+            {                
+                if ((std::abs(p_A[i][j]) > 1e-12) || (i == j)) tempVec.push_back(j);            
+            }
+
+            matCol[i] = tempVec.size();
+            matIndex[i] = new int[tempVec.size()];
+            matIndexValues[i] = new double[tempVec.size()];
+
+            std::copy(tempVec.begin(), tempVec.end(), matIndex[i]);
+
+            max_fields = (max_fields > tempVec.size()) ? max_fields : tempVec.size();
+        }
+
+        MatSeqAIJSetPreallocation(A, (max_fields + 1), nullptr); // +1 just to be safe
+        matIndexCreated = true;
+    }
+
+    for (int i=0; i<neq; i++)
+    {
+        for (int j=0; j<matCol[i]; j++) matIndexValues[i][j] = p_A[i][matIndex[i][j]];
+
+        MatSetValues(A, 1, &i, matCol[i], matIndex[i], matIndexValues[i], INSERT_VALUES); 
+    }
+
+    MatAssemblyBegin(A, MAT_FINAL_ASSEMBLY); MatAssemblyEnd(A, MAT_FINAL_ASSEMBLY);
+}
+
+
+//*************************************************************************************************
+/*simple Gauss-Seidel solver for A*x=b*/
 void FESolver::solveLinear(double **A, double *p_x, double *p_b)
 { TRACE_ME;
     int it;
@@ -547,7 +683,7 @@ void FESolver::solveLinear(double **A, double *p_x, double *p_b)
         if (fabs(A[u][u]) < 1e-12)
         {
             cerr<<"FESolver : Zero diagonal on "<<u<<endl;
-            exit(-11);
+            // exit(-11);
         }        
     }
 
@@ -605,15 +741,23 @@ void FESolver::SolveFields(
     oppic_dat boundary_potential_dat,
     oppic_dat electric_field_dat)
 {
+    op_download_dat(ion_den_dat);
+    // op_download_dat(field_potential_dat); // THESE ARE WRITES, HENCE NO NEED
+    // op_download_dat(boundary_potential_dat); // THESE ARE FIXED, DO NOT CHANGE IN HOST
+    // op_download_dat(electric_field_dat); // THESE ARE WRITES, HENCE NO NEED
+
     const double *ion_den      = (double *)ion_den_dat->data;
     double *field_potential    = (double *)field_potential_dat->data;
     double *boundary_potential = (double *)boundary_potential_dat->data;
     double *electric_field     = (double *)electric_field_dat->data;
-    
+
     /*call potential solver*/
     computePhi(ion_den, field_potential, boundary_potential); 
 
     updateElementElectricField(field_potential, electric_field);
+
+    field_potential_dat->dirty_hd = Dirty::Device;
+    electric_field_dat->dirty_hd = Dirty::Device;
 }
 
 //*************************************************************************************************

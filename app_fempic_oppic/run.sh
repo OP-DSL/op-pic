@@ -20,3 +20,9 @@ export OMP_PROC_BIND=close
 ./fempic_genseq_wopet 
 
 ./fempic_openmp_wopet
+
+cuda-memcheck --tool racecheck --racecheck-report analysis bin/fempic_cuda > x.log
+
+cuda-memcheck bin/fempic_cuda |more  > x.log
+
+bin/fempic_cuda -vec_type cuda -mat_type aijcusparse

@@ -19,6 +19,8 @@
 #define USE_PETSC
 #define USE_PARTICLE_SORTING
 
+#include <oppic_lib.h>
+
 #ifdef USE_PETSC
     #include <petscksp.h>
 #endif
@@ -32,7 +34,7 @@ using namespace std;
 #define PRINT_PRECISION    15
 
 /*constants*/
-const bool print_all_to_file = false;
+const bool print_all_to_file = true;
 
 const double EPS0     = 8.8541878e-12;    /*permittivity of free space*/
 const double QE       = 1.602e-19;        /*cellary charge*/
@@ -168,14 +170,14 @@ public:
 
     double *detJ; /*determinant of the jacobian x_xi*/    
     
-    FESolver(Volume &volume);    /*constructor, initialized data structures*/
+    FESolver(Volume &volume, int argc, char **argv); /*constructor, initialized data structures*/
     ~FESolver();    /*destructor, frees memory*/
 
     void SolveFields(
-        const double *ion_den, 
-        double *field_potential, 
-        double *boundary_potential, 
-        double *electric_field);
+        oppic_dat ion_den_dat, 
+        oppic_dat field_potential_dat, 
+        oppic_dat boundary_potential_dat, 
+        oppic_dat electric_field_dat);
 
     void startAssembly();    /*clears K and F*/
     void preAssembly(double *boundary_potential);
@@ -187,7 +189,7 @@ private:
     double evalNa(int a, double xi, double eta, double zeta);
     void getNax(double nx[3], int e, int a, double xi, double eta, double zeta);
     void inverse(double M[3][3], double V[3][3]);
-    void computePhi(const double *ion_den, double *field_potential, double *boundary_potential);    
+    void computePhi(const double *ion_den, double *field_potential, const double *boundary_potential);    
     void buildF1Vector(const double *ion_den);
     void solveNonLinear(const double *ion_den);
     void solveLinear(double **K, double *d, double *F);    /*solves Kd=F for d*/
@@ -195,7 +197,7 @@ private:
     void initialze_matrix(double **p_A);
     void solveLinear_petsc(double **K, double *d, double *F);
 #endif
-    void updateElementElectricField(double *field_potential, double *electric_field);
+    void updateElementElectricField(const double *field_potential, double *electric_field);
     void buildJmatrix();
     void computeNX();
     

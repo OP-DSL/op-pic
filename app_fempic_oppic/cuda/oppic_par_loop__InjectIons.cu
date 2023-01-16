@@ -46,7 +46,7 @@ __constant__ int opDat3_InjectIons_stride_OPPIC_CONSTANT;
 //*************************************************************************************************
 __device__ double rnd_gpu() 
 {
-    return 0.1; // TODO: Make this a normally distributed random number generator
+    return 0.0; // TODO: Make this a normally distributed random number generator
 }
 
 __device__ void inject_ions__kernel_gpu(
@@ -98,7 +98,7 @@ __global__ void oppic_cuda_InjectIons(
     if (tid + start < end) 
     {
         int n = tid + start;
-
+        // printf("Hello from block %d, thread %d\n", blockIdx.x, threadIdx.x);
         //user-supplied kernel call
         inject_ions__kernel_gpu(
             (dir_arg0 + n),
@@ -110,9 +110,9 @@ __global__ void oppic_cuda_InjectIons(
     }
 }
 
-
+// Issues with Random number generation made this to be run on CPU
 //*************************************************************************************************
-void oppic_par_loop_inject__InjectIons(
+void oppic_par_loop_inject__InjectIons_gpu(
     oppic_set set,      // particles_set
     oppic_arg arg0,     // part_position,
     oppic_arg arg1,     // part_velocity,
@@ -154,7 +154,7 @@ void oppic_par_loop_inject__InjectIons(
             int nthread = GPU_THREADS_PER_BLOCK;
             int nblocks = (end - start - 1) / nthread + 1;
 
-            oppic_cuda_InjectIons <<<nblocks, nthread>>> (
+            oppic_cuda_InjectIons<<<nblocks, nthread>>>(
                 (double *)  arg0.data_d,
                 (double *)  arg1.data_d,
                 (double *)  arg2.data_d,
@@ -169,6 +169,64 @@ void oppic_par_loop_inject__InjectIons(
     op_mpi_set_dirtybit_cuda(nargs, args);
     cutilSafeCall(cudaDeviceSynchronize());
 
+// oppic_download_particle_set(set);
 }
 
 //*************************************************************************************************
+void inject_ions__kernel(
+    double *pos,
+    double *vel,
+    double *ef ,
+    double *lc, 
+    int *cell_index
+)
+{
+    /*sample random position on the inlet face*/
+    pos[0] = -0.1 + 0.2 * rnd();
+    pos[1] = -0.1 + 0.2 * rnd();
+    pos[2] = 0;
+
+    /*injecting cold beam*/
+    vel[0] = 0;
+    vel[1] = 0;
+    vel[2] = ION_VELOCITY;
+
+    ef[0] = 0;
+    ef[1] = 0;
+    ef[2] = 0;
+
+    lc[0] = 0.0;
+    lc[1] = 0.0;
+    lc[2] = 0.0;
+    lc[3] = 0.0;
+
+    *cell_index = 0;
+}
+
+//*************************************************************************************************
+void oppic_par_loop_inject__InjectIons(
+    oppic_set set,      // particles_set
+    oppic_arg arg0,     // part_position,
+    oppic_arg arg1,     // part_velocity,
+    oppic_arg arg2,     // part_electric_field,
+    oppic_arg arg3,     // part_weights,
+    oppic_arg arg4      // part_cell_index,
+    )
+{ TRACE_ME;
+    if (OP_DEBUG) printf("FEMPIC - oppic_par_loop_inject__InjectIons num_particles %d diff %d\n", set->size, set->diff);
+
+    oppic_download_particle_set(set);
+
+    for (int i = (set->size - set->diff); i < set->size; i++)
+    {    
+        inject_ions__kernel(    
+            &((double *)arg0.data)[i * arg0.dim],            // part_position,
+            &((double *)arg1.data)[i * arg1.dim],            // part_velocity,
+            &((double *)arg2.data)[i * arg2.dim],            // part_electric_field,
+            &((double *)arg3.data)[i * arg3.dim],            // part_weights,
+            &((int *)arg4.data)[i * arg4.dim]                // part_cell_index,
+        );
+    }
+
+    oppic_upload_particle_set(set);
+}

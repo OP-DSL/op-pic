@@ -56,7 +56,7 @@ int main(int argc, char **argv)
         cell_to_nodes_tmp, cell_to_cell_tmp, cell_det_tmp, cell_volume_tmp, cell_ef_tmp
     );
 
-    FESolver solver(volume);
+    FESolver solver(volume, argc, argv);
     solver.startAssembly();
     solver.preAssembly(node_bnd_pot_tmp);
     
@@ -185,10 +185,10 @@ int main(int argc, char **argv)
         // STEP 5 - Solve field values on the mesh points ************************************
             //matrix | TODO : Try to make these in to kernels and use oppic_par_loop 
             solver.SolveFields(                            /*field solve*/
-                (double *)node_charge_density->data,
-                (double *)node_potential->data,
-                (double *)node_bnd_potential->data, 
-                (double *)cell_electric_field->data            
+                node_charge_density,
+                node_potential,
+                node_bnd_potential,
+                cell_electric_field           
             );    
 
         // STEP 6 - Log and/or print values to files ************************************

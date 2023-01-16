@@ -15,18 +15,20 @@ LIB = lib
 OBJ = obj
 
 CPP        = mpicxx
-# CPPFLAGS   = -std=c++11 -Wall -O0 -g -fopenmp -fPIC
-CPPFLAGS   = -std=c++11 -Wall -O3 -fopenmp -fPIC
+CPPFLAGS   = -std=c++11 -Wall -O0 -g -fopenmp -fPIC
+# CPPFLAGS   = -std=c++11 -Wall -O3 -fopenmp -fPIC
 MPICPP	   = mpicxx
 MPIFLAGS   = -std=c++11 -Wall -O3 -fopenmp -fPIC
-NVCCFLAGS  = -O3 -m64 -Xptxas -dlcm=ca -Xptxas=-v -use_fast_math -arch=compute_60 -code=sm_60
+NVCCFLAGS  = -O0 -g -m64 -Xptxas -dlcm=ca -Xptxas=-v -use_fast_math -arch=compute_70 -code=sm_70
+# NVCCFLAGS  = -O3 -m64 -Xptxas -dlcm=ca -Xptxas=-v -use_fast_math -arch=compute_70 -code=sm_70
 
 CUDA_INSTALL_PATH = /opt/cuda/10.2.89/toolkit
 CUDA_INC   = -I$(CUDA_INSTALL_PATH)/include
 CUDA_LIB   = -L$(CUDA_INSTALL_PATH)/lib64 -lcudart
 
-PETSC_PATH = /ext-home/zl/lib_install/petsc-3.18.2-oneapi-2021.3-release
+# PETSC_PATH = /ext-home/zl/lib_install/petsc-3.18.2-oneapi-2021.3-release
 # PETSC_PATH = /ext-home/zl/lib_install/petsc-3.18.2-oneapi-2021.3
+PETSC_PATH = /ext-home/zl/lib_install/petsc-3.18.3-oneapi-2021.3-cuda-rel
 PETSC_INC  = -I$(PETSC_PATH)/include
 PETSC_LIB  = -L$(PETSC_PATH)/lib -lpetsc
 
@@ -63,7 +65,8 @@ oppic_omp: mklib oppic_core
 
 oppic_cuda: mklib oppic_core
 	     $(CPP) $(CPPFLAGS) -c $(OPPIC_PATH)/$(SRC)/cuda/oppic_cuda.cpp -o $(OBJ)/oppic_cuda.o $(ALL_INC)
-	     ar -r $(LIB)/liboppic_cuda.a $(OBJ)/oppic_lib_core.o $(OBJ)/oppic_util.o $(OBJ)/trace.o $(OBJ)/oppic_cuda.o
+		 nvcc $(NVCCFLAGS) -c $(OPPIC_PATH)/$(SRC)/cuda/particle_sorter.cu -o $(OBJ)/particle_sorter.o $(ALL_INC)
+	     ar -r $(LIB)/liboppic_cuda.a $(OBJ)/oppic_lib_core.o $(OBJ)/oppic_util.o $(OBJ)/trace.o $(OBJ)/oppic_cuda.o $(OBJ)/particle_sorter.o
 
 clean: 
 	     rm -f *.o *.d *.a

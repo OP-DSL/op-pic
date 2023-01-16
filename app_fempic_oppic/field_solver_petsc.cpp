@@ -4,14 +4,14 @@
 
 //*************************************************************************************************
 /*FESolver*/
-FESolver::FESolver(Volume &volume)
+FESolver::FESolver(Volume &volume, int argc, char **argv)
     : volume(volume)
 {
     cout<<"FESolver PETSC RUNNING : ************************"<<endl;
     
     int dummy = 0;
-    PetscInitialize(&dummy, NULL, (char *)0, "petsc FESolver");
-    // PetscInitialize(&argc, &args, (char *)0, help);
+    //PetscInitialize(&dummy, NULL, (char *)0, "petsc FESolver");
+    PetscInitialize(&argc, &argv, PETSC_NULL, "petsc FESolver PP");
 
     /*count number of unknowns*/
     neq     = 0;
@@ -735,11 +735,16 @@ void FESolver::solveLinear(double **A, double *p_x, double *p_b)
 
 //*************************************************************************************************
 void FESolver::SolveFields(
-    const double *ion_den, 
-    double *field_potential, 
-    double *boundary_potential, 
-    double *electric_field)
+    oppic_dat ion_den_dat,
+    oppic_dat field_potential_dat,
+    oppic_dat boundary_potential_dat,
+    oppic_dat electric_field_dat)
 {
+    const double *ion_den      = (double *)ion_den_dat->data;
+    double *field_potential    = (double *)field_potential_dat->data;
+    double *boundary_potential = (double *)boundary_potential_dat->data;
+    double *electric_field     = (double *)electric_field_dat->data;
+
     /*call potential solver*/
     computePhi(ion_den, field_potential, boundary_potential); 
 
@@ -748,7 +753,7 @@ void FESolver::SolveFields(
 
 //*************************************************************************************************
 /*wrapper for solving the non-linear Poisson's equation, writing to field_potential*/
-void FESolver::computePhi(const double *ion_den, double *field_potential, double *boundary_potential)
+void FESolver::computePhi(const double *ion_den, double *field_potential, const double *boundary_potential)
 { TRACE_ME;
     /*solve the system*/
     solveNonLinear(ion_den);                            // simPIC field_solve_poissons_equation
@@ -770,7 +775,7 @@ void FESolver::computePhi(const double *ion_den, double *field_potential, double
 //*************************************************************************************************
 /*updates electric field at cells/ cells*/
 // CAN BE WRITTEN TO OP_PAR_LOOP
-void FESolver::updateElementElectricField(double *field_potential, double *electric_field)        //simPIC field_solve_get_potential_gradient and op_par_loop__weight_fields_to_particles
+void FESolver::updateElementElectricField(const double *field_potential, double *electric_field)        //simPIC field_solve_get_potential_gradient and op_par_loop__weight_fields_to_particles
 { TRACE_ME;
     /*interpolate electric field*/
     for (int cellID=0; cellID<n_cells; cellID++)

@@ -340,7 +340,8 @@ oppic_dat oppic_decl_particle_dat_core(oppic_set set, int dim, char const *type,
 
 //****************************************
 void oppic_increase_particle_count_core(oppic_set particles_set, const int num_particles_to_insert)
-{
+{ TRACE_ME;
+
     if (num_particles_to_insert <= 0) return;
 
     if (OP_DEBUG) printf("oppic_increase_particle_count set [%s] with size [%d]\n", particles_set->name, num_particles_to_insert);
@@ -470,6 +471,131 @@ void oppic_particle_sort_core(oppic_set set)
             map[previous_cell_index].end = (set->size - 1);
         }
     }
+}
+
+//****************************************
+void oppic_print_dat_to_txtfile_core(oppic_dat dat, const char *file_name_prefix, const char *file_name_suffix)
+{ TRACE_ME;
+
+    const std::string file_name = std::string("files/") + file_name_prefix + "_" + file_name_suffix; 
+
+    FILE *fp;
+    if ((fp = fopen(file_name.c_str(), "w")) == NULL) 
+    {
+        printf("oppic_print_dat_to_txtfile_core can't open file %s\n", file_name.c_str());
+        exit(2);
+    }
+
+    if (fprintf(fp, "%d %d\n", dat->set->size, dat->dim) < 0) 
+    {
+        printf("oppic_print_dat_to_txtfile_core error writing to %s\n", file_name.c_str());
+        exit(2);
+    }
+
+    for (int i = 0; i < dat->set->size; i++) 
+    {
+        fprintf(fp, "%d", i);
+
+        for (int j = 0; j < dat->dim; j++) 
+        {
+            if (strcmp(dat->type, "double") == 0 ||
+                strcmp(dat->type, "double:soa") == 0 ||
+                strcmp(dat->type, "double precision") == 0 ||
+                strcmp(dat->type, "real(8)") == 0) 
+            {
+                if (((double *)dat->data)[i * dat->dim + j] == -0.0) 
+                { 
+                    ((double *)dat->data)[i * dat->dim + j] = +0.0; 
+                }
+
+                if (fprintf(fp, ", %+2.20lE", ((double *)dat->data)[i * dat->dim + j]) < 0) 
+                {
+                    printf("oppic_print_dat_to_txtfile_core error writing to %s\n", file_name.c_str());
+                    exit(2);
+                }
+            } 
+            else if (strcmp(dat->type, "float") == 0 ||
+                    strcmp(dat->type, "float:soa") == 0 ||
+                    strcmp(dat->type, "real(4)") == 0 ||
+                    strcmp(dat->type, "real") == 0) 
+            {
+                if (fprintf(fp, ", %+f", ((float *)dat->data)[i * dat->dim + j]) < 0) 
+                {
+                    printf("oppic_print_dat_to_txtfile_core error writing to %s\n", file_name.c_str());
+                    exit(2);
+                }
+            } 
+            else if (strcmp(dat->type, "int") == 0 ||
+                        strcmp(dat->type, "int:soa") == 0 ||
+                        strcmp(dat->type, "int(4)") == 0 ||
+                        strcmp(dat->type, "integer") == 0 ||
+                        strcmp(dat->type, "integer(4)") == 0) 
+            {
+                if (fprintf(fp, ", %+d", ((int *)dat->data)[i * dat->dim + j]) < 0) 
+                {
+                    printf("oppic_print_dat_to_txtfile_core error writing to %s\n", file_name.c_str());
+                    exit(2);
+                }
+            } 
+            else if ((strcmp(dat->type, "long") == 0) ||
+                        (strcmp(dat->type, "long:soa") == 0)) 
+            {
+                if (fprintf(fp, ", %+ld", ((long *)dat->data)[i * dat->dim + j]) < 0) 
+                {
+                    printf("oppic_print_dat_to_txtfile_core error writing to %s\n", file_name.c_str());
+                    exit(2);
+                }
+            } 
+            else 
+            {
+                printf("oppic_print_dat_to_txtfile_core Unknown type %s, cannot be written to file %s\n", dat->type, file_name.c_str());
+                exit(2);
+            }
+        }
+
+        fprintf(fp, "\n");
+    }
+    
+    fclose(fp);
+}
+
+//****************************************
+void oppic_dump_dat_core(oppic_dat data) 
+{
+    fflush(stdout);
+
+    if (data != NULL) 
+    {
+        for (int i = 0; i < data->set->size; i++) 
+        {
+            printf("%d", i);
+
+            for (int j = 0; j < data->dim; j++) 
+            {
+                if (strncmp("double", data->type, 6) == 0)
+                {
+                    printf(", %+2.20lE", ((double *)data->data)[i * data->dim + j]);
+                } 
+                else if (strncmp("real", data->type, 4) == 0) 
+                {
+                    printf(", %f", ((float *)data->data)[i * data->dim + j]);
+                } 
+                else if (strncmp("integer", data->type, 7) == 0) 
+                {
+                    printf(", %d", data->data[i * data->dim + j]);
+                } 
+                else 
+                {
+                    printf("oppic_dump_dat_core Unsupported type for dumping %s\n", data->type);
+                    exit(0);
+                }
+            }
+
+            printf("\n");
+        }
+    }
+
+    fflush(stdout);
 }
 
 //****************************************
