@@ -158,3 +158,21 @@ void oppic_dump_dat(oppic_dat dat)
 }
 
 //****************************************
+void oppic_init_particle_move(oppic_set set)
+{ TRACE_ME;
+
+    oppic_init_particle_move_core(set);
+}
+
+//****************************************
+void oppic_mark_particle_to_move(oppic_set set, int particle_index, int move_status)
+{
+    oppic_mark_particle_to_move_core(set, particle_index, move_status);
+}
+
+//****************************************
+void oppic_finalize_particle_move(oppic_set set)
+{ TRACE_ME;
+
+    oppic_finalize_particle_move_core(set);
+}

@@ -40,7 +40,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <cstring>
 
 //*************************************************************************************************
-#define OP_DEBUG       true
+#define OP_DEBUG       false
 
 #define OP_READ        0
 #define OP_WRITE       1
@@ -70,7 +70,7 @@ enum oppic_iterate_type
 
 enum MoveStatus 
 {
-    MOVE_DONE = 1,
+    MOVE_DONE = 0,
     NEED_MOVE,
     NEED_REMOVE,
 };
@@ -138,6 +138,9 @@ struct oppic_set_core {
     oppic_dat cell_index_dat = NULL;
     std::vector<oppic_dat>* particle_dats;
     std::map<int, part_index>* cell_index_v_part_index_map;
+    int* particle_statuses;
+    int* particle_statuses_d;
+    int particle_remove_count;
     oppic_set cells_set;
 };
 
@@ -201,6 +204,12 @@ oppic_dat oppic_decl_particle_dat_core(oppic_set set, int dim, char const *type,
 void oppic_increase_particle_count_core(oppic_set particles_set, const int num_particles_to_insert);
 
 void oppic_reset_num_particles_to_insert_core(oppic_set set);
+
+void oppic_init_particle_move_core(oppic_set set);
+
+void oppic_mark_particle_to_move_core(oppic_set set, int particle_index, int move_status);
+
+void oppic_finalize_particle_move_core(oppic_set set);
 
 void oppic_mark_particle_to_remove_core(oppic_set set, int particle_index);
 

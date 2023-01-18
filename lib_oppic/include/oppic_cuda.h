@@ -89,7 +89,7 @@ void op_mpi_set_dirtybit_cuda(int nargs, oppic_arg *args);
 
 void oppic_download_particle_set(oppic_set particles_set);
 
-void oppic_upload_particle_set(oppic_set particles_set);
+void oppic_upload_particle_set(oppic_set particles_set, bool realloc = false);
 
 void oppic_create_copy_dat_to_device(oppic_dat dat);
 

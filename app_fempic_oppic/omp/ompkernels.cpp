@@ -94,18 +94,7 @@ void oppic_par_loop_particle_inject__MoveToCells(
     const int num_cells    = set->cells_set->size; 
     int nthreads = omp_get_max_threads();
     
-    #ifdef USE_LOCKS
-        omp_lock_t writelock;
-        omp_init_lock(&writelock);
-    #elif USE_ARRAYS == 1
-        int remove_index[nthreads * REMOVE_PER_THREAD]; // MIGHT NEED TO MOVE THIS FROM STACK TO HEAP
-        int num_remove_indexes[nthreads];
-        for (int i = 0; i < nthreads; i++) num_remove_indexes[i] = 0;    
-    #elif USE_VECTORS == 1
-        int num_remove_indexes[nthreads];
-        std::vector<int> remove_index[nthreads];
-        for (int i = 0; i < nthreads; i++) { remove_index[i].resize(REMOVE_PER_THREAD, -1); num_remove_indexes[i] = 0; }
-    #endif
+    oppic_init_particle_move(set);
 
     #pragma omp parallel for
     for (int thr = 0; thr < nthreads; thr++)
@@ -133,56 +122,11 @@ void oppic_par_loop_particle_inject__MoveToCells(
                 
             } while ((move_status == (int)NEED_MOVE) && (map0idx < num_cells));
 
-            if (move_status == (int)NEED_REMOVE) /*outside the mesh*/
-            {    
-                #ifdef USE_LOCKS
-                    omp_set_lock(&writelock);            
-                    oppic_mark_particle_to_remove(set, n);     // TODO : KNOWN ISSUE : THIS HAS A RACE CONDITION
-                    omp_unset_lock(&writelock);
-                #elif USE_ARRAYS == 1
-                    remove_index[REMOVE_PER_THREAD * thr + num_remove_indexes[thr]] = n;
-                    num_remove_indexes[thr]++;
-                    if (num_remove_indexes[thr] > REMOVE_PER_THREAD)
-                    {
-                        std::cerr << "Array [remove_index] out of bounds" << std::endl;
-                        exit(-9);
-                    }
-                #elif USE_VECTORS == 1
-                    remove_index[thr][num_remove_indexes[thr]] = n;
-                    num_remove_indexes[thr]++;
-                    if (num_remove_indexes[thr] > REMOVE_PER_THREAD)
-                    {
-                        std::cerr << "Vector [remove_index] out of bounds" << std::endl;
-                        exit(-9);
-                    }
-                #endif
-            }
-            else if (move_status != (int)MOVE_DONE) 
-            {
-                std::cerr << "Failed to find the cell - Particle Index " << n << std::endl;
-            }
+            oppic_mark_particle_to_move(set, n, move_status);
         }
     }
 
-    #ifdef USE_LOCKS
-        oppic_remove_marked_particles_from_set(set);
-    #elif USE_ARRAYS == 1
-        for (int i = 0; i < nthreads; i++)
-        {
-            for (int j = 0; j < num_remove_indexes[i]; j++)
-            {
-                oppic_mark_particle_to_remove(set, remove_index[REMOVE_PER_THREAD * i + j]);
-            }
-        }
-        oppic_remove_marked_particles_from_set(set);
-    #elif USE_VECTORS == 1
-        std::vector<int> remove_index_vec;
-        for (int i = 0; i < nthreads; i++)
-        {
-            remove_index_vec.insert(remove_index_vec.end(), remove_index[i].begin(), remove_index[i].begin() + num_remove_indexes[i]);
-        }
-        oppic_remove_marked_particles_from_set(set, remove_index_vec);
-    #endif
+    oppic_finalize_particle_move(set);
 }
 
 //*************************************************************************************************
@@ -203,18 +147,7 @@ void oppic_par_loop_particle_all__MoveToCells(
     const int num_cells    = set->cells_set->size; 
     int nthreads = omp_get_max_threads();
     
-    #ifdef USE_LOCKS
-        omp_lock_t writelock;
-        omp_init_lock(&writelock);
-    #elif USE_ARRAYS == 1
-        int remove_index[nthreads * REMOVE_PER_THREAD]; // MIGHT NEED TO MOVE THIS FROM STACK TO HEAP
-        int num_remove_indexes[nthreads];
-        for (int i = 0; i < nthreads; i++) num_remove_indexes[i] = 0;    
-    #elif USE_VECTORS == 1
-        int num_remove_indexes[nthreads];
-        std::vector<int> remove_index[nthreads];
-        for (int i = 0; i < nthreads; i++) { remove_index[i].resize(REMOVE_PER_THREAD, -1); num_remove_indexes[i] = 0; }
-    #endif
+    oppic_init_particle_move(set);
 
     #pragma omp parallel for
     for (int thr = 0; thr < nthreads; thr++)
@@ -242,56 +175,11 @@ void oppic_par_loop_particle_all__MoveToCells(
                 
             } while ((move_status == (int)NEED_MOVE) && (map0idx < num_cells));
 
-            if (move_status == (int)NEED_REMOVE) /*outside the mesh*/
-            {    
-                #ifdef USE_LOCKS
-                    omp_set_lock(&writelock);            
-                    oppic_mark_particle_to_remove(set, n);     // TODO : KNOWN ISSUE : THIS HAS A RACE CONDITION
-                    omp_unset_lock(&writelock);
-                #elif USE_ARRAYS == 1
-                    remove_index[REMOVE_PER_THREAD * thr + num_remove_indexes[thr]] = n;
-                    num_remove_indexes[thr]++;
-                    if (num_remove_indexes[thr] > REMOVE_PER_THREAD)
-                    {
-                        std::cerr << "Array [remove_index] out of bounds" << std::endl;
-                        exit(-9);
-                    }
-                #elif USE_VECTORS == 1
-                    remove_index[thr][num_remove_indexes[thr]] = n;
-                    num_remove_indexes[thr]++;
-                    if (num_remove_indexes[thr] > REMOVE_PER_THREAD)
-                    {
-                        std::cerr << "Vector [remove_index] out of bounds" << std::endl;
-                        exit(-9);
-                    }
-                #endif
-            }
-            else if (move_status != (int)MOVE_DONE) 
-            {
-                std::cerr << "Failed to find the cell - Particle Index " << n << std::endl;
-            }
+            oppic_mark_particle_to_move(set, n, move_status);
         }
     }
 
-    #ifdef USE_LOCKS
-        oppic_remove_marked_particles_from_set(set);
-    #elif USE_ARRAYS == 1
-        for (int i = 0; i < nthreads; i++)
-        {
-            for (int j = 0; j < num_remove_indexes[i]; j++)
-            {
-                oppic_mark_particle_to_remove(set, remove_index[REMOVE_PER_THREAD * i + j]);
-            }
-        }
-        oppic_remove_marked_particles_from_set(set);
-    #elif USE_VECTORS == 1
-        std::vector<int> remove_index_vec;
-        for (int i = 0; i < nthreads; i++)
-        {
-            remove_index_vec.insert(remove_index_vec.end(), remove_index[i].begin(), remove_index[i].begin() + num_remove_indexes[i]);
-        }
-        oppic_remove_marked_particles_from_set(set, remove_index_vec);
-    #endif
+    oppic_finalize_particle_move(set);
 }
 
 //*************************************************************************************************

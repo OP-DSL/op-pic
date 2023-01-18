@@ -78,7 +78,7 @@ __global__ void oppic_cuda_WeightParticleToMeshNodes(
         int n = tid + start;
         
         int map0idx = d_cell_index[n];
-// printf("XXXX %d %d %d | %p %p | %d\n", n, map0idx, set_size, opDat1Map, opDat5Map, (map0idx + set_size * 0));
+
         int map1idx = opDat1Map[map0idx + set_size * 0];
         int map2idx = opDat1Map[map0idx + set_size * 1];
         int map3idx = opDat1Map[map0idx + set_size * 2];

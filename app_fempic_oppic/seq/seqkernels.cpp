@@ -75,6 +75,8 @@ void oppic_par_loop_particle_inject__MoveToCells(
 
     const int num_cells    = set->cells_set->size; 
 
+    oppic_init_particle_move(set);
+
     for (int i = (set->size - set->diff); i < set->size; i++)
     {        
         int& map0idx    = ((int *)set->cell_index_dat->data)[i * set->cell_index_dat->dim];    // this is the cell_index
@@ -95,17 +97,10 @@ void oppic_par_loop_particle_inject__MoveToCells(
             
         } while ((move_status == (int)NEED_MOVE) && (map0idx < num_cells));
 
-        if (move_status == (int)NEED_REMOVE) /*outside the mesh*/
-        {                
-            oppic_mark_particle_to_remove(set, i);
-        }
-        else if (move_status != (int)MOVE_DONE) 
-        {
-            std::cerr << "Failed to find the cell - Particle Index " << i << std::endl;
-        }
+        oppic_mark_particle_to_move(set, i, move_status);
     }
 
-    oppic_remove_marked_particles_from_set(set);
+    oppic_finalize_particle_move(set);
 }
 
 //*************************************************************************************************
@@ -124,6 +119,8 @@ void oppic_par_loop_particle_all__MoveToCells(
     if (OP_DEBUG) printf("FEMPIC - oppic_par_loop_particle_all__MoveToCells num_particles %d diff %d\n", set->size, set->diff);
 
     const int num_cells    = set->cells_set->size; 
+
+    oppic_init_particle_move(set);
 
     for (int i = 0; i < set->size; i++)
     {        
@@ -145,17 +142,10 @@ void oppic_par_loop_particle_all__MoveToCells(
             
         } while ((move_status == (int)NEED_MOVE) && (map0idx < num_cells));
 
-        if (move_status == (int)NEED_REMOVE) /*outside the mesh*/
-        {                
-            oppic_mark_particle_to_remove(set, i);
-        }
-        else if (move_status != (int)MOVE_DONE) 
-        {
-            std::cerr << "Failed to find the cell - Particle Index " << i << std::endl;
-        }
+        oppic_mark_particle_to_move(set, i, move_status);
     }
 
-    oppic_remove_marked_particles_from_set(set);
+    oppic_finalize_particle_move(set);
 }
 
 //*************************************************************************************************
@@ -252,6 +242,7 @@ void oppic_par_loop_all__WeightParticleToMeshNodes(
     oppic_arg arg8         // node_volumes        
     )
 { TRACE_ME;
+
     if (OP_DEBUG) printf("FEMPIC - oppic_par_loop_all__WeightParticleToMeshNodes num_particles %d\n", set->size);
 
     for (int i = 0; i < set->size; i++)

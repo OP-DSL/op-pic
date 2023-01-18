@@ -117,6 +117,7 @@ __global__ void oppic_cuda_MoveToCells(
     const double *__restrict ind_arg4,
     const int *__restrict ind_arg5,
     const bool *__restrict dir_arg6,
+    int *__restrict particle_statuses,
     int start,
     int end,
     int num_cells) 
@@ -129,7 +130,7 @@ __global__ void oppic_cuda_MoveToCells(
         
         int& map0idx = dir_arg2[n];
         // int& map0idx = d_cell_index[n]; // TODO : I dont know why this isn't working ??? dir_arg2 and d_cell_index has same pointer values, but this get stuck!
-//printf("Hello from device cell index pointers : %p %p\n", d_cell_index, dir_arg2);
+
         int move_status = (int)NEED_MOVE;
 
         do
@@ -147,18 +148,12 @@ __global__ void oppic_cuda_MoveToCells(
             );                
             
         } while ((move_status == (int)NEED_MOVE) && (map0idx < num_cells));
-// printf("Hello from device %d %d\n", (int)move_status, map0idx);
+
         if (move_status == (int)NEED_REMOVE) /*outside the mesh*/
-        {                
-            //op_cuda_mark_particle_to_remove(set, i);
-        }
-        else if (move_status != (int)MOVE_DONE) 
-        {
-            //std::cerr << "Failed to find the cell - Particle Index " << n << std::endl;
+        {              
+            particle_statuses[n] = (int)NEED_REMOVE;
         }
     }
-
-    //op_cuda_remove_marked_particles_from_set(set);
 }
 
 
@@ -191,6 +186,7 @@ void oppic_par_loop_particle_inject__MoveToCells(
     cutilSafeCall(cudaMalloc(&(arg6.data_d), arg6.size));
     cutilSafeCall(cudaMemcpy(arg6.data_d, arg6.data, arg6.size, cudaMemcpyHostToDevice));
 
+    oppic_init_particle_move(set);
 
     int set_size = op_mpi_halo_exchanges_grouped(set, nargs, args, Device_GPU);
     if (set_size > 0) 
@@ -204,7 +200,7 @@ void oppic_par_loop_particle_inject__MoveToCells(
         cudaMemcpyToSymbol(opDat1_MoveToCells_stride_OPPIC_CONSTANT, &opDat1_MoveToCells_stride_OPPIC_HOST, sizeof(int));
         cudaMemcpyToSymbol(opDat4_MoveToCells_stride_OPPIC_CONSTANT, &opDat4_MoveToCells_stride_OPPIC_HOST, sizeof(int));
         cudaMemcpyToSymbol(opDat5_MoveToCells_stride_OPPIC_CONSTANT, &opDat5_MoveToCells_stride_OPPIC_HOST, sizeof(int));
-// printf("****** %d %d %d %d \n",opDat0_MoveToCells_stride_OPPIC_HOST,opDat1_MoveToCells_stride_OPPIC_HOST,opDat4_MoveToCells_stride_OPPIC_HOST,opDat5_MoveToCells_stride_OPPIC_HOST);
+
         int start   = (set->size - set->diff);
         int end     = set->size;
 
@@ -222,11 +218,16 @@ void oppic_par_loop_particle_inject__MoveToCells(
                 (double *)  arg4.data_d,
                 (int *)     arg5.data_d,
                 (bool *)    arg6.data_d,
+                (int *)     set->particle_statuses_d,
                 start, 
                 end, 
                 set->cells_set->size);
         }
     }
+
+    cutilSafeCall(cudaDeviceSynchronize());
+
+    oppic_finalize_particle_move(set);
 
     cutilSafeCall(cudaFree(arg6.data_d));
     op_mpi_set_dirtybit_cuda(nargs, args);
@@ -262,6 +263,8 @@ void oppic_par_loop_particle_all__MoveToCells(
     cutilSafeCall(cudaMalloc(&(arg6.data_d), arg6.size));
     cutilSafeCall(cudaMemcpy(arg6.data_d, arg6.data, arg6.size, cudaMemcpyHostToDevice));
 
+    oppic_init_particle_move(set);
+
     int set_size = op_mpi_halo_exchanges_grouped(set, nargs, args, Device_GPU);
     if (set_size > 0) 
     {
@@ -292,11 +295,16 @@ void oppic_par_loop_particle_all__MoveToCells(
                 (double *)  arg4.data_d,
                 (int *)     arg5.data_d,
                 (bool *)    arg6.data_d,
+                (int *)     set->particle_statuses_d,
                 start, 
                 end, 
                 set->cells_set->size);
         }
     }
+
+    cutilSafeCall(cudaDeviceSynchronize());
+
+    oppic_finalize_particle_move(set);
 
     cutilSafeCall(cudaFree(arg6.data_d));
     op_mpi_set_dirtybit_cuda(nargs, args);

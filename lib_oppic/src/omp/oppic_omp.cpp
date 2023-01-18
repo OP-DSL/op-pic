@@ -138,6 +138,55 @@ void oppic_remove_marked_particles_from_set(oppic_set set, std::vector<int>& idx
 }
 
 //****************************************
+void oppic_init_particle_move(oppic_set set)
+{ TRACE_ME;
+
+    oppic_init_particle_move_core(set);
+}
+
+//****************************************
+void oppic_mark_particle_to_move(oppic_set set, int particle_index, int move_status)
+{
+    oppic_mark_particle_to_move_core(set, particle_index, move_status);
+}
+
+//****************************************
+void oppic_finalize_particle_move(oppic_set set)
+{ TRACE_ME;
+
+    if (OP_DEBUG) printf("oppic_finalize_particle_move set [%s] with particle_remove_count [%d]\n", set->name, set->particle_remove_count);
+
+    if (set->particle_remove_count <= 0) return;
+
+    #pragma omp parallel for
+    for (int i = 0; i < (int)set->particle_dats->size(); i++)
+    {
+        oppic_dat current_oppic_dat = set->particle_dats->at(i);
+        int removed_count = 0;
+
+        for (int j = 0; j < set->size; j++)
+        {
+            if (set->particle_statuses[j] != NEED_REMOVE) continue;
+
+            char* dat_removed_ptr = (char *)(current_oppic_dat->data + (j * current_oppic_dat->size));
+            char* dat_to_replace_ptr = (char *)(current_oppic_dat->data + ((set->size - removed_count - 1) * current_oppic_dat->size));
+            
+            // Get the last element and replace the hole // Not the Optimum!!!
+            // TODO : Can we make NULL data and handle it in sort?
+            memcpy(dat_removed_ptr, dat_to_replace_ptr, current_oppic_dat->size); 
+
+            removed_count++;
+        }
+
+        current_oppic_dat->data = (char *)realloc(current_oppic_dat->data, (size_t)(set->size - removed_count) * (size_t)current_oppic_dat->size);
+    }
+
+    set->size -= set->particle_remove_count;
+    set->particle_remove_count = 0;
+    free(set->particle_statuses);
+}
+
+//****************************************
 void oppic_particle_sort(oppic_set set)
 { TRACE_ME;
     

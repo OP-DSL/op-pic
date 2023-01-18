@@ -105,6 +105,8 @@ oppic_set oppic_decl_set_core(int size, char const *name)
     set->indexes_to_remove           = new std::vector<int>();
     set->particle_dats               = new std::vector<oppic_dat>();
     set->cell_index_v_part_index_map = new std::map<int, part_index>();
+    set->particle_statuses           = NULL;
+    set->particle_statuses_d         = NULL;
 
     oppic_sets.push_back(set);
     return set;
@@ -369,6 +371,67 @@ void oppic_increase_particle_count_core(oppic_set particles_set, const int num_p
 void oppic_reset_num_particles_to_insert_core(oppic_set set)
 {
     set->diff = 0;
+}
+
+//****************************************
+void oppic_init_particle_move_core(oppic_set set)
+{
+    if (OP_DEBUG) printf("oppic_init_particle_move_core set [%s]\n", set->name);
+
+    set->particle_statuses = (int *)malloc(set->size * sizeof(int));
+    memset(set->particle_statuses, 0, set->size * sizeof(int)); // 0 should be MOVE_DONE
+
+    set->particle_remove_count = 0;
+}
+
+//****************************************
+void oppic_mark_particle_to_move_core(oppic_set set, int particle_index, int move_status)
+{
+    if (move_status == (int)NEED_REMOVE) /*outside the mesh*/
+    {  
+        if (OP_DEBUG) printf("oppic_mark_particle_to_move_core set [%s] particle_index [%d]\n", set->name, particle_index);
+
+        set->particle_statuses[particle_index] = NEED_REMOVE;
+        (set->particle_remove_count)++;
+    }
+    else if (move_status != (int)MOVE_DONE) 
+    {
+        std::cerr << "oppic_mark_particle_to_move_core Failed to find the cell - Particle Index " << particle_index << std::endl;
+    }
+}
+
+//****************************************
+void oppic_finalize_particle_move_core(oppic_set set)
+{
+    if (OP_DEBUG) printf("oppic_finalize_particle_move_core set [%s] with particle_remove_count [%d]\n", set->name, set->particle_remove_count);
+
+    if (set->particle_remove_count <= 0) return;
+
+    for (int i = 0; i < (int)set->particle_dats->size(); i++)
+    {
+        oppic_dat current_oppic_dat = set->particle_dats->at(i);
+        int removed_count = 0;
+
+        for (int j = 0; j < set->size; j++)
+        {
+            if (set->particle_statuses[j] != NEED_REMOVE) continue;
+
+            char* dat_removed_ptr = (char *)(current_oppic_dat->data + (j * current_oppic_dat->size));
+            char* dat_to_replace_ptr = (char *)(current_oppic_dat->data + ((set->size - removed_count - 1) * current_oppic_dat->size));
+            
+            // Get the last element and replace the hole // Not the Optimum!!!
+            // TODO : Can we make NULL data and handle it in sort?
+            memcpy(dat_removed_ptr, dat_to_replace_ptr, current_oppic_dat->size); 
+
+            removed_count++;
+        }
+
+        current_oppic_dat->data = (char *)realloc(current_oppic_dat->data, (size_t)(set->size - removed_count) * (size_t)current_oppic_dat->size);
+    }
+
+    set->size -= set->particle_remove_count;
+    set->particle_remove_count = 0;
+    free(set->particle_statuses);
 }
 
 //****************************************

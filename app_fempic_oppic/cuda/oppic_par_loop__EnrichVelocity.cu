@@ -124,7 +124,7 @@ void oppic_par_loop_inject__EnrichVelocity(
         {
             int nthread = GPU_THREADS_PER_BLOCK;
             int nblocks = (end - start - 1) / nthread + 1;
-printf("FEMPIC - oppic_par_loop_inject__EnrichVelocity set_size %d %d %d %d *********************************************\n", set_size, start, end, nblocks);
+
             oppic_cuda_EnrichVelocity <<<nblocks, nthread>>> (
                 (int *)     set->cell_index_dat->data_d,
                 (double *)  arg0.data_d,
@@ -139,8 +139,6 @@ printf("FEMPIC - oppic_par_loop_inject__EnrichVelocity set_size %d %d %d %d ****
     cutilSafeCall(cudaFree(arg2.data_d));
     op_mpi_set_dirtybit_cuda(nargs, args);
     cutilSafeCall(cudaDeviceSynchronize());
-
-// oppic_download_particle_set(set);
 }
 
 //*************************************************************************************************

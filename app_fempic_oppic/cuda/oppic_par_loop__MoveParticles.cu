@@ -62,8 +62,6 @@ __device__ void move_particles__kernel_gpu(
     atomicAdd(&pos[0 * opDat0_MoveParticles_stride_OPPIC_CONSTANT], (v0 * (*dt)));
     atomicAdd(&pos[1 * opDat0_MoveParticles_stride_OPPIC_CONSTANT], (v1 * (*dt)));
     atomicAdd(&pos[2 * opDat0_MoveParticles_stride_OPPIC_CONSTANT], (v2 * (*dt)));
-
-    // TODO : Unlikely, but can have a data race
 }
 
 
@@ -120,7 +118,6 @@ void oppic_par_loop_all__MoveParticles(
     cutilSafeCall(cudaMemcpy(arg3.data_d, arg3.data, arg3.size, cudaMemcpyHostToDevice));
 
     int set_size = op_mpi_halo_exchanges_grouped(set, nargs, args, Device_GPU);
-// printf("oppic_par_loop_all__MoveParticles set size %d\n", set_size);
     if (set_size > 0) 
     {
         opDat0_MoveParticles_stride_OPPIC_HOST = arg0.dat->set->size;

@@ -332,7 +332,7 @@ void op_download_dat(oppic_dat dat)
     size_t set_size = dat->set->size + dat->set->exec_size + dat->set->nonexec_size;
     if (strstr(dat->type, ":soa") != NULL || (OP_auto_soa && dat->dim > 1)) 
     {
-        printf("op_download_dat SOA | %s\n", dat->name);
+        if (OP_DEBUG) printf("op_download_dat SOA | %s\n", dat->name);
         char *temp_data = (char *)malloc(dat->size * set_size * sizeof(char));
         cutilSafeCall(cudaMemcpy(temp_data, dat->data_d, set_size * dat->size, cudaMemcpyDeviceToHost));
         
@@ -352,7 +352,7 @@ void op_download_dat(oppic_dat dat)
     } 
     else 
     {
-        printf("op_download_dat NON-SOA| %s\n", dat->name);
+        if (OP_DEBUG) printf("op_download_dat NON-SOA| %s\n", dat->name);
         cutilSafeCall(cudaMemcpy(dat->data, dat->data_d, set_size * dat->size,
                                 cudaMemcpyDeviceToHost));
     }
@@ -438,29 +438,35 @@ void oppic_download_particle_set(oppic_set particles_set)
 
     if (OP_DEBUG) printf("oppic_download_particle_set set [%s]\n", particles_set->name);
 
-    for (oppic_dat& current_oppic_dat : *(particles_set->particle_dats))
+    for (oppic_dat& current_dat : *(particles_set->particle_dats))
     {
-        if (current_oppic_dat->data_d == NULL)
+        if (current_dat->data_d == NULL)
         {
-            if (OP_DEBUG) printf("oppic_download_particle_set device pointer is NULL in dat [%s]\n", current_oppic_dat->name);
+            if (OP_DEBUG) printf("oppic_download_particle_set device pointer is NULL in dat [%s]\n", current_dat->name);
             continue;
         }
 
-        op_download_dat(current_oppic_dat);
+        op_download_dat(current_dat);
     }  
 }
 
 // HOST->DEVICE
-void oppic_upload_particle_set(oppic_set particles_set)
+void oppic_upload_particle_set(oppic_set particles_set, bool realloc)
 { TRACE_ME;
 
     if (OP_DEBUG) printf("oppic_upload_particle_set set [%s]\n", particles_set->name);
 
-    for (oppic_dat& current_oppic_dat : *(particles_set->particle_dats))
+    for (oppic_dat& current_dat : *(particles_set->particle_dats))
     {
-        // if (current_oppic_dat->data_d == NULL) continue;
+        if (realloc)
+        {
+            if (current_dat->data_d != NULL) 
+                cutilSafeCall(cudaFree(current_dat->data_d));
 
-        op_upload_dat(current_oppic_dat);
+            cutilSafeCall(cudaMalloc(&(current_dat->data_d), particles_set->size * current_dat->size));
+        }
+
+        op_upload_dat(current_dat);
     }  
 }
 
@@ -527,3 +533,50 @@ void print_last_cuda_error()
     printf("ANY CUDA ERRORS? %s\n", cudaGetErrorString(cudaGetLastError()));
 }
 
+//****************************************
+void oppic_init_particle_move(oppic_set set)
+{ TRACE_ME;
+
+    oppic_init_particle_move_core(set);
+
+    if (set->particle_statuses_d != NULL)
+    {
+        cutilSafeCall(cudaFree(set->particle_statuses_d));
+    }
+
+    cutilSafeCall(cudaMalloc(&(set->particle_statuses_d), set->size * sizeof(int)));
+    cutilSafeCall(cudaMemcpy(set->particle_statuses_d, set->particle_statuses, set->size * sizeof(int), cudaMemcpyHostToDevice));
+    cutilSafeCall(cudaDeviceSynchronize());
+}
+
+//****************************************
+void oppic_finalize_particle_move(oppic_set set)
+{ TRACE_ME;
+
+    if (OP_DEBUG) printf("oppic_finalize_particle_move set [%s] with particle_remove_count [%d]\n", set->name, set->particle_remove_count);
+
+    cutilSafeCall(cudaMemcpy(set->particle_statuses, set->particle_statuses_d, set->size * sizeof(int), cudaMemcpyDeviceToHost));
+
+    set->particle_remove_count = 0;
+
+    for (int j = 0; j < set->size; j++)
+    {
+        if (set->particle_statuses[j] == NEED_REMOVE)
+        {
+            (set->particle_remove_count)++; // Could use a device variable and use atomicAdds inside device code
+        }
+    }   
+
+    if (set->particle_remove_count <= 0) return;
+
+    oppic_download_particle_set(set); // TODO : Find a better way
+
+    oppic_finalize_particle_move_core(set);
+
+    oppic_upload_particle_set(set, true /* realloc the device pointers */);
+
+    cutilSafeCall(cudaFree(set->particle_statuses_d));
+    set->particle_statuses_d = NULL;
+
+    if (OP_DEBUG) printf("oppic_finalize_particle_move set [%s] with new size [%d]\n", set->name, set->size);
+}
