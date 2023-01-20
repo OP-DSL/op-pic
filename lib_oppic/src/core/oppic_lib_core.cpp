@@ -47,6 +47,7 @@ std::vector<oppic_dat> oppic_dats;
 int OP_hybrid_gpu      = 0;
 int OP_maps_base_index = 0;
 int OP_auto_soa        = 0;
+int OP_part_alloc_mult = 1;
 
 //****************************************
 void oppic_init_core(int argc, char **argv, int diags) 
@@ -54,6 +55,11 @@ void oppic_init_core(int argc, char **argv, int diags)
     oppic_sets.clear();
     oppic_maps.clear();
     oppic_dats.clear();
+
+    for (int n = 1; n < argc; n++) 
+    {
+        oppic_set_args_core(argv[n]);
+    }
 }
 
 //****************************************
@@ -86,6 +92,21 @@ void oppic_exit_core()
     #endif
 }
 
+void oppic_set_args_core(char *argv) 
+{
+    char temp[64];
+    char *pch;
+
+    pch = strstr(argv, "OPP_ALLOC_MULT=");
+    if (pch != NULL) 
+    {
+        strncpy(temp, pch, 20);
+        OP_part_alloc_mult = atoi(temp + 15);
+        
+        printf("oppic_set_args_core OP_part_alloc_mult = %d\n", OP_part_alloc_mult);
+    }
+}
+
 //****************************************
 oppic_set oppic_decl_set_core(int size, char const *name) 
 {
@@ -98,6 +119,7 @@ oppic_set oppic_decl_set_core(int size, char const *name)
     set->nonexec_size   = 0;
 
     set->is_particle    = false;
+    set->array_capacity = size;
     set->diff           = 0;
     set->cell_index_dat = NULL;
     set->cells_set      = NULL;
@@ -346,22 +368,38 @@ void oppic_increase_particle_count_core(oppic_set particles_set, const int num_p
 
     if (num_particles_to_insert <= 0) return;
 
-    if (OP_DEBUG) printf("oppic_increase_particle_count set [%s] with size [%d]\n", particles_set->name, num_particles_to_insert);
+    if (OP_DEBUG) 
+        printf("oppic_increase_particle_count set [%s] with size [%d]\n", particles_set->name, num_particles_to_insert);
 
-    particles_set->diff = num_particles_to_insert;
-    particles_set->size += num_particles_to_insert;
+    int new_particle_set_size = particles_set->size + num_particles_to_insert;
+
+    if (particles_set->array_capacity >= new_particle_set_size)
+    {
+        if (OP_DEBUG) 
+            printf("oppic_increase_particle_count set [%s] No need to reallocate, new size[%d] array_capacity[%d]\n", particles_set->name, new_particle_set_size, particles_set->array_capacity);        
+        
+        particles_set->size             = new_particle_set_size;
+        particles_set->diff             = num_particles_to_insert;   
+        return;
+    }
+
+    int new_particle_set_array_capacity = particles_set->size + num_particles_to_insert * OP_part_alloc_mult;
 
     for (auto& current_oppic_dat : *(particles_set->particle_dats))
     {
         if (current_oppic_dat->data == NULL) 
         {
-            current_oppic_dat->data = (char *)malloc((size_t)(particles_set->size * current_oppic_dat->size));
+            current_oppic_dat->data = (char *)malloc((size_t)(new_particle_set_array_capacity * current_oppic_dat->size));
         }
         else
         {
-            current_oppic_dat->data = (char *)realloc(current_oppic_dat->data, (size_t)(particles_set->size * current_oppic_dat->size));
+            current_oppic_dat->data = (char *)realloc(current_oppic_dat->data, (size_t)(new_particle_set_array_capacity * current_oppic_dat->size));
         }
-    }  
+    }
+    
+    particles_set->size             = new_particle_set_size;
+    particles_set->array_capacity   = new_particle_set_array_capacity;
+    particles_set->diff             = num_particles_to_insert;
 }
 
 //****************************************
@@ -426,7 +464,7 @@ void oppic_finalize_particle_move_core(oppic_set set)
             removed_count++;
         }
 
-        current_oppic_dat->data = (char *)realloc(current_oppic_dat->data, (size_t)(set->size - removed_count) * (size_t)current_oppic_dat->size);
+        // current_oppic_dat->data = (char *)realloc(current_oppic_dat->data, (size_t)(set->size - removed_count) * (size_t)current_oppic_dat->size);
     }
 
     set->size -= set->particle_remove_count;
@@ -500,7 +538,7 @@ void oppic_particle_sort_core(oppic_set set)
     for (int i = 0; i < (int)set->particle_dats->size(); i++)
     {    
         auto& dat = set->particle_dats->at(i);
-        char *new_data = (char *)malloc(set->size * dat->size);
+        char *new_data = (char *)malloc(set->array_capacity * dat->size);
         char *old_data = (char*)dat->data;
         
         for (int j = 0; j < set->size; j++)

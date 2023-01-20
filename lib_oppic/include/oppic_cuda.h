@@ -70,7 +70,7 @@ void cutilDeviceInit(int argc, char **argv);
 
 void op_mvHostToDevice(void **map, int size);
 
-void op_cpHostToDevice(void **data_d, void **data_h, int size);
+void op_cpHostToDevice(void **data_d, void **data_h, int copy_size, int alloc_size); 
 
 void op_upload_dat(oppic_dat dat);
 

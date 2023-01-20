@@ -327,7 +327,7 @@ void oppic_par_loop_all__WeightParticleToMeshNodes(
 
     int nthreads = omp_get_max_threads();
 
-    oppic_create_thread_level_data<double>(arg1, 0.0);
+    oppic_create_thread_level_data<double>(arg1, 0.0); // For now, this does not work for particle dats due to resizing
 
     if (set->size > 0) 
     {
@@ -352,21 +352,21 @@ void oppic_par_loop_all__WeightParticleToMeshNodes(
                 const int map8idx = arg5.map_data[map0idx * arg5.dim + 3];
 
                 weight_particle_to_mesh_nodes__kernel(
-                    &((double*)arg0.data)[n * arg0.dim],                // part_lc
+                    &((double*)arg0.data)[n * arg0.dim],                    // part_lc
                     &((double*)arg2.dat->thread_data->at(thr))[map1idx],    // node_charge_den0
                     &((double*)arg2.dat->thread_data->at(thr))[map2idx],    // node_charge_den1
                     &((double*)arg2.dat->thread_data->at(thr))[map3idx],    // node_charge_den2
                     &((double*)arg2.dat->thread_data->at(thr))[map4idx],    // node_charge_den3
-                    &((double*)arg5.data)[map5idx],                     // node_volume0
-                    &((double*)arg5.data)[map6idx],                     // node_volume1
-                    &((double*)arg5.data)[map7idx],                     // node_volume2
-                    &((double*)arg5.data)[map8idx]                      // node_volume3
+                    &((double*)arg5.data)[map5idx],                         // node_volume0
+                    &((double*)arg5.data)[map6idx],                         // node_volume1
+                    &((double*)arg5.data)[map7idx],                         // node_volume2
+                    &((double*)arg5.data)[map8idx]                          // node_volume3
                 );
             }
         }
     }
 
-    oppic_reduce_thread_level_data<double>(arg1);
+    oppic_reduce_thread_level_data<double>(arg1); // For now, this does not work for particle dats due to resizing
 }
 
 //*************************************************************************************************

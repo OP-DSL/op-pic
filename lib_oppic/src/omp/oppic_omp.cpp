@@ -178,7 +178,7 @@ void oppic_finalize_particle_move(oppic_set set)
             removed_count++;
         }
 
-        current_oppic_dat->data = (char *)realloc(current_oppic_dat->data, (size_t)(set->size - removed_count) * (size_t)current_oppic_dat->size);
+        // current_oppic_dat->data = (char *)realloc(current_oppic_dat->data, (size_t)(set->size - removed_count) * (size_t)current_oppic_dat->size);
     }
 
     set->size -= set->particle_remove_count;
@@ -200,7 +200,7 @@ void oppic_particle_sort(oppic_set set)
     for (int i = 0; i < (int)set->particle_dats->size(); i++)
     {    
         auto& dat = set->particle_dats->at(i);
-        char *new_data = (char *)malloc(set->size * dat->size);
+        char *new_data = (char *)malloc(set->array_capacity * dat->size);
         char *old_data = (char*)dat->data;
         
         for (int j = 0; j < set->size; j++)

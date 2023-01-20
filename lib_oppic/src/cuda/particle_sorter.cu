@@ -50,7 +50,7 @@ void particle_sort_cuda(oppic_set set)
 
     for (int i = 0; i < (int)set->particle_dats->size(); i++)
     {    
-        auto& dat = set->particle_dats->at(i);
+        oppic_dat& dat = set->particle_dats->at(i);
 
         if (!(strstr(dat->type, ":soa") != NULL || OP_auto_soa || (dat->dim > 1)))
         {

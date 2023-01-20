@@ -73,7 +73,8 @@ oppic_map oppic_decl_map(oppic_set from, oppic_set to, int dim, int *imap, char 
         }
     }
 
-    op_cpHostToDevice((void **)&(map->map_d), (void **)&(temp_map), map->dim * set_size * sizeof(int));
+    int copy_size = map->dim * set_size * sizeof(int);
+    op_cpHostToDevice((void **)&(map->map_d), (void **)&(temp_map), copy_size, copy_size);
     free(temp_map);
 
     return map;
@@ -143,11 +144,15 @@ oppic_dat oppic_decl_particle_dat(oppic_set set, int dim, char const *type, int 
 //****************************************
 void oppic_increase_particle_count(oppic_set particles_set, const int num_particles_to_insert)
 {
-    oppic_download_particle_set(particles_set); // TODO : We should be able to do a device to device copy instead of getting to host
+    bool need_resizing = (particles_set->array_capacity < (particles_set->size + num_particles_to_insert)) ? true : false;
+
+    if (need_resizing)
+        oppic_download_particle_set(particles_set); // TODO : We should be able to do a device to device copy instead of getting to host
 
     oppic_increase_particle_count_core(particles_set, num_particles_to_insert);
 
-    oppic_increase_particle_count_cuda(particles_set);
+    if (need_resizing)
+        oppic_increase_particle_count_cuda(particles_set);
 }
 
 //****************************************
@@ -240,13 +245,13 @@ void op_mvHostToDevice(void **map, int size)
     *map = tmp;
 }
 
-void op_cpHostToDevice(void **data_d, void **data_h, int size) 
+void op_cpHostToDevice(void **data_d, void **data_h, int copy_size, int alloc_size) 
 {
     if (!OP_hybrid_gpu)
         return;
     if (*data_d != NULL) cutilSafeCall(cudaFree(*data_d));
-    cutilSafeCall(cudaMalloc(data_d, size));
-    cutilSafeCall(cudaMemcpy(*data_d, *data_h, size, cudaMemcpyHostToDevice));
+    cutilSafeCall(cudaMalloc(data_d, alloc_size));
+    cutilSafeCall(cudaMemcpy(*data_d, *data_h, copy_size, cudaMemcpyHostToDevice));
     cutilSafeCall(cudaDeviceSynchronize());
 }
 
@@ -463,7 +468,7 @@ void oppic_upload_particle_set(oppic_set particles_set, bool realloc)
             if (current_dat->data_d != NULL) 
                 cutilSafeCall(cudaFree(current_dat->data_d));
 
-            cutilSafeCall(cudaMalloc(&(current_dat->data_d), particles_set->size * current_dat->size));
+            cutilSafeCall(cudaMalloc(&(current_dat->data_d), particles_set->array_capacity * current_dat->size));
         }
 
         op_upload_dat(current_dat);
@@ -474,7 +479,7 @@ void oppic_create_copy_dat_to_device(oppic_dat dat)
 {
     if (OP_DEBUG) printf("oppic_create_copy_dat_to_device dat [%s]\n", dat->name);
 
-    size_t set_size = dat->set->size + dat->set->exec_size + dat->set->nonexec_size;
+    size_t set_size = dat->set->size;
     
     if (set_size <= 0) 
     {
@@ -493,33 +498,34 @@ void oppic_create_copy_dat_to_device(oppic_dat dat)
             {
                 for (int c = 0; c < element_size; c++) 
                 {
-                    temp_data[element_size * i * set_size + element_size * j + c] =
-                        dat->data[dat->size * j + element_size * i + c];
+                    temp_data[element_size * i * set_size + element_size * j + c] = dat->data[dat->size * j + element_size * i + c];
                 }
             }
         }
-        op_cpHostToDevice((void **)&(dat->data_d), (void **)&(temp_data),
-                            dat->size * set_size);
+
+        op_cpHostToDevice((void **)&(dat->data_d), (void **)&(temp_data), (dat->size * dat->set->size), (dat->size * dat->set->array_capacity));
+
         free(temp_data);
     } 
     else 
     {
-        op_cpHostToDevice((void **)&(dat->data_d), (void **)&(dat->data), dat->size * set_size);
+        op_cpHostToDevice((void **)&(dat->data_d), (void **)&(dat->data), (dat->size * dat->set->size), (dat->size * dat->set->array_capacity));
     }
 }
 
 void oppic_increase_particle_count_cuda(oppic_set particles_set)
 { TRACE_ME;
 
-    if (OP_DEBUG) printf("oppic_increase_particle_count_cuda set [%s]\n", particles_set->name);
+    // if (OP_DEBUG) 
+        printf("oppic_increase_particle_count_cuda set [%s] to capacity [%d]\n", particles_set->name, particles_set->array_capacity);
 
     for (oppic_dat& current_dat : *(particles_set->particle_dats))
     {
         if (OP_DEBUG) printf("oppic_increase_particle_count_cuda dat [%s]\n", current_dat->name);
 
-        cutilSafeCall(cudaFree(current_dat->data_d));
-        cutilSafeCall(cudaMalloc(&(current_dat->data_d), particles_set->size * current_dat->size));
-        cutilSafeCall(cudaDeviceSynchronize());
+        // cutilSafeCall(cudaFree(current_dat->data_d));
+        // cutilSafeCall(cudaMalloc(&(current_dat->data_d), particles_set->array_capacity * current_dat->size));
+        // cutilSafeCall(cudaDeviceSynchronize());
 
         // TODO : We might be able to copy only the old data from device to device!
         oppic_create_copy_dat_to_device(current_dat);
@@ -544,7 +550,7 @@ void oppic_init_particle_move(oppic_set set)
         cutilSafeCall(cudaFree(set->particle_statuses_d));
     }
 
-    cutilSafeCall(cudaMalloc(&(set->particle_statuses_d), set->size * sizeof(int)));
+    cutilSafeCall(cudaMalloc(&(set->particle_statuses_d), set->array_capacity * sizeof(int)));
     cutilSafeCall(cudaMemcpy(set->particle_statuses_d, set->particle_statuses, set->size * sizeof(int), cudaMemcpyHostToDevice));
     cutilSafeCall(cudaDeviceSynchronize());
 }
@@ -579,4 +585,9 @@ void oppic_finalize_particle_move(oppic_set set)
     set->particle_statuses_d = NULL;
 
     if (OP_DEBUG) printf("oppic_finalize_particle_move set [%s] with new size [%d]\n", set->name, set->size);
+
+    // make cell index of the particle to be removed as int_max,
+    // sort all arrays
+    // make sizes changed instead of resizing
+    // Could do this inside device itself
 }

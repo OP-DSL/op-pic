@@ -36,6 +36,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <omp.h>
 
 
+// TODO : May need to write with array capcity and realloc always if partticle dats are used
 template <class T> 
 void oppic_create_thread_level_data(oppic_arg arg, T init_value)
 {
@@ -65,6 +66,7 @@ void oppic_create_thread_level_data(oppic_arg arg, T init_value)
     }
 }
 
+// TODO : May need to write with array capcity and realloc always if partticle dats are used
 template <class T> 
 void oppic_reduce_thread_level_data(oppic_arg arg)
 {

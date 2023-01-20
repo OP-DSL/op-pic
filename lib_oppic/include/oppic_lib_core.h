@@ -40,7 +40,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <cstring>
 
 //*************************************************************************************************
-#define OP_DEBUG       false
+#define OP_DEBUG       true
 
 #define OP_READ        0
 #define OP_WRITE       1
@@ -125,15 +125,16 @@ struct oppic_arg {
 };
 
 struct oppic_set_core {
-    int index;                  /* index */
-    int size;                   /* number of elements in set */
-    char const *name;           /* name of set */
-    int core_size;              /* number of core elements in an mpi process*/
-    int exec_size;              /* number of additional imported elements to be executed */
-    int nonexec_size;           /* number of additional imported elements that are not executed */
+    int index;                              /* index */
+    int size;                               /* number of elements in set */
+    char const *name;                       /* name of set */
+    int core_size;                          /* number of core elements in an mpi process*/
+    int exec_size;                          /* number of additional imported elements to be executed */
+    int nonexec_size;                       /* number of additional imported elements that are not executed */
 
-    bool is_particle = false;
-    int diff = 0;                /*number of particles to change*/
+    bool is_particle;                       /* is it a particle set */
+    int array_capacity;                     /* capacity of the allocated array */
+    int diff;                               /* number of particles to change */
     std::vector<int>* indexes_to_remove;
     oppic_dat cell_index_dat = NULL;
     std::vector<oppic_dat>* particle_dats;
@@ -181,6 +182,8 @@ struct oppic_dat_core {
 void oppic_init_core(int argc, char **argv, int diags);
 void oppic_exit_core();
 
+void oppic_set_args_core(char *argv);
+
 oppic_set oppic_decl_set_core(int size, char const *name);
 
 oppic_map oppic_decl_map_core(oppic_set from, oppic_set to, int dim, int *imap, char const *name);
@@ -226,6 +229,7 @@ void oppic_dump_dat_core(oppic_dat data);
 extern int OP_hybrid_gpu;
 extern int OP_maps_base_index;
 extern int OP_auto_soa;
+extern int OP_part_alloc_mult;
 
 extern std::vector<oppic_set> oppic_sets;
 extern std::vector<oppic_map> oppic_maps;
