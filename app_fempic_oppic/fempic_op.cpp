@@ -38,8 +38,7 @@ const int num_iterations = 50;
 //*************************************************************************************************
 void oppic_par_loop_inject__InjectIons(oppic_set,oppic_arg,oppic_arg,oppic_arg,oppic_arg,oppic_arg);
 void oppic_par_loop_particle_all__MoveToCells(oppic_set,oppic_arg,oppic_arg,oppic_arg,oppic_arg,oppic_arg,oppic_arg,oppic_arg);
-void oppic_par_loop_particle_inject__MoveToCells(oppic_set,oppic_arg,oppic_arg,oppic_arg,oppic_arg,oppic_arg,oppic_arg,oppic_arg);
-void oppic_par_loop_inject__EnrichVelocity(oppic_set,oppic_arg,oppic_arg,oppic_arg);
+void oppic_par_loop_particle_inject__MoveToCells(oppic_set,oppic_arg,oppic_arg,oppic_arg,oppic_arg,oppic_arg,oppic_arg,oppic_arg,oppic_arg,oppic_arg,oppic_arg);
 void oppic_par_loop_all__WeightFieldsToParticles(oppic_set,oppic_arg,oppic_arg);
 void oppic_par_loop_all__MoveParticles(oppic_set,oppic_arg,oppic_arg,oppic_arg,oppic_arg);
 void oppic_par_loop_all__ResetIonDensity(oppic_set,oppic_arg);
@@ -117,21 +116,17 @@ int main(int argc, char **argv)
             );
             oppic_par_loop_particle_inject__MoveToCells(
                 particles_set,
-                oppic_arg_dat(part_position,           OP_WRITE),
-                oppic_arg_dat(part_weights,            OP_WRITE),
-                oppic_arg_dat(part_cell_index,         OP_WRITE),
-                oppic_arg_dat(cell_volume,             OP_READ, true),
-                oppic_arg_dat(cell_determinants,       OP_READ, true),
-                oppic_arg_dat(cell_to_cell_map,        OP_READ, true),
-                oppic_arg_gbl(&(bool_true), 1, "bool", OP_READ)
+                oppic_arg_dat(part_position,             OP_WRITE),
+                oppic_arg_dat(part_weights,              OP_WRITE),
+                oppic_arg_dat(part_cell_index,           OP_WRITE),
+                oppic_arg_dat(part_velocity,             OP_INC),
+                oppic_arg_dat(cell_volume,               OP_READ, true),
+                oppic_arg_dat(cell_determinants,         OP_READ, true),
+                oppic_arg_dat(cell_electric_field,       OP_READ, true), 
+                oppic_arg_dat(cell_to_cell_map,          OP_READ, true),
+                oppic_arg_gbl(&(bool_true), 1, "bool",   OP_READ),
+                oppic_arg_gbl(&dt,          1, "double", OP_READ)
             );
-            oppic_par_loop_inject__EnrichVelocity(
-                particles_set,
-                oppic_arg_dat(part_velocity,       OP_WRITE),
-                oppic_arg_dat(cell_electric_field, OP_READ, true), 
-                oppic_arg_gbl(&dt, 1, "double",    OP_READ)
-            );
-            oppic_particle_sort(particles_set);
 
         // STEP X - Misc - make ion_density to zero ************************************
             oppic_par_loop_all__ResetIonDensity(
@@ -154,7 +149,6 @@ int main(int argc, char **argv)
                 oppic_arg_dat(part_electric_field,   OP_READ),
                 oppic_arg_gbl(&dt,  1,     "double", OP_READ)
             );
- 
             oppic_par_loop_particle_all__MoveToCells(
                 particles_set,
                 oppic_arg_dat(part_position,            OP_WRITE),
@@ -165,7 +159,6 @@ int main(int argc, char **argv)
                 oppic_arg_dat(cell_to_cell_map,         OP_READ, true),
                 oppic_arg_gbl(&(bool_false), 1, "bool", OP_READ)
             );
-            oppic_particle_sort(particles_set);
           
         // STEP 4 - Gather the contribution from particle movement to the mesh ************************************
             oppic_par_loop_all__WeightParticleToMeshNodes(

@@ -64,10 +64,13 @@ void oppic_par_loop_particle_inject__MoveToCells(
     oppic_arg arg0,     // part_position,
     oppic_arg arg1,     // part_weights,
     oppic_arg arg2,     // part_cell_index,
-    oppic_arg arg3,     // cell_volume,
-    oppic_arg arg4,     // cell_det,
-    oppic_arg arg5,     // cell_connectivity_map,
-    oppic_arg arg6      // particles_injected
+    oppic_arg arg3,     // part_velocity,
+    oppic_arg arg4,     // cell_volume,
+    oppic_arg arg5,     // cell_det,
+    oppic_arg arg6,     // cell_electric_field,
+    oppic_arg arg7,     // cell_connectivity_map,
+    oppic_arg arg8,     // particles_injected,
+    oppic_arg arg9      // dt,
     )
 { TRACE_ME;
 
@@ -76,27 +79,54 @@ void oppic_par_loop_particle_inject__MoveToCells(
     const int num_cells    = set->cells_set->size; 
 
     oppic_init_particle_move(set);
-
+// printf("ZZZZZZZZ start %d | end %d | arg6 dim %d | dt %+2.30lE | dim %d | %p\n", (set->size - set->diff), set->size, arg6.dim, *((double *)arg9.data), set->cell_index_dat->dim, set->cell_index_dat->data);
     for (int i = (set->size - set->diff); i < set->size; i++)
     {        
         int& map0idx    = ((int *)set->cell_index_dat->data)[i * set->cell_index_dat->dim];    // this is the cell_index
         int move_status = (int)NEED_MOVE;
-        
+
+// std::string log = "ZZZ -> " + std::to_string(i) + " | " + std::to_string(map0idx) + " | " 
+// + std::to_string(((double*)arg6.data)[map0idx * arg6.dim])
+//  + " | " + std::to_string(((double*)arg6.data)[map0idx * arg6.dim + 1])
+//   + " | " + std::to_string(((double*)arg6.data)[map0idx * arg6.dim + 2]) + "\n";
+
+// std::string log1 = "", log2 = "";
+
         do
         {
-            move_particle_to_cell__kernel(
+
+// log1 = "YYY -> " + std::to_string(i) + " | " + std::to_string(map0idx) + " | " 
+// + std::to_string(((double*)arg6.data)[map0idx * arg6.dim])
+//  + " | " + std::to_string(((double*)arg6.data)[map0idx * arg6.dim + 1])
+//   + " | " + std::to_string(((double*)arg6.data)[map0idx * arg6.dim + 2]) + "\n";
+
+            move_injected_particles_to_cell__kernel(
                 &(move_status),
                 &((double *)arg0.data)[i * arg0.dim],        // part_pos
                 &((double *)arg1.data)[i * arg1.dim],        // part_weights
                 &((int *)arg2.data)[i * arg2.dim],           // part_cell_index
-                &((double*)arg3.data)[map0idx * arg3.dim],   // cell_volume
-                &((double*)arg4.data)[map0idx * arg4.dim],   // cell_det
-                &((int*)arg5.data)[map0idx * arg5.dim],      // cell_connectivity
-                (bool *)arg6.data                            // full_mesh_search
+                &((double *)arg3.data)[i * arg3.dim],        // part_velocity
+                &((double*)arg4.data)[map0idx * arg4.dim],   // cell_volume
+                &((double*)arg5.data)[map0idx * arg5.dim],   // cell_det
+                &((double*)arg6.data)[map0idx * arg6.dim],   // cell_electric_field
+                &((int*)arg7.data)[map0idx * arg7.dim],      // cell_connectivity
+                (bool *)arg8.data,                           // full_mesh_search
+                (double *)arg9.data                          // dt
             );                
-            
+
+// log2 = "XXX -> " + std::to_string(i) + " | " + std::to_string(map0idx) + " | " 
+// + std::to_string(((double*)arg3.data)[i * arg3.dim])
+//  + " | " + std::to_string(((double*)arg3.data)[i * arg3.dim + 1])
+//   + " | " + std::to_string(((double*)arg3.data)[i * arg3.dim + 2]) + "\n";
+
         } while ((move_status == (int)NEED_MOVE) && (map0idx < num_cells));
 
+// if (((int *)arg2.data)[i * arg2.dim] == 103)
+// {
+//     printf(log.c_str());
+//     printf(log1.c_str());
+//     printf(log2.c_str());
+// }
         oppic_mark_particle_to_move(set, i, move_status);
     }
 
@@ -104,69 +134,18 @@ void oppic_par_loop_particle_inject__MoveToCells(
 }
 
 //*************************************************************************************************
-void oppic_par_loop_particle_all__MoveToCells(
-    oppic_set set,      // particles_set
-    oppic_arg arg0,     // part_position,
-    oppic_arg arg1,     // part_weights,
-    oppic_arg arg2,     // part_cell_index,
-    oppic_arg arg3,     // cell_volume,
-    oppic_arg arg4,     // cell_det,
-    oppic_arg arg5,     // cell_connectivity_map,
-    oppic_arg arg6      // particles_injected
+void oppic_par_loop_all__ResetIonDensity(
+    oppic_set set,     // nodes_set
+    oppic_arg arg0     // node_charge_density
     )
 { TRACE_ME;
+    if (OP_DEBUG) printf("FEMPIC - oppic_par_loop_all__ResetIonDensity num_nodes %d\n", set->size);
 
-    if (OP_DEBUG) printf("FEMPIC - oppic_par_loop_particle_all__MoveToCells num_particles %d diff %d\n", set->size, set->diff);
-
-    const int num_cells    = set->cells_set->size; 
-
-    oppic_init_particle_move(set);
-
-    for (int i = 0; i < set->size; i++)
-    {        
-        int& map0idx    = ((int *)set->cell_index_dat->data)[i * set->cell_index_dat->dim];    // this is the cell_index
-        int move_status = (int)NEED_MOVE;
-
-        do
-        {
-            move_particle_to_cell__kernel(
-                &(move_status),
-                &((double *)arg0.data)[i * arg0.dim],        // part_pos
-                &((double *)arg1.data)[i * arg1.dim],        // part_weights
-                &((int *)arg2.data)[i * arg2.dim],           // part_cell_index
-                &((double*)arg3.data)[map0idx * arg3.dim],   // cell_volume
-                &((double*)arg4.data)[map0idx * arg4.dim],   // cell_det
-                &((int*)arg5.data)[map0idx * arg5.dim],      // cell_connectivity
-                (bool *)arg6.data                            // full_mesh_search
-            );                
-            
-        } while ((move_status == (int)NEED_MOVE) && (map0idx < num_cells));
-
-        oppic_mark_particle_to_move(set, i, move_status);
-    }
-
-    oppic_finalize_particle_move(set);
-}
-
-//*************************************************************************************************
-void oppic_par_loop_inject__EnrichVelocity(
-    oppic_set set,     // particles_set
-    oppic_arg arg0,    // part_velocity,
-    oppic_arg arg1,    // cell_electric_field,
-    oppic_arg arg2     // const dt,    
-    )
-{ TRACE_ME;
-    if (OP_DEBUG) printf("FEMPIC - oppic_par_loop_inject__EnrichVelocity num_particles %d\n", set->size);
-
-    for (int i = (set->size - set->diff); i < set->size; i++)
+    for (int i=0; i<set->size; i++) 
     {
-        int map0idx    = ((int *)set->cell_index_dat->data)[i * set->cell_index_dat->dim];
-
-        enrich_velocity__kernel(
-            &((double *)arg0.data)[i * arg0.dim],            // part_velocity,
-            &((double *)arg1.data)[map0idx * arg1.dim],      // cell_electric_field,
-            (double *)arg2.data                              // const dt,
-        );    
+        reset_ion_density__kernel(
+            &((double*)arg0.data)[i * arg0.dim]
+        );
     }
 }
 
@@ -213,19 +192,48 @@ void oppic_par_loop_all__MoveParticles(
 }
 
 //*************************************************************************************************
-void oppic_par_loop_all__ResetIonDensity(
-    oppic_set set,     // nodes_set
-    oppic_arg arg0     // node_charge_density
+void oppic_par_loop_particle_all__MoveToCells(
+    oppic_set set,      // particles_set
+    oppic_arg arg0,     // part_position,
+    oppic_arg arg1,     // part_weights,
+    oppic_arg arg2,     // part_cell_index,
+    oppic_arg arg3,     // cell_volume,
+    oppic_arg arg4,     // cell_det,
+    oppic_arg arg5,     // cell_connectivity_map,
+    oppic_arg arg6      // particles_injected
     )
 { TRACE_ME;
-    if (OP_DEBUG) printf("FEMPIC - oppic_par_loop_all__ResetIonDensity num_nodes %d\n", set->size);
 
-    for (int i=0; i<set->size; i++) 
-    {
-        reset_ion_density__kernel(
-            &((double*)arg0.data)[i * arg0.dim]
-        );
-    }    
+    if (OP_DEBUG) printf("FEMPIC - oppic_par_loop_particle_all__MoveToCells num_particles %d diff %d\n", set->size, set->diff);
+
+    const int num_cells    = set->cells_set->size; 
+
+    oppic_init_particle_move(set);
+
+    for (int i = 0; i < set->size; i++)
+    {        
+        int& map0idx    = ((int *)set->cell_index_dat->data)[i * set->cell_index_dat->dim];    // this is the cell_index
+        int move_status = (int)NEED_MOVE;
+
+        do
+        {
+            move_all_particles_to_cell__kernel(
+                &(move_status),
+                &((double *)arg0.data)[i * arg0.dim],        // part_pos
+                &((double *)arg1.data)[i * arg1.dim],        // part_weights
+                &((int *)arg2.data)[i * arg2.dim],           // part_cell_index
+                &((double*)arg3.data)[map0idx * arg3.dim],   // cell_volume
+                &((double*)arg4.data)[map0idx * arg4.dim],   // cell_det
+                &((int*)arg5.data)[map0idx * arg5.dim],      // cell_connectivity
+                (bool *)arg6.data                            // full_mesh_search
+            );                
+            
+        } while ((move_status == (int)NEED_MOVE) && (map0idx < num_cells));
+
+        oppic_mark_particle_to_move(set, i, move_status);
+    }
+
+    oppic_finalize_particle_move(set);
 }
 
 //*************************************************************************************************

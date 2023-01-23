@@ -15,6 +15,7 @@
 #include <chrono>
 #include <algorithm> 
 #include <trace.h>
+#include <limits.h>
 
 #define USE_PETSC
 #define USE_PARTICLE_SORTING
@@ -32,6 +33,8 @@ using namespace std;
 #define NEIGHBOUR_CELLS    4
 #define DET_FIELDS         4
 #define PRINT_PRECISION    15
+
+#define MAX_CELL_INDEX     INT_MAX
 
 /*constants*/
 const bool print_all_to_file = true;

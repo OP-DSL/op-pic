@@ -175,4 +175,10 @@ void oppic_finalize_particle_move(oppic_set set)
 { TRACE_ME;
 
     oppic_finalize_particle_move_core(set);
+
+    if (OP_auto_sort == 1)
+    {
+        if (OP_DEBUG) printf("oppic_finalize_particle_move auto sorting particle set [%s]\n", set->name);
+        oppic_particle_sort(set);
+    }
 }

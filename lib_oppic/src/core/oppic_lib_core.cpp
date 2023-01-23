@@ -48,6 +48,7 @@ int OP_hybrid_gpu      = 0;
 int OP_maps_base_index = 0;
 int OP_auto_soa        = 0;
 int OP_part_alloc_mult = 1;
+int OP_auto_sort       = 1;
 
 //****************************************
 void oppic_init_core(int argc, char **argv, int diags) 
@@ -92,6 +93,7 @@ void oppic_exit_core()
     #endif
 }
 
+//****************************************
 void oppic_set_args_core(char *argv) 
 {
     char temp[64];
@@ -104,6 +106,18 @@ void oppic_set_args_core(char *argv)
         OP_part_alloc_mult = atoi(temp + 15);
         
         printf("oppic_set_args_core OP_part_alloc_mult = %d\n", OP_part_alloc_mult);
+    }
+
+    pch = strstr(argv, "OPP_AUTO_SORT=");
+    if (pch != NULL) 
+    {
+        strncpy(temp, pch, 20);
+        OP_auto_sort = atoi(temp + 14);
+        
+        printf("oppic_set_args_core OP_auto_sort = %d\n", OP_auto_sort);
+        
+        if (!(OP_auto_sort == 1 || OP_auto_sort == 0))
+            std::cerr << "OPP_AUTO_SORT should be 0 or 1, Not Auto Sorting" << std::endl;
     }
 }
 

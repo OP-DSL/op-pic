@@ -230,6 +230,7 @@ extern int OP_hybrid_gpu;
 extern int OP_maps_base_index;
 extern int OP_auto_soa;
 extern int OP_part_alloc_mult;
+extern int OP_auto_sort;
 
 extern std::vector<oppic_set> oppic_sets;
 extern std::vector<oppic_map> oppic_maps;

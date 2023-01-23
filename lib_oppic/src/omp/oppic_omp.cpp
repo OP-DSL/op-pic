@@ -154,7 +154,19 @@ void oppic_mark_particle_to_move(oppic_set set, int particle_index, int move_sta
 void oppic_finalize_particle_move(oppic_set set)
 { TRACE_ME;
 
-    if (OP_DEBUG) printf("oppic_finalize_particle_move set [%s] with particle_remove_count [%d]\n", set->name, set->particle_remove_count);
+    oppic_finalize_particle_move_omp(set);
+
+    if (OP_auto_sort == 1)
+    {
+        if (OP_DEBUG) printf("oppic_finalize_particle_move auto sorting particle set [%s]\n", set->name);
+        oppic_particle_sort(set);
+    }
+}
+
+//****************************************
+void oppic_finalize_particle_move_omp(oppic_set set)
+{
+    if (OP_DEBUG) printf("oppic_finalize_particle_move_omp set [%s] with particle_remove_count [%d]\n", set->name, set->particle_remove_count);
 
     if (set->particle_remove_count <= 0) return;
 
