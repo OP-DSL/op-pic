@@ -44,13 +44,13 @@ __constant__ double OP_CONST_CUDA_spwt   = 2e2;                      // TODO : M
 
 #include "oppic_par_loop__InjectIons.cu"
 
-#include "oppic_par_loop_particle__MoveToCells.cu"
-
-#include "oppic_par_loop__EnrichVelocity.cu"
+#include "oppic_par_loop_particle_inject__MoveToCells.cu"
 
 #include "oppic_par_loop__WeightFieldsToParticles.cu"
 
 #include "oppic_par_loop__MoveParticles.cu"
+
+#include "oppic_par_loop_particle_all__MoveToCells.cu"
 
 #include "oppic_par_loop__ResetIonDensity.cu"
 

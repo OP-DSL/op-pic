@@ -31,20 +31,20 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 // AUTO GENERATED CODE
 
-int opDat0_MoveToCells_stride_OPPIC_HOST = -1;
-int opDat1_MoveToCells_stride_OPPIC_HOST = -1;
-int opDat4_MoveToCells_stride_OPPIC_HOST = -1;
-int opDat5_MoveToCells_stride_OPPIC_HOST = -1;
+int opDat0_MoveToCells_all_stride_OPPIC_HOST = -1;
+int opDat1_MoveToCells_all_stride_OPPIC_HOST = -1;
+int opDat4_MoveToCells_all_stride_OPPIC_HOST = -1;
+int opDat5_MoveToCells_all_stride_OPPIC_HOST = -1;
 
-__constant__ int opDat0_MoveToCells_stride_OPPIC_CONSTANT;
-__constant__ int opDat1_MoveToCells_stride_OPPIC_CONSTANT;
-__constant__ int opDat4_MoveToCells_stride_OPPIC_CONSTANT;
-__constant__ int opDat5_MoveToCells_stride_OPPIC_CONSTANT;
+__constant__ int opDat0_MoveToCells_all_stride_OPPIC_CONSTANT;
+__constant__ int opDat1_MoveToCells_all_stride_OPPIC_CONSTANT;
+__constant__ int opDat4_MoveToCells_all_stride_OPPIC_CONSTANT;
+__constant__ int opDat5_MoveToCells_all_stride_OPPIC_CONSTANT;
 
 
 //user function
 //*************************************************************************************************
-__device__ void move_particle_to_cell__kernel(
+__device__ void move_all_particles_to_cell__kernel(
     int* move_status,
     const double* part_pos,
     double* part_lc,
@@ -58,14 +58,14 @@ __device__ void move_particle_to_cell__kernel(
 
     for (int i=0; i < NODES_PER_CELL; i++) /*loop over vertices*/
     {
-        part_lc[i * opDat1_MoveToCells_stride_OPPIC_CONSTANT] = (1.0/6.0) * (
-            cell_det[(0 + i * NODES_PER_CELL) * opDat4_MoveToCells_stride_OPPIC_CONSTANT] - 
-            cell_det[(1 + i * NODES_PER_CELL) * opDat4_MoveToCells_stride_OPPIC_CONSTANT] * part_pos[0 * opDat0_MoveToCells_stride_OPPIC_CONSTANT] + 
-            cell_det[(2 + i * NODES_PER_CELL) * opDat4_MoveToCells_stride_OPPIC_CONSTANT] * part_pos[1 * opDat0_MoveToCells_stride_OPPIC_CONSTANT] - 
-            cell_det[(3 + i * NODES_PER_CELL) * opDat4_MoveToCells_stride_OPPIC_CONSTANT] * part_pos[2 * opDat0_MoveToCells_stride_OPPIC_CONSTANT]
+        part_lc[i * opDat1_MoveToCells_all_stride_OPPIC_CONSTANT] = (1.0/6.0) * (
+            cell_det[(0 + i * NODES_PER_CELL) * opDat4_MoveToCells_all_stride_OPPIC_CONSTANT] - 
+            cell_det[(1 + i * NODES_PER_CELL) * opDat4_MoveToCells_all_stride_OPPIC_CONSTANT] * part_pos[0 * opDat0_MoveToCells_all_stride_OPPIC_CONSTANT] + 
+            cell_det[(2 + i * NODES_PER_CELL) * opDat4_MoveToCells_all_stride_OPPIC_CONSTANT] * part_pos[1 * opDat0_MoveToCells_all_stride_OPPIC_CONSTANT] - 
+            cell_det[(3 + i * NODES_PER_CELL) * opDat4_MoveToCells_all_stride_OPPIC_CONSTANT] * part_pos[2 * opDat0_MoveToCells_all_stride_OPPIC_CONSTANT]
                 ) / (*cell_volume);
         
-        if (part_lc[i * opDat1_MoveToCells_stride_OPPIC_CONSTANT]<0 || part_lc[i * opDat1_MoveToCells_stride_OPPIC_CONSTANT]>1.0) inside = false;
+        if (part_lc[i * opDat1_MoveToCells_all_stride_OPPIC_CONSTANT] < 0 || part_lc[i * opDat1_MoveToCells_all_stride_OPPIC_CONSTANT] > 1.0) inside = false;
     }
 
     if (inside)
@@ -82,25 +82,25 @@ __device__ void move_particle_to_cell__kernel(
 
     // outside the last known cell, find most negative weight and use that cell_index to reduce computations
     int min_i = 0;
-    double min_lc = part_lc[0 * opDat1_MoveToCells_stride_OPPIC_CONSTANT];
+    double min_lc = part_lc[0 * opDat1_MoveToCells_all_stride_OPPIC_CONSTANT];
     
     for (int i=1; i<NEIGHBOUR_CELLS; i++)
     {
-        if (part_lc[i * opDat1_MoveToCells_stride_OPPIC_CONSTANT] < min_lc) 
+        if (part_lc[i * opDat1_MoveToCells_all_stride_OPPIC_CONSTANT] < min_lc) 
         {
-            min_lc = part_lc[i * opDat1_MoveToCells_stride_OPPIC_CONSTANT];
+            min_lc = part_lc[i * opDat1_MoveToCells_all_stride_OPPIC_CONSTANT];
             min_i = i;
         }
     }
 
-    if (cell_connectivity[min_i * opDat5_MoveToCells_stride_OPPIC_CONSTANT] >= 0) // is there a neighbor in this direction?
+    if (cell_connectivity[min_i * opDat5_MoveToCells_all_stride_OPPIC_CONSTANT] >= 0) // is there a neighbor in this direction?
     {
-        (*current_cell_index) = cell_connectivity[min_i * opDat5_MoveToCells_stride_OPPIC_CONSTANT];
+        (*current_cell_index) = cell_connectivity[min_i * opDat5_MoveToCells_all_stride_OPPIC_CONSTANT];
         *move_status = NEED_MOVE;
     }
     else
     {
-        (*current_cell_index) = -1;
+        (*current_cell_index) = MAX_CELL_INDEX;
         *move_status = NEED_REMOVE;
     }
 }
@@ -108,7 +108,7 @@ __device__ void move_particle_to_cell__kernel(
 
 // CUDA kernel function
 //*************************************************************************************************
-__global__ void oppic_cuda_MoveToCells(
+__global__ void oppic_cuda_all_MoveToCells(
     int *__restrict d_cell_index,
     double *__restrict dir_arg0,
     double *__restrict dir_arg1,
@@ -136,7 +136,7 @@ __global__ void oppic_cuda_MoveToCells(
         do
         {
             //user-supplied kernel call
-            move_particle_to_cell__kernel(
+            move_all_particles_to_cell__kernel(
                 &(move_status),
                 (dir_arg0 + n),         // part_pos
                 (dir_arg1 + n),         // part_weights
@@ -150,88 +150,15 @@ __global__ void oppic_cuda_MoveToCells(
         } while ((move_status == (int)NEED_MOVE) && (map0idx < num_cells));
 
         if (move_status == (int)NEED_REMOVE) /*outside the mesh*/
-        {              
+        {    
+printf("***** ALL : need to remove particle %d\n", n);           
             particle_statuses[n] = (int)NEED_REMOVE;
         }
-    }
-}
-
-
-//*************************************************************************************************
-void oppic_par_loop_particle_inject__MoveToCells(
-    oppic_set set,      // particles_set
-    oppic_arg arg0,     // part_position,
-    oppic_arg arg1,     // part_weights,
-    oppic_arg arg2,     // part_cell_index,
-    oppic_arg arg3,     // cell_volume,
-    oppic_arg arg4,     // cell_det,
-    oppic_arg arg5,     // cell_connectivity_map,
-    oppic_arg arg6      // particles_injected       
-    )
-{ TRACE_ME;
-    
-    if (OP_DEBUG) printf("FEMPIC - oppic_par_loop_particle_inject__MoveToCells num_particles %d\n", set->size);
-
-    int nargs = 7;
-    oppic_arg args[nargs];
-
-    args[0] = arg0;
-    args[1] = arg1;
-    args[2] = arg2;
-    args[3] = arg3;
-    args[4] = arg4;
-    args[5] = arg5;
-    args[6] = arg6;
-
-    cutilSafeCall(cudaMalloc(&(arg6.data_d), arg6.size));
-    cutilSafeCall(cudaMemcpy(arg6.data_d, arg6.data, arg6.size, cudaMemcpyHostToDevice));
-
-    oppic_init_particle_move(set);
-
-    int set_size = op_mpi_halo_exchanges_grouped(set, nargs, args, Device_GPU);
-    if (set_size > 0) 
-    {
-        opDat0_MoveToCells_stride_OPPIC_HOST = arg0.dat->set->size;
-        opDat1_MoveToCells_stride_OPPIC_HOST = arg1.dat->set->size;
-        opDat4_MoveToCells_stride_OPPIC_HOST = arg4.dat->set->size;
-        opDat5_MoveToCells_stride_OPPIC_HOST = arg5.map->from->size;
-
-        cudaMemcpyToSymbol(opDat0_MoveToCells_stride_OPPIC_CONSTANT, &opDat0_MoveToCells_stride_OPPIC_HOST, sizeof(int));
-        cudaMemcpyToSymbol(opDat1_MoveToCells_stride_OPPIC_CONSTANT, &opDat1_MoveToCells_stride_OPPIC_HOST, sizeof(int));
-        cudaMemcpyToSymbol(opDat4_MoveToCells_stride_OPPIC_CONSTANT, &opDat4_MoveToCells_stride_OPPIC_HOST, sizeof(int));
-        cudaMemcpyToSymbol(opDat5_MoveToCells_stride_OPPIC_CONSTANT, &opDat5_MoveToCells_stride_OPPIC_HOST, sizeof(int));
-
-        int start   = (set->size - set->diff);
-        int end     = set->size;
-
-        if (end - start > 0) 
+        else if (move_status != MOVE_DONE)
         {
-            int nthread = GPU_THREADS_PER_BLOCK;
-            int nblocks = (end - start - 1) / nthread + 1;
-
-            oppic_cuda_MoveToCells <<<nblocks, nthread>>> (
-                (int *)     set->cell_index_dat->data_d,
-                (double *)  arg0.data_d,
-                (double *)  arg1.data_d,
-                (int *)     arg2.data_d,
-                (double *)  arg3.data_d,
-                (double *)  arg4.data_d,
-                (int *)     arg5.data_d,
-                (bool *)    arg6.data_d,
-                (int *)     set->particle_statuses_d,
-                start, 
-                end, 
-                set->cells_set->size);
+printf("****************************** move_all_particles_to_cell__kernel returned status[%d] for particle [%d]\n", move_status, n);
         }
     }
-
-    cutilSafeCall(cudaDeviceSynchronize());
-
-    oppic_finalize_particle_move(set);
-
-    cutilSafeCall(cudaFree(arg6.data_d));
-    op_mpi_set_dirtybit_cuda(nargs, args);
-    cutilSafeCall(cudaDeviceSynchronize());
 }
 
 //*************************************************************************************************
@@ -268,15 +195,15 @@ void oppic_par_loop_particle_all__MoveToCells(
     int set_size = op_mpi_halo_exchanges_grouped(set, nargs, args, Device_GPU);
     if (set_size > 0) 
     {
-        opDat0_MoveToCells_stride_OPPIC_HOST = arg0.dat->set->size;
-        opDat1_MoveToCells_stride_OPPIC_HOST = arg1.dat->set->size;
-        opDat4_MoveToCells_stride_OPPIC_HOST = arg4.dat->set->size;
-        opDat5_MoveToCells_stride_OPPIC_HOST = arg5.map->from->size;
+        opDat0_MoveToCells_all_stride_OPPIC_HOST = arg0.dat->set->size;
+        opDat1_MoveToCells_all_stride_OPPIC_HOST = arg1.dat->set->size;
+        opDat4_MoveToCells_all_stride_OPPIC_HOST = arg4.dat->set->size;
+        opDat5_MoveToCells_all_stride_OPPIC_HOST = arg5.map->from->size;
 
-        cudaMemcpyToSymbol(opDat0_MoveToCells_stride_OPPIC_CONSTANT, &opDat0_MoveToCells_stride_OPPIC_HOST, sizeof(int));
-        cudaMemcpyToSymbol(opDat1_MoveToCells_stride_OPPIC_CONSTANT, &opDat1_MoveToCells_stride_OPPIC_HOST, sizeof(int));
-        cudaMemcpyToSymbol(opDat4_MoveToCells_stride_OPPIC_CONSTANT, &opDat4_MoveToCells_stride_OPPIC_HOST, sizeof(int));
-        cudaMemcpyToSymbol(opDat5_MoveToCells_stride_OPPIC_CONSTANT, &opDat5_MoveToCells_stride_OPPIC_HOST, sizeof(int));
+        cudaMemcpyToSymbol(opDat0_MoveToCells_all_stride_OPPIC_CONSTANT, &opDat0_MoveToCells_all_stride_OPPIC_HOST, sizeof(int));
+        cudaMemcpyToSymbol(opDat1_MoveToCells_all_stride_OPPIC_CONSTANT, &opDat1_MoveToCells_all_stride_OPPIC_HOST, sizeof(int));
+        cudaMemcpyToSymbol(opDat4_MoveToCells_all_stride_OPPIC_CONSTANT, &opDat4_MoveToCells_all_stride_OPPIC_HOST, sizeof(int));
+        cudaMemcpyToSymbol(opDat5_MoveToCells_all_stride_OPPIC_CONSTANT, &opDat5_MoveToCells_all_stride_OPPIC_HOST, sizeof(int));
 
         int start   = 0;
         int end     = set->size;
@@ -286,7 +213,7 @@ void oppic_par_loop_particle_all__MoveToCells(
             int nthread = GPU_THREADS_PER_BLOCK;
             int nblocks = (end - start - 1) / nthread + 1;
 
-            oppic_cuda_MoveToCells <<<nblocks, nthread>>> (
+            oppic_cuda_all_MoveToCells<<<nblocks, nthread>>>(
                 (int *)     set->cell_index_dat->data_d,
                 (double *)  arg0.data_d,
                 (double *)  arg1.data_d,

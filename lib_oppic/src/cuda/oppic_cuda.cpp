@@ -249,6 +249,7 @@ void op_cpHostToDevice(void **data_d, void **data_h, int copy_size, int alloc_si
 {
     if (!OP_hybrid_gpu)
         return;
+
     if (*data_d != NULL) cutilSafeCall(cudaFree(*data_d));
     cutilSafeCall(cudaMalloc(data_d, alloc_size));
     cutilSafeCall(cudaMemcpy(*data_d, *data_h, copy_size, cudaMemcpyHostToDevice));
@@ -561,6 +562,23 @@ void oppic_finalize_particle_move(oppic_set set)
 
     if (OP_DEBUG) printf("oppic_finalize_particle_move set [%s] with particle_remove_count [%d]\n", set->name, set->particle_remove_count);
 
+    oppic_finalize_particle_move_cuda(set);
+
+    if (OP_auto_sort == 1)
+    {
+        if (OP_DEBUG) printf("oppic_finalize_particle_move auto sorting particle set [%s]\n", set->name);
+        oppic_particle_sort(set);
+    }
+}
+
+    // TODO: Try to do this in cuda
+    // make cell index of the particle to be removed as int_max,
+    // sort all arrays
+    // make sizes changed instead of resizing
+    // Could do this inside device itself
+//****************************************
+void oppic_finalize_particle_move_cuda(oppic_set set)
+{
     cutilSafeCall(cudaMemcpy(set->particle_statuses, set->particle_statuses_d, set->size * sizeof(int), cudaMemcpyDeviceToHost));
 
     set->particle_remove_count = 0;
@@ -573,7 +591,14 @@ void oppic_finalize_particle_move(oppic_set set)
         }
     }   
 
-    if (set->particle_remove_count <= 0) return;
+    if (OP_DEBUG) printf("oppic_finalize_particle_move_cuda set [%s] with particle_remove_count [%d]\n", set->name, set->particle_remove_count);
+
+    if (set->particle_remove_count <= 0)
+    {
+        cutilSafeCall(cudaFree(set->particle_statuses_d));
+        set->particle_statuses_d = NULL;
+        return;
+    }
 
     oppic_download_particle_set(set); // TODO : Find a better way
 
@@ -584,10 +609,7 @@ void oppic_finalize_particle_move(oppic_set set)
     cutilSafeCall(cudaFree(set->particle_statuses_d));
     set->particle_statuses_d = NULL;
 
-    if (OP_DEBUG) printf("oppic_finalize_particle_move set [%s] with new size [%d]\n", set->name, set->size);
-
-    // make cell index of the particle to be removed as int_max,
-    // sort all arrays
-    // make sizes changed instead of resizing
-    // Could do this inside device itself
+    if (OP_DEBUG) printf("oppic_finalize_particle_move_cuda set [%s] with new size [%d]\n", set->name, set->size);
 }
+
+//****************************************

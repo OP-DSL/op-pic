@@ -100,7 +100,12 @@ int main(int argc, char **argv)
 
 
         auto start = std::chrono::system_clock::now();
-
+{
+    std::string f = std::string("K_") + std::to_string(ts + 1);
+    oppic_print_dat_to_txtfile(cell_determinants, f.c_str(), "cell_determinants.dat");
+    oppic_print_dat_to_txtfile(cell_volume, f.c_str(), "cell_volume.dat");
+    oppic_print_dat_to_txtfile(node_volume, f.c_str(), "node_volume.dat");
+}
         for (ts = 0; ts < num_iterations; ts++)
         {
 
@@ -127,7 +132,10 @@ int main(int argc, char **argv)
                 oppic_arg_gbl(&(bool_true), 1, "bool",   OP_READ),
                 oppic_arg_gbl(&dt,          1, "double", OP_READ)
             );
-
+{
+    std::string f = std::string("K_") + std::to_string(ts + 1);
+    oppic_print_dat_to_txtfile(part_weights, f.c_str(), "part_weights.dat");
+}
         // STEP X - Misc - make ion_density to zero ************************************
             oppic_par_loop_all__ResetIonDensity(
                 nodes_set,
@@ -194,6 +202,7 @@ int main(int argc, char **argv)
 
                 oppic_print_dat_to_txtfile(part_position, f.c_str(), "part_position.dat");
                 oppic_print_dat_to_txtfile(part_velocity, f.c_str(), "part_velocity.dat");
+                oppic_print_dat_to_txtfile(part_weights, f.c_str(), "part_weights.dat");
                 oppic_print_dat_to_txtfile(part_cell_index, f.c_str(), "part_cell_index.dat");
             }
             std::cout << "ts: " << ts << "\t num_particles: " << particles_set->size << std::endl;

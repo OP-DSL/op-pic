@@ -174,3 +174,5 @@ void sort_dat_according_to_index(oppic_dat dat, const thrust::device_vector<int>
     T* sorted_dat_dp = thrust::raw_pointer_cast(&sorted_dat_dv[0]);
     cudaMemcpy((void*)dat->data_d, (void*)sorted_dat_dp, (set_size * dat->size), cudaMemcpyDeviceToDevice);
 }
+
+void oppic_finalize_particle_move_cuda(oppic_set set);

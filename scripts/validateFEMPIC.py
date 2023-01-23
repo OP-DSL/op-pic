@@ -1,18 +1,29 @@
 precision = float(1e-15)
 printErrors = True
 
-filePath1 = "/ext-home/zl/phd/OP-PIC/app_fempic_oppic/files_genseq_wopet/"
-filePath2 = "/ext-home/zl/phd/OP-PIC/app_fempic_oppic/files/"
+filePath1 = "/ext-home/zl/phd/OP-PIC/app_fempic_oppic/files/"
+filePath2 = "/ext-home/zl/phd/OP-PIC/app_fempic_oppic/files_sq/"
 
 # filePath2 = "/ext-home/zl/phd/OP-PIC/backup_fempic/files/"
 
+# fileNames = [
+#     "F_50_node_charge_density.dat",
+#     "F_50_node_potential.dat",
+#     "F_50_cell_electric_field.dat",
+#     "F_50_part_position.dat",
+#     "F_50_part_velocity.dat",
+#     "F_50_part_cell_index.dat"]
+
 fileNames = [
-    "F_50_node_charge_density.dat",
-    "F_50_node_potential.dat",
-    "F_50_cell_electric_field.dat",
-    "F_50_part_position.dat",
-    "F_50_part_velocity.dat",
-    "F_50_part_cell_index.dat"]
+    "F_1_node_charge_density.dat",
+    "F_1_node_potential.dat",
+    "F_1_cell_electric_field.dat",
+    "K_1_cell_determinants.dat",
+    "K_1_part_weights.dat",
+    "F_1_part_position.dat",
+    "F_1_part_velocity.dat",
+    "F_1_part_cell_index.dat",
+    "F_1_part_weights.dat"]
 
 import csv
 
