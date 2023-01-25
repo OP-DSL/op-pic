@@ -257,15 +257,15 @@ void oppic_par_loop_all__WeightParticleToMeshNodes(
     {
         int map0idx    = ((int *)set->cell_index_dat->data)[i * set->cell_index_dat->dim];
 
-        const int map1idx = arg1.map_data[map0idx * arg1.dim + 0];
-        const int map2idx = arg1.map_data[map0idx * arg1.dim + 1];
-        const int map3idx = arg1.map_data[map0idx * arg1.dim + 2];
-        const int map4idx = arg1.map_data[map0idx * arg1.dim + 3];
+        const int map1idx = arg1.map_data[map0idx * arg1.map->dim + 0];
+        const int map2idx = arg1.map_data[map0idx * arg1.map->dim + 1];
+        const int map3idx = arg1.map_data[map0idx * arg1.map->dim + 2];
+        const int map4idx = arg1.map_data[map0idx * arg1.map->dim + 3];
 
-        const int map5idx = arg5.map_data[map0idx * arg5.dim + 0];
-        const int map6idx = arg5.map_data[map0idx * arg5.dim + 1];
-        const int map7idx = arg5.map_data[map0idx * arg5.dim + 2];
-        const int map8idx = arg5.map_data[map0idx * arg5.dim + 3];
+        const int map5idx = arg5.map_data[map0idx * arg5.map->dim + 0];
+        const int map6idx = arg5.map_data[map0idx * arg5.map->dim + 1];
+        const int map7idx = arg5.map_data[map0idx * arg5.map->dim + 2];
+        const int map8idx = arg5.map_data[map0idx * arg5.map->dim + 3];
 
         weight_particle_to_mesh_nodes__kernel(
             &((double*)arg0.data)[i * arg0.dim],    // part_lc

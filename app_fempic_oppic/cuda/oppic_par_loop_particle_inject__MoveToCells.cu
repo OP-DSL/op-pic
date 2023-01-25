@@ -180,17 +180,11 @@ __global__ void oppic_cuda_injected_MoveToCells(
         {
             printf("****************************** move_injected_particles_to_cell__kernel returned status[%d] for particle [%d]\n", move_status, n);
         }
+
+        // __syncthreads();
     }
 }
 
-    // oppic_set set,      // particles_set
-    // oppic_arg arg0,     // part_position,
-    // oppic_arg arg1,     // part_weights,
-    // oppic_arg arg2,     // part_cell_index,
-    // oppic_arg arg3,     // cell_volume,
-    // oppic_arg arg4,     // cell_det,
-    // oppic_arg arg5,     // cell_connectivity_map,
-    // oppic_arg arg6      // particles_injected 
 //*************************************************************************************************
 void oppic_par_loop_particle_inject__MoveToCells(
     oppic_set set,      // particles_set

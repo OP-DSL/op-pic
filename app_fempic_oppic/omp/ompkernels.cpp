@@ -310,15 +310,15 @@ void oppic_par_loop_all__WeightParticleToMeshNodes(
             {
                 int map0idx    = ((int *)set->cell_index_dat->data)[n * set->cell_index_dat->dim];
 
-                const int map1idx = arg1.map_data[map0idx * arg1.dim + 0];
-                const int map2idx = arg1.map_data[map0idx * arg1.dim + 1];
-                const int map3idx = arg1.map_data[map0idx * arg1.dim + 2];
-                const int map4idx = arg1.map_data[map0idx * arg1.dim + 3];
+                const int map1idx = arg1.map_data[map0idx * arg1.map->dim + 0];
+                const int map2idx = arg1.map_data[map0idx * arg1.map->dim + 1];
+                const int map3idx = arg1.map_data[map0idx * arg1.map->dim + 2];
+                const int map4idx = arg1.map_data[map0idx * arg1.map->dim + 3];
 
-                const int map5idx = arg5.map_data[map0idx * arg5.dim + 0];
-                const int map6idx = arg5.map_data[map0idx * arg5.dim + 1];
-                const int map7idx = arg5.map_data[map0idx * arg5.dim + 2];
-                const int map8idx = arg5.map_data[map0idx * arg5.dim + 3];
+                const int map5idx = arg5.map_data[map0idx * arg5.map->dim + 0];
+                const int map6idx = arg5.map_data[map0idx * arg5.map->dim + 1];
+                const int map7idx = arg5.map_data[map0idx * arg5.map->dim + 2];
+                const int map8idx = arg5.map_data[map0idx * arg5.map->dim + 3];
 
                 weight_particle_to_mesh_nodes__kernel(
                     &((double*)arg0.data)[n * arg0.dim],                    // part_lc
@@ -337,51 +337,5 @@ void oppic_par_loop_all__WeightParticleToMeshNodes(
 
     oppic_reduce_thread_level_data<double>(arg1); // For now, this does not work for particle dats due to resizing
 }
-
-// GIVES CORRECT RESULTS WITH BELOW, THE ABOVE HAS A PROBLEM WITH NODE_CHARGE_DENSITY
-// //*************************************************************************************************
-// void oppic_par_loop_all__WeightParticleToMeshNodes(
-//     oppic_set set,         // particles_set
-//     oppic_arg arg0,        // particle_lc
-//     oppic_arg arg1,        // node_charge_density
-//     oppic_arg arg2,        // node_charge_density
-//     oppic_arg arg3,        // node_charge_density
-//     oppic_arg arg4,        // node_charge_density
-//     oppic_arg arg5,        // node_volumes
-//     oppic_arg arg6,        // node_volumes
-//     oppic_arg arg7,        // node_volumes
-//     oppic_arg arg8         // node_volumes        
-//     )
-// { TRACE_ME;
-
-//     if (OP_DEBUG) printf("FEMPIC - oppic_par_loop_all__WeightParticleToMeshNodes num_particles %d\n", set->size);
-
-//     for (int i = 0; i < set->size; i++)
-//     {
-//         int map0idx    = ((int *)set->cell_index_dat->data)[i * set->cell_index_dat->dim];
-
-//         const int map1idx = arg1.map_data[map0idx * arg1.dim + 0];
-//         const int map2idx = arg1.map_data[map0idx * arg1.dim + 1];
-//         const int map3idx = arg1.map_data[map0idx * arg1.dim + 2];
-//         const int map4idx = arg1.map_data[map0idx * arg1.dim + 3];
-
-//         const int map5idx = arg5.map_data[map0idx * arg5.dim + 0];
-//         const int map6idx = arg5.map_data[map0idx * arg5.dim + 1];
-//         const int map7idx = arg5.map_data[map0idx * arg5.dim + 2];
-//         const int map8idx = arg5.map_data[map0idx * arg5.dim + 3];
-
-//         weight_particle_to_mesh_nodes__kernel(
-//             &((double*)arg0.data)[i * arg0.dim],    // part_lc
-//             &((double*)arg1.data)[map1idx],         // node_charge_den0
-//             &((double*)arg1.data)[map2idx],         // node_charge_den1
-//             &((double*)arg1.data)[map3idx],         // node_charge_den2
-//             &((double*)arg1.data)[map4idx],         // node_charge_den3
-//             &((double*)arg5.data)[map5idx],         // node_volume0
-//             &((double*)arg5.data)[map6idx],         // node_volume1
-//             &((double*)arg5.data)[map7idx],         // node_volume2
-//             &((double*)arg5.data)[map8idx]          // node_volume3
-//         );
-//     }
-// }
 
 //*************************************************************************************************

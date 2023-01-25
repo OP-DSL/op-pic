@@ -193,7 +193,7 @@ void oppic_particle_sort(oppic_set set)
 //****************************************
 void oppic_print_dat_to_txtfile(oppic_dat dat, const char *file_name_prefix, const char *file_name_suffix)
 {
-    op_download_dat(dat);
+    if (dat->dirty_hd == Dirty::Host) op_download_dat(dat);
 
     oppic_print_dat_to_txtfile_core(dat, file_name_prefix, file_name_suffix);
 }
@@ -201,7 +201,7 @@ void oppic_print_dat_to_txtfile(oppic_dat dat, const char *file_name_prefix, con
 //****************************************
 void oppic_dump_dat(oppic_dat dat)
 {
-    op_download_dat(dat);
+    if (dat->dirty_hd == Dirty::Host) 
 
     oppic_dump_dat_core(dat);
 }
