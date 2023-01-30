@@ -44,6 +44,7 @@ void oppic_par_loop_inject__InjectIons(
     oppic_arg arg4      // part_cell_index,
     )
 { TRACE_ME;
+    
     if (OP_DEBUG) printf("FEMPIC - oppic_par_loop_inject__InjectIons num_particles %d diff %d\n", set->size, set->diff);
 
     for (int i = (set->size - set->diff); i < set->size; i++)
@@ -79,26 +80,15 @@ void oppic_par_loop_particle_inject__MoveToCells(
     const int num_cells    = set->cells_set->size; 
 
     oppic_init_particle_move(set);
-// printf("ZZZZZZZZ start %d | end %d | arg6 dim %d | dt %+2.30lE | dim %d | %p\n", (set->size - set->diff), set->size, arg6.dim, *((double *)arg9.data), set->cell_index_dat->dim, set->cell_index_dat->data);
+
     for (int i = (set->size - set->diff); i < set->size; i++)
     {        
         int& map0idx    = ((int *)set->cell_index_dat->data)[i * set->cell_index_dat->dim];    // this is the cell_index
         int move_status = (int)NEED_MOVE;
 
-// std::string log = "ZZZ -> " + std::to_string(i) + " | " + std::to_string(map0idx) + " | " 
-// + std::to_string(((double*)arg6.data)[map0idx * arg6.dim])
-//  + " | " + std::to_string(((double*)arg6.data)[map0idx * arg6.dim + 1])
-//   + " | " + std::to_string(((double*)arg6.data)[map0idx * arg6.dim + 2]) + "\n";
-
-// std::string log1 = "", log2 = "";
 
         do
         {
-
-// log1 = "YYY -> " + std::to_string(i) + " | " + std::to_string(map0idx) + " | " 
-// + std::to_string(((double*)arg6.data)[map0idx * arg6.dim])
-//  + " | " + std::to_string(((double*)arg6.data)[map0idx * arg6.dim + 1])
-//   + " | " + std::to_string(((double*)arg6.data)[map0idx * arg6.dim + 2]) + "\n";
 
             move_injected_particles_to_cell__kernel(
                 &(move_status),
@@ -114,19 +104,8 @@ void oppic_par_loop_particle_inject__MoveToCells(
                 (double *)arg9.data                          // dt
             );                
 
-// log2 = "XXX -> " + std::to_string(i) + " | " + std::to_string(map0idx) + " | " 
-// + std::to_string(((double*)arg3.data)[i * arg3.dim])
-//  + " | " + std::to_string(((double*)arg3.data)[i * arg3.dim + 1])
-//   + " | " + std::to_string(((double*)arg3.data)[i * arg3.dim + 2]) + "\n";
-
         } while ((move_status == (int)NEED_MOVE) && (map0idx < num_cells));
 
-// if (((int *)arg2.data)[i * arg2.dim] == 103)
-// {
-//     printf(log.c_str());
-//     printf(log1.c_str());
-//     printf(log2.c_str());
-// }
         oppic_mark_particle_to_move(set, i, move_status);
     }
 
@@ -139,6 +118,7 @@ void oppic_par_loop_all__ResetIonDensity(
     oppic_arg arg0     // node_charge_density
     )
 { TRACE_ME;
+    
     if (OP_DEBUG) printf("FEMPIC - oppic_par_loop_all__ResetIonDensity num_nodes %d\n", set->size);
 
     for (int i=0; i<set->size; i++) 
@@ -156,6 +136,7 @@ void oppic_par_loop_all__WeightFieldsToParticles(
     oppic_arg arg1     // cell_electric_field
     )
 { TRACE_ME;
+    
     if (OP_DEBUG) printf("FEMPIC - oppic_par_loop_all__WeightFieldsToParticles num_particles %d\n", set->size);
 
     for (int i = 0; i < set->size; i++)
@@ -178,6 +159,7 @@ void oppic_par_loop_all__MoveParticles(
     oppic_arg arg3     // const dt 
     )
 { TRACE_ME;
+    
     if (OP_DEBUG) printf("FEMPIC - oppic_par_loop_all__MoveParticles num_particles %d\n", set->size);
 
     for (int i = 0; i < set->size; i++)

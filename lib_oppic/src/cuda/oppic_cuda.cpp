@@ -201,7 +201,7 @@ void oppic_print_dat_to_txtfile(oppic_dat dat, const char *file_name_prefix, con
 //****************************************
 void oppic_dump_dat(oppic_dat dat)
 {
-    if (dat->dirty_hd == Dirty::Host) 
+    if (dat->dirty_hd == Dirty::Host) op_download_dat(dat);
 
     oppic_dump_dat_core(dat);
 }
@@ -327,6 +327,8 @@ void op_upload_dat(oppic_dat dat)
     {
         cutilSafeCall(cudaMemcpy(dat->data_d, dat->data, set_size * dat->size, cudaMemcpyHostToDevice));
     }
+
+    dat->dirty_hd = Dirty::NotDirty;
 }
 
 // cudaMemcpyDeviceToHost
@@ -362,6 +364,8 @@ void op_download_dat(oppic_dat dat)
         cutilSafeCall(cudaMemcpy(dat->data, dat->data_d, set_size * dat->size,
                                 cudaMemcpyDeviceToHost));
     }
+
+    dat->dirty_hd == Dirty::NotDirty;
 }
 
 int op_mpi_halo_exchanges(oppic_set set, int nargs, oppic_arg *args) 
@@ -371,7 +375,6 @@ int op_mpi_halo_exchanges(oppic_set set, int nargs, oppic_arg *args)
         if (args[n].opt && args[n].argtype == OP_ARG_DAT && args[n].dat->dirty_hd == Dirty::Host) 
         {
             op_download_dat(args[n].dat);
-            args[n].dat->dirty_hd = Dirty::NotDirty;
         }
     }
     return set->size;
@@ -402,7 +405,6 @@ int op_mpi_halo_exchanges_cuda(oppic_set set, int nargs, oppic_arg *args)
         if (args[n].opt && args[n].argtype == OP_ARG_DAT && args[n].dat->dirty_hd == Dirty::Device) 
         { 
             op_upload_dat(args[n].dat);
-            args[n].dat->dirty_hd = Dirty::NotDirty;
         }
     }
     return set->size;

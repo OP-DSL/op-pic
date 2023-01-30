@@ -112,16 +112,16 @@ int main(int argc, char **argv)
             oppic_par_loop_particle(
                 move_injected_particles_to_cell__kernel, "move_particle_to_cell__kernel",
                 particles_set, OP_ITERATE_INJECTED,
-                oppic_arg_dat(part_position,                OP_WRITE),
-                oppic_arg_dat(part_weights,                 OP_WRITE),
-                oppic_arg_dat(part_cell_index,              OP_WRITE),
-                oppic_arg_dat(part_velocity,                OP_WRITE),
-                oppic_arg_dat(cell_volume,                  OP_READ, true),
-                oppic_arg_dat(cell_determinants,            OP_READ, true),
-                oppic_arg_dat(cell_electric_field,          OP_READ, true),
-                oppic_arg_dat(cell_to_cell_map,             OP_READ, true),
-                oppic_arg_gbl(&(bool_true), 1, "bool",      OP_READ),
-                oppic_arg_gbl(&dt,          1, "double",    OP_READ)
+                oppic_arg_dat(part_position,             OP_WRITE),
+                oppic_arg_dat(part_weights,              OP_WRITE),
+                oppic_arg_dat(part_cell_index,           OP_WRITE),
+                oppic_arg_dat(part_velocity,             OP_WRITE),
+                oppic_arg_dat(cell_volume,               OP_READ, true),
+                oppic_arg_dat(cell_determinants,         OP_READ, true),
+                oppic_arg_dat(cell_electric_field,       OP_READ, true),
+                oppic_arg_dat(cell_to_cell_map,          OP_READ, true),
+                oppic_arg_gbl(&(bool_true), 1, "bool",   OP_READ),
+                oppic_arg_gbl(&dt,          1, "double", OP_READ)
             );
 
         // STEP X - Misc - make ion_density to zero ************************************
@@ -166,10 +166,10 @@ int main(int argc, char **argv)
                 particles_set, OP_ITERATE_ALL,
                 oppic_arg_dat(part_weights,                              OP_READ),
                 oppic_arg_dat(part_cell_index,                           OP_READ),
-                oppic_arg_dat(node_charge_density, 0, cell_to_nodes_map, OP_INC, true),
-                oppic_arg_dat(node_charge_density, 1, cell_to_nodes_map, OP_INC, true),
-                oppic_arg_dat(node_charge_density, 2, cell_to_nodes_map, OP_INC, true),
-                oppic_arg_dat(node_charge_density, 3, cell_to_nodes_map, OP_INC, true),
+                oppic_arg_dat(node_charge_density, 0, cell_to_nodes_map, OP_INC,  true),
+                oppic_arg_dat(node_charge_density, 1, cell_to_nodes_map, OP_INC,  true),
+                oppic_arg_dat(node_charge_density, 2, cell_to_nodes_map, OP_INC,  true),
+                oppic_arg_dat(node_charge_density, 3, cell_to_nodes_map, OP_INC,  true),
                 oppic_arg_dat(node_volume,         0, cell_to_nodes_map, OP_READ, true),
                 oppic_arg_dat(node_volume,         1, cell_to_nodes_map, OP_READ, true),
                 oppic_arg_dat(node_volume,         2, cell_to_nodes_map, OP_READ, true),

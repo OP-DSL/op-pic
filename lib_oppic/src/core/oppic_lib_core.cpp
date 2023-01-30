@@ -623,7 +623,7 @@ void oppic_print_dat_to_txtfile_core(oppic_dat dat, const char *file_name_prefix
                     ((double *)dat->data)[i * dat->dim + j] = +0.0; 
                 }
 
-                if (fprintf(fp, ", %+2.20lE", ((double *)dat->data)[i * dat->dim + j]) < 0) 
+                if (fprintf(fp, ", %+2.30lE", ((double *)dat->data)[i * dat->dim + j]) < 0) 
                 {
                     printf("oppic_print_dat_to_txtfile_core error writing to %s\n", file_name.c_str());
                     exit(2);
@@ -689,7 +689,7 @@ void oppic_dump_dat_core(oppic_dat data)
             {
                 if (strncmp("double", data->type, 6) == 0)
                 {
-                    printf(", %+2.20lE", ((double *)data->data)[i * data->dim + j]);
+                    printf(", %+2.30lE", ((double *)data->data)[i * data->dim + j]);
                 } 
                 else if (strncmp("real", data->type, 4) == 0) 
                 {

@@ -100,12 +100,7 @@ int main(int argc, char **argv)
 
 
         auto start = std::chrono::system_clock::now();
-{
-    std::string f = std::string("K_") + std::to_string(ts + 1);
-    oppic_print_dat_to_txtfile(cell_determinants, f.c_str(), "cell_determinants.dat");
-    oppic_print_dat_to_txtfile(cell_volume, f.c_str(), "cell_volume.dat");
-    oppic_print_dat_to_txtfile(node_volume, f.c_str(), "node_volume.dat");
-}
+
         for (ts = 0; ts < num_iterations; ts++)
         {
 
@@ -121,7 +116,7 @@ int main(int argc, char **argv)
             );
             oppic_par_loop_particle_inject__MoveToCells(
                 particles_set,
-                oppic_arg_dat(part_position,             OP_WRITE),
+                oppic_arg_dat(part_position,             OP_READ),
                 oppic_arg_dat(part_weights,              OP_WRITE),
                 oppic_arg_dat(part_cell_index,           OP_WRITE),
                 oppic_arg_dat(part_velocity,             OP_INC),
@@ -132,10 +127,7 @@ int main(int argc, char **argv)
                 oppic_arg_gbl(&(bool_true), 1, "bool",   OP_READ),
                 oppic_arg_gbl(&dt,          1, "double", OP_READ)
             );
-{
-    std::string f = std::string("K_") + std::to_string(ts + 1);
-    oppic_print_dat_to_txtfile(part_weights, f.c_str(), "part_weights.dat");
-}
+
         // STEP X - Misc - make ion_density to zero ************************************
             oppic_par_loop_all__ResetIonDensity(
                 nodes_set,
@@ -159,7 +151,7 @@ int main(int argc, char **argv)
             );
             oppic_par_loop_particle_all__MoveToCells(
                 particles_set,
-                oppic_arg_dat(part_position,            OP_WRITE),
+                oppic_arg_dat(part_position,            OP_READ),
                 oppic_arg_dat(part_weights,             OP_WRITE),
                 oppic_arg_dat(part_cell_index,          OP_WRITE),
                 oppic_arg_dat(cell_volume,              OP_READ, true),
@@ -185,10 +177,10 @@ int main(int argc, char **argv)
         // STEP 5 - Solve field values on the mesh points ************************************
             //matrix | TODO : Try to make these in to kernels and use oppic_par_loop
             solver.SolveFields(
-                node_charge_density,
-                node_potential,
-                node_bnd_potential,
-                cell_electric_field
+                node_charge_density,    // OP_READ
+                node_potential,         // OP_WRITE
+                node_bnd_potential,     // OP_READ
+                cell_electric_field     // OP_WRITE
             );
 
         // STEP 6 - Log and/or print values to files ************************************ 

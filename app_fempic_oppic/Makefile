@@ -18,10 +18,12 @@ BIN = bin
 CPP        = mpicxx
 CPPFLAGS   = -std=c++11 -Wall -O0 -g -fopenmp -fPIC
 # CPPFLAGS   = -std=c++11 -Wall -O3 -fopenmp -fPIC
+# CPPFLAGS   = -std=c++11 -Wall -O0 -g -fopenmp -fPIC -debug all -traceback -fp-model strict -fp-model source -prec-div -prec-sqrt -ffloat-store
 MPICPP	   = mpicxx
-# MPIFLAGS   = -std=c++11 -Wall -O3 -fopenmp -fPIC
-NVCCFLAGS  = -O0 -g -m64 -Xptxas -dlcm=ca -Xptxas=-v -use_fast_math -arch=compute_70 -code=sm_70 -lineinfo
+MPIFLAGS   = -std=c++11 -Wall -O3 -fopenmp -fPIC
+# NVCCFLAGS  = -O0 -g -m64 -Xptxas -dlcm=ca -Xptxas=-v -use_fast_math -arch=compute_70 -code=sm_70 -lineinfo
 # NVCCFLAGS  = -O3 -m64 -Xptxas -dlcm=ca -Xptxas=-v -use_fast_math -arch=compute_70 -code=sm_70
+NVCCFLAGS  = -gencode arch=compute_70,code=sm_70 -O0 -g -m64 -Xptxas -dlcm=ca -Xptxas=-v
 
 CUDA_INSTALL_PATH = /opt/cuda/10.2.89/toolkit
 CUDA_INC   = -I$(CUDA_INSTALL_PATH)/include

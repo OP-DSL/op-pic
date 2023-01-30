@@ -15,12 +15,13 @@ LIB = lib
 OBJ = obj
 
 CPP        = mpicxx
-CPPFLAGS   = -std=c++11 -Wall -O0 -g -fopenmp -fPIC
+# CPPFLAGS   = -std=c++11 -Wall -O0 -g -fopenmp -fPIC
+CPPFLAGS   = -std=c++11 -Wall -O0 -g -fopenmp -fPIC -debug all -traceback -fp-model strict -fp-model source -prec-div -prec-sqrt
 # CPPFLAGS   = -std=c++11 -Wall -O3 -fopenmp -fPIC
 MPICPP	   = mpicxx
-MPIFLAGS   = -std=c++11 -Wall -O3 -fopenmp -fPIC
-NVCCFLAGS  = -O0 -g -m64 -Xptxas -dlcm=ca -Xptxas=-v -use_fast_math -arch=compute_70 -code=sm_70
-# NVCCFLAGS  = -O3 -m64 -Xptxas -dlcm=ca -Xptxas=-v -use_fast_math -arch=compute_70 -code=sm_70
+# MPIFLAGS   = -std=c++11 -Wall -O3 -fopenmp -fPIC
+# NVCCFLAGS  = -O0 -g -m64 -Xptxas -dlcm=ca -Xptxas=-v -use_fast_math -arch=compute_70 -code=sm_70
+NVCCFLAGS  = -O0 -g -m64 -Xptxas -dlcm=ca -Xptxas=-v -arch=compute_70 -code=sm_70 -prec-div=true -prec-sqrt=true -ftz=false
 
 CUDA_INSTALL_PATH = /opt/cuda/10.2.89/toolkit
 CUDA_INC   = -I$(CUDA_INSTALL_PATH)/include
