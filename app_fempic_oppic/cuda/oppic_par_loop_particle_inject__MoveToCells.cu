@@ -173,7 +173,7 @@ __global__ void oppic_cuda_injected_MoveToCells(
 
         if (move_status == (int)NEED_REMOVE) /*outside the mesh*/
         {  
-            printf("***** INJ : need to remove particle %d\n", n);            
+            if (OP_DEBUG) printf("***** INJ : need to remove particle %d\n", n);            
             particle_statuses[n] = (int)NEED_REMOVE;
         }
         else if (move_status != MOVE_DONE)

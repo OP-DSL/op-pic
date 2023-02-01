@@ -151,7 +151,7 @@ __global__ void oppic_cuda_all_MoveToCells(
 
         if (move_status == (int)NEED_REMOVE) /*outside the mesh*/
         {    
-            printf("***** move_all_particles_to_cell__kernel : Need to remove particle %d\n", n);
+            if (OP_DEBUG) printf("***** move_all_particles_to_cell__kernel : Need to remove particle %d\n", n);
             particle_statuses[n] = (int)NEED_REMOVE;
         }
         else if (move_status != MOVE_DONE)

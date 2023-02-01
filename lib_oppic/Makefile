@@ -15,20 +15,22 @@ LIB = lib
 OBJ = obj
 
 CPP        = mpicxx
-# CPPFLAGS   = -std=c++11 -Wall -O0 -g -fopenmp -fPIC
-CPPFLAGS   = -std=c++11 -Wall -O0 -g -fopenmp -fPIC -debug all -traceback -fp-model strict -fp-model source -prec-div -prec-sqrt
-# CPPFLAGS   = -std=c++11 -Wall -O3 -fopenmp -fPIC
 MPICPP	   = mpicxx
-# MPIFLAGS   = -std=c++11 -Wall -O3 -fopenmp -fPIC
-# NVCCFLAGS  = -O0 -g -m64 -Xptxas -dlcm=ca -Xptxas=-v -use_fast_math -arch=compute_70 -code=sm_70
-NVCCFLAGS  = -O0 -g -m64 -Xptxas -dlcm=ca -Xptxas=-v -arch=compute_70 -code=sm_70 -prec-div=true -prec-sqrt=true -ftz=false
+
+CPPFLAGS   = -std=c++11 -Wall -O3 -fopenmp -fPIC -fp-model strict -fp-model source -prec-div -prec-sqrt
+NVCCFLAGS  = -O3 -m64 -Xptxas -dlcm=ca -Xptxas=-v -arch=compute_70 -code=sm_70 -prec-div=true -prec-sqrt=true -ftz=false
+
+DEBUG ?= 0
+ifeq ($(DEBUG), 1)
+	CPPFLAGS   = -std=c++11 -Wall -O0 -g -fopenmp -fPIC -debug all -traceback -fp-model strict -fp-model source -prec-div -prec-sqrt
+	NVCCFLAGS  = -O0 -g -m64 -Xptxas -dlcm=ca -Xptxas=-v -arch=compute_70 -code=sm_70 -prec-div=true -prec-sqrt=true -ftz=false
+endif
 
 CUDA_INSTALL_PATH = /opt/cuda/10.2.89/toolkit
 CUDA_INC   = -I$(CUDA_INSTALL_PATH)/include
 CUDA_LIB   = -L$(CUDA_INSTALL_PATH)/lib64 -lcudart
 
 # PETSC_PATH = /ext-home/zl/lib_install/petsc-3.18.2-oneapi-2021.3-release
-# PETSC_PATH = /ext-home/zl/lib_install/petsc-3.18.2-oneapi-2021.3
 PETSC_PATH = /ext-home/zl/lib_install/petsc-3.18.3-oneapi-2021.3-cuda-rel
 PETSC_INC  = -I$(PETSC_PATH)/include
 PETSC_LIB  = -L$(PETSC_PATH)/lib -lpetsc

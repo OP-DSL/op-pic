@@ -455,7 +455,7 @@ void oppic_mark_particle_to_move_core(oppic_set set, int particle_index, int mov
 //****************************************
 void oppic_finalize_particle_move_core(oppic_set set)
 {
-    if (OP_DEBUG) printf("oppic_finalize_particle_move_core set [%s] with particle_remove_count [%d]\n", set->name, set->particle_remove_count);
+    if (OP_DEBUG) printf("oppic_finalize_particle_move_core set [%s] size[%d] with particle_remove_count [%d]\n", set->name, set->size, set->particle_remove_count);
 
     if (set->particle_remove_count <= 0) return;
 
@@ -463,13 +463,27 @@ void oppic_finalize_particle_move_core(oppic_set set)
     {
         oppic_dat current_oppic_dat = set->particle_dats->at(i);
         int removed_count = 0;
+        int skip_count = 0;
 
         for (int j = 0; j < set->size; j++)
         {
             if (set->particle_statuses[j] != NEED_REMOVE) continue;
 
             char* dat_removed_ptr = (char *)(current_oppic_dat->data + (j * current_oppic_dat->size));
-            char* dat_to_replace_ptr = (char *)(current_oppic_dat->data + ((set->size - removed_count - 1) * current_oppic_dat->size));
+
+            // BUG_FIX: (set->size - removed_count - 1) This index could marked to be removed, and if marked, 
+            // then there could be an array index out of bounds access error in the future
+            while (set->particle_statuses[set->size - removed_count - skip_count - 1] == NEED_REMOVE)
+            {
+                skip_count++;
+            }
+            if (j >= (set->size - removed_count - skip_count - 1)) 
+            {
+                if (OP_DEBUG) printf("oppic_finalize_particle_move_core Current Iteration index [%d] and replacement index %d; hence breaking\n", j, (set->size - removed_count - skip_count - 1));
+                break;
+            }
+
+            char* dat_to_replace_ptr = (char *)(current_oppic_dat->data + ((set->size - removed_count - skip_count - 1) * current_oppic_dat->size));
             
             // Get the last element and replace the hole // Not the Optimum!!!
             // TODO : Can we make NULL data and handle it in sort?
@@ -483,7 +497,9 @@ void oppic_finalize_particle_move_core(oppic_set set)
 
     set->size -= set->particle_remove_count;
     set->particle_remove_count = 0;
+
     free(set->particle_statuses);
+    set->particle_statuses = NULL;
 }
 
 //****************************************
@@ -711,6 +727,44 @@ void oppic_dump_dat_core(oppic_dat data)
     }
 
     fflush(stdout);
+}
+
+//****************************************
+void oppic_print_map_to_txtfile_core(oppic_map map, const char *file_name_prefix, const char *file_name_suffix)
+{ TRACE_ME;
+
+    const std::string file_name = std::string("files/") + file_name_prefix + "_" + file_name_suffix; 
+
+    FILE *fp;
+    if ((fp = fopen(file_name.c_str(), "w")) == NULL) 
+    {
+        printf("oppic_print_map_to_txtfile_core can't open file %s\n", file_name.c_str());
+        exit(2);
+    }
+
+    if (fprintf(fp, "%d %d\n", map->from->size, map->dim) < 0) 
+    {
+        printf("oppic_print_map_to_txtfile_core error writing to %s\n", file_name.c_str());
+        exit(2);
+    }
+
+    for (int i = 0; i < map->from->size; i++) 
+    {
+        fprintf(fp, "%d", i);
+
+        for (int j = 0; j < map->dim; j++) 
+        {
+            if (fprintf(fp, ", %d", ((int *)map->map)[i * map->dim + j]) < 0) 
+            {
+                printf("oppic_print_dat_to_txtfile_core error writing to %s\n", file_name.c_str());
+                exit(2);
+            }
+        }
+
+        fprintf(fp, "\n");
+    }
+    
+    fclose(fp);
 }
 
 //****************************************

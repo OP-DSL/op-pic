@@ -75,5 +75,6 @@ void oppic_remove_marked_particles_from_set(oppic_set set, std::vector<int>& idx
 void oppic_particle_sort(oppic_set set);
 
 void oppic_print_dat_to_txtfile(oppic_dat dat, const char *file_name_prefix, const char *file_name_suffix);
+void oppic_print_map_to_txtfile(oppic_map map, const char *file_name_prefix, const char *file_name_suffix);
 
 void oppic_dump_dat(oppic_dat data);

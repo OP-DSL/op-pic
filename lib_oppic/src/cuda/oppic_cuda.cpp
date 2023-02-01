@@ -199,6 +199,12 @@ void oppic_print_dat_to_txtfile(oppic_dat dat, const char *file_name_prefix, con
 }
 
 //****************************************
+void oppic_print_map_to_txtfile(oppic_map map, const char *file_name_prefix, const char *file_name_suffix)
+{
+    oppic_print_map_to_txtfile_core(map, file_name_prefix, file_name_suffix);
+}
+
+//****************************************
 void oppic_dump_dat(oppic_dat dat)
 {
     if (dat->dirty_hd == Dirty::Host) op_download_dat(dat);
