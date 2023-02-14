@@ -17,3 +17,5 @@ trace/
 bin/
 obj/
 lib/
+fempic_meshes/
+init/

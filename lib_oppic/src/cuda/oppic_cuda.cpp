@@ -91,6 +91,30 @@ oppic_dat oppic_decl_dat(oppic_set set, int dim, char const *type, int size, cha
 }
 
 //****************************************
+oppic_map oppic_decl_map_txt(oppic_set from, oppic_set to, int dim, const char* file_name, char const *name)
+{
+    int* map_data = (int*)oppic_load_from_file_core(file_name, from->size, dim, "int", sizeof(int));
+
+    oppic_map map = oppic_decl_map(from, to, dim, map_data, name);
+
+    free(map_data);
+
+    return map;
+}
+
+//****************************************
+oppic_dat oppic_decl_dat_txt(oppic_set set, int dim, char const *type, int size, const char* file_name, char const *name)
+{
+    char* dat_data = (char*)oppic_load_from_file_core(file_name, set->size, dim, type, size);
+
+    oppic_dat dat = oppic_decl_dat(set, dim, type, size, dat_data, name);
+
+    free(dat_data);
+
+    return dat;
+}
+
+//****************************************
 oppic_arg oppic_arg_dat(oppic_dat dat, int idx, oppic_map map, int dim, const char *typ, oppic_access acc, bool map_with_cell_index)
 {
     return oppic_arg_dat_core(dat, idx, map, dim, typ, acc, map_with_cell_index);
@@ -137,6 +161,18 @@ oppic_dat oppic_decl_particle_dat(oppic_set set, int dim, char const *type, int 
     oppic_dat dat = oppic_decl_particle_dat_core(set, dim, type, size, data, name, cell_index);
 
     oppic_create_copy_dat_to_device(dat);
+
+    return dat;
+}
+
+//****************************************
+oppic_dat oppic_decl_particle_dat_txt(oppic_set set, int dim, char const *type, int size, const char* file_name, char const *name, bool cell_index)
+{
+    char* dat_data = (char*)oppic_load_from_file_core(file_name, set->size, dim, type, size);
+
+    oppic_dat dat = oppic_decl_particle_dat_core(set, dim, type, size, dat_data, name, cell_index);
+
+    free(dat_data);
 
     return dat;
 }
@@ -310,7 +346,8 @@ void op_upload_dat(oppic_dat dat)
     if (!OP_hybrid_gpu)
         return;
     
-    size_t set_size = dat->set->size + dat->set->exec_size + dat->set->nonexec_size;
+    //Todo: can upload only upto set->size if particles are not removed
+    size_t set_size = dat->set->array_capacity;
     if (strstr(dat->type, ":soa") != NULL || (OP_auto_soa && dat->dim > 1)) 
     {
         char *temp_data = (char *)malloc(dat->size * set_size * sizeof(char));
@@ -343,7 +380,8 @@ void op_download_dat(oppic_dat dat)
     if (!OP_hybrid_gpu)
         return;
     
-    size_t set_size = dat->set->size + dat->set->exec_size + dat->set->nonexec_size;
+     //Todo: can download only upto set->size if particles are not removed
+    size_t set_size = dat->set->array_capacity;
     if (strstr(dat->type, ":soa") != NULL || (OP_auto_soa && dat->dim > 1)) 
     {
         if (OP_DEBUG) printf("op_download_dat SOA | %s\n", dat->name);

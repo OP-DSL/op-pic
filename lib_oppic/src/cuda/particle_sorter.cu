@@ -38,7 +38,7 @@ void particle_sort_cuda(oppic_set set)
 
     if (OP_DEBUG) printf("particle_sort_cuda set [%s]\n", set->name);
 
-    int set_size = set->size;
+    int set_size = set->array_capacity;
 
     thrust::device_ptr<int> cellIdx_dp = thrust::device_pointer_cast((int*)set->cell_index_dat->data_d);
     thrust::device_vector<int> cellIdx_dv(cellIdx_dp, cellIdx_dp + set_size);

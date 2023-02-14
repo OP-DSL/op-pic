@@ -236,3 +236,5 @@ extern int OP_auto_sort;
 extern std::vector<oppic_set> oppic_sets;
 extern std::vector<oppic_map> oppic_maps;
 extern std::vector<oppic_dat> oppic_dats;
+
+void* oppic_load_from_file_core(const char* file_name, int set_size, int dim, char const *type, int size);

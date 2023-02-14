@@ -459,41 +459,41 @@ void oppic_finalize_particle_move_core(oppic_set set)
 
     if (set->particle_remove_count <= 0) return;
 
-    for (int i = 0; i < (int)set->particle_dats->size(); i++)
-    {
-        oppic_dat current_oppic_dat = set->particle_dats->at(i);
-        int removed_count = 0;
-        int skip_count = 0;
+    // for (int i = 0; i < (int)set->particle_dats->size(); i++)
+    // {
+    //     oppic_dat current_oppic_dat = set->particle_dats->at(i);
+    //     int removed_count = 0;
+    //     int skip_count = 0;
 
-        for (int j = 0; j < set->size; j++)
-        {
-            if (set->particle_statuses[j] != NEED_REMOVE) continue;
+    //     for (int j = 0; j < set->size; j++)
+    //     {
+    //         if (set->particle_statuses[j] != NEED_REMOVE) continue;
 
-            char* dat_removed_ptr = (char *)(current_oppic_dat->data + (j * current_oppic_dat->size));
+    //         char* dat_removed_ptr = (char *)(current_oppic_dat->data + (j * current_oppic_dat->size));
 
-            // BUG_FIX: (set->size - removed_count - 1) This index could marked to be removed, and if marked, 
-            // then there could be an array index out of bounds access error in the future
-            while (set->particle_statuses[set->size - removed_count - skip_count - 1] == NEED_REMOVE)
-            {
-                skip_count++;
-            }
-            if (j >= (set->size - removed_count - skip_count - 1)) 
-            {
-                if (OP_DEBUG) printf("oppic_finalize_particle_move_core Current Iteration index [%d] and replacement index %d; hence breaking\n", j, (set->size - removed_count - skip_count - 1));
-                break;
-            }
+    //         // BUG_FIX: (set->size - removed_count - 1) This index could marked to be removed, and if marked, 
+    //         // then there could be an array index out of bounds access error in the future
+    //         while (set->particle_statuses[set->size - removed_count - skip_count - 1] == NEED_REMOVE)
+    //         {
+    //             skip_count++;
+    //         }
+    //         if (j >= (set->size - removed_count - skip_count - 1)) 
+    //         {
+    //             if (OP_DEBUG) printf("oppic_finalize_particle_move_core Current Iteration index [%d] and replacement index %d; hence breaking\n", j, (set->size - removed_count - skip_count - 1));
+    //             break;
+    //         }
 
-            char* dat_to_replace_ptr = (char *)(current_oppic_dat->data + ((set->size - removed_count - skip_count - 1) * current_oppic_dat->size));
+    //         char* dat_to_replace_ptr = (char *)(current_oppic_dat->data + ((set->size - removed_count - skip_count - 1) * current_oppic_dat->size));
             
-            // Get the last element and replace the hole // Not the Optimum!!!
-            // TODO : Can we make NULL data and handle it in sort?
-            memcpy(dat_removed_ptr, dat_to_replace_ptr, current_oppic_dat->size); 
+    //         // Get the last element and replace the hole // Not the Optimum!!!
+    //         // TODO : Can we make NULL data and handle it in sort?
+    //         memcpy(dat_removed_ptr, dat_to_replace_ptr, current_oppic_dat->size); 
 
-            removed_count++;
-        }
+    //         removed_count++;
+    //     }
 
-        // current_oppic_dat->data = (char *)realloc(current_oppic_dat->data, (size_t)(set->size - removed_count) * (size_t)current_oppic_dat->size);
-    }
+    //     // current_oppic_dat->data = (char *)realloc(current_oppic_dat->data, (size_t)(set->size - removed_count) * (size_t)current_oppic_dat->size);
+    // }
 
     set->size -= set->particle_remove_count;
     set->particle_remove_count = 0;
@@ -563,7 +563,7 @@ void oppic_particle_sort_core(oppic_set set)
     
     int* cell_index_data = (int*)set->cell_index_dat->data;
 
-    std::vector<size_t> idx_before_sort = sort_indexes(cell_index_data, set->size);
+    std::vector<size_t> idx_before_sort = sort_indexes(cell_index_data, set->array_capacity);
 
     for (int i = 0; i < (int)set->particle_dats->size(); i++)
     {    
@@ -571,37 +571,36 @@ void oppic_particle_sort_core(oppic_set set)
         char *new_data = (char *)malloc(set->array_capacity * dat->size);
         char *old_data = (char*)dat->data;
         
-        for (int j = 0; j < set->size; j++)
+        for (int j = 0; j < set->array_capacity; j++)
         {
             memcpy(new_data + j * dat->size, old_data + idx_before_sort[j] * dat->size, dat->size);
         }
 
         free(dat->data);
         dat->data = new_data;
-
-        if (dat->is_cell_index) // this is for double indirections
-        { 
-            int* cell_index_array = (int*)dat->data;
-            int current_cell_index = -1, previous_cell_index = -1;
-            std::map<int, part_index>& map = *(set->cell_index_v_part_index_map);
-            map.clear();
-
-            for (int j = 0; j < set->size; j++)
-            {    
-                current_cell_index = cell_index_array[j];
-            
-                if ((current_cell_index != previous_cell_index) && (current_cell_index >= 0))
-                {
-                    part_index& pi = map[current_cell_index];
-                    pi.start = j;
-
-                    if (previous_cell_index >= 0) map[previous_cell_index].end = (j - 1);
-                }
-                previous_cell_index = current_cell_index;
-            }
-            map[previous_cell_index].end = (set->size - 1);
-        }
     }
+
+    // this is for double indirections
+    // { 
+    //     int current_cell_index = -1, previous_cell_index = -1;
+    //     std::map<int, part_index>& map = *(set->cell_index_v_part_index_map);
+    //     map.clear();
+
+    //     for (int j = 0; j < set->size; j++)
+    //     {    
+    //         current_cell_index = cell_index_data[j];
+        
+    //         if ((current_cell_index != previous_cell_index) && (current_cell_index >= 0))
+    //         {
+    //             part_index& pi = map[current_cell_index];
+    //             pi.start = j;
+
+    //             if (previous_cell_index >= 0) map[previous_cell_index].end = (j - 1);
+    //         }
+    //         previous_cell_index = current_cell_index;
+    //     }
+    //     map[previous_cell_index].end = (set->size - 1);
+    // }
 }
 
 //****************************************
@@ -625,7 +624,7 @@ void oppic_print_dat_to_txtfile_core(oppic_dat dat, const char *file_name_prefix
 
     for (int i = 0; i < dat->set->size; i++) 
     {
-        fprintf(fp, "%d", i);
+        // fprintf(fp, "%d", i);
 
         for (int j = 0; j < dat->dim; j++) 
         {
@@ -639,7 +638,7 @@ void oppic_print_dat_to_txtfile_core(oppic_dat dat, const char *file_name_prefix
                     ((double *)dat->data)[i * dat->dim + j] = +0.0; 
                 }
 
-                if (fprintf(fp, ", %+2.30lE", ((double *)dat->data)[i * dat->dim + j]) < 0) 
+                if (fprintf(fp, " %+2.25lE", ((double *)dat->data)[i * dat->dim + j]) < 0) 
                 {
                     printf("oppic_print_dat_to_txtfile_core error writing to %s\n", file_name.c_str());
                     exit(2);
@@ -650,7 +649,7 @@ void oppic_print_dat_to_txtfile_core(oppic_dat dat, const char *file_name_prefix
                     strcmp(dat->type, "real(4)") == 0 ||
                     strcmp(dat->type, "real") == 0) 
             {
-                if (fprintf(fp, ", %+f", ((float *)dat->data)[i * dat->dim + j]) < 0) 
+                if (fprintf(fp, " %+f", ((float *)dat->data)[i * dat->dim + j]) < 0) 
                 {
                     printf("oppic_print_dat_to_txtfile_core error writing to %s\n", file_name.c_str());
                     exit(2);
@@ -662,7 +661,7 @@ void oppic_print_dat_to_txtfile_core(oppic_dat dat, const char *file_name_prefix
                         strcmp(dat->type, "integer") == 0 ||
                         strcmp(dat->type, "integer(4)") == 0) 
             {
-                if (fprintf(fp, ", %+d", ((int *)dat->data)[i * dat->dim + j]) < 0) 
+                if (fprintf(fp, " %+d", ((int *)dat->data)[i * dat->dim + j]) < 0) 
                 {
                     printf("oppic_print_dat_to_txtfile_core error writing to %s\n", file_name.c_str());
                     exit(2);
@@ -671,7 +670,7 @@ void oppic_print_dat_to_txtfile_core(oppic_dat dat, const char *file_name_prefix
             else if ((strcmp(dat->type, "long") == 0) ||
                         (strcmp(dat->type, "long:soa") == 0)) 
             {
-                if (fprintf(fp, ", %+ld", ((long *)dat->data)[i * dat->dim + j]) < 0) 
+                if (fprintf(fp, " %+ld", ((long *)dat->data)[i * dat->dim + j]) < 0) 
                 {
                     printf("oppic_print_dat_to_txtfile_core error writing to %s\n", file_name.c_str());
                     exit(2);
@@ -699,21 +698,21 @@ void oppic_dump_dat_core(oppic_dat data)
     {
         for (int i = 0; i < data->set->size; i++) 
         {
-            printf("%d", i);
+            // printf("%d", i);
 
             for (int j = 0; j < data->dim; j++) 
             {
                 if (strncmp("double", data->type, 6) == 0)
                 {
-                    printf(", %+2.30lE", ((double *)data->data)[i * data->dim + j]);
+                    printf(" %+2.25lE", ((double *)data->data)[i * data->dim + j]);
                 } 
                 else if (strncmp("real", data->type, 4) == 0) 
                 {
-                    printf(", %f", ((float *)data->data)[i * data->dim + j]);
+                    printf(" %f", ((float *)data->data)[i * data->dim + j]);
                 } 
                 else if (strncmp("integer", data->type, 7) == 0) 
                 {
-                    printf(", %d", data->data[i * data->dim + j]);
+                    printf(" %d", data->data[i * data->dim + j]);
                 } 
                 else 
                 {
@@ -750,13 +749,13 @@ void oppic_print_map_to_txtfile_core(oppic_map map, const char *file_name_prefix
 
     for (int i = 0; i < map->from->size; i++) 
     {
-        fprintf(fp, "%d", i);
+        // fprintf(fp, "%d", i);
 
         for (int j = 0; j < map->dim; j++) 
         {
-            if (fprintf(fp, ", %d", ((int *)map->map)[i * map->dim + j]) < 0) 
+            if (fprintf(fp, " %d", ((int *)map->map)[i * map->dim + j]) < 0) 
             {
-                printf("oppic_print_dat_to_txtfile_core error writing to %s\n", file_name.c_str());
+                printf("oppic_print_map_to_txtfile_core error writing to %s\n", file_name.c_str());
                 exit(2);
             }
         }
@@ -766,5 +765,114 @@ void oppic_print_map_to_txtfile_core(oppic_map map, const char *file_name_prefix
     
     fclose(fp);
 }
-
+ 
 //****************************************
+void* oppic_load_from_file_core(const char* file_name, int set_size, int dim, char const *type, int size)
+{
+    int fsize = -1, fdim = -1;
+    FILE *fp = NULL;
+    bool is_error = false;
+
+	if ((fp = fopen(file_name, "r")) == NULL)
+	{
+		printf("oppic_load_from_file - Unable to open file %s\n", file_name);
+		exit(-1);
+	}
+	if (fscanf(fp, "%d %d\n", &fsize, &fdim) != 2)
+	{
+		printf("oppic_load_from_file - error reading file data from %s\n", file_name);
+		exit(-1);
+	}
+    if (fsize < set_size || fdim != dim)
+    {
+		printf("oppic_load_from_file - dim and/or set_size issue in file %s\n", file_name);
+		exit(-1);        
+    }
+
+    void* data = (void *)malloc((size_t)(set_size * dim * size));
+
+    if (strncmp("double", type, 6) == 0)
+    {
+        double* d_data = (double*)data;
+
+        for (int n = 0; n < set_size; n++)
+        {
+            switch (dim)
+            {
+            case 1:
+                if (fscanf(fp, " %lf\n", &d_data[n * dim + 0]) != 1) 
+                    is_error = true;
+                break;
+            case 2:
+                if (fscanf(fp, " %lf %lf\n", &d_data[n * dim + 0], &d_data[n * dim + 1]) != 2) 
+                    is_error = true;
+                break;
+            case 3:
+                if (fscanf(fp, " %lf %lf %lf\n", &d_data[n * dim + 0], &d_data[n * dim + 1], &d_data[n * dim + 2]) != 3) 
+                    is_error = true;
+                break;
+            case 4:
+                if (fscanf(fp, " %lf %lf %lf %lf\n", &d_data[n * dim + 0], &d_data[n * dim + 1], &d_data[n * dim + 2], &d_data[n * dim + 3]) != 4) 
+                    is_error = true;
+                break;    
+            case 16:
+                if (fscanf(fp, " %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf\n", 
+                    &d_data[n * dim + 0], &d_data[n * dim + 1], &d_data[n * dim + 2], &d_data[n * dim + 3], &d_data[n * dim + 4], &d_data[n * dim + 5], &d_data[n * dim + 6], &d_data[n * dim + 7],
+                    &d_data[n * dim + 8], &d_data[n * dim + 9], &d_data[n * dim + 10], &d_data[n * dim + 11], &d_data[n * dim + 12], &d_data[n * dim + 13], &d_data[n * dim + 14], &d_data[n * dim + 15]) != 16) 
+                    is_error = true;
+                break;
+            default: is_error = true;
+            }
+                    
+            if (is_error)
+            {
+                printf("oppic_load_from_file - error reading from %s at index %d\n", file_name, n);
+                free(data);
+                exit(-1);
+            }
+        }
+    } 
+    else if (strncmp("int", type, 3) == 0) 
+    {
+        int* i_data = (int*)data;
+
+        for (int n = 0; n < set_size; n++)
+        {
+            switch (dim)
+            {
+            case 1:
+                if (fscanf(fp, " %d\n", &i_data[n * dim + 0]) != 1) 
+                    is_error = true;
+                break;
+            case 2:
+                if (fscanf(fp, " %d %d\n", &i_data[n * dim + 0], &i_data[n * dim + 1]) != 2) 
+                    is_error = true;
+                break;
+            case 3:
+                if (fscanf(fp, " %d %d %d\n", &i_data[n * dim + 0], &i_data[n * dim + 1], &i_data[n * dim + 2]) != 3) 
+                    is_error = true;
+                break;
+            case 4:
+                if (fscanf(fp, " %d %d %d %d\n", &i_data[n * dim + 0], &i_data[n * dim + 1], &i_data[n * dim + 2], &i_data[n * dim + 3]) != 4) 
+                    is_error = true;
+                break;    
+            default: is_error = true;
+            }
+                    
+            if (is_error)
+            {
+                printf("oppic_load_from_file - error reading from %s at index %d\n", file_name, n);
+                free(data);
+                exit(-1);
+            }
+        }
+    } 
+    else 
+    {
+        printf("oppic_load_from_file Unsupported type for loading %s\n", type);
+        free(data);
+        exit(0);
+    }
+
+    return data;
+}
