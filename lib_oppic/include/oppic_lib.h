@@ -40,8 +40,10 @@ void oppic_exit();
 oppic_set oppic_decl_set(int size, char const *name);
 
 oppic_map oppic_decl_map(oppic_set from, oppic_set to, int dim, int *imap, char const *name);
-
 oppic_dat oppic_decl_dat(oppic_set set, int dim, char const *type, int size, char *data, char const *name);
+
+oppic_map oppic_decl_map_txt(oppic_set from, oppic_set to, int dim, const char* file_name, char const *name);
+oppic_dat oppic_decl_dat_txt(oppic_set set, int dim, char const *type, int size, const char* file_name, char const *name);
 
 oppic_arg oppic_arg_dat(oppic_dat dat, int idx, oppic_map map, int dim, const char *typ, oppic_access acc, bool map_with_cell_index = false);
 oppic_arg oppic_arg_dat(oppic_dat dat, int idx, oppic_map map, oppic_access acc, bool map_with_cell_index = false);
@@ -56,6 +58,8 @@ oppic_set oppic_decl_particle_set(int size, char const *name, oppic_set cells_se
 oppic_set oppic_decl_particle_set(char const *name, oppic_set cells_set);
 
 oppic_dat oppic_decl_particle_dat(oppic_set set, int dim, char const *type, int size, char *data, char const *name, bool cell_index = false);
+
+oppic_dat oppic_decl_particle_dat_txt(oppic_set set, int dim, char const *type, int size, const char* file_name, char const *name, bool cell_index = false);
 
 void oppic_increase_particle_count(oppic_set particles_set, const int num_particles_to_insert);
 

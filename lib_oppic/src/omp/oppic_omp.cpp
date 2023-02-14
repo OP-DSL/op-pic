@@ -63,6 +63,30 @@ oppic_dat oppic_decl_dat(oppic_set set, int dim, char const *type, int size, cha
 }
 
 //****************************************
+oppic_map oppic_decl_map_txt(oppic_set from, oppic_set to, int dim, const char* file_name, char const *name)
+{
+    int* map_data = (int*)oppic_load_from_file_core(file_name, from->size, dim, "int", sizeof(int));
+
+    oppic_map map = oppic_decl_map(from, to, dim, map_data, name);
+
+    free(map_data);
+
+    return map;
+}
+
+//****************************************
+oppic_dat oppic_decl_dat_txt(oppic_set set, int dim, char const *type, int size, const char* file_name, char const *name)
+{
+    char* dat_data = (char*)oppic_load_from_file_core(file_name, set->size, dim, type, size);
+
+    oppic_dat dat = oppic_decl_dat(set, dim, type, size, dat_data, name);
+
+    free(dat_data);
+
+    return dat;
+}
+
+//****************************************
 oppic_arg oppic_arg_dat(oppic_dat dat, int idx, oppic_map map, int dim, const char *typ, oppic_access acc, bool map_with_cell_index)
 {
     return oppic_arg_dat_core(dat, idx, map, dim, typ, acc, map_with_cell_index);
@@ -107,6 +131,18 @@ oppic_set oppic_decl_particle_set(char const *name, oppic_set cells_set)
 oppic_dat oppic_decl_particle_dat(oppic_set set, int dim, char const *type, int size, char *data, char const *name, bool cell_index)
 {
     return oppic_decl_particle_dat_core(set, dim, type, size, data, name, cell_index);
+}
+
+//****************************************
+oppic_dat oppic_decl_particle_dat_txt(oppic_set set, int dim, char const *type, int size, const char* file_name, char const *name, bool cell_index)
+{
+    char* dat_data = (char*)oppic_load_from_file_core(file_name, set->size, dim, type, size);
+
+    oppic_dat dat = oppic_decl_particle_dat_core(set, dim, type, size, dat_data, name, cell_index);
+
+    free(dat_data);
+
+    return dat;
 }
 
 //****************************************
@@ -175,10 +211,21 @@ void oppic_finalize_particle_move_omp(oppic_set set)
     {
         oppic_dat current_oppic_dat = set->particle_dats->at(i);
         int removed_count = 0;
+        int skip_count = 0;
 
         for (int j = 0; j < set->size; j++)
         {
             if (set->particle_statuses[j] != NEED_REMOVE) continue;
+
+            while (set->particle_statuses[set->size - removed_count - skip_count - 1] == NEED_REMOVE)
+            {
+                skip_count++;
+            }
+            if (j >= (set->size - removed_count - skip_count - 1)) 
+            {
+                if (OP_DEBUG) printf("oppic_finalize_particle_move_core Current Iteration index [%d] and replacement index %d; hence breaking\n", j, (set->size - removed_count - skip_count - 1));
+                break;
+            }
 
             char* dat_removed_ptr = (char *)(current_oppic_dat->data + (j * current_oppic_dat->size));
             char* dat_to_replace_ptr = (char *)(current_oppic_dat->data + ((set->size - removed_count - 1) * current_oppic_dat->size));

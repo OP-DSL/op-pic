@@ -64,6 +64,30 @@ oppic_dat oppic_decl_dat(oppic_set set, int dim, char const *type, int size, cha
 }
 
 //****************************************
+oppic_map oppic_decl_map_txt(oppic_set from, oppic_set to, int dim, const char* file_name, char const *name)
+{
+    int* map_data = (int*)oppic_load_from_file_core(file_name, from->size, dim, "int", sizeof(int));
+
+    oppic_map map = oppic_decl_map(from, to, dim, map_data, name);
+
+    free(map_data);
+
+    return map;
+}
+
+//****************************************
+oppic_dat oppic_decl_dat_txt(oppic_set set, int dim, char const *type, int size, const char* file_name, char const *name)
+{
+    char* dat_data = (char*)oppic_load_from_file_core(file_name, set->size, dim, type, size);
+
+    oppic_dat dat = oppic_decl_dat(set, dim, type, size, dat_data, name);
+
+    free(dat_data);
+
+    return dat;
+}
+
+//****************************************
 oppic_arg oppic_arg_dat(oppic_dat dat, int idx, oppic_map map, int dim, const char *typ, oppic_access acc, bool map_with_cell_index)
 {
     return oppic_arg_dat_core(dat, idx, map, dim, typ, acc, map_with_cell_index);
@@ -108,6 +132,18 @@ oppic_set oppic_decl_particle_set(char const *name, oppic_set cells_set)
 oppic_dat oppic_decl_particle_dat(oppic_set set, int dim, char const *type, int size, char *data, char const *name, bool cell_index)
 {
     return oppic_decl_particle_dat_core(set, dim, type, size, data, name, cell_index);
+}
+
+//****************************************
+oppic_dat oppic_decl_particle_dat_txt(oppic_set set, int dim, char const *type, int size, const char* file_name, char const *name, bool cell_index)
+{
+    char* dat_data = (char*)oppic_load_from_file_core(file_name, set->size, dim, type, size);
+
+    oppic_dat dat = oppic_decl_particle_dat_core(set, dim, type, size, dat_data, name, cell_index);
+
+    free(dat_data);
+
+    return dat;
 }
 
 //****************************************
