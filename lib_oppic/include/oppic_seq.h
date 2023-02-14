@@ -1,3 +1,4 @@
+
 /* 
 BSD 3-Clause License
 
@@ -29,31 +30,20 @@ OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-// AUTO GENERATED CODE
+#pragma once
 
-#include "../fempic.h"
-#include <oppic_cuda.h>
+#include <oppic_lib.h>
 
-#define GPU_THREADS_PER_BLOCK 16
 
-__constant__ double OP_CONST_CUDA_charge = 1.602e-19;                // TODO : Make this OP2 constants
-__constant__ double OP_CONST_CUDA_mass   = (16 * 1.660538921e-27);   // TODO : Make this OP2 constants
-__constant__ double OP_CONST_CUDA_spwt   = 2e2;                      // TODO : Make this OP2 constants
+template <typename... T, typename... OPARG>
+void oppic_par_loop(void (*kernel)(T *...), char const *name, oppic_set set, oppic_iterate_type iter_type,
+                 OPARG... arguments) {
+    printf("oppic_par_loop %s iterate %s\n", name, (iter_type == OP_ITERATE_ALL) ? "all" : "only injected");
+}
 
-//*************************************************************************************************
+template <typename... T, typename... OPARG>
+void oppic_par_loop_particle(void (*kernel)(T *...), char const *name, oppic_set set, oppic_iterate_type iter_type,
+                 OPARG... arguments) {
+    printf("oppic_par_looppic_particle %s iterate %s\n", name, (iter_type == OP_ITERATE_ALL) ? "all" : "only injected");
+}
 
-#include "oppic_par_loop__InjectIons.cu"
-
-#include "oppic_par_loop_particle_inject__MoveToCells.cu"
-
-#include "oppic_par_loop__WeightFieldsToParticles.cu"
-
-#include "oppic_par_loop__MoveParticles.cu"
-
-#include "oppic_par_loop_particle_all__MoveToCells.cu"
-
-#include "oppic_par_loop__ResetIonDensity.cu"
-
-#include "oppic_par_loop__WeightParticleToMeshNodes.cu"
-
-//*************************************************************************************************

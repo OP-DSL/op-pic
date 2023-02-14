@@ -1,3 +1,4 @@
+
 /* 
 BSD 3-Clause License
 
@@ -29,31 +30,37 @@ OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-// AUTO GENERATED CODE
+#include <oppic_util.h>
+#include <chrono>
+#include <numeric>
 
-#include "../fempic.h"
-#include <oppic_cuda.h>
+//********************************************************************************
+std::string getTimeStr()
+{
+    std::time_t now = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
 
-#define GPU_THREADS_PER_BLOCK 16
+    std::string s(30, '\0');
+    std::strftime(&s[0], s.size(), "%Y_%m_%d__%H_%M_%S", std::localtime(&now));
+    return s;
+}
 
-__constant__ double OP_CONST_CUDA_charge = 1.602e-19;                // TODO : Make this OP2 constants
-__constant__ double OP_CONST_CUDA_mass   = (16 * 1.660538921e-27);   // TODO : Make this OP2 constants
-__constant__ double OP_CONST_CUDA_spwt   = 2e2;                      // TODO : Make this OP2 constants
+//********************************************************************************
+std::vector<size_t> sort_indexes(const int* cell_indices, int size) 
+{ 
+    std::vector<size_t> idx(size);
+    std::iota(idx.begin(), idx.end(), 0);
 
-//*************************************************************************************************
+    std::stable_sort(idx.begin(), idx.end(), 
+        [cell_indices](size_t i1, size_t i2) 
+        { 
+            return cell_indices[i1] < cell_indices[i2];
+        });
 
-#include "oppic_par_loop__InjectIons.cu"
+    return idx;
+}
 
-#include "oppic_par_loop_particle_inject__MoveToCells.cu"
+//********************************************************************************
 
-#include "oppic_par_loop__WeightFieldsToParticles.cu"
 
-#include "oppic_par_loop__MoveParticles.cu"
 
-#include "oppic_par_loop_particle_all__MoveToCells.cu"
-
-#include "oppic_par_loop__ResetIonDensity.cu"
-
-#include "oppic_par_loop__WeightParticleToMeshNodes.cu"
-
-//*************************************************************************************************
+//********************************************************************************

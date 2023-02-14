@@ -11,5 +11,9 @@ simpic_genseq*
 simpic_openmp*
 
 *.log
-files/
+files*/
+backup*
 trace/
+bin/
+obj/
+lib/

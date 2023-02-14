@@ -1,3 +1,4 @@
+
 /* 
 BSD 3-Clause License
 
@@ -29,65 +30,46 @@ OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-// AUTO GENERATED CODE
+#include <oppic_cuda.h>
 
 
-//user function
-//*************************************************************************************************
-__device__ void reset_ion_density__kernel_gpu(
-    double *ion_den
-)
-{
-    *ion_den = ZERO_double;
-}
-
-
-// CUDA kernel function
-//*************************************************************************************************
-__global__ void op_cuda_ResetIonDensity(
-    double *__restrict dir_arg0,
-    int start,
-    int end,
-    int set_size
-    ) 
-{
-    int tid = threadIdx.x + blockIdx.x * blockDim.x;
-
-    if (tid + start < end) 
-    {
-        int n = tid + start;
-
-        //user-supplied kernel call
-        reset_ion_density__kernel_gpu(
-            (dir_arg0 + n)
-        );
-    }
-}
-
-
-//*************************************************************************************************
-void op_par_loop_all__ResetIonDensity(
-    op_set set,     // nodes_set
-    op_arg arg0     // node_charge_density
-    )
+void particle_sort_cuda(oppic_set set)
 { TRACE_ME;
 
-    if (OP_DEBUG) printf("FEMPIC - op_par_loop_all__ResetIonDensity num_nodes %d\n", set->size);
+    if (OP_DEBUG) printf("particle_sort_cuda set [%s]\n", set->name);
 
-    int start = 0;
-    int end   = set->size;
+    int set_size = set->size;
 
-    if (end - start > 0) 
-    {
-        int nthread = GPU_THREADS_PER_BLOCK;
-        int nblocks = (end - start - 1) / nthread + 1;
+    thrust::device_ptr<int> cellIdx_dp = thrust::device_pointer_cast((int*)set->cell_index_dat->data_d);
+    thrust::device_vector<int> cellIdx_dv(cellIdx_dp, cellIdx_dp + set_size);
 
-        op_cuda_ResetIonDensity <<<nblocks, nthread>>> (
-            (double *)  arg0.data_d,
-            start, 
-            end, 
-            set->size);
-    }  
+    thrust::device_vector<int> i_dv(set_size);
+    thrust::sequence(i_dv.begin(), i_dv.end());
+
+    thrust::sort_by_key(cellIdx_dv.begin(), cellIdx_dv.end(), i_dv.begin());
+
+    for (int i = 0; i < (int)set->particle_dats->size(); i++)
+    {    
+        oppic_dat& dat = set->particle_dats->at(i);
+
+        if (!(strstr(dat->type, ":soa") != NULL || OP_auto_soa || (dat->dim > 1)))
+        {
+            std::cerr << "particle_sort_cuda not implemented for non SOA data structures [dat " << dat->name << "]" << std::endl;
+        }
+
+        if (strcmp(dat->type, "int") == 0)
+        {
+            sort_dat_according_to_index<int>(dat, i_dv, set_size);
+        }
+        else if (strcmp(dat->type, "double") == 0)
+        {
+            sort_dat_according_to_index<double>(dat, i_dv, set_size);
+        }
+        else
+        {
+            std::cerr << "particle_sort_cuda not implemented for data type " << dat->type << " [dat " << dat->name << "]" << std::endl;
+        }
+    }
+
+    cutilSafeCall(cudaDeviceSynchronize());
 }
-
-//*************************************************************************************************

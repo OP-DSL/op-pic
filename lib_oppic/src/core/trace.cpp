@@ -10,11 +10,13 @@
 
 #include "trace.h"
 #include <string>
+#include <chrono>
 
 #ifdef USE_TRACE
 
 double _walltime() {
-    return omp_get_wtime();
+    return std::chrono::duration_cast<std::chrono::duration<double, std::milli>>(std::chrono::high_resolution_clock::now().time_since_epoch()).count() / 1000;
+    // return omp_get_wtime();
 }
 
 Trace::Trace(std::string name_): name(std::move(name_)) {

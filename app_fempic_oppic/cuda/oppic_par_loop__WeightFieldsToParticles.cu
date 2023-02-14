@@ -53,7 +53,7 @@ __device__ void weight_fields_to_particles__kernel_gpu(
 
 // CUDA kernel function
 //*************************************************************************************************
-__global__ void op_cuda_WeightFieldsToParticles(
+__global__ void oppic_cuda_WeightFieldsToParticles(
     const int *__restrict d_cell_index,
     double *__restrict dir_arg0,
     const double *__restrict ind_arg1,
@@ -80,37 +80,50 @@ __global__ void op_cuda_WeightFieldsToParticles(
 
 
 //*************************************************************************************************
-void op_par_loop_all__WeightFieldsToParticles(
-    op_set set,     // particles_set
-    op_arg arg0,    // particle_ef
-    op_arg arg1     // cell_electric_field
+void oppic_par_loop_all__WeightFieldsToParticles(
+    oppic_set set,     // particles_set
+    oppic_arg arg0,    // particle_ef
+    oppic_arg arg1     // cell_electric_field
     )
 { TRACE_ME;
 
-    if (OP_DEBUG) printf("FEMPIC - op_par_loop_all__WeightFieldsToParticles num_particles %d\n", set->size);
+    if (OP_DEBUG) printf("FEMPIC - oppic_par_loop_all__WeightFieldsToParticles num_particles %d\n", set->size);
 
-    opDat0_WeightFieldsToParticles_stride_OPPIC_HOST = arg0.dat->set->size;
-    opDat1_WeightFieldsToParticles_stride_OPPIC_HOST = arg1.dat->set->size;
-    
-    cudaMemcpyToSymbol(opDat0_WeightFieldsToParticles_stride_OPPIC_CONSTANT, &opDat0_WeightFieldsToParticles_stride_OPPIC_HOST, sizeof(int));
-    cudaMemcpyToSymbol(opDat1_WeightFieldsToParticles_stride_OPPIC_CONSTANT, &opDat1_WeightFieldsToParticles_stride_OPPIC_HOST, sizeof(int));
+    int nargs = 2;
+    oppic_arg args[2];
 
-    int start = 0;
-    int end   = set->size;
+    args[0] = arg0;
+    args[1] = arg1;
 
-    if (end - start > 0) 
+    int set_size = op_mpi_halo_exchanges_grouped(set, nargs, args, Device_GPU);
+    if (set_size > 0) 
     {
-        int nthread = GPU_THREADS_PER_BLOCK;
-        int nblocks = (end - start - 1) / nthread + 1;
+        opDat0_WeightFieldsToParticles_stride_OPPIC_HOST = arg0.dat->set->size;
+        opDat1_WeightFieldsToParticles_stride_OPPIC_HOST = arg1.dat->set->size;
+        
+        cudaMemcpyToSymbol(opDat0_WeightFieldsToParticles_stride_OPPIC_CONSTANT, &opDat0_WeightFieldsToParticles_stride_OPPIC_HOST, sizeof(int));
+        cudaMemcpyToSymbol(opDat1_WeightFieldsToParticles_stride_OPPIC_CONSTANT, &opDat1_WeightFieldsToParticles_stride_OPPIC_HOST, sizeof(int));
 
-        op_cuda_WeightFieldsToParticles <<<nblocks, nthread>>> (
-            (int *)     set->cell_index_dat->data_d,
-            (double *)  arg0.data_d,
-            (double *)  arg1.data_d,
-            start, 
-            end, 
-            set->size);
+        int start = 0;
+        int end   = set->size;
+
+        if (end - start > 0) 
+        {
+            int nthread = GPU_THREADS_PER_BLOCK;
+            int nblocks = (end - start - 1) / nthread + 1;
+
+            oppic_cuda_WeightFieldsToParticles <<<nblocks, nthread>>> (
+                (int *)     set->cell_index_dat->data_d,
+                (double *)  arg0.data_d,
+                (double *)  arg1.data_d,
+                start, 
+                end, 
+                set->size);
+        }
     }
+
+    op_mpi_set_dirtybit_cuda(nargs, args);
+    cutilSafeCall(cudaDeviceSynchronize());
 }
 
 //*************************************************************************************************

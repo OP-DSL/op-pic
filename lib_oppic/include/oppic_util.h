@@ -1,3 +1,4 @@
+
 /* 
 BSD 3-Clause License
 
@@ -29,31 +30,24 @@ OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-// AUTO GENERATED CODE
+#pragma once
 
-#include "../fempic.h"
-#include <oppic_cuda.h>
+#include <vector>
+#include <algorithm>
+#include <string>
+#include <cstring>
 
-#define GPU_THREADS_PER_BLOCK 16
+//********************************************************************************
+std::string getTimeStr();
 
-__constant__ double OP_CONST_CUDA_charge = 1.602e-19;                // TODO : Make this OP2 constants
-__constant__ double OP_CONST_CUDA_mass   = (16 * 1.660538921e-27);   // TODO : Make this OP2 constants
-__constant__ double OP_CONST_CUDA_spwt   = 2e2;                      // TODO : Make this OP2 constants
+//********************************************************************************
+inline char *copy_str(char const *src) 
+{
+    char *dest = (char *)malloc((strlen(src) + 1) * sizeof(char));
+    return strncpy(dest, src, (strlen(src) + 1));
+}
 
-//*************************************************************************************************
+//********************************************************************************
+std::vector<size_t> sort_indexes(const int* cell_indices, int size);
 
-#include "oppic_par_loop__InjectIons.cu"
-
-#include "oppic_par_loop_particle_inject__MoveToCells.cu"
-
-#include "oppic_par_loop__WeightFieldsToParticles.cu"
-
-#include "oppic_par_loop__MoveParticles.cu"
-
-#include "oppic_par_loop_particle_all__MoveToCells.cu"
-
-#include "oppic_par_loop__ResetIonDensity.cu"
-
-#include "oppic_par_loop__WeightParticleToMeshNodes.cu"
-
-//*************************************************************************************************
+//********************************************************************************

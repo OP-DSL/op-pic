@@ -1,6 +1,7 @@
 // TODO : To be converted to API with kernels
 
-#include "fempic.h"
+#include "../fempic.h"
+#include <oppic_cuda.h>
 
 //*************************************************************************************************
 /*FESolver*/
@@ -741,6 +742,11 @@ void FESolver::SolveFields(
     oppic_dat boundary_potential_dat,
     oppic_dat electric_field_dat)
 {
+    op_download_dat(ion_den_dat);
+    // op_download_dat(field_potential_dat); // THESE ARE WRITES, HENCE NO NEED
+    // op_download_dat(boundary_potential_dat); // THESE ARE FIXED, DO NOT CHANGE IN HOST
+    // op_download_dat(electric_field_dat); // THESE ARE WRITES, HENCE NO NEED
+
     const double *ion_den      = (double *)ion_den_dat->data;
     double *field_potential    = (double *)field_potential_dat->data;
     double *boundary_potential = (double *)boundary_potential_dat->data;
@@ -750,6 +756,9 @@ void FESolver::SolveFields(
     computePhi(ion_den, field_potential, boundary_potential); 
 
     updateElementElectricField(field_potential, electric_field);
+
+    field_potential_dat->dirty_hd = Dirty::Device;
+    electric_field_dat->dirty_hd = Dirty::Device;
 }
 
 //*************************************************************************************************

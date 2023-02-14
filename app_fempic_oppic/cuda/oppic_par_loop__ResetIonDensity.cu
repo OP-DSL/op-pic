@@ -31,29 +31,75 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 // AUTO GENERATED CODE
 
-#include "../fempic.h"
-#include <oppic_cuda.h>
 
-#define GPU_THREADS_PER_BLOCK 16
+//user function
+//*************************************************************************************************
+__device__ void reset_ion_density__kernel_gpu(
+    double *ion_den
+)
+{
+    *ion_den = ZERO_double;
+}
 
-__constant__ double OP_CONST_CUDA_charge = 1.602e-19;                // TODO : Make this OP2 constants
-__constant__ double OP_CONST_CUDA_mass   = (16 * 1.660538921e-27);   // TODO : Make this OP2 constants
-__constant__ double OP_CONST_CUDA_spwt   = 2e2;                      // TODO : Make this OP2 constants
+
+// CUDA kernel function
+//*************************************************************************************************
+__global__ void oppic_cuda_ResetIonDensity(
+    double *__restrict dir_arg0,
+    int start,
+    int end,
+    int set_size
+    ) 
+{
+    int tid = threadIdx.x + blockIdx.x * blockDim.x;
+
+    if (tid + start < end) 
+    {
+        int n = tid + start;
+
+        //user-supplied kernel call
+        reset_ion_density__kernel_gpu(
+            (dir_arg0 + n)
+        );
+    }
+}
+
 
 //*************************************************************************************************
+void oppic_par_loop_all__ResetIonDensity(
+    oppic_set set,     // nodes_set
+    oppic_arg arg0     // node_charge_density
+    )
+{ TRACE_ME;
 
-#include "oppic_par_loop__InjectIons.cu"
+    if (OP_DEBUG) printf("FEMPIC - oppic_par_loop_all__ResetIonDensity num_nodes %d\n", set->size);
 
-#include "oppic_par_loop_particle_inject__MoveToCells.cu"
+    int nargs = 1;
+    oppic_arg args[1];
 
-#include "oppic_par_loop__WeightFieldsToParticles.cu"
+    args[0] = arg0;
 
-#include "oppic_par_loop__MoveParticles.cu"
+    int set_size = op_mpi_halo_exchanges_grouped(set, nargs, args, Device_GPU);
+    if (set_size > 0) 
+    {
+        int start = 0;
+        int end   = set->size;
 
-#include "oppic_par_loop_particle_all__MoveToCells.cu"
+        if (end - start > 0) 
+        {
+            int nthread = GPU_THREADS_PER_BLOCK;
+            int nblocks = (end - start - 1) / nthread + 1;
 
-#include "oppic_par_loop__ResetIonDensity.cu"
+            oppic_cuda_ResetIonDensity <<<nblocks, nthread>>> (
+                (double *)  arg0.data_d,
+                start, 
+                end, 
+                set->size);
+        }  
+    }
 
-#include "oppic_par_loop__WeightParticleToMeshNodes.cu"
+    op_mpi_set_dirtybit_cuda(nargs, args);
+    cutilSafeCall(cudaDeviceSynchronize());
+}
 
 //*************************************************************************************************
