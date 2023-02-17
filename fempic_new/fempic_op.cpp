@@ -88,29 +88,8 @@ int main(int argc, char **argv)
 
         mesh.DeleteValues();
 
-        {
-            oppic_print_map_to_txtfile(cell_to_nodes_map  , "i", "cell_to_nodes_map.dat");
-            oppic_print_map_to_txtfile(cell_to_cell_map   , "i", "cell_to_cell_map.dat");
-            oppic_print_map_to_txtfile(iface_to_nodes_map , "i", "iface_to_nodes_map.dat");
-            oppic_print_map_to_txtfile(iface_to_cell_map  , "i", "iface_to_cell_map.dat");
-
-            oppic_print_dat_to_txtfile(node_charge_density, "i", "node_charge_density.dat");
-            oppic_print_dat_to_txtfile(node_potential     , "i", "node_potential.dat");
-            oppic_print_dat_to_txtfile(cell_electric_field, "i", "cell_electric_field.dat");
-
-            oppic_print_dat_to_txtfile(iface_v_normal,      "i", "iface_v_normal.dat");
-            oppic_print_dat_to_txtfile(iface_u_normal,      "i", "iface_u_normal.dat");
-            oppic_print_dat_to_txtfile(iface_normal,        "i", "iface_normal.dat");
-            oppic_print_dat_to_txtfile(iface_area,          "i", "iface_area.dat");
-            oppic_print_dat_to_txtfile(iface_inj_part_dist, "i", "iface_inj_part_dist.dat");
-
-            oppic_print_dat_to_txtfile(part_position,      "i", "part_position.dat");
-            oppic_print_dat_to_txtfile(part_velocity,      "i", "part_velocity.dat");
-            oppic_print_dat_to_txtfile(part_lc,            "i", "part_lc.dat");
-            oppic_print_dat_to_txtfile(part_mesh_relation, "i", "part_mesh_relation.dat");
-        }
-
         auto start = std::chrono::system_clock::now();
+        
         // max_iter = 1;
         for (ts = 0; ts < max_iter; ts++)
         {
@@ -196,3 +175,25 @@ int main(int argc, char **argv)
 }
 
 //*************************************************************************************************
+
+// {
+//     oppic_print_map_to_txtfile(cell_to_nodes_map  , "i", "cell_to_nodes_map.dat");
+//     oppic_print_map_to_txtfile(cell_to_cell_map   , "i", "cell_to_cell_map.dat");
+//     oppic_print_map_to_txtfile(iface_to_nodes_map , "i", "iface_to_nodes_map.dat");
+//     oppic_print_map_to_txtfile(iface_to_cell_map  , "i", "iface_to_cell_map.dat");
+
+//     oppic_print_dat_to_txtfile(node_charge_density, "i", "node_charge_density.dat");
+//     oppic_print_dat_to_txtfile(node_potential     , "i", "node_potential.dat");
+//     oppic_print_dat_to_txtfile(cell_electric_field, "i", "cell_electric_field.dat");
+
+//     oppic_print_dat_to_txtfile(iface_v_normal,      "i", "iface_v_normal.dat");
+//     oppic_print_dat_to_txtfile(iface_u_normal,      "i", "iface_u_normal.dat");
+//     oppic_print_dat_to_txtfile(iface_normal,        "i", "iface_normal.dat");
+//     oppic_print_dat_to_txtfile(iface_area,          "i", "iface_area.dat");
+//     oppic_print_dat_to_txtfile(iface_inj_part_dist, "i", "iface_inj_part_dist.dat");
+
+//     oppic_print_dat_to_txtfile(part_position,      "i", "part_position.dat");
+//     oppic_print_dat_to_txtfile(part_velocity,      "i", "part_velocity.dat");
+//     oppic_print_dat_to_txtfile(part_lc,            "i", "part_lc.dat");
+//     oppic_print_dat_to_txtfile(part_mesh_relation, "i", "part_mesh_relation.dat");
+// }
