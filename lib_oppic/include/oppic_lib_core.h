@@ -36,6 +36,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <map>
 #include <iostream>
 #include <trace.h>
+#include <Params.h>
 #include <oppic_util.h>
 #include <cstring>
 
@@ -68,11 +69,11 @@ enum oppic_iterate_type
     OP_ITERATE_INJECTED,
 };
 
-enum MoveStatus 
+enum move_status 
 {
-    MOVE_DONE = 0,
-    NEED_MOVE,
-    NEED_REMOVE,
+    OPP_MOVE_DONE = 0,
+    OPP_NEED_MOVE,
+    OPP_NEED_REMOVE,
 };
 
 enum DeviceType
@@ -179,7 +180,7 @@ struct oppic_dat_core {
 //*************************************************************************************************
 // oppic API calls
 
-void oppic_init_core(int argc, char **argv, int diags);
+void oppic_init_core(int argc, char **argv, opp::Params* params);
 void oppic_exit_core();
 
 void oppic_set_args_core(char *argv);
@@ -193,10 +194,12 @@ oppic_dat oppic_decl_dat_core(oppic_set set, int dim, char const *type, int size
 oppic_arg oppic_arg_dat_core(oppic_dat dat, int idx, oppic_map map, int dim, const char *typ, oppic_access acc, bool map_with_cell_index = false);
 oppic_arg oppic_arg_dat_core(oppic_dat dat, int idx, oppic_map map, oppic_access acc, bool map_with_cell_index = false);
 oppic_arg oppic_arg_dat_core(oppic_dat dat, oppic_access acc, bool map_with_cell_index = false);
-oppic_arg oppic_arg_dat_core(oppic_map map, oppic_access acc, bool map_with_cell_index = false);
+oppic_arg oppic_arg_dat_core(oppic_map data_map, oppic_access acc, bool map_with_cell_index = false);
+oppic_arg oppic_arg_dat_core(oppic_map data_map, int idx, oppic_map map, oppic_access acc, bool map_with_cell_index = false);
 
 // template <class T> oppic_arg oppic_arg_gbl(T *data, int dim, char const *typ, oppic_access acc);
 oppic_arg oppic_arg_gbl_core(double *data, int dim, char const *typ, oppic_access acc);
+oppic_arg oppic_arg_gbl_core(int *data, int dim, char const *typ, oppic_access acc);
 oppic_arg oppic_arg_gbl_core(const bool *data, int dim, char const *typ, oppic_access acc);
 
 oppic_set oppic_decl_particle_set_core(int size, char const *name, oppic_set cells_set);
@@ -236,5 +239,7 @@ extern int OP_auto_sort;
 extern std::vector<oppic_set> oppic_sets;
 extern std::vector<oppic_map> oppic_maps;
 extern std::vector<oppic_dat> oppic_dats;
+
+extern opp::Params* opp_params;
 
 void* oppic_load_from_file_core(const char* file_name, int set_size, int dim, char const *type, int size);

@@ -50,13 +50,17 @@ int OP_auto_soa        = 0;
 int OP_part_alloc_mult = 1;
 int OP_auto_sort       = 1;
 
+opp::Params* opp_params = nullptr;
+
 //****************************************
-void oppic_init_core(int argc, char **argv, int diags) 
+void oppic_init_core(int argc, char **argv, opp::Params* params) 
 {
     oppic_sets.clear();
     oppic_maps.clear();
     oppic_dats.clear();
 
+    opp_params = params;
+    
     for (int n = 1; n < argc; n++) 
     {
         oppic_set_args_core(argv[n]);
@@ -279,21 +283,27 @@ oppic_arg oppic_arg_dat_core(oppic_dat dat, int idx, oppic_map map, int dim, con
     return arg;
 }
 
-oppic_arg oppic_arg_dat_core(oppic_map map, oppic_access acc, bool map_with_cell_index)
+oppic_arg oppic_arg_dat_core(oppic_map data_map, oppic_access acc, bool map_with_cell_index)
+{
+    return oppic_arg_dat_core(data_map, -1, NULL, acc, map_with_cell_index);
+}
+
+// arg.map has the map, can change to mapping data map if required
+oppic_arg oppic_arg_dat_core(oppic_map data_map, int idx, oppic_map map, oppic_access acc, bool map_with_cell_index)
 {
     oppic_arg arg;
     arg.argtype     = OP_ARG_MAP;
 
     arg.dat         = NULL;
     arg.map         = map;
-    arg.dim         = map->dim;
-    arg.idx         = -1;
+    arg.dim         = data_map->dim;
+    arg.idx         = idx;
     
-    arg.size        = map->from->size;
-    arg.data        = (char*)map->map;
-    arg.data_d      = (char*)map->map_d;
-    arg.map_data    = NULL;
-    arg.map_data_d  = NULL;
+    arg.size        = data_map->from->size;
+    arg.data        = (char*)data_map->map;
+    arg.data_d      = (char*)data_map->map_d;
+    arg.map_data    = ((map == NULL) ? NULL : map->map);
+    arg.map_data_d  = ((map == NULL) ? NULL : map->map_d);
 
     arg.type        = "int";
     arg.acc         = acc;
@@ -312,6 +322,24 @@ oppic_arg oppic_arg_gbl_core(double *data, int dim, char const *typ, oppic_acces
     arg.dim         = dim;
     arg.idx         = -1;
     arg.size        = dim * sizeof(double);
+    arg.data        = (char*)data;
+    arg.map_data    = NULL;
+    arg.type        = typ;
+    arg.acc         = acc;
+    
+    return arg;
+}
+
+oppic_arg oppic_arg_gbl_core(int *data, int dim, char const *typ, oppic_access acc)
+{
+    oppic_arg arg;
+    arg.argtype     = OP_ARG_GBL;
+
+    arg.dat         = NULL;
+    arg.map         = NULL;
+    arg.dim         = dim;
+    arg.idx         = -1;
+    arg.size        = dim * sizeof(int);
     arg.data        = (char*)data;
     arg.map_data    = NULL;
     arg.type        = typ;
@@ -439,14 +467,14 @@ void oppic_init_particle_move_core(oppic_set set)
 //****************************************
 void oppic_mark_particle_to_move_core(oppic_set set, int particle_index, int move_status)
 {
-    if (move_status == (int)NEED_REMOVE) /*outside the mesh*/
+    if (move_status == (int)OPP_NEED_REMOVE) /*outside the mesh*/
     {  
         if (OP_DEBUG) printf("oppic_mark_particle_to_move_core set [%s] particle_index [%d]\n", set->name, particle_index);
 
-        set->particle_statuses[particle_index] = NEED_REMOVE;
+        set->particle_statuses[particle_index] = OPP_NEED_REMOVE;
         (set->particle_remove_count)++;
     }
-    else if (move_status != (int)MOVE_DONE) 
+    else if (move_status != (int)OPP_MOVE_DONE) 
     {
         std::cerr << "oppic_mark_particle_to_move_core Failed to find the cell - Particle Index " << particle_index << std::endl;
     }

@@ -34,7 +34,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <oppic_lib_core.h>
 
-void oppic_init(int argc, char **argv, int diags);
+void oppic_init(int argc, char **argv, opp::Params* params);
 void oppic_exit();
 
 oppic_set oppic_decl_set(int size, char const *name);
@@ -49,9 +49,11 @@ oppic_arg oppic_arg_dat(oppic_dat dat, int idx, oppic_map map, int dim, const ch
 oppic_arg oppic_arg_dat(oppic_dat dat, int idx, oppic_map map, oppic_access acc, bool map_with_cell_index = false);
 oppic_arg oppic_arg_dat(oppic_dat dat, oppic_access acc, bool map_with_cell_index = false);
 oppic_arg oppic_arg_dat(oppic_map map, oppic_access acc, bool map_with_cell_index = false);
+oppic_arg oppic_arg_dat(oppic_map data_map, int idx, oppic_map map, oppic_access acc, bool map_with_cell_index = false);
 
 // template <class T> oppic_arg oppic_arg_gbl(T *data, int dim, char const *typ, oppic_access acc);
 oppic_arg oppic_arg_gbl(double *data, int dim, char const *typ, oppic_access acc);
+oppic_arg oppic_arg_gbl(int *data, int dim, char const *typ, oppic_access acc);
 oppic_arg oppic_arg_gbl(const bool *data, int dim, char const *typ, oppic_access acc);
 
 oppic_set oppic_decl_particle_set(int size, char const *name, oppic_set cells_set);

@@ -33,9 +33,9 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <oppic_omp.h>
 
 //****************************************
-void oppic_init(int argc, char **argv, int diags)
+void oppic_init(int argc, char **argv, opp::Params* params)
 {
-    oppic_init_core(argc, argv, diags);
+    oppic_init_core(argc, argv, params);
 }
 
 //****************************************
@@ -101,10 +101,15 @@ oppic_arg oppic_arg_dat(oppic_dat dat, oppic_access acc, bool map_with_cell_inde
 {
     return oppic_arg_dat_core(dat, acc, map_with_cell_index);
 }
-oppic_arg oppic_arg_dat(oppic_map map, oppic_access acc, bool map_with_cell_index)
+oppic_arg oppic_arg_dat(oppic_map data_map, oppic_access acc, bool map_with_cell_index)
 {
-    return oppic_arg_dat_core(map, acc, map_with_cell_index);
+    return oppic_arg_dat_core(data_map, acc, map_with_cell_index);
 }
+oppic_arg oppic_arg_dat(oppic_map data_map, int idx, oppic_map map, oppic_access acc, bool map_with_cell_index)
+{
+    return oppic_arg_dat_core(data_map, idx, map, acc, map_with_cell_index);
+}
+
 
 //****************************************
 // template <class T> oppic_arg oppic_arg_gbl(T *data, int dim, char const *typ, oppic_access acc);
@@ -215,9 +220,9 @@ void oppic_finalize_particle_move_omp(oppic_set set)
 
         for (int j = 0; j < set->size; j++)
         {
-            if (set->particle_statuses[j] != NEED_REMOVE) continue;
+            if (set->particle_statuses[j] != OPP_NEED_REMOVE) continue;
 
-            while (set->particle_statuses[set->size - removed_count - skip_count - 1] == NEED_REMOVE)
+            while (set->particle_statuses[set->size - removed_count - skip_count - 1] == OPP_NEED_REMOVE)
             {
                 skip_count++;
             }
