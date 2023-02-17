@@ -46,11 +46,6 @@ int main(int argc, char **argv)
 
     FieldPointers mesh = LoadMesh(params);
 
-    int ts = 0;
-    double remainder = 0.0;
-    const double dt = params.get<REAL>("dt");
-    int max_iter = params.get<INT>("max_iter");
-
     { // Start Scope for oppic
         oppic_init(argc, argv, &params);
 
@@ -88,10 +83,13 @@ int main(int argc, char **argv)
 
         mesh.DeleteValues();
 
+        double remainder = 0.0;
+        int max_iter = params.get<INT>("max_iter");
+        // int max_iter = 1;
+
         auto start = std::chrono::system_clock::now();
-        
-        // max_iter = 1;
-        for (ts = 0; ts < max_iter; ts++)
+
+        for (int ts = 0; ts < max_iter; ts++)
         {
             int injected_count = 0;
 
@@ -166,7 +164,7 @@ int main(int argc, char **argv)
         }
 
         std::chrono::duration<double> diff = std::chrono::system_clock::now() - start;
-        std::cout << "\nFEMPIC - Time to iterate " << ts << " takes <chrono>: " << diff.count() << " s\n\n";
+        std::cout << "\nFEMPIC - Time to iterate " << max_iter << " takes <chrono>: " << diff.count() << " s\n\n";
 
         oppic_exit();
     } // End Scope for oppic
