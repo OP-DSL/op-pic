@@ -32,8 +32,10 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #pragma once
 
 #include "fempic_ori/maths.h"
+#include "oppic_lib.h"
 
-void calculate_injection_distribution(
+//*************************************************************************************************
+inline void calculate_injection_distribution(
     int* injected_total,
     double* face_area,
     int* particle_distribution,
@@ -61,7 +63,7 @@ void calculate_injection_distribution(
 }
 
 //*************************************************************************************************
-void inject_ions__kernel(
+inline void inject_ions__kernel(
     double *part_pos,
     double *part_vel,
     int *part_cell_connectivity,
@@ -93,7 +95,7 @@ void inject_ions__kernel(
 }
 
 //*************************************************************************************************
-void reset_ion_density__kernel(
+inline void reset_ion_density__kernel(
     double *ion_den
 )
 {
@@ -101,7 +103,7 @@ void reset_ion_density__kernel(
 }
 
 //*************************************************************************************************
-void move_particles__kernel(
+inline void move_particles__kernel(
     double *pos,    
     double *vel,
     const double *cell_ef
@@ -115,7 +117,8 @@ void move_particles__kernel(
 }
 
 //*************************************************************************************************
-void move_all_particles_to_cell__kernel(
+inline void move_all_particles_to_cell__kernel(
+    move_var* m,
     const double *cell_ef,
     double *part_pos,
     double *part_vel,
@@ -130,7 +133,7 @@ void move_all_particles_to_cell__kernel(
     double *node_charge_den3
 )
 {
-    if (OPP_iteration_one)
+    if (m->OPP_iteration_one)
     {
         for (int i = 0; i < DIMENSIONS; i++)
             part_vel[i] += (OPP_VAR_charge / OPP_VAR_mass * cell_ef[i] * (OPP_VAR_dt));
@@ -149,12 +152,12 @@ void move_all_particles_to_cell__kernel(
             current_cell_det[i * DET_FIELDS + 3] * part_pos[2]
                 ) / (*current_cell_volume);
         
-        if (part_lc[i]<0 || part_lc[i]>1.0) OPP_inside_cell = false;
+        if (part_lc[i]<0 || part_lc[i]>1.0) m->OPP_inside_cell = false;
     }    
     
-    if (OPP_inside_cell)
+    if (m->OPP_inside_cell)
     {
-        OPP_move_status = OPP_MOVE_DONE;
+        m->OPP_move_status = OPP_MOVE_DONE;
 
         (*node_charge_den0) += part_lc[0];
         (*node_charge_den1) += part_lc[1];
@@ -180,17 +183,16 @@ void move_all_particles_to_cell__kernel(
     if (cell_connectivity[min_i] >= 0) // is there a neighbor in this direction?
     {
         (*current_cell_index) = cell_connectivity[min_i];
-        OPP_move_status = OPP_NEED_MOVE;
+        m->OPP_move_status = OPP_NEED_MOVE;
     }
     else
     {
-        (*current_cell_index) = MAX_CELL_INDEX;
-        OPP_move_status = OPP_NEED_REMOVE;
+        m->OPP_move_status = OPP_NEED_REMOVE;
     }
 }
 
 //*************************************************************************************************
-void compute_node_charge_density__kernel(
+inline void compute_node_charge_density__kernel(
     double *node_charge_den,
     const double *node_volume
 )
@@ -199,7 +201,7 @@ void compute_node_charge_density__kernel(
 }
 
 //*************************************************************************************************
-void compute_electric_field__kernel(
+inline void compute_electric_field__kernel(
     double *cell_electric_field,             
     const double *cell_shape_deriv,
     const double *node_potential0,

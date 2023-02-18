@@ -39,9 +39,12 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <Params.h>
 #include <oppic_util.h>
 #include <cstring>
+#include <limits.h>
 
 //*************************************************************************************************
 #define OP_DEBUG       false
+
+#define MAX_CELL_INDEX     INT_MAX
 
 #define OP_READ        0
 #define OP_WRITE       1

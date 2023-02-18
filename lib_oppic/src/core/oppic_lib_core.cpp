@@ -87,6 +87,7 @@ void oppic_exit_core()
         delete a->indexes_to_remove;
         delete a->particle_dats;
         delete a->cell_index_v_part_index_map;
+        if (a->particle_statuses) free(a->particle_statuses);
         free(a);
     }
     oppic_sets.clear();
@@ -458,8 +459,10 @@ void oppic_init_particle_move_core(oppic_set set)
 {
     if (OP_DEBUG) printf("oppic_init_particle_move_core set [%s]\n", set->name);
 
-    set->particle_statuses = (int *)malloc(set->size * sizeof(int));
-    memset(set->particle_statuses, 0, set->size * sizeof(int)); // 0 should be MOVE_DONE
+    // if (set->particle_statuses) free(set->particle_statuses);
+
+    // set->particle_statuses = (int *)malloc(set->size * sizeof(int));
+    // memset(set->particle_statuses, 0, set->size * sizeof(int)); // 0 should be MOVE_DONE
 
     set->particle_remove_count = 0;
 }
@@ -487,41 +490,46 @@ void oppic_finalize_particle_move_core(oppic_set set)
 
     if (set->particle_remove_count <= 0) return;
 
-    // for (int i = 0; i < (int)set->particle_dats->size(); i++)
-    // {
-    //     oppic_dat current_oppic_dat = set->particle_dats->at(i);
-    //     int removed_count = 0;
-    //     int skip_count = 0;
+    if (OP_auto_sort == 0) // if not auto sorting, fill the holes
+    {
+        int *cell_index_data = ((int *)set->cell_index_dat->data);
 
-    //     for (int j = 0; j < set->size; j++)
-    //     {
-    //         if (set->particle_statuses[j] != NEED_REMOVE) continue;
+        for (int i = 0; i < (int)set->particle_dats->size(); i++)
+        {
+            oppic_dat current_oppic_dat = set->particle_dats->at(i);
+            int removed_count = 0;
+            int skip_count = 0;
 
-    //         char* dat_removed_ptr = (char *)(current_oppic_dat->data + (j * current_oppic_dat->size));
+            for (int j = 0; j < set->size; j++)
+            {
+                if (cell_index_data[j] != MAX_CELL_INDEX) continue;
 
-    //         // BUG_FIX: (set->size - removed_count - 1) This index could marked to be removed, and if marked, 
-    //         // then there could be an array index out of bounds access error in the future
-    //         while (set->particle_statuses[set->size - removed_count - skip_count - 1] == NEED_REMOVE)
-    //         {
-    //             skip_count++;
-    //         }
-    //         if (j >= (set->size - removed_count - skip_count - 1)) 
-    //         {
-    //             if (OP_DEBUG) printf("oppic_finalize_particle_move_core Current Iteration index [%d] and replacement index %d; hence breaking\n", j, (set->size - removed_count - skip_count - 1));
-    //             break;
-    //         }
+                char* dat_removed_ptr = (char *)(current_oppic_dat->data + (j * current_oppic_dat->size));
 
-    //         char* dat_to_replace_ptr = (char *)(current_oppic_dat->data + ((set->size - removed_count - skip_count - 1) * current_oppic_dat->size));
-            
-    //         // Get the last element and replace the hole // Not the Optimum!!!
-    //         // TODO : Can we make NULL data and handle it in sort?
-    //         memcpy(dat_removed_ptr, dat_to_replace_ptr, current_oppic_dat->size); 
+                // BUG_FIX: (set->size - removed_count - 1) This index could marked to be removed, and if marked, 
+                // then there could be an array index out of bounds access error in the future
+                while (cell_index_data[set->size - removed_count - skip_count - 1] == MAX_CELL_INDEX)
+                {
+                    skip_count++;
+                }
+                if (j >= (set->size - removed_count - skip_count - 1)) 
+                {
+                    if (OP_DEBUG) printf("oppic_finalize_particle_move_core Current Iteration index [%d] and replacement index %d; hence breaking\n", j, (set->size - removed_count - skip_count - 1));
+                    break;
+                }
 
-    //         removed_count++;
-    //     }
+                char* dat_to_replace_ptr = (char *)(current_oppic_dat->data + ((set->size - removed_count - skip_count - 1) * current_oppic_dat->size));
+                
+                // Get the last element and replace the hole // Not the Optimum!!!
+                // TODO : Can we make NULL data and handle it in sort?
+                memcpy(dat_removed_ptr, dat_to_replace_ptr, current_oppic_dat->size); 
 
-    //     // current_oppic_dat->data = (char *)realloc(current_oppic_dat->data, (size_t)(set->size - removed_count) * (size_t)current_oppic_dat->size);
-    // }
+                removed_count++;
+            }
+
+            // current_oppic_dat->data = (char *)realloc(current_oppic_dat->data, (size_t)(set->size - removed_count) * (size_t)current_oppic_dat->size);
+        }
+    }
 
     set->size -= set->particle_remove_count;
     set->particle_remove_count = 0;

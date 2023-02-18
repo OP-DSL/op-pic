@@ -1,12 +1,12 @@
 # System parameters
-REAL plasma_den     = 1e16
+REAL plasma_den     = 1e18
 REAL ion_velocity   = 1e8
 REAL electron_temperature = 2e8
 REAL wall_potential = 10000
 STRING plasma_species = Duterium
 
 # Simulation parameters
-INT max_iter = 100
+INT max_iter = 50
 REAL dt       = 1e-12
 STRING fesolver_method = gaussseidel
 
@@ -17,4 +17,5 @@ STRING wall_mesh   = /ext-home/zl/phd/mini-pic/examples/one_stream/coarse/wall.d
 
 BOOL invert_normals = false
 
-
+BOOL opp_auto_sort          = false
+INT opp_allocation_multiple = 1

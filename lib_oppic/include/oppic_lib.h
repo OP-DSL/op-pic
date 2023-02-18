@@ -36,6 +36,13 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 const double opp_zero_double16[16] = { 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0 };
 
+struct move_var
+{
+    move_status OPP_move_status = OPP_MOVE_DONE;
+    bool OPP_inside_cell = true;
+    bool OPP_iteration_one = true;
+};
+
 void oppic_init(int argc, char **argv, opp::Params* params);
 void oppic_exit();
 

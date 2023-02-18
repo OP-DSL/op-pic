@@ -134,7 +134,7 @@ FESolver::~FESolver() { TRACE_ME;
     for (int e=0;e<n_elements;e++) delete[] LM[e];
     for (int e=0;e<n_elements;e++) {
         for (int a=0;a<4;a++) delete[] NX[e][a];
-        delete NX[e];
+        delete[] NX[e];
     }
 
     for (int e=0;e<n_elements;e++)    delete[] ef[e];
