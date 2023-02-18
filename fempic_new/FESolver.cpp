@@ -18,7 +18,7 @@
 #include <stdio.h>
 
 #include "trace.h"
-#include "maths.h"
+#include "fempic_ori/maths.h"
 #include "FESolver.h"
 
 extern "C" {
@@ -45,14 +45,14 @@ extern "C" {
 }
 
 /*FESolver*/
-FESolver::FESolver(Volume &volume):volume(volume) { TRACE_ME;
+FESolver::FESolver(std::shared_ptr<Volume> volume):volume(volume) { TRACE_ME;
     /*count number of unknowns*/
     neq = 0;
 
     /*OPEN nodes are "h" nodes*/
-    for (std::size_t i=0;i<volume.nodes.size();i++)
-        if (volume.nodes[i].type==NORMAL ||
-            volume.nodes[i].type==OPEN) neq++;
+    for (std::size_t i=0;i<volume->nodes.size();i++)
+        if (volume->nodes[i].type==NORMAL ||
+            volume->nodes[i].type==OPEN) neq++;
 
     /*allocate neq*neq K matrix*/
     K = new double*[neq];
@@ -73,8 +73,8 @@ FESolver::FESolver(Volume &volume):volume(volume) { TRACE_ME;
     F0 = new double[neq];
     F1 = new double[neq];
 
-    n_nodes = volume.nodes.size();
-    n_elements = volume.elements.size();
+    n_nodes = volume->nodes.size();
+    n_elements = volume->elements.size();
 
     /*allocate ID vector*/
     ID = new int[n_nodes];
@@ -96,7 +96,7 @@ FESolver::FESolver(Volume &volume):volume(volume) { TRACE_ME;
 
     /*allocate memory for g and uh arrays*/
     g = new double[n_nodes];
-    uh = new double[n_nodes];
+    // uh = new double[n_nodes];
 
     detJ = new double[n_elements];
 
@@ -109,14 +109,14 @@ FESolver::FESolver(Volume &volume):volume(volume) { TRACE_ME;
     note valid values are 0 to neq-1 and -1 indicates "g" node*/
     int P=0;
     for (int n=0;n<n_nodes;n++)
-        if (volume.nodes[n].type==NORMAL ||
-            volume.nodes[n].type==OPEN) {ID[n]=P;P++;}
+        if (volume->nodes[n].type==NORMAL ||
+            volume->nodes[n].type==OPEN) {ID[n]=P;P++;}
         else ID[n]=-1;    /*dirichlet node*/
 
     /*now set up the LM matrix*/
     for (int e=0;e<n_elements;e++)
         for (int a=0;a<4;a++)    /*tetrahedra*/ {
-            LM[e][a] = ID[volume.elements[e].con[a]];
+            LM[e][a] = ID[volume->elements[e].con[a]];
         }
 
     /*set quadrature points*/
@@ -148,7 +148,7 @@ FESolver::~FESolver() { TRACE_ME;
     delete[] F1;
     delete[] NX;
     delete[] ID;
-    delete[] uh;
+    // delete[] uh;
     delete[] d;
     delete[] g;
     delete[] detJ;
@@ -213,11 +213,11 @@ void FESolver::computeNX() { TRACE_ME;
 
     for (int e=0;e<n_elements;e++) {
         /*node positions*/
-        Tetra &tet = volume.elements[e];
+        Tetra &tet = volume->elements[e];
 
         double x[4][3];
         for (int a=0;a<4;a++) {
-            double *pos = volume.nodes[tet.con[a]].pos;
+            double *pos = volume->nodes[tet.con[a]].pos;
             for (int d=0;d<3;d++) x[a][d] = pos[d];    /*copy*/
         }
 
@@ -437,7 +437,7 @@ void FESolver::buildJmatrix(Method method) { TRACE_ME;
 void FESolver::preAssembly() { TRACE_ME;
     /*loop over elements*/
     for (int e=0;e<n_elements;e++) {
-        Tetra &tet = volume.elements[e];
+        Tetra &tet = volume->elements[e];
         double ke[4][4];
 
         for (int a=0;a<4;a++)
@@ -550,8 +550,8 @@ void FESolver::solveLinearLapack(double **A, double *x, double *b) { TRACE_ME;
         }
     }
 
-    dsysv_(&uplo, &n, &nrhs, Amat, &lda, ipiv, Bvec, &ldb, work, &lwork, &info );
-    //dgesv_(&n, &nrhs, Amat, &lda, ipiv, Bvec, &ldb, &info );
+    // dsysv_(&uplo, &n, &nrhs, Amat, &lda, ipiv, Bvec, &ldb, work, &lwork, &info );
+            //dgesv_(&n, &nrhs, Amat, &lda, ipiv, Bvec, &ldb, &info );
 
     if (info != 0) std::cerr << "Lapack failed to work, error code: " << info << std::endl;
 
@@ -625,7 +625,7 @@ void FESolver::computePhi(double *ion_den, Method method) { TRACE_ME;
 void FESolver::updateEf() { TRACE_ME;
     /*interpolate electric field*/
     for (int e=0;e<n_elements;e++) {
-        Tetra &tet = volume.elements[e];
+        Tetra &tet = volume->elements[e];
         for (int d=0;d<3;d++) ef[e][d]=0;
 
         for (int a=0;a<4;a++) {

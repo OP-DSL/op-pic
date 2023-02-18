@@ -83,6 +83,7 @@ int main(int argc, char **argv)
         oppic_dat part_mesh_relation   = oppic_decl_particle_dat(particles_set, 1,              "int",    sizeof(int),    nullptr, "part_mesh_relation", true); // new cell index field
 
         mesh.DeleteValues();
+        mesh.solver->setPotentialArray((double*)node_potential->data);
 
         double remainder = 0.0;
         int max_iter = params.get<INT>("max_iter");
@@ -139,7 +140,7 @@ int main(int argc, char **argv)
                 oppic_arg_dat(node_volume,          OP_READ)     // node_volume
             );
 
-            // TODO: Add the field potential solver here
+            mesh.solver->computePhi((double*)node_charge_density->data, mesh.fesolver_method); // TODO: Change this to kernel calls
 
             oppic_reset_dat(cell_electric_field, (char*)opp_zero_double16);
             oppic_par_loop_all__ComputeElectricField(

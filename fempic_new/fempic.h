@@ -2,9 +2,12 @@
 
 #include <oppic_lib.h>
 #include <petscksp.h>
+#include <memory>
+#include <regex>
 
 #include "fempic_ori/meshes.h"
 #include "fempic_ori/particles.h"
+#include "FESolver.h"
 
 using namespace std;
 
@@ -95,15 +98,11 @@ class FieldPointers
         double *iface_area = nullptr;         // area
         int *iface_inj_part_dist = nullptr;
         double *iface_node_pos = nullptr;
+
+        std::shared_ptr<FESolver> solver;
+
+        FESolver::Method fesolver_method = FESolver::Method::GaussSeidel;
 };
-
-/*constants*/
-const bool print_all_to_file = false;
-
-const double EPS0 = 8.8541878e-12;    /*permittivity of free space*/
-const double QE   = 1.602e-19;        /*cellary charge*/
-const double AMU  = 1.660538921e-27;  /*kg, atomic mass unit*/
-const double Kb   = 8.617333262e-5;   /*Boltzmann's  constant*/
 
 void oppic_seq_loop_inject__Increase_particle_count
 (
@@ -161,19 +160,20 @@ void oppic_par_loop_all__ComputeElectricField(
 );
 
 inline FieldPointers LoadMesh(opp::Params& params)
-{
+{ TRACE_ME;
+
     FieldPointers mesh;
 
-    Volume volume;
-    if (!LoadVolumeMesh(params.get<STRING>("global_mesh"), volume) ||
-        !LoadSurfaceMesh(params.get<STRING>("inlet_mesh"), volume,INLET, params.get<BOOL>("invert_normals")) ||
-        !LoadSurfaceMesh(params.get<STRING>("wall_mesh"), volume, FIXED, params.get<BOOL>("invert_normals"))) return mesh;
+    std::shared_ptr<Volume> volume(new Volume());
+    if (!LoadVolumeMesh(params.get<STRING>("global_mesh"), *(volume.get())) ||
+        !LoadSurfaceMesh(params.get<STRING>("inlet_mesh"), *(volume.get()),INLET, params.get<BOOL>("invert_normals")) ||
+        !LoadSurfaceMesh(params.get<STRING>("wall_mesh"), *(volume.get()), FIXED, params.get<BOOL>("invert_normals"))) return mesh;
 
-    volume.summarize(std::cout);
+    volume->summarize(std::cout);
 
-    mesh.n_nodes         = volume.nodes.size();
-    mesh.n_cells         = volume.elements.size();
-    mesh.n_ifaces        = volume.inlet_faces.size();
+    mesh.n_nodes         = volume->nodes.size();
+    mesh.n_cells         = volume->elements.size();
+    mesh.n_ifaces        = volume->inlet_faces.size();
 
     mesh.cell_ef         = new double[mesh.n_cells * DIMENSIONS];
     mesh.cell_to_nodes   = new int[mesh.n_cells * NODES_PER_CELL];
@@ -199,7 +199,7 @@ inline FieldPointers LoadMesh(opp::Params& params)
 
     for (int n=0; n<mesh.n_nodes; n++)
     {
-        switch (volume.nodes[n].type)
+        switch (volume->nodes[n].type)
         {
             case INLET:    mesh.node_bnd_pot[n] = 0; break;                                         /*phi_inlet*/
             case FIXED:    mesh.node_bnd_pot[n] = -(params.get<REAL>("wall_potential")); break;      /*fixed phi points*/
@@ -209,7 +209,7 @@ inline FieldPointers LoadMesh(opp::Params& params)
         mesh.node_pot[n] = 0.0f;
         mesh.node_ion_den[n] = 0.0f;
 
-        Node &node = volume.nodes[n];
+        Node &node = volume->nodes[n];
     
         for (int dim=0; dim<DIMENSIONS; dim++)
             mesh.node_pos[n * DIMENSIONS + dim] = node.pos[dim];
@@ -219,7 +219,7 @@ inline FieldPointers LoadMesh(opp::Params& params)
 
     for (int cellID=0; cellID<mesh.n_cells; cellID++)
     {
-        Tetra &tet = volume.elements[cellID];
+        Tetra &tet = volume->elements[cellID];
         
         for (int nodeCon=0; nodeCon<NODES_PER_CELL; nodeCon++)
         {
@@ -249,8 +249,8 @@ inline FieldPointers LoadMesh(opp::Params& params)
 
     for (int faceID=0; faceID<mesh.n_ifaces; faceID++)
     {
-        Face &face = volume.inlet_faces[faceID];
-        Node &node = volume.nodes[face.con[0]];
+        Face &face = volume->inlet_faces[faceID];
+        Node &node = volume->nodes[face.con[0]];
 
         mesh.iface_to_cell[faceID] = face.cell_con;
         mesh.iface_area[faceID] = face.area;
@@ -264,6 +264,41 @@ inline FieldPointers LoadMesh(opp::Params& params)
             mesh.iface_normal[faceID * 3 + dim]   = face.normal[dim]; 
 
             mesh.iface_node_pos[faceID * 3 + dim] = node.pos[dim];
+        }
+    }
+
+    mesh.solver = std::make_shared<FESolver>(volume);
+
+    mesh.solver->phi0 = 0;
+    mesh.solver->n0 = params.get<REAL>("plasma_den");
+    mesh.solver->kTe = Kb * params.get<REAL>("electron_temperature");
+
+    for (int n = 0; n < mesh.n_nodes; n++) // This g array is a duplicate, can remove and attach node_bnd_pot dat instead
+    {
+        switch (volume->nodes[n].type)
+        {
+            case INLET:    mesh.solver->g[n] = 0; break;                                         /*phi_inlet*/
+            case FIXED:    mesh.solver->g[n] = -(params.get<REAL>("wall_potential")); break;     /*fixed phi points*/
+            default:       mesh.solver->g[n] = 0;                                                /*default*/
+        }
+    }
+
+    mesh.solver->startAssembly();
+    mesh.solver->preAssembly();    /*this will form K and F0*/
+
+    mesh.solver->summarize(std::cout);
+
+    if      (std::regex_match(params.get<STRING>("fesolver_method"), std::regex("nonlinear", std::regex_constants::icase))) mesh.fesolver_method = FESolver::NonLinear;
+    else if (std::regex_match(params.get<STRING>("fesolver_method"), std::regex("gaussseidel", std::regex_constants::icase))) mesh.fesolver_method = FESolver::GaussSeidel;
+    else if (std::regex_match(params.get<STRING>("fesolver_method"), std::regex("lapack", std::regex_constants::icase))) mesh.fesolver_method = FESolver::Lapack;
+
+    for (int cellID=0; cellID<mesh.n_cells; cellID++)
+    {
+        for (int nodeCon=0; nodeCon<NODES_PER_CELL; nodeCon++)
+        {
+            mesh.cell_shape_deriv[cellID * (NODES_PER_CELL*DIMENSIONS) + nodeCon * DIMENSIONS + 0 ] = mesh.solver->NX[cellID][nodeCon][0];
+            mesh.cell_shape_deriv[cellID * (NODES_PER_CELL*DIMENSIONS) + nodeCon * DIMENSIONS + 1 ] = mesh.solver->NX[cellID][nodeCon][1];
+            mesh.cell_shape_deriv[cellID * (NODES_PER_CELL*DIMENSIONS) + nodeCon * DIMENSIONS + 2 ] = mesh.solver->NX[cellID][nodeCon][2];
         }
     }
 

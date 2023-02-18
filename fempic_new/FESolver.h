@@ -13,7 +13,8 @@
 #ifndef FESOLVER_H
 #define FESOLVER_H
 
-#include "meshes.h"
+#include "fempic_ori/meshes.h"
+#include <memory>
 
 const double EPS0 = 8.8541878e-12;   /*permittivity of free space*/
 const double QE   = 1.602e-19;       /*elementary charge*/
@@ -50,7 +51,7 @@ public:
 
     double *detJ; /*determinant of the jacobian x_xi*/
 
-    FESolver(Volume &volume);    /*constructor, initialized data structures*/
+    FESolver(std::shared_ptr<Volume> volume);    /*constructor, initialized data structures*/
     ~FESolver();    /*destructor, frees memory*/
 
     void startAssembly();    /*clears K and F*/
@@ -76,10 +77,12 @@ public:
 
     void buildJmatrix(Method method);
 
+    inline void setPotentialArray(double* potential_array) { uh = potential_array; }
+
 protected:
     void computeNX();
 
-    Volume &volume;
+    std::shared_ptr<Volume> volume;
     int n_nodes;
     int n_elements;    /*save this so we can properly deallocate LM*/
 
