@@ -319,3 +319,13 @@ void oppic_dump_dat(oppic_dat dat)
 }
 
 //****************************************
+void oppic_reset_dat(oppic_dat dat, char* val)
+{
+    std::cerr << "oppic_reset_dat not implemented for OMP" << std::endl;
+    // int set_size = dat->set->size;
+    // // TODO : reset pragma omp
+    // for (int i = 0; i < set_size; i++)
+    // {
+    //     memcpy(dat->data + i * dat->size, val, dat->size);
+    // }
+}

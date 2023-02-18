@@ -45,12 +45,14 @@ class FieldPointers
             if (iface_area) delete[] iface_area;
             if (iface_inj_part_dist) delete[] iface_inj_part_dist;
             if (iface_node_pos) delete[] iface_node_pos;
+            if (cell_shape_deriv) delete[] cell_shape_deriv;
 
             cell_to_nodes = nullptr;
             cell_to_cell = nullptr;
             cell_ef = nullptr;
             cell_det = nullptr;
             cell_volume = nullptr; 
+            cell_shape_deriv = nullptr;
 
             node_bnd_pot = nullptr;
             node_pot = nullptr;
@@ -77,6 +79,7 @@ class FieldPointers
         double *cell_ef = nullptr;
         double *cell_det = nullptr;
         double *cell_volume = nullptr; 
+        double *cell_shape_deriv = nullptr;
 
         double *node_bnd_pot = nullptr;
         double *node_pot = nullptr;
@@ -125,11 +128,6 @@ void oppic_par_loop_inject__InjectIons(
     oppic_arg arg8      // iface_node_pos
 );
 
-void oppic_par_loop_all__ResetIonDensity(
-    oppic_set set,     // nodes_set
-    oppic_arg arg0     // node_charge_density
-);
-
 void oppic_par_loop_particle_all__MoveToCells(
     oppic_set set,      // particles_set
     oppic_arg arg0,     // cell_ef,
@@ -152,6 +150,15 @@ void oppic_par_loop_all__ComputeNodeChargeDensity(
     oppic_arg arg1     // node_volume
 );
 
+void oppic_par_loop_all__ComputeElectricField(
+    oppic_set set,      // cells_set
+    oppic_arg arg0,     // cell_electric_field,
+    oppic_arg arg1,     // cell_shape_deriv,
+    oppic_arg arg2,     // node_potential0,
+    oppic_arg arg3,     // node_potential1,
+    oppic_arg arg4,     // node_potential2,
+    oppic_arg arg5      // node_potential3,
+);
 
 inline FieldPointers LoadMesh(opp::Params& params)
 {
@@ -173,6 +180,7 @@ inline FieldPointers LoadMesh(opp::Params& params)
     mesh.cell_to_cell    = new int[mesh.n_cells * NEIGHBOUR_CELLS];
     mesh.cell_det        = new double[mesh.n_cells * DET_FIELDS * NEIGHBOUR_CELLS]; // arranged as [alpha,beta,gamma,delta] * 4 neighbours
     mesh.cell_volume     = new double[mesh.n_cells];
+    mesh.cell_shape_deriv = new double[mesh.n_cells * NODES_PER_CELL*DIMENSIONS]; // arranged as [x,y,z] * 4 neighbours
 
     mesh.node_bnd_pot    = new double[mesh.n_nodes];
     mesh.node_pot        = new double[mesh.n_nodes];
@@ -214,7 +222,13 @@ inline FieldPointers LoadMesh(opp::Params& params)
         Tetra &tet = volume.elements[cellID];
         
         for (int nodeCon=0; nodeCon<NODES_PER_CELL; nodeCon++)
+        {
             mesh.cell_to_nodes[cellID * NODES_PER_CELL + nodeCon] = tet.con[nodeCon];
+
+            mesh.cell_shape_deriv[cellID * (NODES_PER_CELL*DIMENSIONS) + nodeCon * DIMENSIONS + 0 ] = 0.0;
+            mesh.cell_shape_deriv[cellID * (NODES_PER_CELL*DIMENSIONS) + nodeCon * DIMENSIONS + 1 ] = 0.0;
+            mesh.cell_shape_deriv[cellID * (NODES_PER_CELL*DIMENSIONS) + nodeCon * DIMENSIONS + 2 ] = 0.0;
+        }
         
         for (int cellCon=0; cellCon<NEIGHBOUR_CELLS; cellCon++)
         {

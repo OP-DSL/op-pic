@@ -231,6 +231,37 @@ void oppic_par_loop_all__ComputeNodeChargeDensity(
     }
 }
 
+//*************************************************************************************************
+void oppic_par_loop_all__ComputeElectricField(
+    oppic_set set,      //cells_set,                                                        // cells_set
+    oppic_arg arg0,     //oppic_arg_dat(cell_electric_field,                  OP_INC),      // cell_electric_field,
+    oppic_arg arg1,     //oppic_arg_dat(cell_shape_deriv,                     OP_READ),     // cell_shape_deriv,
+    oppic_arg arg2,     //oppic_arg_dat(node_potential, 0, cell_to_nodes_map, OP_READ),     // node_potential0,
+    oppic_arg arg3,     //oppic_arg_dat(node_potential, 1, cell_to_nodes_map, OP_READ),     // node_potential1,
+    oppic_arg arg4,     //oppic_arg_dat(node_potential, 2, cell_to_nodes_map, OP_READ),     // node_potential2,
+    oppic_arg arg5      //oppic_arg_dat(node_potential, 3, cell_to_nodes_map, OP_READ)      // node_potential3,
+)
+{
+    if (OP_DEBUG) printf("FEMPIC - oppic_par_loop_all__ComputeElectricField size %d\n", set->size);
+
+    for (int i = 0; i < set->size; i++)
+    {
+        const int map1idx = arg2.map_data[i * arg2.map->dim + 0];
+        const int map2idx = arg2.map_data[i * arg2.map->dim + 1];
+        const int map3idx = arg2.map_data[i * arg2.map->dim + 2];
+        const int map4idx = arg2.map_data[i * arg2.map->dim + 3];
+
+        compute_electric_field__kernel(
+            &((double*)arg0.data)[i * arg0.dim],    // cell_electric_field
+            &((double*)arg1.data)[i * arg1.dim],    // cell_shape_deriv
+            &((double*)arg2.data)[map1idx],         // node_potential0
+            &((double*)arg2.data)[map2idx],         // node_potential1
+            &((double*)arg2.data)[map3idx],         // node_potential2
+            &((double*)arg2.data)[map4idx]          // node_potential3
+        );
+    }   
+}
+
 // //*************************************************************************************************
 // oppic_par_loop_all__MoveParticles(
 //     particles_set,

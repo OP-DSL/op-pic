@@ -663,3 +663,13 @@ void oppic_finalize_particle_move_cuda(oppic_set set)
 }
 
 //****************************************
+void oppic_reset_dat(oppic_dat dat, char* val)
+{
+    std::cerr << "oppic_reset_dat not implemented for CUDA" << std::endl;
+    // int set_size = dat->set->size;
+
+    // for (int i = 0; i < set_size; i++)
+    // {
+    //     memcpy(dat->data + i * dat->size, val, dat->size);
+    // }
+}

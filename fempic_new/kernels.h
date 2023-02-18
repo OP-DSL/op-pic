@@ -197,3 +197,24 @@ void compute_node_charge_density__kernel(
 {
     (*node_charge_den) *= (OPP_VAR_spwt / (*node_volume));
 }
+
+//*************************************************************************************************
+void compute_electric_field__kernel(
+    double *cell_electric_field,             
+    const double *cell_shape_deriv,
+    const double *node_potential0,
+    const double *node_potential1,
+    const double *node_potential2,
+    const double *node_potential3
+)
+{
+    for (int dim = 0; dim < 3; dim++)
+    {
+        cell_electric_field[dim] -= (cell_shape_deriv[0 * DIMENSIONS + dim] * (*node_potential0));
+        cell_electric_field[dim] -= (cell_shape_deriv[1 * DIMENSIONS + dim] * (*node_potential1));
+        cell_electric_field[dim] -= (cell_shape_deriv[2 * DIMENSIONS + dim] * (*node_potential2));
+        cell_electric_field[dim] -= (cell_shape_deriv[3 * DIMENSIONS + dim] * (*node_potential3));
+    }    
+}
+
+//*************************************************************************************************

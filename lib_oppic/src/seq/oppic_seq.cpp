@@ -233,3 +233,14 @@ void oppic_finalize_particle_move(oppic_set set)
         oppic_particle_sort(set);
     }
 }
+
+//****************************************
+void oppic_reset_dat(oppic_dat dat, char* val)
+{
+    int set_size = dat->set->size;
+
+    for (int i = 0; i < set_size; i++)
+    {
+        memcpy(dat->data + i * dat->size, val, dat->size);
+    }
+}

@@ -34,6 +34,8 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <oppic_lib_core.h>
 
+const double opp_zero_double16[16] = { 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0 };
+
 void oppic_init(int argc, char **argv, opp::Params* params);
 void oppic_exit();
 
@@ -84,3 +86,5 @@ void oppic_print_dat_to_txtfile(oppic_dat dat, const char *file_name_prefix, con
 void oppic_print_map_to_txtfile(oppic_map map, const char *file_name_prefix, const char *file_name_suffix);
 
 void oppic_dump_dat(oppic_dat data);
+
+void oppic_reset_dat(oppic_dat dat, char* val);
