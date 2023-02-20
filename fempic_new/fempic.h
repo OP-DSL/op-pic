@@ -159,7 +159,7 @@ void oppic_par_loop_all__ComputeElectricField(
     oppic_arg arg5      // node_potential3,
 );
 
-inline FieldPointers LoadMesh(opp::Params& params)
+inline FieldPointers LoadMesh(opp::Params& params, int argc, char **argv)
 { TRACE_ME;
 
     FieldPointers mesh;
@@ -267,7 +267,7 @@ inline FieldPointers LoadMesh(opp::Params& params)
         }
     }
 
-    mesh.solver = std::make_shared<FESolver>(volume);
+    mesh.solver = std::make_shared<FESolver>(volume, argc, argv);
 
     mesh.solver->phi0 = 0;
     mesh.solver->n0 = params.get<REAL>("plasma_den");
@@ -291,6 +291,7 @@ inline FieldPointers LoadMesh(opp::Params& params)
     if      (std::regex_match(params.get<STRING>("fesolver_method"), std::regex("nonlinear", std::regex_constants::icase))) mesh.fesolver_method = FESolver::NonLinear;
     else if (std::regex_match(params.get<STRING>("fesolver_method"), std::regex("gaussseidel", std::regex_constants::icase))) mesh.fesolver_method = FESolver::GaussSeidel;
     else if (std::regex_match(params.get<STRING>("fesolver_method"), std::regex("lapack", std::regex_constants::icase))) mesh.fesolver_method = FESolver::Lapack;
+    else if (std::regex_match(params.get<STRING>("fesolver_method"), std::regex("petsc", std::regex_constants::icase))) mesh.fesolver_method = FESolver::Petsc;
 
     for (int cellID=0; cellID<mesh.n_cells; cellID++)
     {

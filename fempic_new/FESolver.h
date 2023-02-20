@@ -16,6 +16,13 @@
 #include "fempic_ori/meshes.h"
 #include <memory>
 
+#define USE_PETSC
+
+#ifdef USE_PETSC
+    #include <petscksp.h>
+    #include <oppic_lib.h>
+#endif
+
 const double EPS0 = 8.8541878e-12;   /*permittivity of free space*/
 const double QE   = 1.602e-19;       /*elementary charge*/
 const double AMU  = 1.660538921e-27; /*atomic mass unit*/
@@ -24,7 +31,7 @@ const double Kb    = 8.617333262e-5;    /*Boltzmann's  constant*/
 /*solver class*/
 class FESolver {
 public:
-    enum Method {NonLinear, GaussSeidel, Lapack};
+    enum Method {NonLinear, GaussSeidel, Lapack, Petsc};
     double **K;        /*global stiffness matrix, should use a sparse matrix*/
     double **J;        /*Jacobian matrix*/
     double *Amat;      /*A matrix for Lapack*/
@@ -51,7 +58,7 @@ public:
 
     double *detJ; /*determinant of the jacobian x_xi*/
 
-    FESolver(std::shared_ptr<Volume> volume);    /*constructor, initialized data structures*/
+    FESolver(std::shared_ptr<Volume> volume, int argc, char **argv);    /*constructor, initialized data structures*/
     ~FESolver();    /*destructor, frees memory*/
 
     void startAssembly();    /*clears K and F*/
@@ -68,6 +75,11 @@ public:
     void solveNonLinear(double *d, double *y, double *G);
     void solveLinear(double **K, double *d, double *F);    /*solves Kd=F for d*/
     void solveLinearLapack(double **K, double *d, double *F);    /*solves Kd=F for d*/
+#ifdef USE_PETSC
+    void initialzeMatrix(double **p_A);
+    void solveLinearPetsc(double **K, double *d, double *F);
+#endif    
+    
     void updateEf();
 
     /*evaluates ef in cell e. Since constant field in cell, just copy*/
@@ -90,6 +102,20 @@ protected:
     double l[2];
     double W[2];
     int n_int;
+
+#ifdef USE_PETSC
+    /* Petsc related variables */
+    Vec         x, b;        /* approx solution, RHS, exact solution */
+    Mat         A;              /* linear system matrix */
+    KSP         ksp;            /* linear solver context */
+    KSPConvergedReason reason;
+
+    int *vecCol, *matCol;
+    int **matIndex;
+    double **matIndexValues;
+
+    bool matIndexCreated = false;
+#endif
 };
 
 

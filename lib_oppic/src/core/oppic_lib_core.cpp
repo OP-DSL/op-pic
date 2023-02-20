@@ -61,6 +61,10 @@ void oppic_init_core(int argc, char **argv, opp::Params* params)
 
     opp_params = params;
     
+    // these will be overidden by args
+    OP_auto_sort = params->get<BOOL>("opp_auto_sort");
+    OP_part_alloc_mult = params->get<INT>("opp_allocation_multiple");
+
     for (int n = 1; n < argc; n++) 
     {
         oppic_set_args_core(argv[n]);

@@ -44,7 +44,7 @@ int main(int argc, char **argv)
     opp::Params params(argv[1]);
     params.write(std::cout);
 
-    FieldPointers mesh = LoadMesh(params);
+    FieldPointers mesh = LoadMesh(params, argc, argv);
 
     { // Start Scope for oppic
         oppic_init(argc, argv, &params);
@@ -152,10 +152,23 @@ int main(int argc, char **argv)
                 oppic_arg_dat(node_potential, 2, cell_to_nodes_map, OP_READ),     // node_potential2,
                 oppic_arg_dat(node_potential, 3, cell_to_nodes_map, OP_READ)      // node_potential3,
             );
-            
+
             {
-                std::cout<<"ts: " << ts << "\t np: " << particles_set->size
-                 <<" (" <<  injected_count << " added, "<< old_nparts - particles_set->size << " removed)" <<std::endl;
+                double max_den = 0.0, max_phi = 0.0;
+                if (params.get<BOOL>("check_max_values"))
+                {
+                    for (int n = 0; n< mesh.n_nodes; n++) 
+                    {
+                        if (((double*)node_charge_density->data)[n] > max_den) max_den = ((double*)node_charge_density->data)[n];
+                        if (abs(((double*)node_potential->data)[n]) > max_phi) max_phi = abs(((double*)node_potential->data)[n]);   
+                    }
+                }
+
+                std::cout<<"ts: " << ts << "\t np: " << particles_set->size 
+                 << " (" <<  injected_count << " added, "<< old_nparts - particles_set->size << " removed)"                
+                 << "\t max den: " << max_den
+                 << "\t max |phi|: " << max_phi
+                 << std::endl;
             }
         }
 

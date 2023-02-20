@@ -45,7 +45,7 @@ extern "C" {
 }
 
 /*FESolver*/
-FESolver::FESolver(std::shared_ptr<Volume> volume):volume(volume) { TRACE_ME;
+FESolver::FESolver(std::shared_ptr<Volume> volume, int argc, char **argv):volume(volume) { TRACE_ME;
     /*count number of unknowns*/
     neq = 0;
 
@@ -126,6 +126,39 @@ FESolver::FESolver(std::shared_ptr<Volume> volume):volume(volume) { TRACE_ME;
 
     /*compute NX matrix*/
     computeNX();
+
+    /* Petsc */
+#ifdef USE_PETSC
+    PetscInitialize(&argc, &argv, PETSC_NULL, "FESolver::Petsc");
+
+    vecCol           = new int[neq];
+    matCol           = new int[neq];
+    matIndex         = new int*[neq];
+    matIndexValues   = new double*[neq];
+
+    for (int i = 0; i < neq; i++)
+    {
+        vecCol[i] = i;
+        matCol[i] = 0;
+    }
+
+    MatCreate(PETSC_COMM_WORLD, &A);
+    MatSetSizes(A, PETSC_DECIDE, PETSC_DECIDE, neq, neq);
+    MatSetFromOptions(A);
+    MatSetUp(A);
+
+    VecCreate(PETSC_COMM_WORLD, &b);
+    VecSetSizes(b, PETSC_DECIDE, neq);
+    VecSetFromOptions(b);
+    VecDuplicate(b, &x);
+
+    KSPCreate(PETSC_COMM_WORLD, &ksp);
+    KSPSetType(ksp, KSPCG);
+    KSPSetOperators(ksp, A, A);
+    // KSPSetTolerances(ksp, 1.e-2 / (neq * neq), 1.e-50, PETSC_DEFAULT, PETSC_DEFAULT); 
+    KSPSetTolerances(ksp, 1.e-100 / (neq * neq), 1.e-100, PETSC_DEFAULT, PETSC_DEFAULT); 
+    KSPSetFromOptions(ksp);
+#endif
 }
 
 /*~FESolver, frees memory*/
@@ -152,6 +185,21 @@ FESolver::~FESolver() { TRACE_ME;
     delete[] d;
     delete[] g;
     delete[] detJ;
+
+    /* Petsc */
+#ifdef USE_PETSC
+    delete[] vecCol;
+    delete[] matCol;
+    // for (int i=0; i<neq; i++) { delete[] matIndex[i]; delete[] matIndexValues[i];}
+    delete[] matIndex;
+    delete[] matIndexValues;
+    KSPDestroy(&ksp);
+    VecDestroy(&x);
+    VecDestroy(&b);
+    MatDestroy(&A);
+
+    PetscFinalize();
+#endif
 }
 
 /*clears K and F*/
@@ -301,7 +349,7 @@ void FESolver::solve(double *ion_den, Method method) { TRACE_ME;
     if (method == NonLinear) {
         solveNonLinear(ion_den, y, G);
 
-    } else if (method == GaussSeidel or method == Lapack) {
+    } else if (method == GaussSeidel or method == Lapack or method == Petsc) {
         /*builds the "ff" part of the force vector*/
         buildF1Vector(ion_den);
 
@@ -314,6 +362,7 @@ void FESolver::solve(double *ion_den, Method method) { TRACE_ME;
 
         if      (method == GaussSeidel) solveLinear(J, y, G);
         else if (method == Lapack) solveLinearLapack(J, y, G);
+        else if (method == Petsc) solveLinearPetsc(J, y, G);
 
         /*now that we have y, update solution */
         for (int n=0;n<neq;n++) d[n]-=y[n];
@@ -646,3 +695,75 @@ void FESolver::summarize(std::ostream &out) {
 
     out << std::endl;
 }
+
+
+//*************************************************************************************************
+/*simple Gauss-Seidel solver for A*x=b*/
+void FESolver::solveLinearPetsc(double **p_A, double *p_x, double *p_b)
+{ TRACE_ME; 
+
+    auto t1 = std::chrono::system_clock::now();
+
+    initialzeMatrix(p_A);
+
+    VecSetValues(b, neq, vecCol, p_b, INSERT_VALUES);
+    VecAssemblyBegin(b); VecAssemblyEnd(b);
+    
+    KSPSolve(ksp, b, x);
+
+    KSPGetConvergedReason(ksp, &reason);
+    if (reason < 0)
+    {
+        char* str_reason = "\0";
+        KSPGetConvergedReasonString(ksp, (const char**)(&str_reason));
+        std::cerr << "Petsc failed to converge : " << str_reason << "; run with -ksp_converged_reason"<< std::endl;
+    }
+
+    VecGetValues(x, neq, vecCol, p_x);
+    
+    auto t5 = std::chrono::system_clock::now();
+
+    std::chrono::duration<double> dt = t5-t1;
+    
+    if (OP_DEBUG) std::cout << "solveLinearPetsc - Time <chrono>: " << dt.count() << " s ... Converged reason: " << reason << std::endl;
+}
+
+//*************************************************************************************************
+void FESolver::initialzeMatrix(double **p_A)
+{
+    if (!matIndexCreated)
+    {
+        int max_fields = 0;
+        for (int i=0; i<neq; i++)
+        {
+            std::vector<int> tempVec;    
+            for (int j=0; j<neq; j++)
+            {    
+                // significant ones and all diagonals            
+                if ((std::abs(p_A[i][j]) > 1e-12) || (i == j)) tempVec.push_back(j);            
+            }
+
+            matCol[i] = tempVec.size();
+            matIndex[i] = new int[tempVec.size()];
+            matIndexValues[i] = new double[tempVec.size()];
+
+            std::copy(tempVec.begin(), tempVec.end(), matIndex[i]);
+
+            max_fields = (max_fields > tempVec.size()) ? max_fields : tempVec.size();
+        }
+
+        MatSeqAIJSetPreallocation(A, (max_fields + 1), nullptr); // +1 just to be safe
+        matIndexCreated = true;
+    }
+
+    for (int i=0; i<neq; i++)
+    {
+        for (int j=0; j<matCol[i]; j++) matIndexValues[i][j] = p_A[i][matIndex[i][j]];
+
+        MatSetValues(A, 1, &i, matCol[i], matIndex[i], matIndexValues[i], INSERT_VALUES); 
+    }
+
+    MatAssemblyBegin(A, MAT_FINAL_ASSEMBLY); MatAssemblyEnd(A, MAT_FINAL_ASSEMBLY);
+}
+
+//*************************************************************************************************

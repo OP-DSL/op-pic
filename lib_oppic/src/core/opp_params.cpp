@@ -3,7 +3,7 @@
 #include <string>
 #include <regex>
 
-#include "Params.h"
+#include "opp_params.h"
 
 using namespace opp;
 
@@ -69,7 +69,7 @@ Params::Params(std::string file_name)
 
 void Params::write(std::ostream &out) {
 
-    out << "SIMULATION PARAMETERS"  << std::endl;
+    out << std::endl << "SIMULATION PARAMETERS"  << std::endl;
     out << "---------------------" << std::endl;
 
     for (auto &a : str_params) {
@@ -88,16 +88,6 @@ void Params::write(std::ostream &out) {
         out << "    " << a.first << " = " << a.second << " (BOOL)" << std::endl;
     }
 
-    out << "---------------------" << std::endl << std::endl << std::endl;
+    out << "---------------------" << std::endl << std::endl;
 }
 
-// int main()
-// { Tests
-//     Params p("/ext-home/zl/phd/test_any/system.param");
-    
-//     std::cout << "inlet_mesh : " << p.get<STRING>("inlet_mesh") << std::endl;
-//     std::cout << "dt : " << p.get<REAL>("dt") << std::endl;
-//     std::cout << "max_iter : " << p.get<INT>("max_iter") << std::endl;
-
-//     p.write(std::cout);
-// }

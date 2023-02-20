@@ -57,11 +57,11 @@ oppic_core: mklib
 	     $(CPP) $(CPPFLAGS) -c $(OPPIC_PATH)/$(SRC)/core/oppic_lib_core.cpp -o $(OBJ)/oppic_lib_core.o $(ALL_INC)
 	     $(CPP) $(CPPFLAGS) -c $(OPPIC_PATH)/$(SRC)/core/oppic_util.cpp -o $(OBJ)/oppic_util.o $(ALL_INC)
 	     $(CPP) $(CPPFLAGS) -c $(OPPIC_PATH)/$(SRC)/core/trace.cpp -o $(OBJ)/trace.o $(ALL_INC)
-		 $(CPP) $(CPPFLAGS) -c $(OPPIC_PATH)/$(SRC)/core/Params.cpp -o $(OBJ)/Params.o $(ALL_INC)
+		 $(CPP) $(CPPFLAGS) -c $(OPPIC_PATH)/$(SRC)/core/opp_params.cpp -o $(OBJ)/opp_params.o $(ALL_INC)
 
 oppic_seq: mklib oppic_core
 	     $(CPP) $(CPPFLAGS) -c $(OPPIC_PATH)/$(SRC)/seq/oppic_seq.cpp -o $(OBJ)/oppic_seq.o $(ALL_INC)
-	     ar -r $(LIB)/liboppic_seq.a $(OBJ)/oppic_lib_core.o $(OBJ)/oppic_util.o $(OBJ)/trace.o $(OBJ)/Params.o $(OBJ)/oppic_seq.o
+	     ar -r $(LIB)/liboppic_seq.a $(OBJ)/oppic_lib_core.o $(OBJ)/oppic_util.o $(OBJ)/trace.o $(OBJ)/opp_params.o $(OBJ)/oppic_seq.o
 
 oppic_omp: mklib oppic_core
 	     $(CPP) $(CPPFLAGS) -c $(OPPIC_PATH)/$(SRC)/omp/oppic_omp.cpp -o $(OBJ)/oppic_omp.o $(ALL_INC)
