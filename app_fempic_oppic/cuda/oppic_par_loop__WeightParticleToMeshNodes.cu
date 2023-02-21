@@ -33,7 +33,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 __constant__ int opDat0_WeightParticleToMeshNodes_stride_OPPIC_CONSTANT;
 
-int opDat0_WeightParticleToMeshNodes_stride_OPPIC_HOST =- 1;
+int opDat0_WeightParticleToMeshNodes_stride_OPPIC_HOST = -1;
 
 
 //user function
@@ -50,10 +50,10 @@ __device__ void weight_particle_to_mesh_nodes__kernel_gpu(
     const double *node_volume3
 )
 {
-    (*node_charge_den0) += (part_lc[0 * opDat0_WeightParticleToMeshNodes_stride_OPPIC_CONSTANT] * (OP_CONST_CUDA_spwt / (*node_volume0)));
-    (*node_charge_den1) += (part_lc[1 * opDat0_WeightParticleToMeshNodes_stride_OPPIC_CONSTANT] * (OP_CONST_CUDA_spwt / (*node_volume1)));
-    (*node_charge_den2) += (part_lc[2 * opDat0_WeightParticleToMeshNodes_stride_OPPIC_CONSTANT] * (OP_CONST_CUDA_spwt / (*node_volume2)));
-    (*node_charge_den3) += (part_lc[3 * opDat0_WeightParticleToMeshNodes_stride_OPPIC_CONSTANT] * (OP_CONST_CUDA_spwt / (*node_volume3)));
+    (*node_charge_den0) += (part_lc[0 * opDat0_WeightParticleToMeshNodes_stride_OPPIC_CONSTANT] * OP_CONST_CUDA_spwt / (*node_volume0));
+    (*node_charge_den1) += (part_lc[1 * opDat0_WeightParticleToMeshNodes_stride_OPPIC_CONSTANT] * OP_CONST_CUDA_spwt / (*node_volume1));
+    (*node_charge_den2) += (part_lc[2 * opDat0_WeightParticleToMeshNodes_stride_OPPIC_CONSTANT] * OP_CONST_CUDA_spwt / (*node_volume2));
+    (*node_charge_den3) += (part_lc[3 * opDat0_WeightParticleToMeshNodes_stride_OPPIC_CONSTANT] * OP_CONST_CUDA_spwt / (*node_volume3));
 }
 
 
@@ -111,6 +111,8 @@ __global__ void oppic_cuda_WeightParticleToMeshNodes(
         atomicAdd(&(ind_arg1[map2idx]), arg2_l);
         atomicAdd(&(ind_arg1[map3idx]), arg3_l);
         atomicAdd(&(ind_arg1[map4idx]), arg4_l);
+
+        // __syncthreads();
     }
 }
 

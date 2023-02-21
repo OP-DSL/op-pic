@@ -72,6 +72,44 @@ void Trace::write_profile(std::string filename) {
                << 1
                << std::endl;
     trace_file.close();
+
+    std::cout << "function_name"<< ","
+               << "total_time" << ","
+               << "exclusive_time" << ","
+               << "exclusive_proportion" << ","
+               << "number_of_calls"
+               << std::endl;
+
+    for(const auto& func: function_list) {
+        if (!func.second.start_time) {
+            std::cout << func.first << ","
+                       << func.second.total_time << ","
+                       << func.second.total_time - func.second.child_time << ","
+                       << (func.second.total_time - func.second.child_time) / calculation_time << ","
+                       << func.second.num_calls
+                       << std::endl;
+        }
+    }
+    // std::cout << "traceEnter" << ","
+    //            << entry_time << ","
+    //            << entry_time << ","
+    //            << (entry_time) / calculation_time << ","
+    //            << 1
+    //            << std::endl;
+
+    // std::cout << "traceExit" << ","
+    //            << exit_time << ","
+    //            << exit_time << ","
+    //            << (entry_time) / calculation_time << ","
+    //            << 1
+    //            << std::endl;
+
+    std::cout << "traceTotalTime" << ","
+               << calculation_time << ","
+               << 0 << ","
+               << 0 << ","
+               << 1
+               << std::endl;
 };
 
 void Trace::enter(std::string func_name) {

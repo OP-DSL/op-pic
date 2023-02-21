@@ -65,19 +65,112 @@ void inject_ions__kernel(
 }
 
 //*************************************************************************************************
-void enrich_velocity__kernel(
-    double *vel,
+void move_injected_particles_to_cell__kernel(
+    int* move_status,
+    const double* part_pos,
+    double* part_lc,
+    int* current_cell_index,
+    double* part_vel,
+    const double *cell_volume,
+    const double *cell_det,
     const double *cell_ef,
-    double *dt
+    const int *cell_connectivity,
+    const bool* search,
+    const double* dt
 )
 {
-    vel[0] -= OP_CONST_charge / OP_CONST_mass * cell_ef[0] * (0.5 * (*dt));
-    vel[1] -= OP_CONST_charge / OP_CONST_mass * cell_ef[1] * (0.5 * (*dt));
-    vel[2] -= OP_CONST_charge / OP_CONST_mass * cell_ef[2] * (0.5 * (*dt));
+    bool inside = true;
+
+    for (int i=0; i<NODES_PER_CELL; i++) /*loop over vertices*/
+    {
+        part_lc[i] = (1.0/6.0) * (
+            cell_det[i * DET_FIELDS + 0] - 
+            cell_det[i * DET_FIELDS + 1] * part_pos[0] + 
+            cell_det[i * DET_FIELDS + 2] * part_pos[1] - 
+            cell_det[i * DET_FIELDS + 3] * part_pos[2]
+                ) / (*cell_volume);
+        
+        if (part_lc[i]<0 || part_lc[i]>1.0) inside = false;
+    }    
+    
+    if (inside)
+    {
+        *move_status = MOVE_DONE;
+        part_vel[0] -= OP_CONST_charge / OP_CONST_mass * cell_ef[0] * (0.5 * (*dt));
+        part_vel[1] -= OP_CONST_charge / OP_CONST_mass * cell_ef[1] * (0.5 * (*dt));
+        part_vel[2] -= OP_CONST_charge / OP_CONST_mass * cell_ef[2] * (0.5 * (*dt));
+        return;
+    }
+
+    if (*search) 
+    {
+        (*current_cell_index)++; // outside the last known cell, Increment the cell_index to search in the full mesh
+        return;
+    }
+
+    // outside the last known cell, find most negative weight and use that cell_index to reduce computations
+    int min_i = 0;
+    double min_lc = part_lc[0];
+    
+    for (int i=1; i<NEIGHBOUR_CELLS; i++)
+    {
+        if (part_lc[i] < min_lc) 
+        {
+            min_lc = part_lc[i];
+            min_i = i;
+        }
+    }
+
+    if (cell_connectivity[min_i] >= 0) // is there a neighbor in this direction?
+    {
+        (*current_cell_index) = cell_connectivity[min_i];
+        *move_status = NEED_MOVE;
+    }
+    else
+    {
+        (*current_cell_index) = MAX_CELL_INDEX;
+        *move_status = NEED_REMOVE;
+    }
 }
 
 //*************************************************************************************************
-void move_particle_to_cell__kernel(
+void reset_ion_density__kernel(
+    double *ion_den
+)
+{
+    ion_den[0] = 0.0;
+}
+
+//*************************************************************************************************
+void weight_fields_to_particles__kernel(
+    double *part_ef,
+    const double *cell_ef
+)
+{
+    part_ef[0] = cell_ef[0];
+    part_ef[1] = cell_ef[1];
+    part_ef[2] = cell_ef[2];
+}
+
+//*************************************************************************************************
+void move_particles__kernel(
+    double *pos,    
+    double *vel,
+    const double *ef,
+    const double *dt
+)
+{
+    vel[0] += (OP_CONST_charge / OP_CONST_mass * ef[0] * (*dt));
+    vel[1] += (OP_CONST_charge / OP_CONST_mass * ef[1] * (*dt));
+    vel[2] += (OP_CONST_charge / OP_CONST_mass * ef[2] * (*dt));
+    
+    pos[0] += vel[0] * (*dt); // v = u + at
+    pos[1] += vel[1] * (*dt); // v = u + at
+    pos[2] += vel[2] * (*dt); // v = u + at
+}
+
+//*************************************************************************************************
+void move_all_particles_to_cell__kernel(
     int* move_status,
     const double* part_pos,
     double* part_lc,
@@ -133,45 +226,9 @@ void move_particle_to_cell__kernel(
     }
     else
     {
-        (*current_cell_index) = -1;
+        (*current_cell_index) = MAX_CELL_INDEX;
         *move_status = NEED_REMOVE;
     }
-}
-
-//*************************************************************************************************
-void weight_fields_to_particles__kernel(
-    double *part_ef,
-    const double *cell_ef
-)
-{
-    part_ef[0] = cell_ef[0];
-    part_ef[1] = cell_ef[1];
-    part_ef[2] = cell_ef[2];
-}
-
-//*************************************************************************************************
-void move_particles__kernel(
-    double *pos,    
-    double *vel,
-    const double *ef,
-    const double *dt
-)
-{
-    vel[0] += (OP_CONST_charge / OP_CONST_mass * ef[0] * (*dt));
-    vel[1] += (OP_CONST_charge / OP_CONST_mass * ef[1] * (*dt));
-    vel[2] += (OP_CONST_charge / OP_CONST_mass * ef[2] * (*dt));
-    
-    pos[0] += vel[0] * (*dt); // v = u + at
-    pos[1] += vel[1] * (*dt); // v = u + at
-    pos[2] += vel[2] * (*dt); // v = u + at
-}
-
-//*************************************************************************************************
-void reset_ion_density__kernel(
-    double *ion_den
-)
-{
-    ion_den[0] = 0.0;
 }
 
 //*************************************************************************************************

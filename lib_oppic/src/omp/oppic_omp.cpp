@@ -33,9 +33,9 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <oppic_omp.h>
 
 //****************************************
-void oppic_init(int argc, char **argv, int diags)
+void oppic_init(int argc, char **argv, opp::Params* params)
 {
-    oppic_init_core(argc, argv, diags);
+    oppic_init_core(argc, argv, params);
 }
 
 //****************************************
@@ -63,6 +63,30 @@ oppic_dat oppic_decl_dat(oppic_set set, int dim, char const *type, int size, cha
 }
 
 //****************************************
+oppic_map oppic_decl_map_txt(oppic_set from, oppic_set to, int dim, const char* file_name, char const *name)
+{
+    int* map_data = (int*)oppic_load_from_file_core(file_name, from->size, dim, "int", sizeof(int));
+
+    oppic_map map = oppic_decl_map(from, to, dim, map_data, name);
+
+    free(map_data);
+
+    return map;
+}
+
+//****************************************
+oppic_dat oppic_decl_dat_txt(oppic_set set, int dim, char const *type, int size, const char* file_name, char const *name)
+{
+    char* dat_data = (char*)oppic_load_from_file_core(file_name, set->size, dim, type, size);
+
+    oppic_dat dat = oppic_decl_dat(set, dim, type, size, dat_data, name);
+
+    free(dat_data);
+
+    return dat;
+}
+
+//****************************************
 oppic_arg oppic_arg_dat(oppic_dat dat, int idx, oppic_map map, int dim, const char *typ, oppic_access acc, bool map_with_cell_index)
 {
     return oppic_arg_dat_core(dat, idx, map, dim, typ, acc, map_with_cell_index);
@@ -77,10 +101,15 @@ oppic_arg oppic_arg_dat(oppic_dat dat, oppic_access acc, bool map_with_cell_inde
 {
     return oppic_arg_dat_core(dat, acc, map_with_cell_index);
 }
-oppic_arg oppic_arg_dat(oppic_map map, oppic_access acc, bool map_with_cell_index)
+oppic_arg oppic_arg_dat(oppic_map data_map, oppic_access acc, bool map_with_cell_index)
 {
-    return oppic_arg_dat_core(map, acc, map_with_cell_index);
+    return oppic_arg_dat_core(data_map, acc, map_with_cell_index);
 }
+oppic_arg oppic_arg_dat(oppic_map data_map, int idx, oppic_map map, oppic_access acc, bool map_with_cell_index)
+{
+    return oppic_arg_dat_core(data_map, idx, map, acc, map_with_cell_index);
+}
+
 
 //****************************************
 // template <class T> oppic_arg oppic_arg_gbl(T *data, int dim, char const *typ, oppic_access acc);
@@ -107,6 +136,18 @@ oppic_set oppic_decl_particle_set(char const *name, oppic_set cells_set)
 oppic_dat oppic_decl_particle_dat(oppic_set set, int dim, char const *type, int size, char *data, char const *name, bool cell_index)
 {
     return oppic_decl_particle_dat_core(set, dim, type, size, data, name, cell_index);
+}
+
+//****************************************
+oppic_dat oppic_decl_particle_dat_txt(oppic_set set, int dim, char const *type, int size, const char* file_name, char const *name, bool cell_index)
+{
+    char* dat_data = (char*)oppic_load_from_file_core(file_name, set->size, dim, type, size);
+
+    oppic_dat dat = oppic_decl_particle_dat_core(set, dim, type, size, dat_data, name, cell_index);
+
+    free(dat_data);
+
+    return dat;
 }
 
 //****************************************
@@ -154,31 +195,57 @@ void oppic_mark_particle_to_move(oppic_set set, int particle_index, int move_sta
 void oppic_finalize_particle_move(oppic_set set)
 { TRACE_ME;
 
-    if (OP_DEBUG) printf("oppic_finalize_particle_move set [%s] with particle_remove_count [%d]\n", set->name, set->particle_remove_count);
+    oppic_finalize_particle_move_omp(set);
+
+    if (OP_auto_sort == 1)
+    {
+        if (OP_DEBUG) printf("oppic_finalize_particle_move auto sorting particle set [%s]\n", set->name);
+        oppic_particle_sort(set);
+    }
+}
+
+//****************************************
+void oppic_finalize_particle_move_omp(oppic_set set)
+{
+    if (OP_DEBUG) printf("oppic_finalize_particle_move_omp set [%s] with particle_remove_count [%d]\n", set->name, set->particle_remove_count);
 
     if (set->particle_remove_count <= 0) return;
 
-    #pragma omp parallel for
-    for (int i = 0; i < (int)set->particle_dats->size(); i++)
+    if (OP_auto_sort == 0) // if not auto sorting, fill the holes
     {
-        oppic_dat current_oppic_dat = set->particle_dats->at(i);
-        int removed_count = 0;
-
-        for (int j = 0; j < set->size; j++)
+        #pragma omp parallel for
+        for (int i = 0; i < (int)set->particle_dats->size(); i++)
         {
-            if (set->particle_statuses[j] != NEED_REMOVE) continue;
+            oppic_dat current_oppic_dat = set->particle_dats->at(i);
+            int removed_count = 0;
+            int skip_count = 0;
 
-            char* dat_removed_ptr = (char *)(current_oppic_dat->data + (j * current_oppic_dat->size));
-            char* dat_to_replace_ptr = (char *)(current_oppic_dat->data + ((set->size - removed_count - 1) * current_oppic_dat->size));
-            
-            // Get the last element and replace the hole // Not the Optimum!!!
-            // TODO : Can we make NULL data and handle it in sort?
-            memcpy(dat_removed_ptr, dat_to_replace_ptr, current_oppic_dat->size); 
+            for (int j = 0; j < set->size; j++)
+            {
+                if (set->particle_statuses[j] != OPP_NEED_REMOVE) continue;
 
-            removed_count++;
+                while (set->particle_statuses[set->size - removed_count - skip_count - 1] == OPP_NEED_REMOVE)
+                {
+                    skip_count++;
+                }
+                if (j >= (set->size - removed_count - skip_count - 1)) 
+                {
+                    if (OP_DEBUG) printf("oppic_finalize_particle_move_core Current Iteration index [%d] and replacement index %d; hence breaking\n", j, (set->size - removed_count - skip_count - 1));
+                    break;
+                }
+
+                char* dat_removed_ptr = (char *)(current_oppic_dat->data + (j * current_oppic_dat->size));
+                char* dat_to_replace_ptr = (char *)(current_oppic_dat->data + ((set->size - removed_count - 1) * current_oppic_dat->size));
+                
+                // Get the last element and replace the hole // Not the Optimum!!!
+                // TODO : Can we make NULL data and handle it in sort?
+                memcpy(dat_removed_ptr, dat_to_replace_ptr, current_oppic_dat->size); 
+
+                removed_count++;
+            }
+
+            // current_oppic_dat->data = (char *)realloc(current_oppic_dat->data, (size_t)(set->size - removed_count) * (size_t)current_oppic_dat->size);
         }
-
-        current_oppic_dat->data = (char *)realloc(current_oppic_dat->data, (size_t)(set->size - removed_count) * (size_t)current_oppic_dat->size);
     }
 
     set->size -= set->particle_remove_count;
@@ -200,7 +267,7 @@ void oppic_particle_sort(oppic_set set)
     for (int i = 0; i < (int)set->particle_dats->size(); i++)
     {    
         auto& dat = set->particle_dats->at(i);
-        char *new_data = (char *)malloc(set->size * dat->size);
+        char *new_data = (char *)malloc(set->array_capacity * dat->size);
         char *old_data = (char*)dat->data;
         
         for (int j = 0; j < set->size; j++)
@@ -243,9 +310,25 @@ void oppic_print_dat_to_txtfile(oppic_dat dat, const char *file_name_prefix, con
 }
 
 //****************************************
+void oppic_print_map_to_txtfile(oppic_map map, const char *file_name_prefix, const char *file_name_suffix)
+{
+    oppic_print_map_to_txtfile_core(map, file_name_prefix, file_name_suffix);
+}
+
+//****************************************
 void oppic_dump_dat(oppic_dat dat)
 {
     oppic_dump_dat_core(dat);
 }
 
 //****************************************
+void oppic_reset_dat(oppic_dat dat, char* val)
+{
+    std::cerr << "oppic_reset_dat not implemented for OMP" << std::endl;
+    // int set_size = dat->set->size;
+    // // TODO : reset pragma omp
+    // for (int i = 0; i < set_size; i++)
+    // {
+    //     memcpy(dat->data + i * dat->size, val, dat->size);
+    // }
+}

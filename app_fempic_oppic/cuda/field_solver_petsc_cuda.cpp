@@ -142,7 +142,8 @@ FESolver::FESolver(Volume &volume, int argc, char **argv)
 
     KSPCreate(PETSC_COMM_WORLD, &ksp);
     KSPSetOperators(ksp, A, A);
-    KSPSetTolerances(ksp, 1.e-2 / (neq * neq), 1.e-50, PETSC_DEFAULT, PETSC_DEFAULT); 
+    // KSPSetTolerances(ksp, 1.e-2 / (neq * neq), 1.e-50, PETSC_DEFAULT, PETSC_DEFAULT); 
+    KSPSetTolerances(ksp, 1.e-100 / (neq * neq), 1.e-100, PETSC_DEFAULT, 100); 
     KSPSetFromOptions(ksp);
 
     cout << "FESolver : Petsc Done " << endl;

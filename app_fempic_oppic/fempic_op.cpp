@@ -38,8 +38,7 @@ const int num_iterations = 50;
 //*************************************************************************************************
 void oppic_par_loop_inject__InjectIons(oppic_set,oppic_arg,oppic_arg,oppic_arg,oppic_arg,oppic_arg);
 void oppic_par_loop_particle_all__MoveToCells(oppic_set,oppic_arg,oppic_arg,oppic_arg,oppic_arg,oppic_arg,oppic_arg,oppic_arg);
-void oppic_par_loop_particle_inject__MoveToCells(oppic_set,oppic_arg,oppic_arg,oppic_arg,oppic_arg,oppic_arg,oppic_arg,oppic_arg);
-void oppic_par_loop_inject__EnrichVelocity(oppic_set,oppic_arg,oppic_arg,oppic_arg);
+void oppic_par_loop_particle_inject__MoveToCells(oppic_set,oppic_arg,oppic_arg,oppic_arg,oppic_arg,oppic_arg,oppic_arg,oppic_arg,oppic_arg,oppic_arg,oppic_arg);
 void oppic_par_loop_all__WeightFieldsToParticles(oppic_set,oppic_arg,oppic_arg);
 void oppic_par_loop_all__MoveParticles(oppic_set,oppic_arg,oppic_arg,oppic_arg,oppic_arg);
 void oppic_par_loop_all__ResetIonDensity(oppic_set,oppic_arg);
@@ -117,21 +116,17 @@ int main(int argc, char **argv)
             );
             oppic_par_loop_particle_inject__MoveToCells(
                 particles_set,
-                oppic_arg_dat(part_position,           OP_WRITE),
-                oppic_arg_dat(part_weights,            OP_WRITE),
-                oppic_arg_dat(part_cell_index,         OP_WRITE),
-                oppic_arg_dat(cell_volume,             OP_READ, true),
-                oppic_arg_dat(cell_determinants,       OP_READ, true),
-                oppic_arg_dat(cell_to_cell_map,        OP_READ, true),
-                oppic_arg_gbl(&(bool_true), 1, "bool", OP_READ)
+                oppic_arg_dat(part_position,             OP_READ),
+                oppic_arg_dat(part_weights,              OP_WRITE),
+                oppic_arg_dat(part_cell_index,           OP_WRITE),
+                oppic_arg_dat(part_velocity,             OP_INC),
+                oppic_arg_dat(cell_volume,               OP_READ, true),
+                oppic_arg_dat(cell_determinants,         OP_READ, true),
+                oppic_arg_dat(cell_electric_field,       OP_READ, true), 
+                oppic_arg_dat(cell_to_cell_map,          OP_READ, true),
+                oppic_arg_gbl(&(bool_true), 1, "bool",   OP_READ),
+                oppic_arg_gbl(&dt,          1, "double", OP_READ)
             );
-            oppic_par_loop_inject__EnrichVelocity(
-                particles_set,
-                oppic_arg_dat(part_velocity,       OP_WRITE),
-                oppic_arg_dat(cell_electric_field, OP_READ, true), 
-                oppic_arg_gbl(&dt, 1, "double",    OP_READ)
-            );
-            oppic_particle_sort(particles_set);
 
         // STEP X - Misc - make ion_density to zero ************************************
             oppic_par_loop_all__ResetIonDensity(
@@ -154,10 +149,9 @@ int main(int argc, char **argv)
                 oppic_arg_dat(part_electric_field,   OP_READ),
                 oppic_arg_gbl(&dt,  1,     "double", OP_READ)
             );
- 
             oppic_par_loop_particle_all__MoveToCells(
                 particles_set,
-                oppic_arg_dat(part_position,            OP_WRITE),
+                oppic_arg_dat(part_position,            OP_READ),
                 oppic_arg_dat(part_weights,             OP_WRITE),
                 oppic_arg_dat(part_cell_index,          OP_WRITE),
                 oppic_arg_dat(cell_volume,              OP_READ, true),
@@ -165,7 +159,6 @@ int main(int argc, char **argv)
                 oppic_arg_dat(cell_to_cell_map,         OP_READ, true),
                 oppic_arg_gbl(&(bool_false), 1, "bool", OP_READ)
             );
-            oppic_particle_sort(particles_set);
           
         // STEP 4 - Gather the contribution from particle movement to the mesh ************************************
             oppic_par_loop_all__WeightParticleToMeshNodes(
@@ -184,10 +177,10 @@ int main(int argc, char **argv)
         // STEP 5 - Solve field values on the mesh points ************************************
             //matrix | TODO : Try to make these in to kernels and use oppic_par_loop
             solver.SolveFields(
-                node_charge_density,
-                node_potential,
-                node_bnd_potential,
-                cell_electric_field
+                node_charge_density,    // OP_READ
+                node_potential,         // OP_WRITE
+                node_bnd_potential,     // OP_READ
+                cell_electric_field     // OP_WRITE
             );
 
         // STEP 6 - Log and/or print values to files ************************************ 
@@ -201,6 +194,7 @@ int main(int argc, char **argv)
 
                 oppic_print_dat_to_txtfile(part_position, f.c_str(), "part_position.dat");
                 oppic_print_dat_to_txtfile(part_velocity, f.c_str(), "part_velocity.dat");
+                oppic_print_dat_to_txtfile(part_weights, f.c_str(), "part_weights.dat");
                 oppic_print_dat_to_txtfile(part_cell_index, f.c_str(), "part_cell_index.dat");
             }
             std::cout << "ts: " << ts << "\t num_particles: " << particles_set->size << std::endl;

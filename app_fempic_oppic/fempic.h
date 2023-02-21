@@ -15,6 +15,7 @@
 #include <chrono>
 #include <algorithm> 
 #include <trace.h>
+#include <limits.h>
 
 #define USE_PETSC
 #define USE_PARTICLE_SORTING
@@ -33,8 +34,10 @@ using namespace std;
 #define DET_FIELDS         4
 #define PRINT_PRECISION    15
 
+#define MAX_CELL_INDEX     INT_MAX
+
 /*constants*/
-const bool print_all_to_file = true;
+const bool print_all_to_file = false;
 
 const double EPS0     = 8.8541878e-12;    /*permittivity of free space*/
 const double QE       = 1.602e-19;        /*cellary charge*/

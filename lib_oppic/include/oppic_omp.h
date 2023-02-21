@@ -36,6 +36,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <omp.h>
 
 
+// TODO : May need to write with array capcity and realloc always if partticle dats are used
 template <class T> 
 void oppic_create_thread_level_data(oppic_arg arg, T init_value)
 {
@@ -65,6 +66,7 @@ void oppic_create_thread_level_data(oppic_arg arg, T init_value)
     }
 }
 
+// TODO : May need to write with array capcity and realloc always if partticle dats are used
 template <class T> 
 void oppic_reduce_thread_level_data(oppic_arg arg)
 {
@@ -84,12 +86,12 @@ void oppic_reduce_thread_level_data(oppic_arg arg)
             
             for (int n = start; n < finish; n++)
             {
-                for (int thr = 0; thr < nthreads; thr++)
+                for (int array_num = 0; array_num < nthreads; array_num++)
                 {
                     switch (arg.acc)
                     {
                         case OP_INC:
-                            ((T*)dat->data)[n] += ((T*)dat->thread_data->at(thr))[n];
+                            ((T*)dat->data)[n] += ((T*)dat->thread_data->at(array_num))[n];
                             break;
                         default:
                             std::cerr << "oppic_reduce_thread_level_data dat [" << dat->name << "] acc [" << (int)arg.acc << "] not implemented" << std::endl;
@@ -100,5 +102,5 @@ void oppic_reduce_thread_level_data(oppic_arg arg)
     }
 }
 
-
+void oppic_finalize_particle_move_omp(oppic_set set);
 

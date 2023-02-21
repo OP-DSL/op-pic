@@ -36,11 +36,15 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <map>
 #include <iostream>
 #include <trace.h>
+#include <opp_params.h>
 #include <oppic_util.h>
 #include <cstring>
+#include <limits.h>
 
 //*************************************************************************************************
 #define OP_DEBUG       false
+
+#define MAX_CELL_INDEX     INT_MAX
 
 #define OP_READ        0
 #define OP_WRITE       1
@@ -68,11 +72,11 @@ enum oppic_iterate_type
     OP_ITERATE_INJECTED,
 };
 
-enum MoveStatus 
+enum move_status 
 {
-    MOVE_DONE = 0,
-    NEED_MOVE,
-    NEED_REMOVE,
+    OPP_MOVE_DONE = 0,
+    OPP_NEED_MOVE,
+    OPP_NEED_REMOVE,
 };
 
 enum DeviceType
@@ -125,15 +129,16 @@ struct oppic_arg {
 };
 
 struct oppic_set_core {
-    int index;                  /* index */
-    int size;                   /* number of elements in set */
-    char const *name;           /* name of set */
-    int core_size;              /* number of core elements in an mpi process*/
-    int exec_size;              /* number of additional imported elements to be executed */
-    int nonexec_size;           /* number of additional imported elements that are not executed */
+    int index;                              /* index */
+    int size;                               /* number of elements in set */
+    char const *name;                       /* name of set */
+    int core_size;                          /* number of core elements in an mpi process*/
+    int exec_size;                          /* number of additional imported elements to be executed */
+    int nonexec_size;                       /* number of additional imported elements that are not executed */
 
-    bool is_particle = false;
-    int diff = 0;                /*number of particles to change*/
+    bool is_particle;                       /* is it a particle set */
+    int array_capacity;                     /* capacity of the allocated array */
+    int diff;                               /* number of particles to change */
     std::vector<int>* indexes_to_remove;
     oppic_dat cell_index_dat = NULL;
     std::vector<oppic_dat>* particle_dats;
@@ -178,8 +183,10 @@ struct oppic_dat_core {
 //*************************************************************************************************
 // oppic API calls
 
-void oppic_init_core(int argc, char **argv, int diags);
+void oppic_init_core(int argc, char **argv, opp::Params* params);
 void oppic_exit_core();
+
+void oppic_set_args_core(char *argv);
 
 oppic_set oppic_decl_set_core(int size, char const *name);
 
@@ -190,10 +197,12 @@ oppic_dat oppic_decl_dat_core(oppic_set set, int dim, char const *type, int size
 oppic_arg oppic_arg_dat_core(oppic_dat dat, int idx, oppic_map map, int dim, const char *typ, oppic_access acc, bool map_with_cell_index = false);
 oppic_arg oppic_arg_dat_core(oppic_dat dat, int idx, oppic_map map, oppic_access acc, bool map_with_cell_index = false);
 oppic_arg oppic_arg_dat_core(oppic_dat dat, oppic_access acc, bool map_with_cell_index = false);
-oppic_arg oppic_arg_dat_core(oppic_map map, oppic_access acc, bool map_with_cell_index = false);
+oppic_arg oppic_arg_dat_core(oppic_map data_map, oppic_access acc, bool map_with_cell_index = false);
+oppic_arg oppic_arg_dat_core(oppic_map data_map, int idx, oppic_map map, oppic_access acc, bool map_with_cell_index = false);
 
 // template <class T> oppic_arg oppic_arg_gbl(T *data, int dim, char const *typ, oppic_access acc);
 oppic_arg oppic_arg_gbl_core(double *data, int dim, char const *typ, oppic_access acc);
+oppic_arg oppic_arg_gbl_core(int *data, int dim, char const *typ, oppic_access acc);
 oppic_arg oppic_arg_gbl_core(const bool *data, int dim, char const *typ, oppic_access acc);
 
 oppic_set oppic_decl_particle_set_core(int size, char const *name, oppic_set cells_set);
@@ -219,6 +228,7 @@ void oppic_remove_marked_particles_from_set_core(oppic_set set, std::vector<int>
 void oppic_particle_sort_core(oppic_set set);
 
 void oppic_print_dat_to_txtfile_core(oppic_dat dat, const char *file_name_prefix, const char *file_name_suffix);
+void oppic_print_map_to_txtfile_core(oppic_map map, const char *file_name_prefix, const char *file_name_suffix);
 
 void oppic_dump_dat_core(oppic_dat data);
 //*************************************************************************************************
@@ -226,7 +236,13 @@ void oppic_dump_dat_core(oppic_dat data);
 extern int OP_hybrid_gpu;
 extern int OP_maps_base_index;
 extern int OP_auto_soa;
+extern int OP_part_alloc_mult;
+extern int OP_auto_sort;
 
 extern std::vector<oppic_set> oppic_sets;
 extern std::vector<oppic_map> oppic_maps;
 extern std::vector<oppic_dat> oppic_dats;
+
+extern opp::Params* opp_params;
+
+void* oppic_load_from_file_core(const char* file_name, int set_size, int dim, char const *type, int size);

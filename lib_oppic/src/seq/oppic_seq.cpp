@@ -34,9 +34,9 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 
 //****************************************
-void oppic_init(int argc, char **argv, int diags)
+void oppic_init(int argc, char **argv, opp::Params* params)
 {
-    oppic_init_core(argc, argv, diags);
+    oppic_init_core(argc, argv, params);
 }
 
 //****************************************
@@ -64,6 +64,30 @@ oppic_dat oppic_decl_dat(oppic_set set, int dim, char const *type, int size, cha
 }
 
 //****************************************
+oppic_map oppic_decl_map_txt(oppic_set from, oppic_set to, int dim, const char* file_name, char const *name)
+{
+    int* map_data = (int*)oppic_load_from_file_core(file_name, from->size, dim, "int", sizeof(int));
+
+    oppic_map map = oppic_decl_map(from, to, dim, map_data, name);
+
+    free(map_data);
+
+    return map;
+}
+
+//****************************************
+oppic_dat oppic_decl_dat_txt(oppic_set set, int dim, char const *type, int size, const char* file_name, char const *name)
+{
+    char* dat_data = (char*)oppic_load_from_file_core(file_name, set->size, dim, type, size);
+
+    oppic_dat dat = oppic_decl_dat(set, dim, type, size, dat_data, name);
+
+    free(dat_data);
+
+    return dat;
+}
+
+//****************************************
 oppic_arg oppic_arg_dat(oppic_dat dat, int idx, oppic_map map, int dim, const char *typ, oppic_access acc, bool map_with_cell_index)
 {
     return oppic_arg_dat_core(dat, idx, map, dim, typ, acc, map_with_cell_index);
@@ -78,14 +102,23 @@ oppic_arg oppic_arg_dat(oppic_dat dat, oppic_access acc, bool map_with_cell_inde
 {
     return oppic_arg_dat_core(dat, acc, map_with_cell_index);
 }
-oppic_arg oppic_arg_dat(oppic_map map, oppic_access acc, bool map_with_cell_index)
+oppic_arg oppic_arg_dat(oppic_map data_map, oppic_access acc, bool map_with_cell_index)
 {
-    return oppic_arg_dat_core(map, acc, map_with_cell_index);
+    return oppic_arg_dat_core(data_map, acc, map_with_cell_index);
 }
+oppic_arg oppic_arg_dat(oppic_map data_map, int idx, oppic_map map, oppic_access acc, bool map_with_cell_index)
+{
+    return oppic_arg_dat_core(data_map, idx, map, acc, map_with_cell_index);
+}
+
 
 //****************************************
 // template <class T> oppic_arg oppic_arg_gbl(T *data, int dim, char const *typ, oppic_access acc);
 oppic_arg oppic_arg_gbl(double *data, int dim, char const *typ, oppic_access acc)
+{
+    return oppic_arg_gbl_core(data, dim, typ, acc);
+}
+oppic_arg oppic_arg_gbl(int *data, int dim, char const *typ, oppic_access acc)
 {
     return oppic_arg_gbl_core(data, dim, typ, acc);
 }
@@ -108,6 +141,18 @@ oppic_set oppic_decl_particle_set(char const *name, oppic_set cells_set)
 oppic_dat oppic_decl_particle_dat(oppic_set set, int dim, char const *type, int size, char *data, char const *name, bool cell_index)
 {
     return oppic_decl_particle_dat_core(set, dim, type, size, data, name, cell_index);
+}
+
+//****************************************
+oppic_dat oppic_decl_particle_dat_txt(oppic_set set, int dim, char const *type, int size, const char* file_name, char const *name, bool cell_index)
+{
+    char* dat_data = (char*)oppic_load_from_file_core(file_name, set->size, dim, type, size);
+
+    oppic_dat dat = oppic_decl_particle_dat_core(set, dim, type, size, dat_data, name, cell_index);
+
+    free(dat_data);
+
+    return dat;
 }
 
 //****************************************
@@ -152,6 +197,12 @@ void oppic_print_dat_to_txtfile(oppic_dat dat, const char *file_name_prefix, con
 }
 
 //****************************************
+void oppic_print_map_to_txtfile(oppic_map map, const char *file_name_prefix, const char *file_name_suffix)
+{
+    oppic_print_map_to_txtfile_core(map, file_name_prefix, file_name_suffix);
+}
+
+//****************************************
 void oppic_dump_dat(oppic_dat dat)
 {
     oppic_dump_dat_core(dat);
@@ -175,4 +226,21 @@ void oppic_finalize_particle_move(oppic_set set)
 { TRACE_ME;
 
     oppic_finalize_particle_move_core(set);
+
+    if (OP_auto_sort == 1)
+    {
+        if (OP_DEBUG) printf("oppic_finalize_particle_move auto sorting particle set [%s]\n", set->name);
+        oppic_particle_sort(set);
+    }
+}
+
+//****************************************
+void oppic_reset_dat(oppic_dat dat, char* val)
+{
+    int set_size = dat->set->size;
+
+    for (int i = 0; i < set_size; i++)
+    {
+        memcpy(dat->data + i * dat->size, val, dat->size);
+    }
 }

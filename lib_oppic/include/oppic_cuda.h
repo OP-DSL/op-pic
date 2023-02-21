@@ -70,7 +70,7 @@ void cutilDeviceInit(int argc, char **argv);
 
 void op_mvHostToDevice(void **map, int size);
 
-void op_cpHostToDevice(void **data_d, void **data_h, int size);
+void op_cpHostToDevice(void **data_d, void **data_h, int copy_size, int alloc_size); 
 
 void op_upload_dat(oppic_dat dat);
 
@@ -174,3 +174,5 @@ void sort_dat_according_to_index(oppic_dat dat, const thrust::device_vector<int>
     T* sorted_dat_dp = thrust::raw_pointer_cast(&sorted_dat_dv[0]);
     cudaMemcpy((void*)dat->data_d, (void*)sorted_dat_dp, (set_size * dat->size), cudaMemcpyDeviceToDevice);
 }
+
+void oppic_finalize_particle_move_cuda(oppic_set set);
