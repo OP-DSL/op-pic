@@ -496,7 +496,8 @@ void oppic_finalize_particle_move_core(oppic_set set)
 
     if (OP_auto_sort == 0) // if not auto sorting, fill the holes
     {
-        int *cell_index_data = ((int *)set->cell_index_dat->data);
+        int *cell_index_data = (int *)malloc(set->array_capacity * set->cell_index_dat->size); // getting a backup of cell index since it will also be rearranged using a random OMP thread
+        memcpy((char*)cell_index_data, set->cell_index_dat->data, set->array_capacity * set->cell_index_dat->size);
 
         for (int i = 0; i < (int)set->particle_dats->size(); i++)
         {
@@ -533,13 +534,15 @@ void oppic_finalize_particle_move_core(oppic_set set)
 
             // current_oppic_dat->data = (char *)realloc(current_oppic_dat->data, (size_t)(set->size - removed_count) * (size_t)current_oppic_dat->size);
         }
+
+        free(cell_index_data);
     }
 
     set->size -= set->particle_remove_count;
     set->particle_remove_count = 0;
 
-    free(set->particle_statuses);
-    set->particle_statuses = NULL;
+    // free(set->particle_statuses);
+    // set->particle_statuses = NULL;
 }
 
 //****************************************

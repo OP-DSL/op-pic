@@ -117,6 +117,10 @@ oppic_arg oppic_arg_gbl(double *data, int dim, char const *typ, oppic_access acc
 {
     return oppic_arg_gbl_core(data, dim, typ, acc);
 }
+oppic_arg oppic_arg_gbl(int *data, int dim, char const *typ, oppic_access acc)
+{
+    return oppic_arg_gbl_core(data, dim, typ, acc);
+}
 oppic_arg oppic_arg_gbl(const bool *data, int dim, char const *typ, oppic_access acc)
 {
     return oppic_arg_gbl_core(data, dim, typ, acc);
@@ -213,6 +217,9 @@ void oppic_finalize_particle_move_omp(oppic_set set)
 
     if (OP_auto_sort == 0) // if not auto sorting, fill the holes
     {
+        int *cell_index_data = (int *)malloc(set->array_capacity * set->cell_index_dat->size); // getting a backup of cell index since it will also be rearranged using a random OMP thread
+        memcpy((char*)cell_index_data, set->cell_index_dat->data, set->array_capacity * set->cell_index_dat->size);
+
         #pragma omp parallel for
         for (int i = 0; i < (int)set->particle_dats->size(); i++)
         {
@@ -222,9 +229,13 @@ void oppic_finalize_particle_move_omp(oppic_set set)
 
             for (int j = 0; j < set->size; j++)
             {
-                if (set->particle_statuses[j] != OPP_NEED_REMOVE) continue;
+                if (cell_index_data[j] != MAX_CELL_INDEX) continue;
 
-                while (set->particle_statuses[set->size - removed_count - skip_count - 1] == OPP_NEED_REMOVE)
+                char* dat_removed_ptr = (char *)(current_oppic_dat->data + (j * current_oppic_dat->size));
+
+                // BUG_FIX: (set->size - removed_count - 1) This index could marked to be removed, and if marked, 
+                // then there could be an array index out of bounds access error in the future
+                while (cell_index_data[set->size - removed_count - skip_count - 1] == MAX_CELL_INDEX)
                 {
                     skip_count++;
                 }
@@ -234,8 +245,7 @@ void oppic_finalize_particle_move_omp(oppic_set set)
                     break;
                 }
 
-                char* dat_removed_ptr = (char *)(current_oppic_dat->data + (j * current_oppic_dat->size));
-                char* dat_to_replace_ptr = (char *)(current_oppic_dat->data + ((set->size - removed_count - 1) * current_oppic_dat->size));
+                char* dat_to_replace_ptr = (char *)(current_oppic_dat->data + ((set->size - removed_count - skip_count - 1) * current_oppic_dat->size));
                 
                 // Get the last element and replace the hole // Not the Optimum!!!
                 // TODO : Can we make NULL data and handle it in sort?
@@ -246,11 +256,12 @@ void oppic_finalize_particle_move_omp(oppic_set set)
 
             // current_oppic_dat->data = (char *)realloc(current_oppic_dat->data, (size_t)(set->size - removed_count) * (size_t)current_oppic_dat->size);
         }
+
+        free(cell_index_data);
     }
 
     set->size -= set->particle_remove_count;
     set->particle_remove_count = 0;
-    free(set->particle_statuses);
 }
 
 //****************************************
@@ -324,11 +335,10 @@ void oppic_dump_dat(oppic_dat dat)
 //****************************************
 void oppic_reset_dat(oppic_dat dat, char* val)
 {
-    std::cerr << "oppic_reset_dat not implemented for OMP" << std::endl;
-    // int set_size = dat->set->size;
-    // // TODO : reset pragma omp
-    // for (int i = 0; i < set_size; i++)
-    // {
-    //     memcpy(dat->data + i * dat->size, val, dat->size);
-    // }
+    int set_size = dat->set->size;
+    // TODO : reset pragma omp
+    for (int i = 0; i < set_size; i++)
+    {
+        memcpy(dat->data + i * dat->size, val, dat->size);
+    }
 }

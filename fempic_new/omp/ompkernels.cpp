@@ -108,33 +108,54 @@ void oppic_par_loop_inject__InjectIons(
 
     if (OP_DEBUG) printf("FEMPIC - oppic_par_loop_inject__InjectIons num_particles %d diff %d\n", set->size, set->diff);
 
-    int inj_start = (set->size - set->diff);
-    int nthreads = omp_get_max_threads();
+    // int inj_start = (set->size - set->diff);
+    // int nthreads = omp_get_max_threads();
 
-    // #pragma omp parallel for // CANNOT USE PARALLEL FOR NOW: Since random generator will give unexpected results
-    for (int thr = 0; thr < nthreads; thr++)
-    {
-        int start  = (set->diff * thr) / nthreads;
-        int finish = (set->diff * (thr + 1)) / nthreads;
+    // // #pragma omp parallel for // CANNOT USE PARALLEL FOR NOW: Since random generator will give unexpected results
+    // for (int thr = 0; thr < nthreads; thr++)
+    // {
+    //     int start  = (set->diff * thr) / nthreads;
+    //     int finish = (set->diff * (thr + 1)) / nthreads;
     
-        for (int i = start; i < finish; i++)
-        {    
-            int map0idx    = ((int *)set->cell_index_dat->data)[(inj_start + i) * set->cell_index_dat->dim]; // iface index
+    //     for (int i = start; i < finish; i++)
+    //     {    
+    //         int map0idx    = ((int *)set->cell_index_dat->data)[(inj_start + i) * set->cell_index_dat->dim]; // iface index
 
-            const int map1idx = arg4.map_data[map0idx]; // cell index
+    //         const int map1idx = arg4.map_data[map0idx]; // cell index
 
-            inject_ions__kernel(
-                &((double *)arg0.data)[(inj_start + i) * arg0.dim],    // part_position,
-                &((double *)arg1.data)[(inj_start + i) * arg1.dim],    // part_velocity,
-                &((int *)arg2.data)[(inj_start + i) * arg2.dim],       // part_cell_connectivity,
-                &((int *)arg3.data)[map0idx * arg3.dim],               // iface to cell map
-                &((double*)arg4.data)[map1idx * arg4.dim],             // cell_ef,
-                &((double*)arg5.data)[map0idx * arg5.dim],             // iface_u,
-                &((double*)arg6.data)[map0idx * arg6.dim],             // iface_v,
-                &((double*)arg7.data)[map0idx * arg7.dim],             // iface_normal,
-                &((double*)arg8.data)[map0idx * arg8.dim]              // iface_node_pos
-            );
-        }
+    //         inject_ions__kernel(
+    //             &((double *)arg0.data)[(inj_start + i) * arg0.dim],    // part_position,
+    //             &((double *)arg1.data)[(inj_start + i) * arg1.dim],    // part_velocity,
+    //             &((int *)arg2.data)[(inj_start + i) * arg2.dim],       // part_cell_connectivity,
+    //             &((int *)arg3.data)[map0idx * arg3.dim],               // iface to cell map
+    //             &((double*)arg4.data)[map1idx * arg4.dim],             // cell_ef,
+    //             &((double*)arg5.data)[map0idx * arg5.dim],             // iface_u,
+    //             &((double*)arg6.data)[map0idx * arg6.dim],             // iface_v,
+    //             &((double*)arg7.data)[map0idx * arg7.dim],             // iface_normal,
+    //             &((double*)arg8.data)[map0idx * arg8.dim]              // iface_node_pos
+    //         );
+    //     }
+    // }
+
+    int inj_start = (set->size - set->diff);
+
+    for (int i = 0; i < set->diff; i++)
+    {    
+        int map0idx    = ((int *)set->cell_index_dat->data)[(inj_start + i) * set->cell_index_dat->dim]; // iface index
+
+        const int map1idx = arg4.map_data[map0idx]; // cell index
+
+        inject_ions__kernel(
+            &((double *)arg0.data)[(inj_start + i) * arg0.dim],    // part_position,
+            &((double *)arg1.data)[(inj_start + i) * arg1.dim],    // part_velocity,
+            &((int *)arg2.data)[(inj_start + i) * arg2.dim],       // part_cell_connectivity,
+            &((int *)arg3.data)[map0idx * arg3.dim],               // iface to cell map
+            &((double*)arg4.data)[map1idx * arg4.dim],             // cell_ef,
+            &((double*)arg5.data)[map0idx * arg5.dim],             // iface_u,
+            &((double*)arg6.data)[map0idx * arg6.dim],             // iface_v,
+            &((double*)arg7.data)[map0idx * arg7.dim],             // iface_normal,
+            &((double*)arg8.data)[map0idx * arg8.dim]              // iface_node_pos
+        );
     }
 }
 
