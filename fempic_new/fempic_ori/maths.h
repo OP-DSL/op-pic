@@ -22,5 +22,6 @@ void vecVecSubtract(double *, double *v1, double *v2, int nu);
 
 const double PI = acos(-1.0);
 double rnd();
+void reset_seed();
 
 #endif /* !MATHS_H */

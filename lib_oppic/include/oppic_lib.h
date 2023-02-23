@@ -54,11 +54,11 @@ oppic_dat oppic_decl_dat(oppic_set set, int dim, char const *type, int size, cha
 oppic_map oppic_decl_map_txt(oppic_set from, oppic_set to, int dim, const char* file_name, char const *name);
 oppic_dat oppic_decl_dat_txt(oppic_set set, int dim, char const *type, int size, const char* file_name, char const *name);
 
-oppic_arg oppic_arg_dat(oppic_dat dat, int idx, oppic_map map, int dim, const char *typ, oppic_access acc, bool map_with_cell_index = false);
-oppic_arg oppic_arg_dat(oppic_dat dat, int idx, oppic_map map, oppic_access acc, bool map_with_cell_index = false);
-oppic_arg oppic_arg_dat(oppic_dat dat, oppic_access acc, bool map_with_cell_index = false);
-oppic_arg oppic_arg_dat(oppic_map map, oppic_access acc, bool map_with_cell_index = false);
-oppic_arg oppic_arg_dat(oppic_map data_map, int idx, oppic_map map, oppic_access acc, bool map_with_cell_index = false);
+oppic_arg oppic_arg_dat(oppic_dat dat, int idx, oppic_map map, int dim, const char *typ, oppic_access acc, opp_mapping mapping = OPP_Map_Default);
+oppic_arg oppic_arg_dat(oppic_dat dat, int idx, oppic_map map, oppic_access acc, opp_mapping mapping = OPP_Map_Default);
+oppic_arg oppic_arg_dat(oppic_dat dat, oppic_access acc, opp_mapping mapping = OPP_Map_Default);
+oppic_arg oppic_arg_dat(oppic_map map, oppic_access acc, opp_mapping mapping = OPP_Map_Default);
+oppic_arg oppic_arg_dat(oppic_map data_map, int idx, oppic_map map, oppic_access acc, opp_mapping mapping = OPP_Map_Default);
 
 // template <class T> oppic_arg oppic_arg_gbl(T *data, int dim, char const *typ, oppic_access acc);
 oppic_arg oppic_arg_gbl(double *data, int dim, char const *typ, oppic_access acc);

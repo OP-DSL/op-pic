@@ -27,6 +27,11 @@ ifeq ($(DEBUG), 1)
 	NVCCFLAGS  = -gencode arch=compute_70,code=sm_70 -O0 -g -m64 -Xptxas -dlcm=ca -Xptxas=-v
 endif
 
+PETSC ?= 1
+ifeq ($(PETSC), 1)
+	CPPFLAGS   += -DUSE_PETSC
+endif
+
 CUDA_INSTALL_PATH = /opt/cuda/10.2.89/toolkit
 CUDA_INC   = -I$(CUDA_INSTALL_PATH)/include
 CUDA_LIB   = -L$(CUDA_INSTALL_PATH)/lib64 -lcudart -lcuda

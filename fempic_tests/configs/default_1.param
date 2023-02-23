@@ -4,20 +4,21 @@ REAL ion_velocity   = 7000
 REAL electron_temperature = 2
 REAL wall_potential = 100
 STRING plasma_species = Duterium
+REAL spwt = 2e2
 
 # Simulation parameters
 INT max_iter = 50
 REAL dt       = 1e-7
 # fesolver_method {nonlinear, gaussseidel, lapack, petsc}
-STRING fesolver_method = petsc
+STRING fesolver_method = gaussseidel
 BOOL check_max_values = true
 
 # Input files
 STRING global_mesh = /ext-home/zl/phd/mini-pic/examples/default/mesh.dat
 STRING inlet_mesh  = /ext-home/zl/phd/mini-pic/examples/default/inlet.dat
-STRING wall_mesh   = /ext-home/zl/phd/mini-pic/examples/default/wall.dat
+STRING wall_mesh   = /ext-home/zl/phd/mini-pic/examples/default/fixed.dat
 
-BOOL invert_normals = false
+BOOL invert_normals = true
 
 BOOL opp_auto_sort          = false
 INT opp_allocation_multiple = 1

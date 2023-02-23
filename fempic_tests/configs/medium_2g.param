@@ -5,6 +5,7 @@ REAL ion_velocity   = 1e8
 REAL electron_temperature = 2e8
 REAL wall_potential = 100000
 STRING plasma_species = Duterium
+REAL spwt = 2e2
 
 # Simulation parameters
 INT max_iter = 250

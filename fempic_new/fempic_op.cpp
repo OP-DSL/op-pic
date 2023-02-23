@@ -49,9 +49,11 @@ int main(int argc, char **argv)
     double plasma_den = params.get<REAL>("plasma_den");
     double dt = params.get<REAL>("dt");
     double ion_velocity = params.get<REAL>("ion_velocity");
-    double spwt = 2e2;
+    double spwt = params.get<REAL>("spwt");
     double mass = 2 * AMU;
     double charge = 1 * QE;
+    int max_iter = params.get<INT>("max_iter");
+    double remainder = 0.0;
 
     { // Start Scope for oppic
         oppic_init(argc, argv, &params);
@@ -89,18 +91,19 @@ int main(int argc, char **argv)
         oppic_dat part_lc              = oppic_decl_particle_dat(particles_set, NODES_PER_CELL, "double", sizeof(double), nullptr, "part_lc");
         oppic_dat part_mesh_relation   = oppic_decl_particle_dat(particles_set, 1,              "int",    sizeof(int),    nullptr, "part_mesh_relation", true); // new cell index field
 
-        oppic_decl_const<double>(1, &spwt, "CONST_spwt");
+        oppic_set dummy_part_set       = oppic_decl_particle_set(mesh.n_approx_injected, "dummy particles", cells_set); 
+        oppic_dat dum_part_random      = oppic_decl_dat(dummy_part_set, 2, "double", sizeof(double), (char*)mesh.dummy_part_random, "dum_part_random");
+
+        oppic_decl_const<double>(1, &spwt,         "CONST_spwt");
         oppic_decl_const<double>(1, &ion_velocity, "CONST_ion_velocity");
-        oppic_decl_const<double>(1, &dt, "CONST_dt");
-        oppic_decl_const<double>(1, &plasma_den, "CONST_plasma_den");
-        oppic_decl_const<double>(1, &mass, "CONST_mass");
-        oppic_decl_const<double>(1, &charge, "CONST_charge");
+        oppic_decl_const<double>(1, &dt,           "CONST_dt");
+        oppic_decl_const<double>(1, &plasma_den,   "CONST_plasma_den");
+        oppic_decl_const<double>(1, &mass,         "CONST_mass");
+        oppic_decl_const<double>(1, &charge,       "CONST_charge");
 
         mesh.DeleteValues();
         mesh.solver->setPotentialArray((double*)node_potential->data);
 
-        double remainder = 0.0;
-        int max_iter = params.get<INT>("max_iter");
         // max_iter = 1;
 
         auto start = std::chrono::system_clock::now();
@@ -119,33 +122,34 @@ int main(int argc, char **argv)
 
             int old_nparts = particles_set->size;
             oppic_par_loop_inject__InjectIons(
-                particles_set,                                                              // particles_set
-                oppic_arg_dat(part_position,                             OP_WRITE),         // part_position,
-                oppic_arg_dat(part_velocity,                             OP_RW),            // part_velocity,
-                oppic_arg_dat(part_mesh_relation,                        OP_WRITE),         // part_cell_connectivity,
-                oppic_arg_dat(iface_to_cell_map,                         OP_READ, true),    // iface to cell map
-                oppic_arg_dat(cell_electric_field, 0, iface_to_cell_map, OP_READ, true),    // cell_ef,
-                oppic_arg_dat(iface_u_normal,                            OP_READ, true),    // iface_u,
-                oppic_arg_dat(iface_v_normal,                            OP_READ, true),    // iface_v,
-                oppic_arg_dat(iface_normal,                              OP_READ, true),    // iface_normal,
-                oppic_arg_dat(iface_node_pos,                            OP_READ, true)     // iface_node_pos
+                particles_set,                                                                               // particles_set
+                oppic_arg_dat(part_position,                             OP_WRITE),                          // part_position,
+                oppic_arg_dat(part_velocity,                             OP_RW),                             // part_velocity,
+                oppic_arg_dat(part_mesh_relation,                        OP_WRITE),                          // part_cell_connectivity,
+                oppic_arg_dat(iface_to_cell_map,                         OP_READ, OPP_Map_from_Mesh_Rel),    // iface to cell map
+                oppic_arg_dat(cell_electric_field, 0, iface_to_cell_map, OP_READ, OPP_Map_from_Mesh_Rel),    // cell_ef,
+                oppic_arg_dat(iface_u_normal,                            OP_READ, OPP_Map_from_Mesh_Rel),    // iface_u,
+                oppic_arg_dat(iface_v_normal,                            OP_READ, OPP_Map_from_Mesh_Rel),    // iface_v,
+                oppic_arg_dat(iface_normal,                              OP_READ, OPP_Map_from_Mesh_Rel),    // iface_normal,
+                oppic_arg_dat(iface_node_pos,                            OP_READ, OPP_Map_from_Mesh_Rel),    // iface_node_pos
+                oppic_arg_dat(dum_part_random,                           OP_READ, OPP_Map_from_Inj_part)     // dum_part_random
             );
 
             oppic_reset_dat(node_charge_density, (char*)opp_zero_double16);
             oppic_par_loop_particle_all__MoveToCells(
-                particles_set,                                                               // particles_set
-                oppic_arg_dat(cell_electric_field,                       OP_READ, true),     // cell_ef,
-                oppic_arg_dat(part_position,                             OP_RW),             // part_pos,
-                oppic_arg_dat(part_velocity,                             OP_INC),            // part_vel,
-                oppic_arg_dat(part_lc,                                   OP_RW),             // part_lc,
-                oppic_arg_dat(part_mesh_relation,                        OP_RW),             // current_cell_index,
-                oppic_arg_dat(cell_volume,                               OP_READ, true),     // current_cell_volume,
-                oppic_arg_dat(cell_determinants,                         OP_READ, true),     // current_cell_det,
-                oppic_arg_dat(cell_to_cell_map,                          OP_READ, true),     // cell_connectivity,
-                oppic_arg_dat(node_charge_density, 0, cell_to_nodes_map, OP_INC,  true),     // node_charge_den0,
-                oppic_arg_dat(node_charge_density, 1, cell_to_nodes_map, OP_INC,  true),     // node_charge_den1,
-                oppic_arg_dat(node_charge_density, 2, cell_to_nodes_map, OP_INC,  true),     // node_charge_den2,
-                oppic_arg_dat(node_charge_density, 3, cell_to_nodes_map, OP_INC,  true)      // node_charge_den3,
+                particles_set,                                                                                // particles_set
+                oppic_arg_dat(cell_electric_field,                       OP_READ, OPP_Map_from_Mesh_Rel),     // cell_ef,
+                oppic_arg_dat(part_position,                             OP_RW),                              // part_pos,
+                oppic_arg_dat(part_velocity,                             OP_INC),                             // part_vel,
+                oppic_arg_dat(part_lc,                                   OP_RW),                              // part_lc,
+                oppic_arg_dat(part_mesh_relation,                        OP_RW),                              // current_cell_index,
+                oppic_arg_dat(cell_volume,                               OP_READ, OPP_Map_from_Mesh_Rel),     // current_cell_volume,
+                oppic_arg_dat(cell_determinants,                         OP_READ, OPP_Map_from_Mesh_Rel),     // current_cell_det,
+                oppic_arg_dat(cell_to_cell_map,                          OP_READ, OPP_Map_from_Mesh_Rel),     // cell_connectivity,
+                oppic_arg_dat(node_charge_density, 0, cell_to_nodes_map, OP_INC,  OPP_Map_from_Mesh_Rel),     // node_charge_den0,
+                oppic_arg_dat(node_charge_density, 1, cell_to_nodes_map, OP_INC,  OPP_Map_from_Mesh_Rel),     // node_charge_den1,
+                oppic_arg_dat(node_charge_density, 2, cell_to_nodes_map, OP_INC,  OPP_Map_from_Mesh_Rel),     // node_charge_den2,
+                oppic_arg_dat(node_charge_density, 3, cell_to_nodes_map, OP_INC,  OPP_Map_from_Mesh_Rel)      // node_charge_den3,
             );
 
             oppic_par_loop_all__ComputeNodeChargeDensity(

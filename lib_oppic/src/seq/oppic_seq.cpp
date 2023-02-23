@@ -88,27 +88,27 @@ oppic_dat oppic_decl_dat_txt(oppic_set set, int dim, char const *type, int size,
 }
 
 //****************************************
-oppic_arg oppic_arg_dat(oppic_dat dat, int idx, oppic_map map, int dim, const char *typ, oppic_access acc, bool map_with_cell_index)
+oppic_arg oppic_arg_dat(oppic_dat dat, int idx, oppic_map map, int dim, const char *typ, oppic_access acc, opp_mapping mapping)
 {
-    return oppic_arg_dat_core(dat, idx, map, dim, typ, acc, map_with_cell_index);
+    return oppic_arg_dat_core(dat, idx, map, dim, typ, acc, mapping);
 }
 
 //****************************************
-oppic_arg oppic_arg_dat(oppic_dat dat, int idx, oppic_map map, oppic_access acc, bool map_with_cell_index)
+oppic_arg oppic_arg_dat(oppic_dat dat, int idx, oppic_map map, oppic_access acc, opp_mapping mapping)
 {
-    return oppic_arg_dat_core(dat, idx, map, acc, map_with_cell_index);
+    return oppic_arg_dat_core(dat, idx, map, acc, mapping);
 }
-oppic_arg oppic_arg_dat(oppic_dat dat, oppic_access acc, bool map_with_cell_index)
+oppic_arg oppic_arg_dat(oppic_dat dat, oppic_access acc, opp_mapping mapping)
 {
-    return oppic_arg_dat_core(dat, acc, map_with_cell_index);
+    return oppic_arg_dat_core(dat, acc, mapping);
 }
-oppic_arg oppic_arg_dat(oppic_map data_map, oppic_access acc, bool map_with_cell_index)
+oppic_arg oppic_arg_dat(oppic_map data_map, oppic_access acc, opp_mapping mapping)
 {
-    return oppic_arg_dat_core(data_map, acc, map_with_cell_index);
+    return oppic_arg_dat_core(data_map, acc, mapping);
 }
-oppic_arg oppic_arg_dat(oppic_map data_map, int idx, oppic_map map, oppic_access acc, bool map_with_cell_index)
+oppic_arg oppic_arg_dat(oppic_map data_map, int idx, oppic_map map, oppic_access acc, opp_mapping mapping)
 {
-    return oppic_arg_dat_core(data_map, idx, map, acc, map_with_cell_index);
+    return oppic_arg_dat_core(data_map, idx, map, acc, mapping);
 }
 
 

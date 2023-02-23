@@ -72,11 +72,12 @@ inline void inject_ions__kernel(
     double *iface_u,
     double *iface_v,
     double *iface_normal,
-    double *node_pos
+    double *node_pos,
+    const double* dummy_part_random
 )
 {
-    double a = rnd();
-    double b = rnd();
+    double a = dummy_part_random[0];
+    double b = dummy_part_random[1];
     if ((a + b) > 1)  
     {
         a = (1 - a);

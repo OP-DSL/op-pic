@@ -249,21 +249,21 @@ oppic_dat oppic_decl_dat_core(oppic_set set, int dim, char const *type, int size
 }
 
 //****************************************
-oppic_arg oppic_arg_dat_core(oppic_dat dat, int idx, oppic_map map, oppic_access acc, bool map_with_cell_index) 
+oppic_arg oppic_arg_dat_core(oppic_dat dat, int idx, oppic_map map, oppic_access acc, opp_mapping mapping) 
 {
     if (dat == nullptr) { std::cerr << "dat is NULL at oppic_arg_dat" << std::endl; oppic_arg arg; return arg; }
     
-    return oppic_arg_dat_core(dat, idx, map, dat->dim, dat->type, acc, map_with_cell_index);
+    return oppic_arg_dat_core(dat, idx, map, dat->dim, dat->type, acc, mapping);
 }
 
-oppic_arg oppic_arg_dat_core(oppic_dat dat, oppic_access acc, bool map_with_cell_index) 
+oppic_arg oppic_arg_dat_core(oppic_dat dat, oppic_access acc, opp_mapping mapping) 
 {
     if (dat == nullptr) { std::cerr << "dat is NULL at oppic_arg_dat" << std::endl; oppic_arg arg; return arg; }
     
-    return oppic_arg_dat_core(dat, -1, NULL, dat->dim, dat->type, acc, map_with_cell_index);
+    return oppic_arg_dat_core(dat, -1, NULL, dat->dim, dat->type, acc, mapping);
 }
 
-oppic_arg oppic_arg_dat_core(oppic_dat dat, int idx, oppic_map map, int dim, const char *typ, oppic_access acc, bool map_with_cell_index) 
+oppic_arg oppic_arg_dat_core(oppic_dat dat, int idx, oppic_map map, int dim, const char *typ, oppic_access acc, opp_mapping mapping) 
 {
     oppic_arg arg;
     arg.index       = -1;
@@ -288,13 +288,13 @@ oppic_arg oppic_arg_dat_core(oppic_dat dat, int idx, oppic_map map, int dim, con
     return arg;
 }
 
-oppic_arg oppic_arg_dat_core(oppic_map data_map, oppic_access acc, bool map_with_cell_index)
+oppic_arg oppic_arg_dat_core(oppic_map data_map, oppic_access acc, opp_mapping mapping)
 {
-    return oppic_arg_dat_core(data_map, -1, NULL, acc, map_with_cell_index);
+    return oppic_arg_dat_core(data_map, -1, NULL, acc, mapping);
 }
 
 // arg.map has the map, can change to mapping data map if required
-oppic_arg oppic_arg_dat_core(oppic_map data_map, int idx, oppic_map map, oppic_access acc, bool map_with_cell_index)
+oppic_arg oppic_arg_dat_core(oppic_map data_map, int idx, oppic_map map, oppic_access acc, opp_mapping mapping)
 {
     oppic_arg arg;
     arg.argtype     = OP_ARG_MAP;

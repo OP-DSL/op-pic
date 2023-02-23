@@ -100,7 +100,8 @@ void oppic_par_loop_inject__InjectIons(
     oppic_arg arg5,     // iface_u,
     oppic_arg arg6,     // iface_v,
     oppic_arg arg7,     // iface_normal,
-    oppic_arg arg8      // iface_node_pos
+    oppic_arg arg8,     // iface_node_pos
+    oppic_arg arg9      // dummy_part_random
 )
 { TRACE_ME;
 
@@ -123,7 +124,8 @@ void oppic_par_loop_inject__InjectIons(
             &((double*)arg5.data)[map0idx * arg5.dim],             // iface_u,
             &((double*)arg6.data)[map0idx * arg6.dim],             // iface_v,
             &((double*)arg7.data)[map0idx * arg7.dim],             // iface_normal,
-            &((double*)arg8.data)[map0idx * arg8.dim]              // iface_node_pos
+            &((double*)arg8.data)[map0idx * arg8.dim],             // iface_node_pos
+            &((double*)arg9.data)[i * arg9.dim]                    // dummy_part_random
         );
     }
 }

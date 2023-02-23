@@ -92,6 +92,13 @@ enum Dirty
     Host = 2,
 };
 
+enum opp_mapping
+{
+    OPP_Map_Default = 0,
+    OPP_Map_from_Mesh_Rel,
+    OPP_Map_from_Inj_part,
+};
+
 struct part_index {
     int start;
     int end;
@@ -195,11 +202,11 @@ oppic_map oppic_decl_map_core(oppic_set from, oppic_set to, int dim, int *imap, 
 
 oppic_dat oppic_decl_dat_core(oppic_set set, int dim, char const *type, int size, char *data, char const *name);
 
-oppic_arg oppic_arg_dat_core(oppic_dat dat, int idx, oppic_map map, int dim, const char *typ, oppic_access acc, bool map_with_cell_index = false);
-oppic_arg oppic_arg_dat_core(oppic_dat dat, int idx, oppic_map map, oppic_access acc, bool map_with_cell_index = false);
-oppic_arg oppic_arg_dat_core(oppic_dat dat, oppic_access acc, bool map_with_cell_index = false);
-oppic_arg oppic_arg_dat_core(oppic_map data_map, oppic_access acc, bool map_with_cell_index = false);
-oppic_arg oppic_arg_dat_core(oppic_map data_map, int idx, oppic_map map, oppic_access acc, bool map_with_cell_index = false);
+oppic_arg oppic_arg_dat_core(oppic_dat dat, int idx, oppic_map map, int dim, const char *typ, oppic_access acc, opp_mapping mapping = OPP_Map_Default);
+oppic_arg oppic_arg_dat_core(oppic_dat dat, int idx, oppic_map map, oppic_access acc, opp_mapping mapping = OPP_Map_Default);
+oppic_arg oppic_arg_dat_core(oppic_dat dat, oppic_access acc, opp_mapping mapping = OPP_Map_Default);
+oppic_arg oppic_arg_dat_core(oppic_map data_map, oppic_access acc, opp_mapping mapping = OPP_Map_Default);
+oppic_arg oppic_arg_dat_core(oppic_map data_map, int idx, oppic_map map, oppic_access acc, opp_mapping mapping = OPP_Map_Default);
 
 // template <class T> oppic_arg oppic_arg_gbl(T *data, int dim, char const *typ, oppic_access acc);
 oppic_arg oppic_arg_gbl_core(double *data, int dim, char const *typ, oppic_access acc);

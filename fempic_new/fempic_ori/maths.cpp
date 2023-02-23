@@ -17,6 +17,7 @@
 std::mt19937 mt_gen(0);        /*seed*/
 std::uniform_real_distribution<double> rnd_dist(0, 1.0);
 double rnd() {return rnd_dist(mt_gen);}
+void reset_seed() { mt_gen.seed(0); }
 
 /*computes determinant of a 4x4 matrix*/
 double det4(double (*M)[4]) { TRACE_ME;
