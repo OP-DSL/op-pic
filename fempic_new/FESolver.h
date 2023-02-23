@@ -75,9 +75,7 @@ public:
     void solveNonLinear(double *d, double *y, double *G);
     void solveLinear(double **K, double *d, double *F);    /*solves Kd=F for d*/
     void solveLinearLapack(double **K, double *d, double *F);    /*solves Kd=F for d*/
-#ifdef USE_PETSC
     void initialzeMatrix(double **p_A);
-#endif 
     void solveLinearPetsc(double **K, double *d, double *F);  
     
     void updateEf();
