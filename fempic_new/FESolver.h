@@ -77,8 +77,8 @@ public:
     void solveLinearLapack(double **K, double *d, double *F);    /*solves Kd=F for d*/
 #ifdef USE_PETSC
     void initialzeMatrix(double **p_A);
-    void solveLinearPetsc(double **K, double *d, double *F);
-#endif    
+#endif 
+    void solveLinearPetsc(double **K, double *d, double *F);  
     
     void updateEf();
 

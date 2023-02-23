@@ -34,18 +34,21 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "oppic_seq.h"
 #include "../fempic.h"
 
-double OPP_VAR_spwt;                // todo : these should be opp_consts
-double OPP_VAR_ion_velocity;
-double OPP_VAR_dt;
-double OPP_VAR_plasma_den;
-double OPP_VAR_mass;
-double OPP_VAR_charge;
-move_status OPP_move_status = OPP_MOVE_DONE; // this should be in lib level
-bool OPP_inside_cell = true;
-bool OPP_iteration_one = true;
+//****************************************
+double CONST_spwt = 0, CONST_ion_velocity = 0, CONST_dt = 0, CONST_plasma_den = 0, CONST_mass = 0, CONST_charge = 0;
+void oppic_decl_const_impl(int dim, int size, char* data, const char* name)
+{
+    if (!strcmp(name,"CONST_spwt"))              CONST_spwt = *((double*)data);
+    else if (!strcmp(name,"CONST_ion_velocity")) CONST_ion_velocity = *((double*)data);
+    else if (!strcmp(name,"CONST_dt"))           CONST_dt = *((double*)data);
+    else if (!strcmp(name,"CONST_plasma_den"))   CONST_plasma_den = *((double*)data);
+    else if (!strcmp(name,"CONST_mass"))         CONST_mass = *((double*)data);
+    else if (!strcmp(name,"CONST_charge"))       CONST_charge = *((double*)data);
+    else std::cerr << "error: unknown const name" << std::endl;
+}
+//****************************************
 
 #include "../kernels.h"
-
 
 //*************************************************************************************************
 void oppic_seq_loop_inject__Increase_particle_count
@@ -58,13 +61,6 @@ void oppic_seq_loop_inject__Increase_particle_count
     oppic_arg arg3              // remainder global,
 )
 { TRACE_ME;
-    
-    OPP_VAR_plasma_den = opp_params->get<REAL>("plasma_den"); // todo : these should be opp_consts and should be populated by runtime
-    OPP_VAR_dt = opp_params->get<REAL>("dt");
-    OPP_VAR_ion_velocity = opp_params->get<REAL>("ion_velocity");
-    OPP_VAR_spwt = 2e2;
-    OPP_VAR_mass = 2 * AMU;
-    OPP_VAR_charge = 1 * QE;
 
     if (OP_DEBUG) printf("FEMPIC - oppic_seq_loop_inject__Increase_particle_count num_particles %d diff %d\n", set->size, set->diff);
 
@@ -224,13 +220,13 @@ void oppic_par_loop_all__ComputeNodeChargeDensity(
 
 //*************************************************************************************************
 void oppic_par_loop_all__ComputeElectricField(
-    oppic_set set,      //cells_set,                                                        // cells_set
-    oppic_arg arg0,     //oppic_arg_dat(cell_electric_field,                  OP_INC),      // cell_electric_field,
-    oppic_arg arg1,     //oppic_arg_dat(cell_shape_deriv,                     OP_READ),     // cell_shape_deriv,
-    oppic_arg arg2,     //oppic_arg_dat(node_potential, 0, cell_to_nodes_map, OP_READ),     // node_potential0,
-    oppic_arg arg3,     //oppic_arg_dat(node_potential, 1, cell_to_nodes_map, OP_READ),     // node_potential1,
-    oppic_arg arg4,     //oppic_arg_dat(node_potential, 2, cell_to_nodes_map, OP_READ),     // node_potential2,
-    oppic_arg arg5      //oppic_arg_dat(node_potential, 3, cell_to_nodes_map, OP_READ)      // node_potential3,
+    oppic_set set,      // cells_set
+    oppic_arg arg0,     // cell_electric_field,
+    oppic_arg arg1,     // cell_shape_deriv,
+    oppic_arg arg2,     // node_potential0,
+    oppic_arg arg3,     // node_potential1,
+    oppic_arg arg4,     // node_potential2,
+    oppic_arg arg5      // node_potential3,
 )
 { TRACE_ME;
 
@@ -253,33 +249,3 @@ void oppic_par_loop_all__ComputeElectricField(
         );
     }   
 }
-
-// //*************************************************************************************************
-// oppic_par_loop_all__MoveParticles(
-//     particles_set,
-//     oppic_arg_dat(part_position,       OP_INC),
-//     oppic_arg_dat(part_velocity,       OP_INC),
-//     oppic_arg_dat(cell_electric_field, OP_READ, true)
-// );
-
-// void oppic_par_loop_all__MoveParticles(
-//     oppic_set set,     // particles_set
-//     oppic_arg arg0,    // part_position,
-//     oppic_arg arg1,    // part_velocity,
-//     oppic_arg arg2     // cell_electric_field,
-//     )
-// { TRACE_ME;
-    
-//     if (OP_DEBUG) printf("FEMPIC - oppic_par_loop_all__MoveParticles num_particles %d\n", set->size);
-
-//     for (int i = 0; i < set->size; i++)
-//     {
-//         int map0idx    = ((int *)set->cell_index_dat->data)[i * set->cell_index_dat->dim];
-
-//         move_particles__kernel(
-//             &((double *)arg0.data)[i * arg0.dim],          // part_position,
-//             &((double *)arg1.data)[i * arg1.dim],          // part_velocity,
-//             &((double *)arg2.data)[map0idx * arg2.dim]     // cell_electric_field
-//         );
-//     }
-// }

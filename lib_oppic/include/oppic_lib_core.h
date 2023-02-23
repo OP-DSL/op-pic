@@ -146,6 +146,7 @@ struct oppic_set_core {
     int* particle_statuses;
     int* particle_statuses_d;
     int particle_remove_count;
+    int* particle_remove_count_d;
     oppic_set cells_set;
 };
 
@@ -209,6 +210,8 @@ oppic_set oppic_decl_particle_set_core(int size, char const *name, oppic_set cel
 oppic_set oppic_decl_particle_set_core(char const *name, oppic_set cells_set);
 
 oppic_dat oppic_decl_particle_dat_core(oppic_set set, int dim, char const *type, int size, char *data, char const *name, bool cell_index = false);
+
+void oppic_decl_const_impl(int dim, int size, char* data, const char* name);
 
 void oppic_increase_particle_count_core(oppic_set particles_set, const int num_particles_to_insert);
 

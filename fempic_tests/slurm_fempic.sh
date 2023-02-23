@@ -1,16 +1,20 @@
 #!/bin/bash --login
-#SBATCH --job-name=SLURM_PIC
+#SBATCH --job-name=SLM_PIC
 #SBATCH --partition=v100
 #SBATCH --nodes=1
 #SBATCH --ntasks-per-node=1
 #SBATCH --cpus-per-task=48
 #SBATCH --time=08:00:00
 
-binFolder="/ext-home/zl/phd/OP-PIC/fempic_new/bin1"
+binFolder="/ext-home/zl/phd/OP-PIC/fempic_new/bin"
 runFolder=$PWD"/Log_"$(date +"D_%Y_%m_%d_T_%I_%M_%S")
 echo "creating running folder" $runFolder
 
 source /ext-home/zl/phd/OP-PIC/scripts/source_file
+module load cuda/toolkit-10.2.89
+
+export OMP_PLACES=cores
+export OMP_PROC_BIND=close
 
 configs=("coarse_1.param" "coarse_2.param" "coarse_3.param" "coarse_4.param" "coarse_5.param" 
          "default_1.param" "default_2.param" 
@@ -34,9 +38,9 @@ for i in ${!configs[@]}; do
     cp $file $folder
 
     export OMP_NUM_THREADS=1
-    export OMP_PROC_BIND=close
 
     srun $binFolder/seq $file | tee $folder/log_seq.log;
+    # $binFolder/seq $file > $folder/log_seq.log;
 
     # ****************************************
     echo "Running OpenMP"
@@ -48,9 +52,9 @@ for i in ${!configs[@]}; do
 
     for thr in {1,2,4,8,12,16,24,32,40,48}; do
         export OMP_NUM_THREADS=${thr}
-        export OMP_PROC_BIND=close
 
         srun $binFolder/omp $file | tee $folder/log_thr${thr}.log;	
+        # $binFolder/omp $file > $folder/log_thr${thr}.log;
 
         echo "OMP " $thr " TEST END"
     done

@@ -43,13 +43,13 @@ inline void calculate_injection_distribution(
 )
 {   
     /*number of real ions per sec, given prescribed density and velocity*/
-    double num_per_sec = OPP_VAR_plasma_den * OPP_VAR_ion_velocity * (*face_area);
+    double num_per_sec = CONST_plasma_den * CONST_ion_velocity * (*face_area);
 
     /*number of ions to generate in this time step*/
-    double num_real = num_per_sec * OPP_VAR_dt;
+    double num_real = num_per_sec * CONST_dt;
 
     /*fraction number of macroparticles*/
-    double fnum_mp = num_real / OPP_VAR_spwt + (*remainder);
+    double fnum_mp = num_real / CONST_spwt + (*remainder);
 
     /*integer number of macroparticles*/
     int num_mp = (int)fnum_mp;
@@ -87,8 +87,8 @@ inline void inject_ions__kernel(
     {
         part_pos[i] = a * iface_u[i] + b * iface_v[i] + node_pos[i];
         
-        part_vel[i] = (iface_normal[i] * OPP_VAR_ion_velocity);
-        part_vel[i] -= OPP_VAR_charge / OPP_VAR_mass * cell_ef[i] * (0.5 * OPP_VAR_dt);
+        part_vel[i] = (iface_normal[i] * CONST_ion_velocity);
+        part_vel[i] -= CONST_charge / CONST_mass * cell_ef[i] * (0.5 * CONST_dt);
     }
 
     (*part_cell_connectivity) = (*cell_id);
@@ -110,10 +110,10 @@ inline void move_particles__kernel(
 )
 {
     for (int i = 0; i < DIMENSIONS; i++)
-        vel[i] += (OPP_VAR_charge / OPP_VAR_mass * cell_ef[i] * (OPP_VAR_dt));
+        vel[i] += (CONST_charge / CONST_mass * cell_ef[i] * (CONST_dt));
     
     for (int i = 0; i < DIMENSIONS; i++)
-        pos[i] += vel[i] * (OPP_VAR_dt); // v = u + at
+        pos[i] += vel[i] * (CONST_dt); // v = u + at
 }
 
 //*************************************************************************************************
@@ -136,10 +136,10 @@ inline void move_all_particles_to_cell__kernel(
     if (m->OPP_iteration_one)
     {
         for (int i = 0; i < DIMENSIONS; i++)
-            part_vel[i] += (OPP_VAR_charge / OPP_VAR_mass * cell_ef[i] * (OPP_VAR_dt));
+            part_vel[i] += (CONST_charge / CONST_mass * cell_ef[i] * (CONST_dt));
         
         for (int i = 0; i < DIMENSIONS; i++)
-            part_pos[i] += part_vel[i] * (OPP_VAR_dt); // v = u + at
+            part_pos[i] += part_vel[i] * (CONST_dt); // v = u + at
     }
 
 
@@ -197,7 +197,7 @@ inline void compute_node_charge_density__kernel(
     const double *node_volume
 )
 {
-    (*node_charge_den) *= (OPP_VAR_spwt / (*node_volume));
+    (*node_charge_den) *= (CONST_spwt / (*node_volume));
 }
 
 //*************************************************************************************************

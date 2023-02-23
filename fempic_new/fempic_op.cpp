@@ -46,6 +46,13 @@ int main(int argc, char **argv)
 
     FieldPointers mesh = LoadMesh(params, argc, argv);
 
+    double plasma_den = params.get<REAL>("plasma_den");
+    double dt = params.get<REAL>("dt");
+    double ion_velocity = params.get<REAL>("ion_velocity");
+    double spwt = 2e2;
+    double mass = 2 * AMU;
+    double charge = 1 * QE;
+
     { // Start Scope for oppic
         oppic_init(argc, argv, &params);
  
@@ -81,6 +88,13 @@ int main(int argc, char **argv)
         oppic_dat part_velocity        = oppic_decl_particle_dat(particles_set, DIMENSIONS,     "double", sizeof(double), nullptr, "part_velocity");    
         oppic_dat part_lc              = oppic_decl_particle_dat(particles_set, NODES_PER_CELL, "double", sizeof(double), nullptr, "part_lc");
         oppic_dat part_mesh_relation   = oppic_decl_particle_dat(particles_set, 1,              "int",    sizeof(int),    nullptr, "part_mesh_relation", true); // new cell index field
+
+        oppic_decl_const<double>(1, &spwt, "CONST_spwt");
+        oppic_decl_const<double>(1, &ion_velocity, "CONST_ion_velocity");
+        oppic_decl_const<double>(1, &dt, "CONST_dt");
+        oppic_decl_const<double>(1, &plasma_den, "CONST_plasma_den");
+        oppic_decl_const<double>(1, &mass, "CONST_mass");
+        oppic_decl_const<double>(1, &charge, "CONST_charge");
 
         mesh.DeleteValues();
         mesh.solver->setPotentialArray((double*)node_potential->data);

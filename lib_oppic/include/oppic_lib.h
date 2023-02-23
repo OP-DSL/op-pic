@@ -72,6 +72,12 @@ oppic_dat oppic_decl_particle_dat(oppic_set set, int dim, char const *type, int 
 
 oppic_dat oppic_decl_particle_dat_txt(oppic_set set, int dim, char const *type, int size, const char* file_name, char const *name, bool cell_index = false);
 
+template <typename T> 
+void oppic_decl_const(int dim, T* data, const char* name)
+{
+   oppic_decl_const_impl(dim, sizeof(T), (char*)data, name);
+}
+
 void oppic_increase_particle_count(oppic_set particles_set, const int num_particles_to_insert);
 
 void oppic_reset_num_particles_to_insert(oppic_set set);

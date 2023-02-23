@@ -144,6 +144,10 @@ oppic_arg oppic_arg_gbl(double *data, int dim, char const *typ, oppic_access acc
 {
     return oppic_arg_gbl_core(data, dim, typ, acc);
 }
+oppic_arg oppic_arg_gbl(int *data, int dim, char const *typ, oppic_access acc)
+{
+    return oppic_arg_gbl_core(data, dim, typ, acc);
+}
 oppic_arg oppic_arg_gbl(const bool *data, int dim, char const *typ, oppic_access acc)
 {
     return oppic_arg_gbl_core(data, dim, typ, acc);
@@ -152,11 +156,16 @@ oppic_arg oppic_arg_gbl(const bool *data, int dim, char const *typ, oppic_access
 //****************************************
 oppic_set oppic_decl_particle_set(int size, char const *name, oppic_set cells_set)
 {
-    return oppic_decl_particle_set_core(size, name, cells_set);
+    oppic_set set = oppic_decl_particle_set_core(size, name, cells_set);
+
+    cutilSafeCall(cudaMalloc((void**)&(set->particle_remove_count_d), sizeof(int)));
+    cutilSafeCall(cudaDeviceSynchronize());
+  
+    return set;
 }
 oppic_set oppic_decl_particle_set(char const *name, oppic_set cells_set)
 {
-    return oppic_decl_particle_set_core(name, cells_set);
+    return oppic_decl_particle_set(0, name, cells_set);
 }
 
 //****************************************
@@ -596,14 +605,17 @@ void oppic_init_particle_move(oppic_set set)
 
     oppic_init_particle_move_core(set);
 
-    if (set->particle_statuses_d != NULL)
-    {
-        cutilSafeCall(cudaFree(set->particle_statuses_d));
-    }
+    cutilSafeCall(cudaMemcpy(set->particle_remove_count_d, &(set->particle_remove_count), sizeof(int), cudaMemcpyHostToDevice));
+    // cutilSafeCall(cudaMemcpy(set->particle_remove_count_d, &(set->particle_remove_count), sizeof(int), cudaMemcpyHostToDevice));
 
-    cutilSafeCall(cudaMalloc(&(set->particle_statuses_d), set->array_capacity * sizeof(int)));
-    cutilSafeCall(cudaMemcpy(set->particle_statuses_d, set->particle_statuses, set->size * sizeof(int), cudaMemcpyHostToDevice));
-    cutilSafeCall(cudaDeviceSynchronize());
+    // if (set->particle_statuses_d != NULL)
+    // {
+    //     cutilSafeCall(cudaFree(set->particle_statuses_d));
+    // }
+
+    // cutilSafeCall(cudaMalloc(&(set->particle_statuses_d), set->array_capacity * sizeof(int)));
+    // cutilSafeCall(cudaMemcpy(set->particle_statuses_d, set->particle_statuses, set->size * sizeof(int), cudaMemcpyHostToDevice));
+    // cutilSafeCall(cudaDeviceSynchronize());
 }
 
 //****************************************
@@ -611,6 +623,8 @@ void oppic_finalize_particle_move(oppic_set set)
 { TRACE_ME;
 
     if (OP_DEBUG) printf("oppic_finalize_particle_move set [%s] with particle_remove_count [%d]\n", set->name, set->particle_remove_count);
+    
+    cudaMemcpy(&(set->particle_remove_count), set->particle_remove_count_d, sizeof(int), cudaMemcpyDeviceToHost);
 
     oppic_finalize_particle_move_cuda(set);
 
@@ -665,11 +679,16 @@ void oppic_finalize_particle_move_cuda(oppic_set set)
 //****************************************
 void oppic_reset_dat(oppic_dat dat, char* val)
 {
-    std::cerr << "oppic_reset_dat not implemented for CUDA" << std::endl;
-    // int set_size = dat->set->size;
+    int set_size = dat->set->size;
 
-    // for (int i = 0; i < set_size; i++)
+    cutilSafeCall(cudaMemset((double*)(dat->data_d), 0, dat->size * set_size));
+
+    // TODO : This will cause issues when all the values for dims are not the same
+    // for (int dim = 0; dim < dat->dim; dim++)
     // {
-    //     memcpy(dat->data + i * dat->size, val, dat->size);
+    //     for (int i = 0; i < set_size; i++)
+    //     {
+    //         cutilSafeCall(cudaMemset((double*)(dat->data_d + i * dat->size), 0.0, sizeof(double)));
+    //     }
     // }
 }

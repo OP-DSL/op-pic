@@ -701,7 +701,7 @@ void FESolver::summarize(std::ostream &out) {
 /*simple Gauss-Seidel solver for A*x=b*/
 void FESolver::solveLinearPetsc(double **p_A, double *p_x, double *p_b)
 { TRACE_ME; 
-
+#ifdef USE_PETSC
     auto t1 = std::chrono::system_clock::now();
 
     initialzeMatrix(p_A);
@@ -726,11 +726,15 @@ void FESolver::solveLinearPetsc(double **p_A, double *p_x, double *p_b)
     std::chrono::duration<double> dt = t5-t1;
     
     if (OP_DEBUG) std::cout << "solveLinearPetsc - Time <chrono>: " << dt.count() << " s ... Converged reason: " << reason << std::endl;
+#else
+    std::cerr << "Petsc solver not active... define USE_PETSC in header!" << std::endl;
+#endif
 }
 
 //*************************************************************************************************
 void FESolver::initialzeMatrix(double **p_A)
 {
+#ifdef USE_PETSC
     if (!matIndexCreated)
     {
         int max_fields = 0;
@@ -764,6 +768,7 @@ void FESolver::initialzeMatrix(double **p_A)
     }
 
     MatAssemblyBegin(A, MAT_FINAL_ASSEMBLY); MatAssemblyEnd(A, MAT_FINAL_ASSEMBLY);
+#endif
 }
 
 //*************************************************************************************************

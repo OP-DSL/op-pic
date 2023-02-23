@@ -30,8 +30,8 @@ CUDA_INSTALL_PATH = /opt/cuda/10.2.89/toolkit
 CUDA_INC   = -I$(CUDA_INSTALL_PATH)/include
 CUDA_LIB   = -L$(CUDA_INSTALL_PATH)/lib64 -lcudart
 
-# PETSC_PATH = /ext-home/zl/lib_install/petsc-3.18.2-oneapi-2021.3-release
-PETSC_PATH = /ext-home/zl/lib_install/petsc-3.18.3-oneapi-2021.3-cuda-rel
+PETSC_PATH = /ext-home/zl/lib_install/petsc-3.18.3-oneapi-2021.3-cuda-rel#telos
+# PETSC_PATH = /ext-home/zl/lib_install/petsc-3.18.3-oneapi-2021.3-cuda-kos#kos
 PETSC_INC  = -I$(PETSC_PATH)/include
 PETSC_LIB  = -L$(PETSC_PATH)/lib -lpetsc
 
