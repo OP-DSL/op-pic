@@ -13,14 +13,14 @@
 #ifndef FESOLVER_H
 #define FESOLVER_H
 
+#include <oppic_lib.h>
 #include "fempic_ori/meshes.h"
 #include <memory>
 
-#define USE_PETSC
+// #define USE_PETSC // define using makefile
 
 #ifdef USE_PETSC
     #include <petscksp.h>
-    #include <oppic_lib.h>
 #endif
 
 const double EPS0 = 8.8541878e-12;   /*permittivity of free space*/
@@ -69,7 +69,7 @@ public:
     double evalNa(int a, double xi, double eta, double zeta);
     void getNax(double nx[3], int e, int a);
     void inverse(double M[3][3], double V[3][3]);
-    void computePhi(double *ion_den, Method method);
+    void computePhi(Method method, oppic_arg arg0, oppic_arg arg1);
     void buildF1Vector(double *ion_den);
     void solve(double *d, Method method);
     void solveNonLinear(double *d, double *y, double *G);

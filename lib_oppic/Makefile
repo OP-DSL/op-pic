@@ -17,31 +17,44 @@ OBJ = obj
 CPP        = mpicxx
 MPICPP	   = mpicxx
 
-CPPFLAGS   = -std=c++11 -Wall -O3 -fopenmp -fPIC -fp-model strict -fp-model source -prec-div -prec-sqrt
-NVCCFLAGS  = -O3 -m64 -Xptxas -dlcm=ca -Xptxas=-v -arch=compute_70 -code=sm_70 -prec-div=true -prec-sqrt=true -ftz=false
+CPPFLAGS   = -std=c++11 -Wall -fopenmp -fPIC
+NVCCFLAGS  = -m64 -Xptxas -dlcm=ca -Xptxas=-v
 
 DEBUG ?= 0
 ifeq ($(DEBUG), 1)
-	CPPFLAGS   = -std=c++11 -Wall -O0 -g -fopenmp -fPIC -debug all -traceback -fp-model strict -fp-model source -prec-div -prec-sqrt
-	NVCCFLAGS  = -O0 -g -m64 -Xptxas -dlcm=ca -Xptxas=-v -arch=compute_70 -code=sm_70 -prec-div=true -prec-sqrt=true -ftz=false
+	CPPFLAGS   += -O0 -g
+	NVCCFLAGS  += -O0 -g
+else
+	CPPFLAGS   += -O3
+	NVCCFLAGS  += -O3
+endif
+
+TELOS ?= 1
+ifeq ($(TELOS), 1)
+	NVCCFLAGS  += -gencode arch=compute_70,code=sm_70
+	PETSC_PATH = /ext-home/zl/lib_install/petsc-3.18.3-oneapi-2021.3-cuda-rel
+else
+	NVCCFLAGS  += -gencode arch=compute_60,code=sm_60
+	PETSC_PATH = /ext-home/zl/lib_install/petsc-3.18.3-oneapi-2021.3-cuda-kos
+endif
+
+PETSC ?= 1
+ifeq ($(PETSC), 1)
+	CPPFLAGS   += -DUSE_PETSC
+	PETSC_INC  = -I$(PETSC_PATH)/include
+	PETSC_LIB  = -L$(PETSC_PATH)/lib -lpetsc
+else
+	PETSC_INC  = 
+	PETSC_LIB  = 
 endif
 
 CUDA_INSTALL_PATH = /opt/cuda/10.2.89/toolkit
 CUDA_INC   = -I$(CUDA_INSTALL_PATH)/include
-CUDA_LIB   = -L$(CUDA_INSTALL_PATH)/lib64 -lcudart
-
-PETSC_PATH = /ext-home/zl/lib_install/petsc-3.18.3-oneapi-2021.3-cuda-rel#telos
-# PETSC_PATH = /ext-home/zl/lib_install/petsc-3.18.3-oneapi-2021.3-cuda-kos#kos
-PETSC_INC  = -I$(PETSC_PATH)/include
-PETSC_LIB  = -L$(PETSC_PATH)/lib -lpetsc
-
-OP2_PATH   = /ext-home/zl/phd/OP2-Common/op2
-OP2_INC    = # -I$(OP2_PATH)/include
-OP2_LIB    = # -L$(OP2_PATH)/lib
+CUDA_LIB   = -L$(CUDA_INSTALL_PATH)/lib64 -lcudart -lcuda
 
 OPPIC_PATH = /ext-home/zl/phd/OP-PIC/lib_oppic
-ALL_INC        = -I$(OPPIC_PATH)/$(INC) $(PETSC_INC) $(CUDA_INC)
-ALL_LIBS       = $(PETSC_LIB) $(CUDA_LIB)
+ALL_INC    = -I$(OPPIC_PATH)/include $(PETSC_INC) $(CUDA_INC)
+ALL_LIBS   = -L$(OPPIC_PATH)/lib $(PETSC_LIB) $(CUDA_LIB)
 
 .PHONY: clean mklib
 

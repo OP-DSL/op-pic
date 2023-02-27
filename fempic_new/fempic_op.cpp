@@ -102,14 +102,17 @@ int main(int argc, char **argv)
         oppic_decl_const<double>(1, &charge,       "CONST_charge");
 
         mesh.DeleteValues();
-        mesh.solver->setPotentialArray((double*)node_potential->data);
+        // mesh.solver->setPotentialArray((double*)node_potential->data);
 
-        // max_iter = 1;
-
+        max_iter = 25;
+bool X = false;
         auto start = std::chrono::system_clock::now();
-
+//if (X) oppic_print_dat_to_txtfile(dum_part_random  , "i", "dum_part_random.dat");
         for (int ts = 0; ts < max_iter; ts++)
         {
+if (ts > 0 && ts < 25) X = true; else X = false;
+std::string f = std::string("F_") + std::to_string(ts + 1);
+if (X) oppic_print_dat_to_txtfile(part_position  , f.c_str(), "part_position_biiii.dat");
             int injected_count = 0;
             oppic_seq_loop_inject__Increase_particle_count(
                 particles_set,                                                  // particles_set
@@ -119,7 +122,8 @@ int main(int argc, char **argv)
                 oppic_arg_dat(iface_inj_part_dist,           OP_WRITE),         // iface_inj_part_dist,
                 oppic_arg_gbl(&(remainder),     1, "double", OP_RW)             // remainder global,
             );
-
+if (X) oppic_print_dat_to_txtfile(part_position  , f.c_str(), "part_position_bi.dat");
+if (X) oppic_print_dat_to_txtfile(cell_electric_field  , f.c_str(), "cell_electric_field_bi.dat");
             int old_nparts = particles_set->size;
             oppic_par_loop_inject__InjectIons(
                 particles_set,                                                                               // particles_set
@@ -134,13 +138,17 @@ int main(int argc, char **argv)
                 oppic_arg_dat(iface_node_pos,                            OP_READ, OPP_Map_from_Mesh_Rel),    // iface_node_pos
                 oppic_arg_dat(dum_part_random,                           OP_READ, OPP_Map_from_Inj_part)     // dum_part_random
             );
+if (X) oppic_print_dat_to_txtfile(part_position  , f.c_str(), "part_position_bm.dat"); // 2 OK
+if (X) oppic_print_dat_to_txtfile(part_velocity  , f.c_str(), "part_velocity_bm.dat"); // 2 OK
+if (X) oppic_print_dat_to_txtfile(part_mesh_relation  , f.c_str(), "part_mesh_relation_bm.dat"); // 2 OK
 
             oppic_reset_dat(node_charge_density, (char*)opp_zero_double16);
+//if (X) oppic_print_dat_to_txtfile(node_charge_density  , f.c_str(), "node_charge_density_bm.dat");
             oppic_par_loop_particle_all__MoveToCells(
                 particles_set,                                                                                // particles_set
                 oppic_arg_dat(cell_electric_field,                       OP_READ, OPP_Map_from_Mesh_Rel),     // cell_ef,
                 oppic_arg_dat(part_position,                             OP_RW),                              // part_pos,
-                oppic_arg_dat(part_velocity,                             OP_INC),                             // part_vel,
+                oppic_arg_dat(part_velocity,                             OP_RW),                             // part_vel,
                 oppic_arg_dat(part_lc,                                   OP_RW),                              // part_lc,
                 oppic_arg_dat(part_mesh_relation,                        OP_RW),                              // current_cell_index,
                 oppic_arg_dat(cell_volume,                               OP_READ, OPP_Map_from_Mesh_Rel),     // current_cell_volume,
@@ -152,15 +160,34 @@ int main(int argc, char **argv)
                 oppic_arg_dat(node_charge_density, 3, cell_to_nodes_map, OP_INC,  OPP_Map_from_Mesh_Rel)      // node_charge_den3,
             );
 
+if (X) oppic_print_dat_to_txtfile(part_position  , f.c_str(), "part_position_am.dat"); // OK
+if (X) oppic_print_dat_to_txtfile(part_velocity  , f.c_str(), "part_velocity_am.dat"); // OK
+if (X) oppic_print_dat_to_txtfile(part_mesh_relation  , f.c_str(), "part_mesh_relation_am.dat"); // OK
+if (X) oppic_print_dat_to_txtfile(node_charge_density  , f.c_str(), "node_charge_density_am.dat"); // e-11
+if (X) oppic_print_dat_to_txtfile(part_lc  , f.c_str(), "part_lc_am.dat"); // OK
+//if (X) oppic_print_dat_to_txtfile(cell_determinants  , f.c_str(), "cell_determinants_am.dat");
+//if (X) oppic_print_dat_to_txtfile(cell_volume  , f.c_str(), "cell_volume_am.dat");
+
             oppic_par_loop_all__ComputeNodeChargeDensity(
                 nodes_set,                                       // nodes_set
                 oppic_arg_dat(node_charge_density,  OP_RW),      // node_charge_density
                 oppic_arg_dat(node_volume,          OP_READ)     // node_volume
             );
 
-            mesh.solver->computePhi((double*)node_charge_density->data, mesh.fesolver_method); // TODO: Change this to kernel calls
+if (X) oppic_print_dat_to_txtfile(node_charge_density  , f.c_str(), "node_charge_density_acomp.dat");  //e+2
+
+            mesh.solver->computePhi(  // TODO: Change this to kernel calls
+                mesh.fesolver_method,
+                oppic_arg_dat(node_potential,      OP_WRITE),
+                oppic_arg_dat(node_charge_density, OP_READ)
+            );
 
             oppic_reset_dat(cell_electric_field, (char*)opp_zero_double16);
+
+if (X) oppic_print_dat_to_txtfile(node_potential  , f.c_str(), "node_potential_acomp.dat");
+//if (X) oppic_print_dat_to_txtfile(cell_shape_deriv  , f.c_str(), "cell_shape_deriv.dat");
+//if (X) oppic_print_dat_to_txtfile(cell_electric_field  , f.c_str(), "cell_electric_field.dat");
+            
             oppic_par_loop_all__ComputeElectricField(
                 cells_set,                                                        // cells_set
                 oppic_arg_dat(cell_electric_field,                  OP_INC),      // cell_electric_field,
@@ -170,6 +197,8 @@ int main(int argc, char **argv)
                 oppic_arg_dat(node_potential, 2, cell_to_nodes_map, OP_READ),     // node_potential2,
                 oppic_arg_dat(node_potential, 3, cell_to_nodes_map, OP_READ)      // node_potential3,
             );
+
+//if (X) oppic_print_dat_to_txtfile(cell_electric_field  , f.c_str(), "cell_electric_field_acomp.dat"); // OK
 
             {
                 double max_den = 0.0, max_phi = 0.0;

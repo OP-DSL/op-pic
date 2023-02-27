@@ -1,12 +1,12 @@
 #pragma once
 
 #include <oppic_lib.h>
-#include <petscksp.h>
 #include <memory>
 #include <regex>
 
 #include "fempic_ori/meshes.h"
 #include "fempic_ori/particles.h"
+#include "fempic_ori/maths.h"
 #include "FESolver.h"
 
 using namespace std;
@@ -49,6 +49,7 @@ class FieldPointers
             if (iface_inj_part_dist) delete[] iface_inj_part_dist;
             if (iface_node_pos) delete[] iface_node_pos;
             if (cell_shape_deriv) delete[] cell_shape_deriv;
+            if (dummy_part_random) delete[] dummy_part_random;
 
             cell_to_nodes = nullptr;
             cell_to_cell = nullptr;
@@ -71,11 +72,13 @@ class FieldPointers
             iface_area = nullptr;    
             iface_inj_part_dist = nullptr;
             iface_node_pos = nullptr;
+            dummy_part_random = nullptr;
         }
 
         int n_nodes;
         int n_cells;
         int n_ifaces;
+        int n_approx_injected;
 
         int *cell_to_nodes = nullptr;
         int *cell_to_cell = nullptr;
@@ -98,6 +101,8 @@ class FieldPointers
         double *iface_area = nullptr;         // area
         int *iface_inj_part_dist = nullptr;
         double *iface_node_pos = nullptr;
+
+        double * dummy_part_random = nullptr;
 
         std::shared_ptr<FESolver> solver;
 
@@ -124,7 +129,8 @@ void oppic_par_loop_inject__InjectIons(
     oppic_arg arg5,     // iface_u,
     oppic_arg arg6,     // iface_v,
     oppic_arg arg7,     // iface_normal,
-    oppic_arg arg8      // iface_node_pos
+    oppic_arg arg8,     // iface_node_pos
+    oppic_arg arg9      // dummy_part_random
 );
 
 void oppic_par_loop_particle_all__MoveToCells(
@@ -301,6 +307,36 @@ inline FieldPointers LoadMesh(opp::Params& params, int argc, char **argv)
             mesh.cell_shape_deriv[cellID * (NODES_PER_CELL*DIMENSIONS) + nodeCon * DIMENSIONS + 1 ] = mesh.solver->NX[cellID][nodeCon][1];
             mesh.cell_shape_deriv[cellID * (NODES_PER_CELL*DIMENSIONS) + nodeCon * DIMENSIONS + 2 ] = mesh.solver->NX[cellID][nodeCon][2];
         }
+    }
+
+    double plasma_den = params.get<REAL>("plasma_den");
+    double dt = params.get<REAL>("dt");
+    double ion_velocity = params.get<REAL>("ion_velocity");
+    double spwt = params.get<REAL>("spwt");
+
+    mesh.n_approx_injected = 0;
+    double remainder = 0.0;
+
+    for (int faceID=0; faceID<mesh.n_ifaces; faceID++)
+    {   
+        {   // DUPLICATE: This calculation is in kernels
+            double num_per_sec = plasma_den * ion_velocity * mesh.iface_area[faceID];
+            double num_real = num_per_sec * dt;
+            double fnum_mp = num_real / spwt + remainder;
+            int num_mp = (int)fnum_mp;
+            remainder = fnum_mp - num_mp;
+            mesh.n_approx_injected += num_mp;
+        }
+    }
+
+    mesh.n_approx_injected += 100; // Add a few (100) for safety
+    
+    mesh.dummy_part_random  = new double[mesh.n_approx_injected * 2]; 
+
+    for (int i=0; i<mesh.n_approx_injected; i++)
+    {   
+        mesh.dummy_part_random[i * 2 + 0] = rnd();
+        mesh.dummy_part_random[i * 2 + 1] = rnd();
     }
 
     return mesh;

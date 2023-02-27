@@ -111,7 +111,7 @@ void oppic_par_loop_inject__InjectIons(
 
     for (int i = 0; i < set->diff; i++)
     {    
-        int map0idx    = ((int *)set->cell_index_dat->data)[(inj_start + i) * set->cell_index_dat->dim]; // iface index
+        int map0idx    = ((int *)set->cell_index_dat->data)[inj_start + i]; // iface index
 
         const int map1idx = arg4.map_data[map0idx]; // cell index
 

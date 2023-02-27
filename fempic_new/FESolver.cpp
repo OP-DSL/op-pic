@@ -653,7 +653,18 @@ void FESolver::solveLinear(double **A, double *x, double *b) { TRACE_ME;
 }
 
 /*wrapper for solving the non-linear Poisson's equation*/
-void FESolver::computePhi(double *ion_den, Method method) { TRACE_ME;
+void FESolver::computePhi(Method method, oppic_arg arg0, oppic_arg arg1) 
+{ TRACE_ME;
+
+    int nargs = 2;
+    oppic_arg args[nargs];
+    args[0] = arg0;
+    args[1] = arg1;
+    
+    int set_size = op_mpi_halo_exchanges(arg1.dat->set, nargs, args);
+
+    double *ion_den = (double*)arg1.dat->data;
+    uh = (double*)arg0.dat->data;
 
     /*solve the system*/
     solve(ion_den, method);
@@ -668,6 +679,8 @@ void FESolver::computePhi(double *ion_den, Method method) { TRACE_ME;
         if (A>=0)
             uh[n] += d[A];
     }
+
+    op_mpi_set_dirtybit(nargs, args);
 }
 
 /*updates electric field*/

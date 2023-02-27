@@ -42,6 +42,7 @@ void oppic_init(int argc, char **argv, opp::Params* params)
     cutilSafeCall(cudaDeviceSetSharedMemConfig(cudaSharedMemBankSizeEightByte));
 
     OP_auto_soa = 1; // TODO : Make this configurable with args
+    OP_auto_sort = 1;
 }
 
 //****************************************
@@ -194,7 +195,10 @@ oppic_dat oppic_decl_particle_dat_txt(oppic_set set, int dim, char const *type, 
 void oppic_increase_particle_count(oppic_set particles_set, const int num_particles_to_insert)
 {
     bool need_resizing = (particles_set->array_capacity < (particles_set->size + num_particles_to_insert)) ? true : false;
-
+    
+    if (OP_DEBUG) 
+        printf("oppic_increase_particle_count need_resizing %s\n", need_resizing ? "YES" : "NO");
+// need_resizing = true;
     if (need_resizing)
         oppic_download_particle_set(particles_set); // TODO : We should be able to do a device to device copy instead of getting to host
 
@@ -244,7 +248,8 @@ void oppic_print_dat_to_txtfile(oppic_dat dat, const char *file_name_prefix, con
 {
     if (dat->dirty_hd == Dirty::Host) op_download_dat(dat);
 
-    oppic_print_dat_to_txtfile_core(dat, file_name_prefix, file_name_suffix);
+    std::string prefix = std::string(file_name_prefix) + "_c";
+    oppic_print_dat_to_txtfile_core(dat, prefix.c_str(), file_name_suffix);
 }
 
 //****************************************
@@ -363,6 +368,7 @@ void op_upload_dat(oppic_dat dat)
     size_t set_size = dat->set->array_capacity;
     if (strstr(dat->type, ":soa") != NULL || (OP_auto_soa && dat->dim > 1)) 
     {
+        if (OP_DEBUG) printf("op_upload_dat CPU->GPU SOA | %s\n", dat->name);
         char *temp_data = (char *)malloc(dat->size * set_size * sizeof(char));
         int element_size = dat->size / dat->dim;
         for (int i = 0; i < dat->dim; i++) 
@@ -381,6 +387,7 @@ void op_upload_dat(oppic_dat dat)
     } 
     else 
     {
+        if (OP_DEBUG) printf("op_upload_dat CPU->GPU NON-SOA| %s\n", dat->name);
         cutilSafeCall(cudaMemcpy(dat->data_d, dat->data, set_size * dat->size, cudaMemcpyHostToDevice));
     }
 
@@ -397,7 +404,7 @@ void op_download_dat(oppic_dat dat)
     size_t set_size = dat->set->array_capacity;
     if (strstr(dat->type, ":soa") != NULL || (OP_auto_soa && dat->dim > 1)) 
     {
-        if (OP_DEBUG) printf("op_download_dat SOA | %s\n", dat->name);
+        if (OP_DEBUG) printf("op_download_dat GPU->CPU SOA | %s\n", dat->name);
         char *temp_data = (char *)malloc(dat->size * set_size * sizeof(char));
         cutilSafeCall(cudaMemcpy(temp_data, dat->data_d, set_size * dat->size, cudaMemcpyDeviceToHost));
         
@@ -417,7 +424,7 @@ void op_download_dat(oppic_dat dat)
     } 
     else 
     {
-        if (OP_DEBUG) printf("op_download_dat NON-SOA| %s\n", dat->name);
+        if (OP_DEBUG) printf("op_download_dat GPU->CPU NON-SOA| %s\n", dat->name);
         cutilSafeCall(cudaMemcpy(dat->data, dat->data_d, set_size * dat->size,
                                 cudaMemcpyDeviceToHost));
     }
@@ -432,6 +439,7 @@ int op_mpi_halo_exchanges(oppic_set set, int nargs, oppic_arg *args)
         if (args[n].opt && args[n].argtype == OP_ARG_DAT && args[n].dat->dirty_hd == Dirty::Host) 
         {
             op_download_dat(args[n].dat);
+            args[n].dat->dirty_hd = Dirty::NotDirty;
         }
     }
     return set->size;
@@ -462,6 +470,7 @@ int op_mpi_halo_exchanges_cuda(oppic_set set, int nargs, oppic_arg *args)
         if (args[n].opt && args[n].argtype == OP_ARG_DAT && args[n].dat->dirty_hd == Dirty::Device) 
         { 
             op_upload_dat(args[n].dat);
+            args[n].dat->dirty_hd = Dirty::NotDirty;
         }
     }
     return set->size;
@@ -510,7 +519,11 @@ void oppic_download_particle_set(oppic_set particles_set)
             if (OP_DEBUG) printf("oppic_download_particle_set device pointer is NULL in dat [%s]\n", current_dat->name);
             continue;
         }
-
+        if (current_dat->dirty_hd != Dirty::Host)
+        {
+            if (OP_DEBUG) printf("oppic_download_particle_set host is not dirty in dat [%s]\n", current_dat->name);
+            continue;
+        }
         op_download_dat(current_dat);
     }  
 }
@@ -576,7 +589,7 @@ void oppic_create_copy_dat_to_device(oppic_dat dat)
 void oppic_increase_particle_count_cuda(oppic_set particles_set)
 { TRACE_ME;
 
-    // if (OP_DEBUG) 
+    if (OP_DEBUG) 
         printf("oppic_increase_particle_count_cuda set [%s] to capacity [%d]\n", particles_set->name, particles_set->array_capacity);
 
     for (oppic_dat& current_dat : *(particles_set->particle_dats))
@@ -622,11 +635,12 @@ void oppic_init_particle_move(oppic_set set)
 void oppic_finalize_particle_move(oppic_set set)
 { TRACE_ME;
 
-    if (OP_DEBUG) printf("oppic_finalize_particle_move set [%s] with particle_remove_count [%d]\n", set->name, set->particle_remove_count);
-    
     cudaMemcpy(&(set->particle_remove_count), set->particle_remove_count_d, sizeof(int), cudaMemcpyDeviceToHost);
 
-    oppic_finalize_particle_move_cuda(set);
+    if (OP_DEBUG) printf("oppic_finalize_particle_move set [%s] with particle_remove_count [%d]\n", set->name, set->particle_remove_count);
+    
+    // oppic_finalize_particle_move_cuda(set); // TODO : Dont we need to download???
+    oppic_finalize_particle_move_core(set);
 
     if (OP_auto_sort == 1)
     {
@@ -683,6 +697,7 @@ void oppic_reset_dat(oppic_dat dat, char* val)
 
     cutilSafeCall(cudaMemset((double*)(dat->data_d), 0, dat->size * set_size));
 
+    dat->dirty_hd = Dirty::Host;
     // TODO : This will cause issues when all the values for dims are not the same
     // for (int dim = 0; dim < dat->dim; dim++)
     // {

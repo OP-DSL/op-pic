@@ -76,11 +76,7 @@ void op_upload_dat(oppic_dat dat);
 
 void op_download_dat(oppic_dat dat);
 
-int op_mpi_halo_exchanges(oppic_set set, int nargs, oppic_arg *args);
-
 int op_mpi_halo_exchanges_grouped(oppic_set set, int nargs, oppic_arg *args, DeviceType device);
-
-void op_mpi_set_dirtybit(int nargs, oppic_arg *args);
 
 int op_mpi_halo_exchanges_cuda(oppic_set set, int nargs, oppic_arg *args);
 
