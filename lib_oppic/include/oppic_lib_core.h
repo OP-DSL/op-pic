@@ -144,7 +144,7 @@ struct oppic_set_core {
     int nonexec_size;                       /* number of additional imported elements that are not executed */
 
     bool is_particle;                       /* is it a particle set */
-    int array_capacity;                     /* capacity of the allocated array */
+    int set_capacity;                       /* capacity of the allocated array */
     int diff;                               /* number of particles to change */
     std::vector<int>* indexes_to_remove;
     oppic_dat cell_index_dat = NULL;

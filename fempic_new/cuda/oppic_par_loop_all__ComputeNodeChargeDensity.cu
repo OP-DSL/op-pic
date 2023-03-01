@@ -78,7 +78,7 @@ void oppic_par_loop_all__ComputeNodeChargeDensity(
     int nargs = 4;
     oppic_arg args[nargs] = { arg0, arg1 };
 
-    int set_size = op_mpi_halo_exchanges_grouped(set, nargs, args, Device_GPU);
+    int set_size = oppic_mpi_halo_exchanges_grouped(set, nargs, args, Device_GPU);
     if (set_size > 0) 
     {
         int start = 0;
@@ -96,7 +96,7 @@ void oppic_par_loop_all__ComputeNodeChargeDensity(
                 end);
         } 
 
-        op_mpi_set_dirtybit_cuda(nargs, args);
+        oppic_mpi_set_dirtybit_grouped(nargs, args, Device_GPU);
         cutilSafeCall(cudaDeviceSynchronize());       
     }
 }

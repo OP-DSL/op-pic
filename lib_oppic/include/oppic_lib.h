@@ -102,6 +102,6 @@ void oppic_dump_dat(oppic_dat data);
 
 void oppic_reset_dat(oppic_dat dat, char* val);
 
-int op_mpi_halo_exchanges(oppic_set set, int nargs, oppic_arg *args);
+int oppic_mpi_halo_exchanges(oppic_set set, int nargs, oppic_arg *args);
 
-void op_mpi_set_dirtybit(int nargs, oppic_arg *args);
+void oppic_mpi_set_dirtybit(int nargs, oppic_arg *args);

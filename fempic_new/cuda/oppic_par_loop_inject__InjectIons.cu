@@ -165,17 +165,17 @@ void oppic_par_loop_inject__InjectIons(
     int nargs = 10;
     oppic_arg args[nargs] = { arg0, arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9 };
 
-    int set_size = op_mpi_halo_exchanges_grouped(set, nargs, args, Device_GPU);
+    int set_size = oppic_mpi_halo_exchanges_grouped(set, nargs, args, Device_GPU);
     if (set_size > 0) 
     {
-        injectIons_stride_OPP_HOST_0 = arg0.dat->set->size;
-        injectIons_stride_OPP_HOST_1 = arg1.dat->set->size;
-        injectIons_stride_OPP_HOST_4 = arg4.dat->set->size;
-        injectIons_stride_OPP_HOST_5 = arg5.dat->set->size;
-        injectIons_stride_OPP_HOST_6 = arg6.dat->set->size;
-        injectIons_stride_OPP_HOST_7 = arg7.dat->set->size;
-        injectIons_stride_OPP_HOST_8 = arg8.dat->set->size;
-        injectIons_stride_OPP_HOST_9 = arg9.dat->set->size;
+        injectIons_stride_OPP_HOST_0 = arg0.dat->set->set_capacity;
+        injectIons_stride_OPP_HOST_1 = arg1.dat->set->set_capacity;
+        injectIons_stride_OPP_HOST_4 = arg4.dat->set->set_capacity;
+        injectIons_stride_OPP_HOST_5 = arg5.dat->set->set_capacity;
+        injectIons_stride_OPP_HOST_6 = arg6.dat->set->set_capacity;
+        injectIons_stride_OPP_HOST_7 = arg7.dat->set->set_capacity;
+        injectIons_stride_OPP_HOST_8 = arg8.dat->set->set_capacity;
+        injectIons_stride_OPP_HOST_9 = arg9.dat->set->set_capacity;
 
         cudaMemcpyToSymbol(injectIons_stride_OPP_CUDA_0, &injectIons_stride_OPP_HOST_0, sizeof(int));
         cudaMemcpyToSymbol(injectIons_stride_OPP_CUDA_1, &injectIons_stride_OPP_HOST_1, sizeof(int));
@@ -214,6 +214,6 @@ void oppic_par_loop_inject__InjectIons(
         }
     }
 
-    op_mpi_set_dirtybit_cuda(nargs, args);
+    oppic_mpi_set_dirtybit_grouped(nargs, args, Device_GPU);
     cutilSafeCall(cudaDeviceSynchronize());
 }

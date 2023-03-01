@@ -661,7 +661,7 @@ void FESolver::computePhi(Method method, oppic_arg arg0, oppic_arg arg1)
     args[0] = arg0;
     args[1] = arg1;
     
-    int set_size = op_mpi_halo_exchanges(arg1.dat->set, nargs, args);
+    int set_size = oppic_mpi_halo_exchanges(arg1.dat->set, nargs, args);
 
     double *ion_den = (double*)arg1.dat->data;
     uh = (double*)arg0.dat->data;
@@ -680,7 +680,7 @@ void FESolver::computePhi(Method method, oppic_arg arg0, oppic_arg arg1)
             uh[n] += d[A];
     }
 
-    op_mpi_set_dirtybit(nargs, args);
+    oppic_mpi_set_dirtybit(nargs, args);
 }
 
 /*updates electric field*/

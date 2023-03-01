@@ -246,14 +246,14 @@ void oppic_par_loop_particle_all__MoveToCells(
     
     oppic_init_particle_move(set);
 
-    int set_size = op_mpi_halo_exchanges_grouped(set, nargs, args, Device_GPU);
+    int set_size = oppic_mpi_halo_exchanges_grouped(set, nargs, args, Device_GPU);
     if (set_size > 0) 
     {
-        moveToCells_all_stride_OPP_HOST_0 = arg0.dat->set->size;
-        moveToCells_all_stride_OPP_HOST_1 = arg1.dat->set->size;
-        moveToCells_all_stride_OPP_HOST_2 = arg2.dat->set->size;
-        moveToCells_all_stride_OPP_HOST_3 = arg3.dat->set->size;
-        moveToCells_all_stride_OPP_HOST_6 = arg6.dat->set->size; 
+        moveToCells_all_stride_OPP_HOST_0 = arg0.dat->set->set_capacity;
+        moveToCells_all_stride_OPP_HOST_1 = arg1.dat->set->set_capacity;
+        moveToCells_all_stride_OPP_HOST_2 = arg2.dat->set->set_capacity;
+        moveToCells_all_stride_OPP_HOST_3 = arg3.dat->set->set_capacity;
+        moveToCells_all_stride_OPP_HOST_6 = arg6.dat->set->set_capacity; 
         moveToCells_all_stride_OPP_HOST_7 = arg7.size;
         moveToCells_all_stride_OPP_HOST_8 = arg8.map->from->size;
 
@@ -298,7 +298,7 @@ void oppic_par_loop_particle_all__MoveToCells(
 
     oppic_finalize_particle_move(set);
 
-    op_mpi_set_dirtybit_cuda(nargs, args);
+    oppic_mpi_set_dirtybit_grouped(nargs, args, Device_GPU);
     cutilSafeCall(cudaDeviceSynchronize());
 }
 

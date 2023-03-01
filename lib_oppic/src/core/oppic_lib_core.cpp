@@ -142,7 +142,7 @@ oppic_set oppic_decl_set_core(int size, char const *name)
     set->nonexec_size   = 0;
 
     set->is_particle    = false;
-    set->array_capacity = size;
+    set->set_capacity   = size;
     set->diff           = 0;
     set->cell_index_dat = NULL;
     set->cells_set      = NULL;
@@ -420,45 +420,45 @@ void oppic_increase_particle_count_core(oppic_set particles_set, const int num_p
 
     int new_particle_set_size = particles_set->size + num_particles_to_insert;
 
-    // if (particles_set->array_capacity >= new_particle_set_size)
-    // {
-    //     if (OP_DEBUG) 
-    //         printf("\toppic_increase_particle_count_core set [%s] No need to reallocate, new size[%d] array_capacity[%d]\n", particles_set->name, new_particle_set_size, particles_set->array_capacity);        
+    if (particles_set->set_capacity >= new_particle_set_size)
+    {
+        if (OP_DEBUG) 
+            printf("\toppic_increase_particle_count_core set [%s] No need to reallocate, new size[%d] set_capacity[%d]\n", particles_set->name, new_particle_set_size, particles_set->set_capacity);        
         
-    //     particles_set->size             = new_particle_set_size;
-    //     particles_set->diff             = num_particles_to_insert;   
-    //     return;
-    // }
+        particles_set->size = new_particle_set_size;
+        particles_set->diff = num_particles_to_insert;   
+        return;
+    }
 
-    // int new_particle_set_array_capacity = particles_set->size + num_particles_to_insert * OP_part_alloc_mult;
-    int new_particle_set_array_capacity = new_particle_set_size;
+    int new_particle_set_capacity = particles_set->size + num_particles_to_insert * OP_part_alloc_mult;
+    // int new_particle_set_capacity = new_particle_set_size;
 
     for (auto& current_oppic_dat : *(particles_set->particle_dats))
     {
         if (current_oppic_dat->data == NULL) 
         {
-            current_oppic_dat->data = (char *)malloc((size_t)(new_particle_set_array_capacity * current_oppic_dat->size));
+            current_oppic_dat->data = (char *)malloc((size_t)(new_particle_set_capacity * current_oppic_dat->size));
         }
         else
         {
-            current_oppic_dat->data = (char *)realloc(current_oppic_dat->data, (size_t)(new_particle_set_array_capacity * current_oppic_dat->size));
+            current_oppic_dat->data = (char *)realloc(current_oppic_dat->data, (size_t)(new_particle_set_capacity * current_oppic_dat->size));
         }
 
         if (current_oppic_dat->is_cell_index)
         {
             int* mesh_rel_array = (int *)current_oppic_dat->data;
-            for (int i = particles_set->size; i < new_particle_set_array_capacity; i++)
+            for (int i = particles_set->size; i < new_particle_set_capacity; i++)
                 mesh_rel_array[i] = MAX_CELL_INDEX;
         }
-        else
-        {
-            memset(current_oppic_dat->data + (particles_set->size * current_oppic_dat->size), 0, (new_particle_set_array_capacity - particles_set->size) * current_oppic_dat->size);
-        }
+        // else
+        // {
+        //     memset(current_oppic_dat->data + (particles_set->size * current_oppic_dat->size), 0, (new_particle_set_capacity - particles_set->size) * current_oppic_dat->size);
+        // }
     }
     
-    particles_set->size             = new_particle_set_size;
-    particles_set->array_capacity   = new_particle_set_array_capacity;
-    particles_set->diff             = num_particles_to_insert;
+    particles_set->size         = new_particle_set_size;
+    particles_set->set_capacity = new_particle_set_capacity;
+    particles_set->diff         = num_particles_to_insert;
 }
 
 //****************************************
@@ -508,8 +508,8 @@ void oppic_finalize_particle_move_core(oppic_set set)
 
     if (OP_auto_sort == 0) // if not auto sorting, fill the holes
     {
-        int *cell_index_data = (int *)malloc(set->array_capacity * set->cell_index_dat->size); // getting a backup of cell index since it will also be rearranged using a random OMP thread
-        memcpy((char*)cell_index_data, set->cell_index_dat->data, set->array_capacity * set->cell_index_dat->size);
+        int *cell_index_data = (int *)malloc(set->set_capacity * set->cell_index_dat->size); // getting a backup of cell index since it will also be rearranged using a random OMP thread
+        memcpy((char*)cell_index_data, set->cell_index_dat->data, set->set_capacity * set->cell_index_dat->size);
 
         for (int i = 0; i < (int)set->particle_dats->size(); i++)
         {
@@ -616,21 +616,21 @@ void oppic_remove_marked_particles_from_set_core(oppic_set set, std::vector<int>
 
 //****************************************
 void oppic_particle_sort_core(oppic_set set)
-{ 
+{ TRACE_ME;
     
     if (OP_DEBUG) printf("\toppic_particle_sort set [%s]\n", set->name);
     
     int* cell_index_data = (int*)set->cell_index_dat->data;
 
-    std::vector<size_t> idx_before_sort = sort_indexes(cell_index_data, set->array_capacity);
+    std::vector<size_t> idx_before_sort = sort_indexes(cell_index_data, set->set_capacity);
 
     for (int i = 0; i < (int)set->particle_dats->size(); i++)
     {    
         auto& dat = set->particle_dats->at(i);
-        char *new_data = (char *)malloc(set->array_capacity * dat->size);
+        char *new_data = (char *)malloc(set->set_capacity * dat->size);
         char *old_data = (char*)dat->data;
         
-        for (int j = 0; j < set->array_capacity; j++)
+        for (int j = 0; j < set->set_capacity; j++)
         {
             memcpy(new_data + j * dat->size, old_data + idx_before_sort[j] * dat->size, dat->size);
         }

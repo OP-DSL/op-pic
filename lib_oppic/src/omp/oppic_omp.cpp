@@ -217,8 +217,8 @@ void oppic_finalize_particle_move_omp(oppic_set set)
 
     if (OP_auto_sort == 0) // if not auto sorting, fill the holes
     {
-        int *cell_index_data = (int *)malloc(set->array_capacity * set->cell_index_dat->size); // getting a backup of cell index since it will also be rearranged using a random OMP thread
-        memcpy((char*)cell_index_data, set->cell_index_dat->data, set->array_capacity * set->cell_index_dat->size);
+        int *cell_index_data = (int *)malloc(set->set_capacity * set->cell_index_dat->size); // getting a backup of cell index since it will also be rearranged using a random OMP thread
+        memcpy((char*)cell_index_data, set->cell_index_dat->data, set->set_capacity * set->cell_index_dat->size);
 
         #pragma omp parallel for
         for (int i = 0; i < (int)set->particle_dats->size(); i++)
@@ -278,7 +278,7 @@ void oppic_particle_sort(oppic_set set)
     for (int i = 0; i < (int)set->particle_dats->size(); i++)
     {    
         auto& dat = set->particle_dats->at(i);
-        char *new_data = (char *)malloc(set->array_capacity * dat->size);
+        char *new_data = (char *)malloc(set->set_capacity * dat->size);
         char *old_data = (char*)dat->data;
         
         for (int j = 0; j < set->size; j++)
@@ -345,7 +345,7 @@ void oppic_reset_dat(oppic_dat dat, char* val)
 }
 
 //****************************************
-void op_mpi_set_dirtybit(int nargs, oppic_arg *args) 
+void oppic_mpi_set_dirtybit(int nargs, oppic_arg *args) 
 {
     for (int n = 0; n < nargs; n++) 
     {
@@ -359,7 +359,7 @@ void op_mpi_set_dirtybit(int nargs, oppic_arg *args)
 }
 
 //****************************************
-int op_mpi_halo_exchanges(oppic_set set, int nargs, oppic_arg *args) 
+int oppic_mpi_halo_exchanges(oppic_set set, int nargs, oppic_arg *args) 
 {
     // for (int n = 0; n < nargs; n++)
     // {

@@ -43,7 +43,7 @@ void oppic_seq_loop_inject__Increase_particle_count(
     oppic_arg args[nargs] = { arg0, arg1, arg2, arg3, oppic_arg_dat(particles_set->cell_index_dat, OP_RW) };
     particles_set->cell_index_dat->dirty_hd = Dirty::Host; // make mesh relation dirty and download new data from device
 
-    int set_size = op_mpi_halo_exchanges_grouped(set, nargs, args, Device_CPU);
+    int set_size = oppic_mpi_halo_exchanges_grouped(set, nargs, args, Device_CPU);
 
     for (int i = 0; i < set_size; i++)
     {   
@@ -69,7 +69,7 @@ void oppic_seq_loop_inject__Increase_particle_count(
         part_mesh_relation[start + i] = j;
     }  
 
-    op_mpi_set_dirtybit(nargs, args);
+    oppic_mpi_set_dirtybit_grouped(nargs, args, Device_CPU);
 }
 
 

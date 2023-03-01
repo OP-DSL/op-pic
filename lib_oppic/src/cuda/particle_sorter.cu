@@ -36,7 +36,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 void particle_sort_cuda(oppic_set set)
 { TRACE_ME;
 
-    int set_size = set->array_capacity;
+    int set_size = set->set_capacity;
 
     if (OP_DEBUG) printf("\tparticle_sort_cuda set [%s] with array capacity [%d]\n", set->name, set_size);
 

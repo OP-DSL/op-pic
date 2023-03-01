@@ -134,11 +134,11 @@ void oppic_par_loop_all__ComputeElectricField(
     int nargs = 6;
     oppic_arg args[nargs] = { arg0, arg1, arg2, arg3, arg4, arg5 };
 
-    int set_size = op_mpi_halo_exchanges_grouped(set, nargs, args, Device_GPU);
+    int set_size = oppic_mpi_halo_exchanges_grouped(set, nargs, args, Device_GPU);
     if (set_size > 0) 
     {
-        computeElectricField_stride_OPP_HOST_0 = arg0.dat->set->size;
-        computeElectricField_stride_OPP_HOST_1 = arg1.dat->set->size;
+        computeElectricField_stride_OPP_HOST_0 = arg0.dat->set->set_capacity;
+        computeElectricField_stride_OPP_HOST_1 = arg1.dat->set->set_capacity;
 
         cudaMemcpyToSymbol(computeElectricField_stride_OPP_CUDA_0, &computeElectricField_stride_OPP_HOST_0, sizeof(int));
         cudaMemcpyToSymbol(computeElectricField_stride_OPP_CUDA_1, &computeElectricField_stride_OPP_HOST_1, sizeof(int));
@@ -165,7 +165,7 @@ void oppic_par_loop_all__ComputeElectricField(
         }
     }
 
-    op_mpi_set_dirtybit_cuda(nargs, args);
+    oppic_mpi_set_dirtybit_grouped(nargs, args, Device_GPU);
     cutilSafeCall(cudaDeviceSynchronize());
 }
 

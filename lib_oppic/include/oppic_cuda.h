@@ -55,10 +55,6 @@ typedef struct cudaDeviceProp cudaDeviceProp_t;
 
 //*************************************************************************************************
 
-
-
-//*************************************************************************************************
-
 void __cudaSafeCall(cudaError_t err, const char *file, const int line);
 
 void __cutilCheckMsg(const char *errorMessage, const char *file, const int line);
@@ -68,30 +64,21 @@ void oppic_cuda_exit();
 
 void cutilDeviceInit(int argc, char **argv);
 
-void op_mvHostToDevice(void **map, int size);
+void oppic_upload_dat(oppic_dat dat, bool create_new = false);
 
-void op_cpHostToDevice(void **data_d, void **data_h, int copy_size, int alloc_size); 
-
-void op_upload_dat(oppic_dat dat);
-
-void op_download_dat(oppic_dat dat);
-
-int op_mpi_halo_exchanges_grouped(oppic_set set, int nargs, oppic_arg *args, DeviceType device);
-
-int op_mpi_halo_exchanges_cuda(oppic_set set, int nargs, oppic_arg *args);
-
-void op_mpi_set_dirtybit_cuda(int nargs, oppic_arg *args);
-
+void oppic_download_dat(oppic_dat dat);
 
 void oppic_download_particle_set(oppic_set particles_set);
 
 void oppic_upload_particle_set(oppic_set particles_set, bool realloc = false);
 
-void oppic_create_copy_dat_to_device(oppic_dat dat);
+int oppic_mpi_halo_exchanges_grouped(oppic_set set, int nargs, oppic_arg *args, DeviceType device);
 
-void oppic_increase_particle_count_cuda(oppic_set particles_set);
+void oppic_mpi_set_dirtybit_grouped(int nargs, oppic_arg *args, DeviceType device);
 
 void print_last_cuda_error();
+
+void oppic_cpHostToDevice(void **data_d, void **data_h, int copy_size, int alloc_size, bool create_new = false);
 
 template <class T> 
 void sort_dat_according_to_index(oppic_dat dat, const thrust::device_vector<int>& new_idx_dv, int set_size)
