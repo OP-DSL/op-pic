@@ -57,8 +57,8 @@ void oppic_seq_loop_inject__Increase_particle_count(
 
     oppic_increase_particle_count(particles_set, *((int *)arg0.data));
 
-    int* part_mesh_connectivity = (int *)particles_set->cell_index_dat->data;
-    int* distribution           = (int *)arg2.data;
+    int* part_mesh_relation = (int *)particles_set->cell_index_dat->data;
+    int* distribution       = (int *)arg2.data;
 
     int start = (particles_set->size - particles_set->diff);
     int j = 0;
@@ -66,7 +66,7 @@ void oppic_seq_loop_inject__Increase_particle_count(
     for (int i = 0; i < particles_set->diff; i++)
     {
         if (i >= distribution[j]) j++; // check whether it is j or j-1    
-        part_mesh_connectivity[start + i] = j;
+        part_mesh_relation[start + i] = j;
     }  
 
     op_mpi_set_dirtybit(nargs, args);

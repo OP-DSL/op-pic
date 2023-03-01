@@ -230,7 +230,7 @@ void oppic_finalize_particle_move(oppic_set set)
 
     if (OP_auto_sort == 1)
     {
-        if (OP_DEBUG) printf("oppic_finalize_particle_move auto sorting particle set [%s]\n", set->name);
+        if (OP_DEBUG) printf("\toppic_finalize_particle_move auto sorting particle set [%s]\n", set->name);
         oppic_particle_sort(set);
     }
 }

@@ -19,6 +19,8 @@ using namespace std;
 
 #define MAX_CELL_INDEX     INT_MAX
 
+extern int ts;
+
 class FieldPointers
 {
     public:

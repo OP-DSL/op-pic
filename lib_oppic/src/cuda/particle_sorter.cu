@@ -32,13 +32,13 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <oppic_cuda.h>
 
-
+// This assumes all the device data to be valid
 void particle_sort_cuda(oppic_set set)
 { TRACE_ME;
 
-    if (OP_DEBUG) printf("particle_sort_cuda set [%s]\n", set->name);
-
     int set_size = set->array_capacity;
+
+    if (OP_DEBUG) printf("\tparticle_sort_cuda set [%s] with array capacity [%d]\n", set->name, set_size);
 
     thrust::device_ptr<int> cellIdx_dp = thrust::device_pointer_cast((int*)set->cell_index_dat->data_d);
     thrust::device_vector<int> cellIdx_dv(cellIdx_dp, cellIdx_dp + set_size);

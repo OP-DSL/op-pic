@@ -114,7 +114,7 @@ void oppic_set_args_core(char *argv)
         strncpy(temp, pch, 20);
         OP_part_alloc_mult = atoi(temp + 15);
         
-        printf("oppic_set_args_core OP_part_alloc_mult = %d\n", OP_part_alloc_mult);
+        printf("\toppic_set_args_core OP_part_alloc_mult = %d\n", OP_part_alloc_mult);
     }
 
     pch = strstr(argv, "OPP_AUTO_SORT=");
@@ -123,7 +123,7 @@ void oppic_set_args_core(char *argv)
         strncpy(temp, pch, 20);
         OP_auto_sort = atoi(temp + 14);
         
-        printf("oppic_set_args_core OP_auto_sort = %d\n", OP_auto_sort);
+        printf("\toppic_set_args_core OP_auto_sort = %d\n", OP_auto_sort);
         
         if (!(OP_auto_sort == 1 || OP_auto_sort == 0))
             std::cerr << "OPP_AUTO_SORT should be 0 or 1, Not Auto Sorting" << std::endl;
@@ -162,19 +162,19 @@ oppic_map oppic_decl_map_core(oppic_set from, oppic_set to, int dim, int *imap, 
 {
     if (from == NULL) 
     {
-        printf(" oppic_decl_map error -- invalid 'from' set for map %s\n", name);
+        printf("\t oppic_decl_map error -- invalid 'from' set for map %s\n", name);
         exit(-1);
     }
 
     if (to == NULL) 
     {
-        printf("oppic_decl_map error -- invalid 'to' set for map %s\n", name);
+        printf("\toppic_decl_map error -- invalid 'to' set for map %s\n", name);
         exit(-1);
     }
 
     if (dim <= 0) 
     {
-        printf("oppic_decl_map error -- negative/zero dimension for map %s\n", name);
+        printf("\toppic_decl_map error -- negative/zero dimension for map %s\n", name);
         exit(-1);
     }
 
@@ -205,12 +205,12 @@ oppic_map oppic_decl_map_core(oppic_set from, oppic_set to, int dim, int *imap, 
 oppic_dat oppic_decl_dat_core(oppic_set set, int dim, char const *type, int size, char *data, char const *name) 
 {
     if (set == NULL) {
-        printf("oppic_decl_dat error -- invalid set for data: %s\n", name);
+        printf("\toppic_decl_dat error -- invalid set for data: %s\n", name);
         exit(-1);
     }
 
     if (dim <= 0) {
-        printf("oppic_decl_dat error -- negative/zero dimension for data: %s\n", name);
+        printf("\toppic_decl_dat error -- negative/zero dimension for data: %s\n", name);
         exit(-1);
     }
 
@@ -396,7 +396,7 @@ oppic_dat oppic_decl_particle_dat_core(oppic_set set, int dim, char const *type,
 {
     if (set->is_particle != true) 
     {
-        printf("oppic_decl_particle_dat error -- set is not a particle set: %s\n", set->name);
+        printf("\toppic_decl_particle_dat error -- set is not a particle set: %s\n", set->name);
         exit(-1);
     }
 
@@ -416,21 +416,22 @@ void oppic_increase_particle_count_core(oppic_set particles_set, const int num_p
     if (num_particles_to_insert <= 0) return;
 
     if (OP_DEBUG) 
-        printf("oppic_increase_particle_count set [%s] with size [%d]\n", particles_set->name, num_particles_to_insert);
+        printf("\toppic_increase_particle_count_core set [%s] with size [%d]\n", particles_set->name, num_particles_to_insert);
 
     int new_particle_set_size = particles_set->size + num_particles_to_insert;
 
-    if (particles_set->array_capacity >= new_particle_set_size)
-    {
-        if (OP_DEBUG) 
-            printf("oppic_increase_particle_count set [%s] No need to reallocate, new size[%d] array_capacity[%d]\n", particles_set->name, new_particle_set_size, particles_set->array_capacity);        
+    // if (particles_set->array_capacity >= new_particle_set_size)
+    // {
+    //     if (OP_DEBUG) 
+    //         printf("\toppic_increase_particle_count_core set [%s] No need to reallocate, new size[%d] array_capacity[%d]\n", particles_set->name, new_particle_set_size, particles_set->array_capacity);        
         
-        particles_set->size             = new_particle_set_size;
-        particles_set->diff             = num_particles_to_insert;   
-        return;
-    }
+    //     particles_set->size             = new_particle_set_size;
+    //     particles_set->diff             = num_particles_to_insert;   
+    //     return;
+    // }
 
-    int new_particle_set_array_capacity = particles_set->size + num_particles_to_insert * OP_part_alloc_mult;
+    // int new_particle_set_array_capacity = particles_set->size + num_particles_to_insert * OP_part_alloc_mult;
+    int new_particle_set_array_capacity = new_particle_set_size;
 
     for (auto& current_oppic_dat : *(particles_set->particle_dats))
     {
@@ -441,6 +442,17 @@ void oppic_increase_particle_count_core(oppic_set particles_set, const int num_p
         else
         {
             current_oppic_dat->data = (char *)realloc(current_oppic_dat->data, (size_t)(new_particle_set_array_capacity * current_oppic_dat->size));
+        }
+
+        if (current_oppic_dat->is_cell_index)
+        {
+            int* mesh_rel_array = (int *)current_oppic_dat->data;
+            for (int i = particles_set->size; i < new_particle_set_array_capacity; i++)
+                mesh_rel_array[i] = MAX_CELL_INDEX;
+        }
+        else
+        {
+            memset(current_oppic_dat->data + (particles_set->size * current_oppic_dat->size), 0, (new_particle_set_array_capacity - particles_set->size) * current_oppic_dat->size);
         }
     }
     
@@ -461,7 +473,7 @@ void oppic_reset_num_particles_to_insert_core(oppic_set set)
 //****************************************
 void oppic_init_particle_move_core(oppic_set set)
 {
-    if (OP_DEBUG) printf("oppic_init_particle_move_core set [%s]\n", set->name);
+    if (OP_DEBUG) printf("\toppic_init_particle_move_core set [%s]\n", set->name);
 
     // if (set->particle_statuses) free(set->particle_statuses);
 
@@ -476,7 +488,7 @@ void oppic_mark_particle_to_move_core(oppic_set set, int particle_index, int mov
 {
     if (move_status == (int)OPP_NEED_REMOVE) /*outside the mesh*/
     {  
-        if (OP_DEBUG) printf("oppic_mark_particle_to_move_core set [%s] particle_index [%d]\n", set->name, particle_index);
+        if (OP_DEBUG) printf("\toppic_mark_particle_to_move_core set [%s] particle_index [%d]\n", set->name, particle_index);
 
         set->particle_statuses[particle_index] = OPP_NEED_REMOVE;
         (set->particle_remove_count)++;
@@ -490,7 +502,7 @@ void oppic_mark_particle_to_move_core(oppic_set set, int particle_index, int mov
 //****************************************
 void oppic_finalize_particle_move_core(oppic_set set)
 {
-    if (OP_DEBUG) printf("oppic_finalize_particle_move_core set [%s] size[%d] with particle_remove_count [%d]\n", set->name, set->size, set->particle_remove_count);
+    if (OP_DEBUG) printf("\toppic_finalize_particle_move_core set [%s] size[%d] with particle_remove_count [%d]\n", set->name, set->size, set->particle_remove_count);
 
     if (set->particle_remove_count <= 0) return;
 
@@ -519,7 +531,7 @@ void oppic_finalize_particle_move_core(oppic_set set)
                 }
                 if (j >= (set->size - removed_count - skip_count - 1)) 
                 {
-                    if (OP_DEBUG) printf("oppic_finalize_particle_move_core Current Iteration index [%d] and replacement index %d; hence breaking\n", j, (set->size - removed_count - skip_count - 1));
+                    if (OP_DEBUG) printf("\toppic_finalize_particle_move_core Current Iteration index [%d] and replacement index %d; hence breaking\n", j, (set->size - removed_count - skip_count - 1));
                     break;
                 }
 
@@ -536,6 +548,10 @@ void oppic_finalize_particle_move_core(oppic_set set)
         }
 
         free(cell_index_data);
+    }
+    else
+    {
+        if (OP_DEBUG) printf("\toppic_finalize_particle_move_core Not processing dats since OP_auto_sort = TRUE\n");
     }
 
     set->size -= set->particle_remove_count;
@@ -563,7 +579,7 @@ void oppic_remove_marked_particles_from_set_core(oppic_set set, std::vector<int>
 
     std::sort(idx_to_remove.begin(), idx_to_remove.end());
 
-    if (OP_DEBUG) printf("oppic_remove_marked_particles_from_set set [%s] with size [%d]\n", set->name, num_particles_to_remove);
+    if (OP_DEBUG) printf("\toppic_remove_marked_particles_from_set set [%s] with size [%d]\n", set->name, num_particles_to_remove);
 
     if (num_particles_to_remove <= 0) return;
 
@@ -602,7 +618,7 @@ void oppic_remove_marked_particles_from_set_core(oppic_set set, std::vector<int>
 void oppic_particle_sort_core(oppic_set set)
 { 
     
-    if (OP_DEBUG) printf("oppic_particle_sort set [%s]\n", set->name);
+    if (OP_DEBUG) printf("\toppic_particle_sort set [%s]\n", set->name);
     
     int* cell_index_data = (int*)set->cell_index_dat->data;
 
@@ -655,13 +671,13 @@ void oppic_print_dat_to_txtfile_core(oppic_dat dat, const char *file_name_prefix
     FILE *fp;
     if ((fp = fopen(file_name.c_str(), "w")) == NULL) 
     {
-        printf("oppic_print_dat_to_txtfile_core can't open file %s\n", file_name.c_str());
+        printf("\toppic_print_dat_to_txtfile_core can't open file %s\n", file_name.c_str());
         exit(2);
     }
 
     if (fprintf(fp, "%d %d\n", dat->set->size, dat->dim) < 0) 
     {
-        printf("oppic_print_dat_to_txtfile_core error writing to %s\n", file_name.c_str());
+        printf("\toppic_print_dat_to_txtfile_core error writing to %s\n", file_name.c_str());
         exit(2);
     }
 
@@ -683,7 +699,7 @@ void oppic_print_dat_to_txtfile_core(oppic_dat dat, const char *file_name_prefix
 
                 if (fprintf(fp, " %+2.25lE", ((double *)dat->data)[i * dat->dim + j]) < 0) 
                 {
-                    printf("oppic_print_dat_to_txtfile_core error writing to %s\n", file_name.c_str());
+                    printf("\toppic_print_dat_to_txtfile_core error writing to %s\n", file_name.c_str());
                     exit(2);
                 }
             } 
@@ -694,7 +710,7 @@ void oppic_print_dat_to_txtfile_core(oppic_dat dat, const char *file_name_prefix
             {
                 if (fprintf(fp, " %+f", ((float *)dat->data)[i * dat->dim + j]) < 0) 
                 {
-                    printf("oppic_print_dat_to_txtfile_core error writing to %s\n", file_name.c_str());
+                    printf("\toppic_print_dat_to_txtfile_core error writing to %s\n", file_name.c_str());
                     exit(2);
                 }
             } 
@@ -706,7 +722,7 @@ void oppic_print_dat_to_txtfile_core(oppic_dat dat, const char *file_name_prefix
             {
                 if (fprintf(fp, " %+d", ((int *)dat->data)[i * dat->dim + j]) < 0) 
                 {
-                    printf("oppic_print_dat_to_txtfile_core error writing to %s\n", file_name.c_str());
+                    printf("\toppic_print_dat_to_txtfile_core error writing to %s\n", file_name.c_str());
                     exit(2);
                 }
             } 
@@ -715,13 +731,13 @@ void oppic_print_dat_to_txtfile_core(oppic_dat dat, const char *file_name_prefix
             {
                 if (fprintf(fp, " %+ld", ((long *)dat->data)[i * dat->dim + j]) < 0) 
                 {
-                    printf("oppic_print_dat_to_txtfile_core error writing to %s\n", file_name.c_str());
+                    printf("\toppic_print_dat_to_txtfile_core error writing to %s\n", file_name.c_str());
                     exit(2);
                 }
             } 
             else 
             {
-                printf("oppic_print_dat_to_txtfile_core Unknown type %s, cannot be written to file %s\n", dat->type, file_name.c_str());
+                printf("\toppic_print_dat_to_txtfile_core Unknown type %s, cannot be written to file %s\n", dat->type, file_name.c_str());
                 exit(2);
             }
         }
@@ -741,30 +757,30 @@ void oppic_dump_dat_core(oppic_dat data)
     {
         for (int i = 0; i < data->set->size; i++) 
         {
-            // printf("%d", i);
+            // printf("\t%d", i);
 
             for (int j = 0; j < data->dim; j++) 
             {
                 if (strncmp("double", data->type, 6) == 0)
                 {
-                    printf(" %+2.25lE", ((double *)data->data)[i * data->dim + j]);
+                    printf("\t %+2.25lE", ((double *)data->data)[i * data->dim + j]);
                 } 
                 else if (strncmp("real", data->type, 4) == 0) 
                 {
-                    printf(" %f", ((float *)data->data)[i * data->dim + j]);
+                    printf("\t %f", ((float *)data->data)[i * data->dim + j]);
                 } 
                 else if (strncmp("integer", data->type, 7) == 0) 
                 {
-                    printf(" %d", data->data[i * data->dim + j]);
+                    printf("\t %d", data->data[i * data->dim + j]);
                 } 
                 else 
                 {
-                    printf("oppic_dump_dat_core Unsupported type for dumping %s\n", data->type);
+                    printf("\toppic_dump_dat_core Unsupported type for dumping %s\n", data->type);
                     exit(0);
                 }
             }
 
-            printf("\n");
+            printf("\t\n");
         }
     }
 
@@ -780,13 +796,13 @@ void oppic_print_map_to_txtfile_core(oppic_map map, const char *file_name_prefix
     FILE *fp;
     if ((fp = fopen(file_name.c_str(), "w")) == NULL) 
     {
-        printf("oppic_print_map_to_txtfile_core can't open file %s\n", file_name.c_str());
+        printf("\toppic_print_map_to_txtfile_core can't open file %s\n", file_name.c_str());
         exit(2);
     }
 
     if (fprintf(fp, "%d %d\n", map->from->size, map->dim) < 0) 
     {
-        printf("oppic_print_map_to_txtfile_core error writing to %s\n", file_name.c_str());
+        printf("\toppic_print_map_to_txtfile_core error writing to %s\n", file_name.c_str());
         exit(2);
     }
 
@@ -798,7 +814,7 @@ void oppic_print_map_to_txtfile_core(oppic_map map, const char *file_name_prefix
         {
             if (fprintf(fp, " %d", ((int *)map->map)[i * map->dim + j]) < 0) 
             {
-                printf("oppic_print_map_to_txtfile_core error writing to %s\n", file_name.c_str());
+                printf("\toppic_print_map_to_txtfile_core error writing to %s\n", file_name.c_str());
                 exit(2);
             }
         }
@@ -818,17 +834,17 @@ void* oppic_load_from_file_core(const char* file_name, int set_size, int dim, ch
 
 	if ((fp = fopen(file_name, "r")) == NULL)
 	{
-		printf("oppic_load_from_file - Unable to open file %s\n", file_name);
+		printf("\toppic_load_from_file - Unable to open file %s\n", file_name);
 		exit(-1);
 	}
 	if (fscanf(fp, "%d %d\n", &fsize, &fdim) != 2)
 	{
-		printf("oppic_load_from_file - error reading file data from %s\n", file_name);
+		printf("\toppic_load_from_file - error reading file data from %s\n", file_name);
 		exit(-1);
 	}
     if (fsize < set_size || fdim != dim)
     {
-		printf("oppic_load_from_file - dim and/or set_size issue in file %s\n", file_name);
+		printf("\toppic_load_from_file - dim and/or set_size issue in file %s\n", file_name);
 		exit(-1);        
     }
 
@@ -869,7 +885,7 @@ void* oppic_load_from_file_core(const char* file_name, int set_size, int dim, ch
                     
             if (is_error)
             {
-                printf("oppic_load_from_file - error reading from %s at index %d\n", file_name, n);
+                printf("\toppic_load_from_file - error reading from %s at index %d\n", file_name, n);
                 free(data);
                 exit(-1);
             }
@@ -904,7 +920,7 @@ void* oppic_load_from_file_core(const char* file_name, int set_size, int dim, ch
                     
             if (is_error)
             {
-                printf("oppic_load_from_file - error reading from %s at index %d\n", file_name, n);
+                printf("\toppic_load_from_file - error reading from %s at index %d\n", file_name, n);
                 free(data);
                 exit(-1);
             }
@@ -912,7 +928,7 @@ void* oppic_load_from_file_core(const char* file_name, int set_size, int dim, ch
     } 
     else 
     {
-        printf("oppic_load_from_file Unsupported type for loading %s\n", type);
+        printf("\toppic_load_from_file Unsupported type for loading %s\n", type);
         free(data);
         exit(0);
     }

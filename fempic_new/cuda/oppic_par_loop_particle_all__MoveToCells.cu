@@ -110,10 +110,10 @@ __device__ void move_all_particles_to_cell__kernel(
     {
         m->OPP_move_status = OPP_MOVE_DONE;
 
-        atomicAdd(node_charge_den0, part_lc[0 * moveToCells_all_stride_OPP_CUDA_3]);
-        atomicAdd(node_charge_den1, part_lc[1 * moveToCells_all_stride_OPP_CUDA_3]);
-        atomicAdd(node_charge_den2, part_lc[2 * moveToCells_all_stride_OPP_CUDA_3]);
-        atomicAdd(node_charge_den3, part_lc[3 * moveToCells_all_stride_OPP_CUDA_3]);
+        atomicAdd(node_charge_den0, (part_lc[0 * moveToCells_all_stride_OPP_CUDA_3]));
+        atomicAdd(node_charge_den1, (part_lc[1 * moveToCells_all_stride_OPP_CUDA_3]));
+        atomicAdd(node_charge_den2, (part_lc[2 * moveToCells_all_stride_OPP_CUDA_3]));
+        atomicAdd(node_charge_den3, (part_lc[3 * moveToCells_all_stride_OPP_CUDA_3]));
 
         return;
     }
@@ -201,6 +201,16 @@ __global__ void oppic_cuda_all_MoveToCells(
             );                
             
             m.OPP_iteration_one = false;
+
+// if (m.OPP_move_status != (int)OPP_NEED_MOVE)
+// {
+//     printf("%d %d - %d - %d %d %d %d -\n\t\t %+2.25lE %+2.25lE %+2.25lE %+2.25lE\n", n, map0idx, (int)m.OPP_move_status,
+//         map1idx, map2idx, map3idx, map4idx,
+//         (dir_arg3 + n)[0 * moveToCells_all_stride_OPP_CUDA_3],
+//         (dir_arg3 + n)[1 * moveToCells_all_stride_OPP_CUDA_3],
+//         (dir_arg3 + n)[2 * moveToCells_all_stride_OPP_CUDA_3],
+//         (dir_arg3 + n)[3 * moveToCells_all_stride_OPP_CUDA_3]);                
+// }
 
         } while (m.OPP_move_status == (int)OPP_NEED_MOVE);
 

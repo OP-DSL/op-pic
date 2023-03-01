@@ -195,10 +195,9 @@ oppic_dat oppic_decl_particle_dat_txt(oppic_set set, int dim, char const *type, 
 void oppic_increase_particle_count(oppic_set particles_set, const int num_particles_to_insert)
 {
     bool need_resizing = (particles_set->array_capacity < (particles_set->size + num_particles_to_insert)) ? true : false;
-    
-    if (OP_DEBUG) 
-        printf("oppic_increase_particle_count need_resizing %s\n", need_resizing ? "YES" : "NO");
-// need_resizing = true;
+need_resizing = true;    
+    if (OP_DEBUG) printf("\toppic_increase_particle_count need_resizing %s\n", need_resizing ? "YES" : "NO");
+
     if (need_resizing)
         oppic_download_particle_set(particles_set); // TODO : We should be able to do a device to device copy instead of getting to host
 
@@ -246,6 +245,8 @@ void oppic_particle_sort(oppic_set set)
 //****************************************
 void oppic_print_dat_to_txtfile(oppic_dat dat, const char *file_name_prefix, const char *file_name_suffix)
 {
+    if (OP_DEBUG) printf("\toppic_print_dat_to_txtfile writing file [%s]\n", file_name_suffix);
+
     if (dat->dirty_hd == Dirty::Host) op_download_dat(dat);
 
     std::string prefix = std::string(file_name_prefix) + "_c";
@@ -307,9 +308,6 @@ void op_mvHostToDevice(void **map, int size)
 
 void op_cpHostToDevice(void **data_d, void **data_h, int copy_size, int alloc_size) 
 {
-    if (!OP_hybrid_gpu)
-        return;
-
     if (*data_d != NULL) cutilSafeCall(cudaFree(*data_d));
     cutilSafeCall(cudaMalloc(data_d, alloc_size));
     cutilSafeCall(cudaMemcpy(*data_d, *data_h, copy_size, cudaMemcpyHostToDevice));
@@ -368,7 +366,7 @@ void op_upload_dat(oppic_dat dat)
     size_t set_size = dat->set->array_capacity;
     if (strstr(dat->type, ":soa") != NULL || (OP_auto_soa && dat->dim > 1)) 
     {
-        if (OP_DEBUG) printf("op_upload_dat CPU->GPU SOA | %s\n", dat->name);
+        if (OP_DEBUG) printf("\top_upload_dat CPU->GPU SOA | %s\n", dat->name);
         char *temp_data = (char *)malloc(dat->size * set_size * sizeof(char));
         int element_size = dat->size / dat->dim;
         for (int i = 0; i < dat->dim; i++) 
@@ -387,7 +385,7 @@ void op_upload_dat(oppic_dat dat)
     } 
     else 
     {
-        if (OP_DEBUG) printf("op_upload_dat CPU->GPU NON-SOA| %s\n", dat->name);
+        if (OP_DEBUG) printf("\top_upload_dat CPU->GPU NON-SOA| %s\n", dat->name);
         cutilSafeCall(cudaMemcpy(dat->data_d, dat->data, set_size * dat->size, cudaMemcpyHostToDevice));
     }
 
@@ -404,7 +402,7 @@ void op_download_dat(oppic_dat dat)
     size_t set_size = dat->set->array_capacity;
     if (strstr(dat->type, ":soa") != NULL || (OP_auto_soa && dat->dim > 1)) 
     {
-        if (OP_DEBUG) printf("op_download_dat GPU->CPU SOA | %s\n", dat->name);
+        if (OP_DEBUG) printf("\top_download_dat GPU->CPU SOA | %s\n", dat->name);
         char *temp_data = (char *)malloc(dat->size * set_size * sizeof(char));
         cutilSafeCall(cudaMemcpy(temp_data, dat->data_d, set_size * dat->size, cudaMemcpyDeviceToHost));
         
@@ -424,7 +422,7 @@ void op_download_dat(oppic_dat dat)
     } 
     else 
     {
-        if (OP_DEBUG) printf("op_download_dat GPU->CPU NON-SOA| %s\n", dat->name);
+        if (OP_DEBUG) printf("\top_download_dat GPU->CPU NON-SOA| %s\n", dat->name);
         cutilSafeCall(cudaMemcpy(dat->data, dat->data_d, set_size * dat->size,
                                 cudaMemcpyDeviceToHost));
     }
@@ -458,6 +456,7 @@ void op_mpi_set_dirtybit(int nargs, oppic_arg *args)
             (args[n].acc == OP_INC || args[n].acc == OP_WRITE ||
             args[n].acc == OP_RW)) 
         {
+            if (OP_DEBUG) printf("\top_mpi_set_dirtybit Setting Dirty::Device| %s\n", args[n].dat->name);
             args[n].dat->dirty_hd = Dirty::Device;
         }
     }
@@ -484,6 +483,7 @@ void op_mpi_set_dirtybit_cuda(int nargs, oppic_arg *args)
             (args[n].acc == OP_INC || args[n].acc == OP_WRITE ||
             args[n].acc == OP_RW)) 
         {
+            if (OP_DEBUG) printf("\top_mpi_set_dirtybit_cuda Setting Dirty::Host| %s\n", args[n].dat->name);
             args[n].dat->dirty_hd = Dirty::Host;
         }
     }
@@ -510,18 +510,18 @@ for (auto& a : oppic_dats) {
 void oppic_download_particle_set(oppic_set particles_set)
 { TRACE_ME;
 
-    if (OP_DEBUG) printf("oppic_download_particle_set set [%s]\n", particles_set->name);
+    if (OP_DEBUG) printf("\toppic_download_particle_set set [%s]\n", particles_set->name);
 
     for (oppic_dat& current_dat : *(particles_set->particle_dats))
     {
         if (current_dat->data_d == NULL)
         {
-            if (OP_DEBUG) printf("oppic_download_particle_set device pointer is NULL in dat [%s]\n", current_dat->name);
+            if (OP_DEBUG) printf("\toppic_download_particle_set device pointer is NULL in dat [%s]\n", current_dat->name);
             continue;
         }
         if (current_dat->dirty_hd != Dirty::Host)
         {
-            if (OP_DEBUG) printf("oppic_download_particle_set host is not dirty in dat [%s]\n", current_dat->name);
+            if (OP_DEBUG) printf("\toppic_download_particle_set host is not dirty in dat [%s]\n", current_dat->name);
             continue;
         }
         op_download_dat(current_dat);
@@ -532,7 +532,7 @@ void oppic_download_particle_set(oppic_set particles_set)
 void oppic_upload_particle_set(oppic_set particles_set, bool realloc)
 { TRACE_ME;
 
-    if (OP_DEBUG) printf("oppic_upload_particle_set set [%s]\n", particles_set->name);
+    if (OP_DEBUG) printf("\toppic_upload_particle_set set [%s]\n", particles_set->name);
 
     for (oppic_dat& current_dat : *(particles_set->particle_dats))
     {
@@ -548,20 +548,21 @@ void oppic_upload_particle_set(oppic_set particles_set, bool realloc)
     }  
 }
 
+// Free existing and malloc a new
 void oppic_create_copy_dat_to_device(oppic_dat dat)
 {
-    if (OP_DEBUG) printf("oppic_create_copy_dat_to_device dat [%s]\n", dat->name);
-
     size_t set_size = dat->set->size;
     
     if (set_size <= 0) 
     {
-        if (OP_DEBUG) printf("oppic_create_copy_dat_to_device dat [%s], set_size <= 0\n", dat->name);
+        if (OP_DEBUG) printf("\toppic_create_copy_dat_to_device dat [%s], set_size <= 0\n", dat->name);
         return;
     }
 
     if (strstr(dat->type, ":soa") != NULL || (OP_auto_soa && dat->dim > 1)) 
     {
+        if (OP_DEBUG) printf("\toppic_create_copy_dat_to_device SOA or dim>1 | dat [%s]\n", dat->name);
+
         char *temp_data = (char *)malloc(dat->size * set_size * sizeof(char));
         int element_size = dat->size / dat->dim;
 
@@ -582,6 +583,8 @@ void oppic_create_copy_dat_to_device(oppic_dat dat)
     } 
     else 
     {
+        if (OP_DEBUG) printf("\toppic_create_copy_dat_to_device AOS or dim=1 | dat [%s]\n", dat->name);
+
         op_cpHostToDevice((void **)&(dat->data_d), (void **)&(dat->data), (dat->size * dat->set->size), (dat->size * dat->set->array_capacity));
     }
 }
@@ -590,11 +593,11 @@ void oppic_increase_particle_count_cuda(oppic_set particles_set)
 { TRACE_ME;
 
     if (OP_DEBUG) 
-        printf("oppic_increase_particle_count_cuda set [%s] to capacity [%d]\n", particles_set->name, particles_set->array_capacity);
+        printf("\toppic_increase_particle_count_cuda set [%s] to capacity [%d]\n", particles_set->name, particles_set->array_capacity);
 
     for (oppic_dat& current_dat : *(particles_set->particle_dats))
     {
-        if (OP_DEBUG) printf("oppic_increase_particle_count_cuda dat [%s]\n", current_dat->name);
+        if (OP_DEBUG) printf("\toppic_increase_particle_count_cuda dat [%s]\n", current_dat->name);
 
         // cutilSafeCall(cudaFree(current_dat->data_d));
         // cutilSafeCall(cudaMalloc(&(current_dat->data_d), particles_set->array_capacity * current_dat->size));
@@ -637,14 +640,14 @@ void oppic_finalize_particle_move(oppic_set set)
 
     cudaMemcpy(&(set->particle_remove_count), set->particle_remove_count_d, sizeof(int), cudaMemcpyDeviceToHost);
 
-    if (OP_DEBUG) printf("oppic_finalize_particle_move set [%s] with particle_remove_count [%d]\n", set->name, set->particle_remove_count);
+    if (OP_DEBUG) printf("\toppic_finalize_particle_move set [%s] with particle_remove_count [%d]\n", set->name, set->particle_remove_count);
     
     // oppic_finalize_particle_move_cuda(set); // TODO : Dont we need to download???
     oppic_finalize_particle_move_core(set);
 
     if (OP_auto_sort == 1)
     {
-        if (OP_DEBUG) printf("oppic_finalize_particle_move auto sorting particle set [%s]\n", set->name);
+        if (OP_DEBUG) printf("\toppic_finalize_particle_move auto sorting particle set [%s]\n", set->name);
         oppic_particle_sort(set);
     }
 }
@@ -669,7 +672,7 @@ void oppic_finalize_particle_move_cuda(oppic_set set)
         }
     }   
 
-    if (OP_DEBUG) printf("oppic_finalize_particle_move_cuda set [%s] with particle_remove_count [%d]\n", set->name, set->particle_remove_count);
+    if (OP_DEBUG) printf("\toppic_finalize_particle_move_cuda set [%s] with particle_remove_count [%d]\n", set->name, set->particle_remove_count);
 
     if (set->particle_remove_count <= 0)
     {
@@ -687,12 +690,14 @@ void oppic_finalize_particle_move_cuda(oppic_set set)
     cutilSafeCall(cudaFree(set->particle_statuses_d));
     set->particle_statuses_d = NULL;
 
-    if (OP_DEBUG) printf("oppic_finalize_particle_move_cuda set [%s] with new size [%d]\n", set->name, set->size);
+    if (OP_DEBUG) printf("\toppic_finalize_particle_move_cuda set [%s] with new size [%d]\n", set->name, set->size);
 }
 
 //****************************************
 void oppic_reset_dat(oppic_dat dat, char* val)
 {
+    if (OP_DEBUG) printf("\toppic_reset_dat dat [%s]\n", dat->name);
+
     int set_size = dat->set->size;
 
     cutilSafeCall(cudaMemset((double*)(dat->data_d), 0, dat->size * set_size));

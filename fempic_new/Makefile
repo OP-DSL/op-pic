@@ -23,7 +23,7 @@ NVCCFLAGS  = -m64 -Xptxas -dlcm=ca -Xptxas=-v -fmad=false -ftz=false -prec-div=t
 
 DEBUG ?= 0
 ifeq ($(DEBUG), 1)
-	CPPFLAGS   += -O0 -g
+	CPPFLAGS   += -O0 -g -debug all
 	NVCCFLAGS  += -O0 -g -lineinfo
 else
 	CPPFLAGS   += -O3

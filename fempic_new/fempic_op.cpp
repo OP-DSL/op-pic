@@ -33,6 +33,8 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "fempic.h"
 
+int ts = 0;
+
 //*********************************************MAIN****************************************************
 int main(int argc, char **argv) 
 {
@@ -104,14 +106,22 @@ int main(int argc, char **argv)
         mesh.DeleteValues();
         // mesh.solver->setPotentialArray((double*)node_potential->data);
 
-        max_iter = 25;
+        // max_iter = 3;
 bool X = false;
         auto start = std::chrono::system_clock::now();
-//if (X) oppic_print_dat_to_txtfile(dum_part_random  , "i", "dum_part_random.dat");
-        for (int ts = 0; ts < max_iter; ts++)
+oppic_print_map_to_txtfile(cell_to_nodes_map  , "i", "cell_to_nodes_map.dat");
+oppic_print_dat_to_txtfile(node_volume  , "i", "node_volume.dat");
+oppic_print_dat_to_txtfile(cell_determinants  , "i", "cell_determinants_am.dat");
+oppic_print_dat_to_txtfile(cell_volume  , "i", "cell_volume_am.dat");
+oppic_print_dat_to_txtfile(dum_part_random  , "i", "dum_part_random.dat");
+oppic_print_dat_to_txtfile(cell_shape_deriv  , "i", "cell_shape_deriv.dat");
+
+        for (ts = 0; ts < max_iter; ts++)
         {
-if (ts > 0 && ts < 25) X = true; else X = false;
-std::string f = std::string("F_") + std::to_string(ts + 1);
+
+if (ts >= 39 && ts < 42) X = true; else X = false;
+std::string f = std::string("F_") + std::to_string(ts);
+
 if (X) oppic_print_dat_to_txtfile(part_position  , f.c_str(), "part_position_biiii.dat");
             int injected_count = 0;
             oppic_seq_loop_inject__Increase_particle_count(
@@ -124,12 +134,13 @@ if (X) oppic_print_dat_to_txtfile(part_position  , f.c_str(), "part_position_bii
             );
 if (X) oppic_print_dat_to_txtfile(part_position  , f.c_str(), "part_position_bi.dat");
 if (X) oppic_print_dat_to_txtfile(cell_electric_field  , f.c_str(), "cell_electric_field_bi.dat");
+if (X) oppic_print_dat_to_txtfile(part_mesh_relation  , f.c_str(), "part_mesh_relation_bi.dat");
             int old_nparts = particles_set->size;
             oppic_par_loop_inject__InjectIons(
                 particles_set,                                                                               // particles_set
                 oppic_arg_dat(part_position,                             OP_WRITE),                          // part_position,
-                oppic_arg_dat(part_velocity,                             OP_RW),                             // part_velocity,
-                oppic_arg_dat(part_mesh_relation,                        OP_WRITE),                          // part_cell_connectivity,
+                oppic_arg_dat(part_velocity,                             OP_WRITE),                          // part_velocity,
+                oppic_arg_dat(part_mesh_relation,                        OP_RW),                             // part_cell_connectivity,
                 oppic_arg_dat(iface_to_cell_map,                         OP_READ, OPP_Map_from_Mesh_Rel),    // iface to cell map
                 oppic_arg_dat(cell_electric_field, 0, iface_to_cell_map, OP_READ, OPP_Map_from_Mesh_Rel),    // cell_ef,
                 oppic_arg_dat(iface_u_normal,                            OP_READ, OPP_Map_from_Mesh_Rel),    // iface_u,
@@ -143,7 +154,7 @@ if (X) oppic_print_dat_to_txtfile(part_velocity  , f.c_str(), "part_velocity_bm.
 if (X) oppic_print_dat_to_txtfile(part_mesh_relation  , f.c_str(), "part_mesh_relation_bm.dat"); // 2 OK
 
             oppic_reset_dat(node_charge_density, (char*)opp_zero_double16);
-//if (X) oppic_print_dat_to_txtfile(node_charge_density  , f.c_str(), "node_charge_density_bm.dat");
+if (X) oppic_print_dat_to_txtfile(node_charge_density  , f.c_str(), "node_charge_density_bm.dat");
             oppic_par_loop_particle_all__MoveToCells(
                 particles_set,                                                                                // particles_set
                 oppic_arg_dat(cell_electric_field,                       OP_READ, OPP_Map_from_Mesh_Rel),     // cell_ef,
@@ -165,8 +176,7 @@ if (X) oppic_print_dat_to_txtfile(part_velocity  , f.c_str(), "part_velocity_am.
 if (X) oppic_print_dat_to_txtfile(part_mesh_relation  , f.c_str(), "part_mesh_relation_am.dat"); // OK
 if (X) oppic_print_dat_to_txtfile(node_charge_density  , f.c_str(), "node_charge_density_am.dat"); // e-11
 if (X) oppic_print_dat_to_txtfile(part_lc  , f.c_str(), "part_lc_am.dat"); // OK
-//if (X) oppic_print_dat_to_txtfile(cell_determinants  , f.c_str(), "cell_determinants_am.dat");
-//if (X) oppic_print_dat_to_txtfile(cell_volume  , f.c_str(), "cell_volume_am.dat");
+
 
             oppic_par_loop_all__ComputeNodeChargeDensity(
                 nodes_set,                                       // nodes_set
@@ -185,8 +195,7 @@ if (X) oppic_print_dat_to_txtfile(node_charge_density  , f.c_str(), "node_charge
             oppic_reset_dat(cell_electric_field, (char*)opp_zero_double16);
 
 if (X) oppic_print_dat_to_txtfile(node_potential  , f.c_str(), "node_potential_acomp.dat");
-//if (X) oppic_print_dat_to_txtfile(cell_shape_deriv  , f.c_str(), "cell_shape_deriv.dat");
-//if (X) oppic_print_dat_to_txtfile(cell_electric_field  , f.c_str(), "cell_electric_field.dat");
+if (X) oppic_print_dat_to_txtfile(cell_electric_field  , f.c_str(), "cell_electric_field.dat");
             
             oppic_par_loop_all__ComputeElectricField(
                 cells_set,                                                        // cells_set
@@ -198,13 +207,13 @@ if (X) oppic_print_dat_to_txtfile(node_potential  , f.c_str(), "node_potential_a
                 oppic_arg_dat(node_potential, 3, cell_to_nodes_map, OP_READ)      // node_potential3,
             );
 
-//if (X) oppic_print_dat_to_txtfile(cell_electric_field  , f.c_str(), "cell_electric_field_acomp.dat"); // OK
+if (X) oppic_print_dat_to_txtfile(cell_electric_field  , f.c_str(), "cell_electric_field_acomp.dat"); // OK
 
             {
                 double max_den = 0.0, max_phi = 0.0;
                 if (params.get<BOOL>("check_max_values"))
                 {
-                    for (int n = 0; n< mesh.n_nodes; n++) 
+                    for (int n = 0; n< mesh.n_nodes; n++) // ideally, need to copy data from device to host, but at this point host has correct data
                     {
                         if (((double*)node_charge_density->data)[n] > max_den) max_den = ((double*)node_charge_density->data)[n];
                         if (abs(((double*)node_potential->data)[n]) > max_phi) max_phi = abs(((double*)node_potential->data)[n]);   
@@ -215,7 +224,7 @@ if (X) oppic_print_dat_to_txtfile(node_potential  , f.c_str(), "node_potential_a
                  << " (" <<  injected_count << " added, "<< old_nparts - particles_set->size << " removed)"                
                  << "\t max den: " << max_den
                  << "\t max |phi|: " << max_phi
-                 << std::endl;
+                 << std::endl << std::endl;
             }
         }
 

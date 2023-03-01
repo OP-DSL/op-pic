@@ -203,7 +203,7 @@ void oppic_finalize_particle_move(oppic_set set)
 
     if (OP_auto_sort == 1)
     {
-        if (OP_DEBUG) printf("oppic_finalize_particle_move auto sorting particle set [%s]\n", set->name);
+        if (OP_DEBUG) printf("\toppic_finalize_particle_move auto sorting particle set [%s]\n", set->name);
         oppic_particle_sort(set);
     }
 }
@@ -211,7 +211,7 @@ void oppic_finalize_particle_move(oppic_set set)
 //****************************************
 void oppic_finalize_particle_move_omp(oppic_set set)
 {
-    if (OP_DEBUG) printf("oppic_finalize_particle_move_omp set [%s] with particle_remove_count [%d]\n", set->name, set->particle_remove_count);
+    if (OP_DEBUG) printf("\toppic_finalize_particle_move_omp set [%s] with particle_remove_count [%d]\n", set->name, set->particle_remove_count);
 
     if (set->particle_remove_count <= 0) return;
 
@@ -241,7 +241,7 @@ void oppic_finalize_particle_move_omp(oppic_set set)
                 }
                 if (j >= (set->size - removed_count - skip_count - 1)) 
                 {
-                    if (OP_DEBUG) printf("oppic_finalize_particle_move_core Current Iteration index [%d] and replacement index %d; hence breaking\n", j, (set->size - removed_count - skip_count - 1));
+                    if (OP_DEBUG) printf("\toppic_finalize_particle_move_core Current Iteration index [%d] and replacement index %d; hence breaking\n", j, (set->size - removed_count - skip_count - 1));
                     break;
                 }
 
@@ -268,7 +268,7 @@ void oppic_finalize_particle_move_omp(oppic_set set)
 void oppic_particle_sort(oppic_set set)
 { TRACE_ME;
     
-    if (OP_DEBUG) printf("oppic_particle_sort set [%s]\n", set->name);
+    if (OP_DEBUG) printf("\toppic_particle_sort set [%s]\n", set->name);
     
     int* cell_index_data = (int*)set->cell_index_dat->data;
 
