@@ -17,8 +17,8 @@ OBJ = obj
 CPP        = mpicxx
 MPICPP	   = mpicxx
 
-CPPFLAGS   = -std=c++11 -Wall -fopenmp -fPIC
-NVCCFLAGS  = -m64 -Xptxas -dlcm=ca -Xptxas=-v
+CPPFLAGS   = -std=c++11 -Wall -fopenmp -fPIC -fp-model strict -fp-model source -prec-div -prec-sqrt
+NVCCFLAGS  = -m64 -Xptxas -dlcm=ca -Xptxas=-v -fmad=false -ftz=false -prec-div=true -prec-sqrt=true
 
 DEBUG ?= 0
 ifeq ($(DEBUG), 1)

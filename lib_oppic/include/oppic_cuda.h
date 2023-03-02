@@ -81,11 +81,11 @@ void print_last_cuda_error();
 void oppic_cpHostToDevice(void **data_d, void **data_h, int copy_size, int alloc_size, bool create_new = false);
 
 template <class T> 
-void sort_dat_according_to_index(oppic_dat dat, const thrust::device_vector<int>& new_idx_dv, int set_capacity)
+void sort_dat_according_to_index(oppic_dat dat, const thrust::device_vector<int>& new_idx_dv, int set_capacity, int size)
 {
     thrust::device_ptr<T> dat_dp = thrust::device_pointer_cast((T*)dat->data_d);
-    thrust::device_vector<T> dat_dv(dat_dp, (dat_dp + (set_capacity * dat->dim)));
-    thrust::device_vector<T> sorted_dat_dv(set_capacity * dat->dim);
+    thrust::device_vector<T> dat_dv(dat_dp, (dat_dp + (set_capacity * (dat->dim - 1) + size)));
+    thrust::device_vector<T> sorted_dat_dv(set_capacity * (dat->dim - 1) + size);
 
     switch (dat->dim)
     {
@@ -95,7 +95,7 @@ void sort_dat_according_to_index(oppic_dat dat, const thrust::device_vector<int>
                     thrust::make_tuple(dat_dv.begin())
                 ), 
                 new_idx_dv.begin()), 
-                set_capacity, 
+                size, 
                 thrust::make_zip_iterator(
                     thrust::make_tuple(sorted_dat_dv.begin())));
             break;
@@ -108,7 +108,7 @@ void sort_dat_according_to_index(oppic_dat dat, const thrust::device_vector<int>
                     )
                 ), 
                 new_idx_dv.begin()), 
-                set_capacity, 
+                size, 
                 thrust::make_zip_iterator(
                     thrust::make_tuple(
                         sorted_dat_dv.begin(), 
@@ -124,7 +124,7 @@ void sort_dat_according_to_index(oppic_dat dat, const thrust::device_vector<int>
                     )
                 ), 
                 new_idx_dv.begin()), 
-                set_capacity, 
+                size, 
                 thrust::make_zip_iterator(
                     thrust::make_tuple(
                         sorted_dat_dv.begin(), 
@@ -142,7 +142,7 @@ void sort_dat_according_to_index(oppic_dat dat, const thrust::device_vector<int>
                     )
                 ), 
                 new_idx_dv.begin()), 
-                set_capacity, 
+                size, 
                 thrust::make_zip_iterator(
                     thrust::make_tuple(
                         sorted_dat_dv.begin(), 
@@ -155,7 +155,7 @@ void sort_dat_according_to_index(oppic_dat dat, const thrust::device_vector<int>
     }
 
     T* sorted_dat_dp = thrust::raw_pointer_cast(&sorted_dat_dv[0]);
-    cudaMemcpy((void*)dat->data_d, (void*)sorted_dat_dp, (set_capacity * dat->size), cudaMemcpyDeviceToDevice);
+    cudaMemcpy((void*)dat->data_d, (void*)sorted_dat_dp, ((set_capacity * (dat->dim - 1) + size) * sizeof(T)), cudaMemcpyDeviceToDevice);
 }
 
 void oppic_finalize_particle_move_cuda(oppic_set set);
