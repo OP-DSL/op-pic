@@ -36,14 +36,14 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 void particle_sort_cuda(oppic_set set)
 { TRACE_ME;
 
-    int set_size = set->set_capacity;
+    int set_capacity = set->set_capacity;
 
-    if (OP_DEBUG) printf("\tparticle_sort_cuda set [%s] with array capacity [%d]\n", set->name, set_size);
+    if (OP_DEBUG) printf("\tparticle_sort_cuda set [%s] with array capacity [%d]\n", set->name, set_capacity);
 
     thrust::device_ptr<int> cellIdx_dp = thrust::device_pointer_cast((int*)set->cell_index_dat->data_d);
-    thrust::device_vector<int> cellIdx_dv(cellIdx_dp, cellIdx_dp + set_size);
+    thrust::device_vector<int> cellIdx_dv(cellIdx_dp, cellIdx_dp + set_capacity);
 
-    thrust::device_vector<int> i_dv(set_size);
+    thrust::device_vector<int> i_dv(set_capacity);
     thrust::sequence(i_dv.begin(), i_dv.end());
 
     thrust::sort_by_key(cellIdx_dv.begin(), cellIdx_dv.end(), i_dv.begin());
@@ -59,11 +59,11 @@ void particle_sort_cuda(oppic_set set)
 
         if (strcmp(dat->type, "int") == 0)
         {
-            sort_dat_according_to_index<int>(dat, i_dv, set_size);
+            sort_dat_according_to_index<int>(dat, i_dv, set_capacity);
         }
         else if (strcmp(dat->type, "double") == 0)
         {
-            sort_dat_according_to_index<double>(dat, i_dv, set_size);
+            sort_dat_according_to_index<double>(dat, i_dv, set_capacity);
         }
         else
         {

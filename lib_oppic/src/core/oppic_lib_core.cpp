@@ -555,10 +555,6 @@ void oppic_finalize_particle_move_core(oppic_set set)
     }
 
     set->size -= set->particle_remove_count;
-    set->particle_remove_count = 0;
-
-    // free(set->particle_statuses);
-    // set->particle_statuses = NULL;
 }
 
 //****************************************
