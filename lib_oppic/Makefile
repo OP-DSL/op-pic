@@ -17,16 +17,28 @@ OBJ = obj
 CPP        = mpicxx
 MPICPP	   = mpicxx
 
-CPPFLAGS   = -std=c++11 -Wall -fopenmp -fPIC -fp-model strict -fp-model source -prec-div -prec-sqrt
-NVCCFLAGS  = -m64 -Xptxas -dlcm=ca -Xptxas=-v -fmad=false -ftz=false -prec-div=true -prec-sqrt=true
+CPPFLAGS   = -std=c++11 -Wall -fopenmp -fPIC
+NVCCFLAGS  = -m64 -Xptxas -dlcm=ca -Xptxas=-v
 
 DEBUG ?= 0
 ifeq ($(DEBUG), 1)
-	CPPFLAGS   += -O0 -g
-	NVCCFLAGS  += -O0 -g
+	CPPFLAGS   += -O0 -g -debug all
+	NVCCFLAGS  += -O0 -g -lineinfo
+	DEBUG_LOG   = 1
 else
 	CPPFLAGS   += -O3
 	NVCCFLAGS  += -O3
+endif
+
+IEEE ?= 0
+ifeq ($(IEEE), 1)
+	CPPFLAGS   += -fp-model strict -fp-model source -prec-div -prec-sqrt
+	NVCCFLAGS  += -fmad=false -ftz=false -prec-div=true -prec-sqrt=true
+endif
+
+DEBUG_LOG ?= 0
+ifeq ($(DEBUG_LOG), 1)
+	CPPFLAGS   += -DDEBUG_LOG
 endif
 
 TELOS ?= 1

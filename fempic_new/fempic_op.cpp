@@ -119,7 +119,7 @@ oppic_print_dat_to_txtfile(cell_shape_deriv  , "i", "cell_shape_deriv.dat");
         for (ts = 0; ts < max_iter; ts++)
         {
 
-if (ts >= 39 && ts < 42) X = true; else X = false;
+// if (ts >= 39 && ts < 42) X = true; else X = false;
 std::string f = std::string("F_") + std::to_string(ts);
 
 if (X) oppic_print_dat_to_txtfile(part_position  , f.c_str(), "part_position_biiii.dat");
@@ -224,7 +224,7 @@ if (X) oppic_print_dat_to_txtfile(cell_electric_field  , f.c_str(), "cell_electr
                  << " (" <<  injected_count << " added, "<< old_nparts - particles_set->size << " removed)"                
                  << "\t max den: " << max_den
                  << "\t max |phi|: " << max_phi
-                 << std::endl << std::endl;
+                 << "\t ****" << std::endl;
             }
         }
 

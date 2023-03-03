@@ -11,6 +11,12 @@
 
 using namespace std;
 
+#ifdef DEBUG_LOG
+    #define OP_DEBUG true
+#else
+    #define OP_DEBUG false
+#endif
+
 #define DIMENSIONS         3
 #define NODES_PER_CELL     4
 #define NEIGHBOUR_CELLS    4

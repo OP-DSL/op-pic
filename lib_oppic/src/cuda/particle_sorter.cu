@@ -34,7 +34,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 // This assumes all the device data to be valid
 void particle_sort_cuda(oppic_set set)
-{ TRACE_ME;
+{ // TRACE_ME;
 
     int set_capacity = set->set_capacity;
     int set_size_plus_removed = set->size + set->particle_remove_count;

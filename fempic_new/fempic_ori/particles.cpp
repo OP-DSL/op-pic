@@ -18,7 +18,7 @@
 // #include "FESolver.h"
 
 /*saves particle data*/
-void OutputParticles(std::vector<Particle> &particles) { TRACE_ME;
+void OutputParticles(std::vector<Particle> &particles) { //TRACE_ME;
     std::ofstream out("particles.vtp");
     if (!out.is_open()) {std::cerr<<"Failed to open output file "<<std::endl;exit(-1);}
 

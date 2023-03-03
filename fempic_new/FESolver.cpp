@@ -45,7 +45,7 @@ extern "C" {
 }
 
 /*FESolver*/
-FESolver::FESolver(std::shared_ptr<Volume> volume, int argc, char **argv):volume(volume) { TRACE_ME;
+FESolver::FESolver(std::shared_ptr<Volume> volume, int argc, char **argv):volume(volume) { //TRACE_ME;
     /*count number of unknowns*/
     neq = 0;
 
@@ -162,7 +162,7 @@ FESolver::FESolver(std::shared_ptr<Volume> volume, int argc, char **argv):volume
 }
 
 /*~FESolver, frees memory*/
-FESolver::~FESolver() { TRACE_ME;
+FESolver::~FESolver() { //TRACE_ME;
     for (int i=0;i<neq;i++) {delete[] K[i]; delete[] J[i];}
     for (int e=0;e<n_elements;e++) delete[] LM[e];
     for (int e=0;e<n_elements;e++) {
@@ -203,7 +203,7 @@ FESolver::~FESolver() { TRACE_ME;
 }
 
 /*clears K and F*/
-void FESolver::startAssembly() { TRACE_ME;
+void FESolver::startAssembly() { //TRACE_ME;
     for (int i=0;i<neq;i++)
         for (int j=0;j<neq;j++) K[i][j] = 0;
 
@@ -214,7 +214,7 @@ void FESolver::startAssembly() { TRACE_ME;
 }
 
 /*adds contributions from element stiffness matrix*/
-void FESolver::addKe(int e, double ke[4][4]) { TRACE_ME;
+void FESolver::addKe(int e, double ke[4][4]) { //TRACE_ME;
     for (int a=0;a<4;a++)    /*tetrahedra*/
         for (int b=0;b<4;b++) {
             int P = LM[e][a];
@@ -226,7 +226,7 @@ void FESolver::addKe(int e, double ke[4][4]) { TRACE_ME;
 }
 
 /*adds contributions from element force vector to a global F vector*/
-void FESolver::addFe(double *F, int e, double fe[4]) { TRACE_ME;
+void FESolver::addFe(double *F, int e, double fe[4]) { //TRACE_ME;
     for (int a=0;a<4;a++)    /*tetrahedra*/ {
         int P = LM[e][a];
         if (P<0) continue;    /*skip g nodes*/
@@ -255,7 +255,7 @@ void FESolver::getNax(double nx[3], int e, int a) {
 
 /*computes derivatives of the shape functions for all elements
 constants since using linear elements*/
-void FESolver::computeNX() { TRACE_ME;
+void FESolver::computeNX() { //TRACE_ME;
     /*derivatives of the shape functions vs. xi*/
     double na_xi[4][3] = {{1,0,0}, {0,1,0}, {0,0,1}, {-1,-1,-1}};
 
@@ -297,7 +297,7 @@ void FESolver::computeNX() { TRACE_ME;
 }
 
 /*compute inverse of a 3x3 matrix using the adjugate method*/
-void FESolver::inverse(double M[3][3], double V[3][3]) { TRACE_ME;
+void FESolver::inverse(double M[3][3], double V[3][3]) { //TRACE_ME;
     double a=M[0][0];
     double b=M[0][1];
     double c=M[0][2];
@@ -416,7 +416,7 @@ void FESolver::solveNonLinear(double *ion_den, double *y, double *G) { TRACE_ME;
 }
 
 /*builds J matrix for NR solver*/
-void FESolver::buildJmatrix(Method method) { TRACE_ME;
+void FESolver::buildJmatrix(Method method) { //TRACE_ME;
     /*first compute exponential term*/
     double *fp_term = new double[neq];
     double *FP = new double[neq];
@@ -483,7 +483,7 @@ void FESolver::buildJmatrix(Method method) { TRACE_ME;
 }
 
 /*preassembles the K matrix and "h" and "g" parts of the force vector*/
-void FESolver::preAssembly() { TRACE_ME;
+void FESolver::preAssembly() { //TRACE_ME;
     /*loop over elements*/
     for (int e=0;e<n_elements;e++) {
         Tetra &tet = volume->elements[e];
@@ -537,7 +537,7 @@ void FESolver::preAssembly() { TRACE_ME;
 }
 
 /*computes "ff" part of F*/
-void FESolver::buildF1Vector(double *ion_den) { TRACE_ME;
+void FESolver::buildF1Vector(double *ion_den) { //TRACE_ME;
     double *f = new double[neq];
     /*start by computing the RHS term on all unknown nodes*/
     for (int n=0;n<n_nodes;n++) {
@@ -684,7 +684,7 @@ void FESolver::computePhi(Method method, oppic_arg arg0, oppic_arg arg1)
 }
 
 /*updates electric field*/
-void FESolver::updateEf() { TRACE_ME;
+void FESolver::updateEf() { //TRACE_ME;
     /*interpolate electric field*/
     for (int e=0;e<n_elements;e++) {
         Tetra &tet = volume->elements[e];

@@ -42,7 +42,12 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <limits.h>
 
 //*************************************************************************************************
-#define OP_DEBUG       false
+
+#ifdef DEBUG_LOG
+    #define OP_DEBUG true
+#else
+    #define OP_DEBUG false
+#endif
 
 #define MAX_CELL_INDEX     INT_MAX
 

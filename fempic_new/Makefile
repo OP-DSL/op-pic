@@ -1,13 +1,5 @@
 
-# module load gnu-6.3.0/gnu-6.3.0
-# module load gnu-6.3.0/ompi-1.10.6
-# module load cuda/toolkit-10.2.89
-
-# module load intel-oneapi-2021.3/intel-classic-2021.3 intel-oneapi-2021.3/impi-classic-2021.3
-# module load cuda/toolkit-10.2.89
-
-# export LD_LIBRARY_PATH=/ext-home/zl/phd/OP-PIC/app_fempic_oppic/lib:/ext-home/zl/lib_install/petsc-3.18.2-oneapi-2021.3/lib:$LD_LIBRARY_PATH
-# export LD_LIBRARY_PATH=/ext-home/zl/phd/OP-PIC/app_fempic_oppic/lib:/ext-home/zl/lib_install/petsc-3.18.2-oneapi-2021.3-release/lib:$LD_LIBRARY_PATH
+# source /ext-home/zl/phd/OP-PIC/scripts/source_oneapi
 
 SRC = .
 INC = .
@@ -18,19 +10,31 @@ BIN = bin
 CPP        = mpicxx
 MPICPP	   = mpicxx
 
-CPPFLAGS   = -std=c++11 -Wall -fopenmp -fPIC -fp-model strict -fp-model source -prec-div -prec-sqrt
-NVCCFLAGS  = -m64 -Xptxas -dlcm=ca -Xptxas=-v -fmad=false -ftz=false -prec-div=true -prec-sqrt=true
+CPPFLAGS   = -std=c++11 -Wall -fopenmp -fPIC
+NVCCFLAGS  = -m64 -Xptxas -dlcm=ca -Xptxas=-v
 
 DEBUG ?= 0
 ifeq ($(DEBUG), 1)
 	CPPFLAGS   += -O0 -g -debug all
 	NVCCFLAGS  += -O0 -g -lineinfo
+	DEBUG_LOG   = 1
 else
 	CPPFLAGS   += -O3
 	NVCCFLAGS  += -O3
 endif
 
-TELOS ?= 0
+IEEE ?= 0
+ifeq ($(IEEE), 1)
+	CPPFLAGS   += -fp-model strict -fp-model source -prec-div -prec-sqrt
+	NVCCFLAGS  += -fmad=false -ftz=false -prec-div=true -prec-sqrt=true
+endif
+
+DEBUG_LOG ?= 0
+ifeq ($(DEBUG_LOG), 1)
+	CPPFLAGS   += -DDEBUG_LOG
+endif
+
+TELOS ?= 1
 ifeq ($(TELOS), 1)
 	NVCCFLAGS  += -gencode arch=compute_70,code=sm_70
 	PETSC_PATH = /ext-home/zl/lib_install/petsc-3.18.3-oneapi-2021.3-cuda-rel

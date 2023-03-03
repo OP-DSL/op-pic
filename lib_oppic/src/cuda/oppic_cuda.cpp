@@ -210,11 +210,11 @@ oppic_dat oppic_decl_particle_dat_txt(oppic_set set, int dim, char const *type, 
 
 //****************************************
 void oppic_increase_particle_count(oppic_set particles_set, const int num_particles_to_insert)
-{
+{ TRACE_ME;
+
     bool need_resizing = (particles_set->set_capacity < (particles_set->size + num_particles_to_insert)) ? true : false;
 
-    //if (OP_DEBUG) 
-    printf("\toppic_increase_particle_count need_resizing %s\n", need_resizing ? "YES" : "NO");
+    if (OP_DEBUG) printf("\toppic_increase_particle_count need_resizing %s\n", need_resizing ? "YES" : "NO");
 
     if (need_resizing)
         oppic_download_particle_set(particles_set); // TODO : We should be able to do a device to device copy instead of getting to host
@@ -302,7 +302,8 @@ void oppic_dump_dat(oppic_dat dat)
 //****************************************
 // DEVICE->HOST | this invalidates what is in the HOST
 void oppic_download_dat(oppic_dat dat) 
-{ 
+{ TRACE_ME;
+
     size_t set_size = dat->set->set_capacity;
     if (strstr(dat->type, ":soa") != NULL || (OP_auto_soa && dat->dim > 1)) 
     {
@@ -337,7 +338,8 @@ void oppic_download_dat(oppic_dat dat)
 //****************************************
 // HOST->DEVICE | this invalidates what is in the DEVICE
 void oppic_upload_dat(oppic_dat dat, bool create_new)
-{
+{ TRACE_ME;
+
     size_t set_capacity = dat->set->set_capacity;
 
     if (strstr(dat->type, ":soa") != NULL || (OP_auto_soa && dat->dim > 1)) 
@@ -373,7 +375,7 @@ void oppic_upload_dat(oppic_dat dat, bool create_new)
 //****************************************
 // DEVICE -> HOST
 void oppic_download_particle_set(oppic_set particles_set)
-{ TRACE_ME;
+{
 
     if (OP_DEBUG) printf("\toppic_download_particle_set set [%s]\n", particles_set->name);
 
@@ -396,7 +398,7 @@ void oppic_download_particle_set(oppic_set particles_set)
 //****************************************
 // HOST->DEVICE
 void oppic_upload_particle_set(oppic_set particles_set, bool realloc)
-{ TRACE_ME;
+{ 
 
     if (OP_DEBUG) printf("\toppic_upload_particle_set set [%s]\n", particles_set->name);
 
