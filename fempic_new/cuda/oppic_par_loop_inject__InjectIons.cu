@@ -72,7 +72,6 @@ __device__ void inject_ions__kernel_gpu(
         b = (1 - b);
     }
 
-    #pragma unroll
     for (int i = 0; i < DIMENSIONS; i++) 
     {
         part_pos[i * injectIons_stride_OPP_CUDA_0] = a * iface_u[i * injectIons_stride_OPP_CUDA_5] + b * iface_v[i * injectIons_stride_OPP_CUDA_6] + node_pos[i * injectIons_stride_OPP_CUDA_8];
@@ -160,7 +159,7 @@ void oppic_par_loop_inject__InjectIons(
 )
 { TRACE_ME;
 
-    if (OP_DEBUG) printf("FEMPIC - oppic_par_loop_inject__InjectIons num_particles %d diff %d\n", set->size, set->diff);
+    if (FP_DEBUG) printf("FEMPIC - oppic_par_loop_inject__InjectIons num_particles %d diff %d\n", set->size, set->diff);
 
     int nargs = 10;
     oppic_arg args[nargs] = { arg0, arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9 };

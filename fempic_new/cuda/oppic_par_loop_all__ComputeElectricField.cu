@@ -48,7 +48,6 @@ __device__ void compute_electric_field__kernel_gpu(
     const double *node_potential3
 )
 {
-    #pragma unroll
     for (int dim = 0; dim < DIMENSIONS; dim++)
     {
         cell_electric_field[dim * computeElectricField_stride_OPP_CUDA_0] -= (cell_shape_deriv[(0 * DIMENSIONS + dim) * computeElectricField_stride_OPP_CUDA_1] * (*node_potential0));
@@ -129,7 +128,7 @@ void oppic_par_loop_all__ComputeElectricField(
 )
 { TRACE_ME;
 
-    if (OP_DEBUG) printf("FEMPIC - oppic_par_loop_all__ComputeElectricField size %d\n", set->size);
+    if (FP_DEBUG) printf("FEMPIC - oppic_par_loop_all__ComputeElectricField size %d\n", set->size);
 
     int nargs = 6;
     oppic_arg args[nargs] = { arg0, arg1, arg2, arg3, arg4, arg5 };

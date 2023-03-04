@@ -67,7 +67,6 @@ __device__ void move_all_particles_to_cell__kernel(
 {
     if (m->OPP_iteration_one)
     {
-        #pragma unroll
         for (int i = 0; i < DIMENSIONS; i++)
         {
             // double v0 = part_vel[i * moveToCells_all_stride_OPP_CUDA_2];
@@ -88,12 +87,10 @@ __device__ void move_all_particles_to_cell__kernel(
         
         }
    
-        #pragma unroll
         for (int i = 0; i < DIMENSIONS; i++)
             part_pos[i * moveToCells_all_stride_OPP_CUDA_1] += part_vel[i * moveToCells_all_stride_OPP_CUDA_2] * (CONST_dt_cuda); // v = u + at
     }
 
-    #pragma unroll
     for (int i=0; i<NODES_PER_CELL; i++) /*loop over vertices*/
     {
         part_lc[i * moveToCells_all_stride_OPP_CUDA_3] = (1.0/6.0) * (
@@ -239,7 +236,7 @@ void oppic_par_loop_particle_all__MoveToCells(
 )
 { TRACE_ME;
     
-    if (OP_DEBUG) printf("FEMPIC - oppic_par_loop_particle_all__MoveToCells num_particles %d\n", set->size);
+    if (FP_DEBUG) printf("FEMPIC - oppic_par_loop_particle_all__MoveToCells num_particles %d\n", set->size);
 
     int nargs = 12;
     oppic_arg args[nargs] = { arg0, arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9, arg10, arg11 };

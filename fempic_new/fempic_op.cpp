@@ -109,12 +109,12 @@ int main(int argc, char **argv)
         // max_iter = 3;
 bool X = false;
         auto start = std::chrono::system_clock::now();
-oppic_print_map_to_txtfile(cell_to_nodes_map  , "i", "cell_to_nodes_map.dat");
-oppic_print_dat_to_txtfile(node_volume  , "i", "node_volume.dat");
-oppic_print_dat_to_txtfile(cell_determinants  , "i", "cell_determinants_am.dat");
-oppic_print_dat_to_txtfile(cell_volume  , "i", "cell_volume_am.dat");
-oppic_print_dat_to_txtfile(dum_part_random  , "i", "dum_part_random.dat");
-oppic_print_dat_to_txtfile(cell_shape_deriv  , "i", "cell_shape_deriv.dat");
+if (X) oppic_print_map_to_txtfile(cell_to_nodes_map  , "i", "cell_to_nodes_map.dat");
+if (X) oppic_print_dat_to_txtfile(node_volume  , "i", "node_volume.dat");
+if (X) oppic_print_dat_to_txtfile(cell_determinants  , "i", "cell_determinants_am.dat");
+if (X) oppic_print_dat_to_txtfile(cell_volume  , "i", "cell_volume_am.dat");
+if (X) oppic_print_dat_to_txtfile(dum_part_random  , "i", "dum_part_random.dat");
+if (X) oppic_print_dat_to_txtfile(cell_shape_deriv  , "i", "cell_shape_deriv.dat");
 
         for (ts = 0; ts < max_iter; ts++)
         {
@@ -242,22 +242,5 @@ if (X) oppic_print_dat_to_txtfile(cell_electric_field  , f.c_str(), "cell_electr
 // {
 //     std::string f = std::string("F_") + std::to_string(ts + 1);
 //     oppic_print_map_to_txtfile(cell_to_nodes_map  , f.c_str(), "cell_to_nodes_map.dat");
-//     oppic_print_map_to_txtfile(cell_to_cell_map   , f.c_str(), "cell_to_cell_map.dat");
-//     oppic_print_map_to_txtfile(iface_to_nodes_map , f.c_str(), "iface_to_nodes_map.dat");
-//     oppic_print_map_to_txtfile(iface_to_cell_map  , f.c_str(), "iface_to_cell_map.dat");
-
 //     oppic_print_dat_to_txtfile(node_charge_density, f.c_str(), "node_charge_density.dat");
-//     oppic_print_dat_to_txtfile(node_potential     , f.c_str(), "node_potential.dat");
-//     oppic_print_dat_to_txtfile(cell_electric_field, f.c_str(), "cell_electric_field.dat");
-
-//     oppic_print_dat_to_txtfile(iface_v_normal,      f.c_str(), "iface_v_normal.dat");
-//     oppic_print_dat_to_txtfile(iface_u_normal,      f.c_str(), "iface_u_normal.dat");
-//     oppic_print_dat_to_txtfile(iface_normal,        f.c_str(), "iface_normal.dat");
-//     oppic_print_dat_to_txtfile(iface_area,          f.c_str(), "iface_area.dat");
-//     oppic_print_dat_to_txtfile(iface_inj_part_dist, f.c_str(), "iface_inj_part_dist.dat");
-
-//     oppic_print_dat_to_txtfile(part_position,      f.c_str(), "part_position.dat");
-//     oppic_print_dat_to_txtfile(part_velocity,      f.c_str(), "part_velocity.dat");
-//     oppic_print_dat_to_txtfile(part_lc,            f.c_str(), "part_lc.dat");
-//     oppic_print_dat_to_txtfile(part_mesh_relation, f.c_str(), "part_mesh_relation.dat");
 // }

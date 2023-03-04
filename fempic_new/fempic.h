@@ -12,9 +12,9 @@
 using namespace std;
 
 #ifdef DEBUG_LOG
-    #define OP_DEBUG true
+    #define FP_DEBUG true
 #else
-    #define OP_DEBUG false
+    #define FP_DEBUG false
 #endif
 
 #define DIMENSIONS         3

@@ -21,26 +21,46 @@ filePath2 = "/ext-home/zl/phd/OP-PIC/fempic_new/files/"
 # F_1_c_cell_volume_am.dat             F_1_s_cell_volume_am.dat                     1e-25    
 # F_1_c_cell_determinants_am.dat       F_1_s_cell_determinants_am.dat               1e-25          
 
+iter = 42
+
 fileNames1 = [
-    "F_23_c_cell_electric_field_bi.dat",
-    "F_23_c_part_mesh_relation_bm.dat",  
-    "F_23_c_part_position_bm.dat",
-    "F_23_c_part_velocity_bm.dat",
-    "F_20_c_node_charge_density_acomp.dat",
-    "F_20_c_node_charge_density_am.dat",
-    "F_20_c_node_potential_acomp.dat",
-    "F_20_c_part_lc_am.dat",
+    f'F_{iter}_c_part_position_biiii.dat',
+    f'F_{iter}_c_part_position_bi.dat',  
+    f'F_{iter}_c_cell_electric_field_bi.dat',
+    f'F_{iter}_c_part_mesh_relation_bi.dat',
+    f'F_{iter}_c_part_position_bm.dat',
+    f'F_{iter}_c_part_velocity_bm.dat',
+    f'F_{iter}_c_part_mesh_relation_bm.dat',
+    f'F_{iter}_c_node_charge_density_bm.dat',
+    f'F_{iter}_c_part_position_am.dat',
+    f'F_{iter}_c_part_velocity_am.dat',
+    f'F_{iter}_c_part_mesh_relation_am.dat',
+    f'F_{iter}_c_node_charge_density_am.dat',
+    f'F_{iter}_c_part_lc_am.dat',
+    f'F_{iter}_c_node_charge_density_acomp.dat',
+    f'F_{iter}_c_node_potential_acomp.dat',
+    f'F_{iter}_c_cell_electric_field.dat',
+    f'F_{iter}_c_cell_electric_field_acomp.dat',
     ]
 
 fileNames2 = [
-    "F_23_s_cell_electric_field_bi.dat",
-    "F_23_s_part_mesh_relation_bm.dat",  
-    "F_23_s_part_position_bm.dat",
-    "F_23_s_part_velocity_bm.dat",
-    "F_20_s_node_charge_density_acomp.dat",
-    "F_20_s_node_charge_density_am.dat",
-    "F_20_s_node_potential_acomp.dat",
-    "F_20_s_part_lc_am.dat",
+    f'F_{iter}_s_part_position_biiii.dat',
+    f'F_{iter}_s_part_position_bi.dat',  
+    f'F_{iter}_s_cell_electric_field_bi.dat',
+    f'F_{iter}_s_part_mesh_relation_bi.dat',
+    f'F_{iter}_s_part_position_bm.dat',
+    f'F_{iter}_s_part_velocity_bm.dat',
+    f'F_{iter}_s_part_mesh_relation_bm.dat',
+    f'F_{iter}_s_node_charge_density_bm.dat',
+    f'F_{iter}_s_part_position_am.dat',
+    f'F_{iter}_s_part_velocity_am.dat',
+    f'F_{iter}_s_part_mesh_relation_am.dat',
+    f'F_{iter}_s_node_charge_density_am.dat',
+    f'F_{iter}_s_part_lc_am.dat',
+    f'F_{iter}_s_node_charge_density_acomp.dat',
+    f'F_{iter}_s_node_potential_acomp.dat',
+    f'F_{iter}_s_cell_electric_field.dat',
+    f'F_{iter}_s_cell_electric_field_acomp.dat',
     ]
 
 import csv

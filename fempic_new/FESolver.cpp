@@ -17,9 +17,8 @@
 #include <math.h>
 #include <stdio.h>
 
-#include "trace.h"
-#include "fempic_ori/maths.h"
 #include "FESolver.h"
+#include "fempic.h"
 
 extern "C" {
     void dsysv_( char* uplo,
@@ -738,7 +737,7 @@ void FESolver::solveLinearPetsc(double **p_A, double *p_x, double *p_b)
 
     std::chrono::duration<double> dt = t5-t1;
     
-    if (OP_DEBUG) std::cout << "solveLinearPetsc - Time <chrono>: " << dt.count() << " s ... Converged reason: " << reason << std::endl;
+    if (FP_DEBUG) std::cout << "solveLinearPetsc - Time <chrono>: " << dt.count() << " s ... Converged reason: " << reason << std::endl;
 #else
     std::cerr << "Petsc solver not active... define USE_PETSC in header!" << std::endl;
 #endif

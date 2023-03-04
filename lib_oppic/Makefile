@@ -39,6 +39,7 @@ endif
 DEBUG_LOG ?= 0
 ifeq ($(DEBUG_LOG), 1)
 	CPPFLAGS   += -DDEBUG_LOG
+	NVCCFLAGS  += -DDEBUG_LOG
 endif
 
 TELOS ?= 1
