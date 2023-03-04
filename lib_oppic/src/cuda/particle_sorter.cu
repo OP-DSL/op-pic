@@ -60,11 +60,11 @@ void particle_sort_cuda(oppic_set set)
 
         if (strcmp(dat->type, "int") == 0)
         {
-            sort_dat_according_to_index<int>(dat, i_dv, set_capacity, set_size_plus_removed);
+            sort_dat_according_to_index_int(dat, i_dv, set_capacity, set_size_plus_removed);
         }
         else if (strcmp(dat->type, "double") == 0)
         {
-            sort_dat_according_to_index<double>(dat, i_dv, set_capacity, set_size_plus_removed);
+            sort_dat_according_to_index_double(dat, i_dv, set_capacity, set_size_plus_removed);
         }
         else
         {
@@ -73,4 +73,34 @@ void particle_sort_cuda(oppic_set set)
     }
 
     cutilSafeCall(cudaDeviceSynchronize());
+}
+
+void sort_dat_according_to_index_int(oppic_dat dat, const thrust::device_vector<int>& new_idx_dv, int set_capacity, int size)
+{ TRACE_ME;
+
+    thrust::device_vector<int>* dat_dv = dat->thrust_int;
+    thrust::device_vector<int>* sorted_dat_dv = dat->thrust_int_sort;
+
+    copy_according_to_index<int>(dat_dv, sorted_dat_dv, new_idx_dv, set_capacity, size, dat->dim);
+
+    thrust::device_vector<int>* tmp = dat->thrust_int;
+    dat->thrust_int = dat->thrust_int_sort;
+    dat->thrust_int_sort = tmp;
+
+    dat->data_d = (char*)thrust::raw_pointer_cast(dat->thrust_int->data());
+}
+
+void sort_dat_according_to_index_double(oppic_dat dat, const thrust::device_vector<int>& new_idx_dv, int set_capacity, int size)
+{ TRACE_ME;
+
+    thrust::device_vector<double>* dat_dv = dat->thrust_real;
+    thrust::device_vector<double>* sorted_dat_dv = dat->thrust_real_sort;
+
+    copy_according_to_index<double>(dat_dv, sorted_dat_dv, new_idx_dv, set_capacity, size, dat->dim);
+
+    thrust::device_vector<double>* tmp = dat->thrust_real;
+    dat->thrust_real = dat->thrust_real_sort;
+    dat->thrust_real_sort = tmp;
+
+    dat->data_d = (char*)thrust::raw_pointer_cast(dat->thrust_real->data());
 }

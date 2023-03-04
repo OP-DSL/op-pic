@@ -70,6 +70,18 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #define ZERO_ull       0
 #define ZERO_bool      0
 
+#define USE_THRUST
+
+#ifdef USE_THRUST
+    #include <thrust/device_vector.h>
+    #include <thrust/host_vector.h>
+    #define THRUST_REAL thrust::device_vector<double>
+    #define THRUST_INT thrust::device_vector<int>
+#else
+    #define THRUST_REAL void
+    #define THRUST_INT void
+#endif
+
 //*************************************************************************************************
 enum oppic_iterate_type
 {
@@ -191,6 +203,12 @@ struct oppic_dat_core {
 
     std::vector<char*>* thread_data;
     bool is_cell_index;
+
+    THRUST_INT *thrust_int;
+    THRUST_REAL *thrust_real;
+
+    THRUST_INT *thrust_int_sort;
+    THRUST_REAL *thrust_real_sort;
 };
 
 //*************************************************************************************************

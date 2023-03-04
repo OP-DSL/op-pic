@@ -65,8 +65,11 @@ void oppic_cuda_exit()
 
     for (auto& a : oppic_dats) 
     {
-        cutilSafeCall(cudaFree(a->data_d));
+        // cutilSafeCall(cudaFree(a->data_d));
+        if (a->thrust_int) delete a->thrust_int;
+        if (a->thrust_real) delete a->thrust_real;
     }
+
 }
 
 //****************************************
@@ -103,7 +106,9 @@ oppic_dat oppic_decl_dat(oppic_set set, int dim, char const *type, int size, cha
 {
     oppic_dat dat = oppic_decl_dat_core(set, dim, type, size, data, name);
 
-    oppic_upload_dat(dat, true);
+    oppic_create_device_arrays(dat);
+
+    oppic_upload_dat(dat);
 
     return dat;
 }
@@ -191,7 +196,9 @@ oppic_dat oppic_decl_particle_dat(oppic_set set, int dim, char const *type, int 
 {
     oppic_dat dat = oppic_decl_particle_dat_core(set, dim, type, size, data, name, cell_index);
 
-    oppic_upload_dat(dat, true);
+    oppic_create_device_arrays(dat);
+
+    oppic_upload_dat(dat);
 
     return dat;
 }
@@ -228,7 +235,10 @@ void oppic_increase_particle_count(oppic_set particles_set, const int num_partic
             if (OP_DEBUG) printf("\toppic_increase_particle_count | dat [%s]\n", current_dat->name);
 
             // TODO : We might be able to copy only the old data from device to device!
-            oppic_upload_dat(current_dat, true);
+
+            oppic_create_device_arrays(current_dat, true);
+
+            oppic_upload_dat(current_dat);
 
             current_dat->dirty_hd = Dirty::NotDirty;
         }        
@@ -337,7 +347,7 @@ void oppic_download_dat(oppic_dat dat)
 
 //****************************************
 // HOST->DEVICE | this invalidates what is in the DEVICE
-void oppic_upload_dat(oppic_dat dat, bool create_new)
+void oppic_upload_dat(oppic_dat dat)
 { TRACE_ME;
 
     size_t set_capacity = dat->set->set_capacity;
@@ -360,13 +370,13 @@ void oppic_upload_dat(oppic_dat dat, bool create_new)
             }
         }
 
-        oppic_cpHostToDevice((void **)&(dat->data_d), (void **)&(temp_data), (dat->size * set_capacity), (dat->size * set_capacity), create_new);
+        oppic_cpHostToDevice((void **)&(dat->data_d), (void **)&(temp_data), (dat->size * set_capacity), (dat->size * set_capacity), false);
         free(temp_data);
     } 
     else 
     {
         if (OP_DEBUG) printf("\toppic_upload_dat CPU->GPU NON-SOA| %s\n", dat->name);
-        oppic_cpHostToDevice((void **)&(dat->data_d), (void **)&(dat->data), (dat->size * set_capacity), (dat->size * set_capacity), create_new);
+        oppic_cpHostToDevice((void **)&(dat->data_d), (void **)&(dat->data), (dat->size * set_capacity), (dat->size * set_capacity), false);
     }
 
     dat->dirty_hd = Dirty::NotDirty;
@@ -406,6 +416,7 @@ void oppic_upload_particle_set(oppic_set particles_set, bool realloc)
     {
         if (realloc)
         {
+            // TODO : CONVERT TO THRUST VECTORS, WILL BREAK IF NOT 
             if (current_dat->data_d != NULL) 
                 cutilSafeCall(cudaFree(current_dat->data_d));
 
@@ -544,6 +555,49 @@ void oppic_cpHostToDevice(void **data_d, void **data_h, int copy_size, int alloc
 
     cutilSafeCall(cudaMemcpy(*data_d, *data_h, copy_size, cudaMemcpyHostToDevice));
     cutilSafeCall(cudaDeviceSynchronize());
+}
+
+void oppic_create_device_arrays(oppic_dat dat, bool create_new)
+{
+    printf("oppic_create_device_arrays %s %s\n", dat->name, dat->type);
+
+    if (strcmp(dat->type, "double") == 0)
+    {
+        if (dat->set->size > 0)
+        {
+            if (create_new && dat->thrust_real)
+            {
+                delete dat->thrust_real;
+                delete dat->thrust_real_sort;
+            }
+
+            dat->thrust_real = new thrust::device_vector<double>(dat->set->set_capacity * dat->dim);
+            dat->data_d = (char*)thrust::raw_pointer_cast(dat->thrust_real->data());
+
+            dat->thrust_real_sort = new thrust::device_vector<double>(dat->set->set_capacity * dat->dim);
+        } 
+    } 
+    else if (strcmp(dat->type, "int") == 0 )
+    {
+        if (dat->set->size > 0)
+        {
+            if (create_new && dat->thrust_int)
+            {
+                delete dat->thrust_int;
+                delete dat->thrust_int_sort;
+            }
+
+            dat->thrust_int = new thrust::device_vector<int>(dat->set->set_capacity * dat->dim);
+            dat->data_d = (char*)thrust::raw_pointer_cast(dat->thrust_int->data());
+
+            dat->thrust_int_sort = new thrust::device_vector<int>(dat->set->set_capacity * dat->dim);
+        } 
+    }
+    else
+    {
+        std::cerr << "oppic_decl_dat CUDA not implemented for type: " << dat->type << " dat name: " << dat->name << std::endl;
+        exit(-1);
+    }
 }
 
 void cutilDeviceInit(int argc, char **argv) 

@@ -241,8 +241,12 @@ oppic_dat oppic_decl_dat_core(oppic_set set, int dim, char const *type, int size
     dat->dirty_hd      = Dirty::NotDirty;
     dat->dirtybit      = 1;
 
-    dat->thread_data   = new std::vector<char*>();
-    dat->is_cell_index = false;
+    dat->thread_data        = new std::vector<char*>();
+    dat->is_cell_index      = false;
+    dat->thrust_int         = NULL;
+    dat->thrust_real        = NULL;
+    dat->thrust_int_sort    = NULL;
+    dat->thrust_real_sort   = NULL;
 
     oppic_dats.push_back(dat);
     return dat;

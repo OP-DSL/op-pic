@@ -94,7 +94,7 @@ oppic_omp: mklib oppic_core
 	     ar -r $(LIB)/liboppic_omp.a $(OBJ)/oppic_lib_core.o $(OBJ)/oppic_util.o $(OBJ)/trace.o $(OBJ)/opp_params.o $(OBJ)/oppic_omp.o
 
 oppic_cuda: mklib oppic_core
-	     $(CPP) $(CPPFLAGS) -c $(OPPIC_PATH)/$(SRC)/cuda/oppic_cuda.cpp -o $(OBJ)/oppic_cuda.o $(ALL_INC)
+	     nvcc $(NVCCFLAGS) -c $(OPPIC_PATH)/$(SRC)/cuda/oppic_cuda.cu -o $(OBJ)/oppic_cuda.o $(ALL_INC)
 		 nvcc $(NVCCFLAGS) -c $(OPPIC_PATH)/$(SRC)/cuda/particle_sorter.cu -o $(OBJ)/particle_sorter.o $(ALL_INC)
 	     ar -r $(LIB)/liboppic_cuda.a $(OBJ)/oppic_lib_core.o $(OBJ)/oppic_util.o $(OBJ)/trace.o $(OBJ)/opp_params.o $(OBJ)/oppic_cuda.o $(OBJ)/particle_sorter.o
 
