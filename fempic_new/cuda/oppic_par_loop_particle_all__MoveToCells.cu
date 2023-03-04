@@ -271,7 +271,7 @@ void oppic_par_loop_particle_all__MoveToCells(
             int nblocks = (end - start - 1) / nthread + 1;
 
             oppic_cuda_all_MoveToCells<<<nblocks, nthread>>>(
-                (int *)     set->cell_index_dat->data_d,
+                (int *)     set->mesh_relation_dat->data_d,
                 (double *)  arg0.data_d,
                 (double *)  arg1.data_d,
                 (double *)  arg2.data_d,

@@ -133,19 +133,19 @@ void oppic_set_args_core(char *argv)
 //****************************************
 oppic_set oppic_decl_set_core(int size, char const *name) 
 {
-    oppic_set set       = (oppic_set)malloc(sizeof(oppic_set_core));
-    set->index          = oppic_sets.size();
-    set->size           = size;
-    set->name           = copy_str(name);
-    set->core_size      = size;
-    set->exec_size      = 0;
-    set->nonexec_size   = 0;
+    oppic_set set          = (oppic_set)malloc(sizeof(oppic_set_core));
+    set->index             = oppic_sets.size();
+    set->size              = size;
+    set->name              = copy_str(name);
+    set->core_size         = size;
+    set->exec_size         = 0;
+    set->nonexec_size      = 0;
 
-    set->is_particle    = false;
-    set->set_capacity   = size;
-    set->diff           = 0;
-    set->cell_index_dat = NULL;
-    set->cells_set      = NULL;
+    set->is_particle       = false;
+    set->set_capacity      = size;
+    set->diff              = 0;
+    set->mesh_relation_dat = NULL;
+    set->cells_set         = NULL;
 
     set->indexes_to_remove           = new std::vector<int>();
     set->particle_dats               = new std::vector<oppic_dat>();
@@ -402,7 +402,7 @@ oppic_dat oppic_decl_particle_dat_core(oppic_set set, int dim, char const *type,
 
     oppic_dat dat = oppic_decl_dat_core(set, dim, type, size, data, name);
 
-    if (cell_index) set->cell_index_dat = dat;
+    if (cell_index) set->mesh_relation_dat = dat;
     dat->is_cell_index = cell_index;
 
     set->particle_dats->push_back(dat); 
@@ -508,8 +508,8 @@ void oppic_finalize_particle_move_core(oppic_set set)
 
     if (OP_auto_sort == 0) // if not auto sorting, fill the holes
     {
-        int *cell_index_data = (int *)malloc(set->set_capacity * set->cell_index_dat->size); // getting a backup of cell index since it will also be rearranged using a random OMP thread
-        memcpy((char*)cell_index_data, set->cell_index_dat->data, set->set_capacity * set->cell_index_dat->size);
+        int *mesh_relation_data = (int *)malloc(set->set_capacity * set->mesh_relation_dat->size); // getting a backup of cell index since it will also be rearranged using a random OMP thread
+        memcpy((char*)mesh_relation_data, set->mesh_relation_dat->data, set->set_capacity * set->mesh_relation_dat->size);
 
         for (int i = 0; i < (int)set->particle_dats->size(); i++)
         {
@@ -519,13 +519,13 @@ void oppic_finalize_particle_move_core(oppic_set set)
 
             for (int j = 0; j < set->size; j++)
             {
-                if (cell_index_data[j] != MAX_CELL_INDEX) continue;
+                if (mesh_relation_data[j] != MAX_CELL_INDEX) continue;
 
                 char* dat_removed_ptr = (char *)(current_oppic_dat->data + (j * current_oppic_dat->size));
 
                 // BUG_FIX: (set->size - removed_count - 1) This index could marked to be removed, and if marked, 
                 // then there could be an array index out of bounds access error in the future
-                while (cell_index_data[set->size - removed_count - skip_count - 1] == MAX_CELL_INDEX)
+                while (mesh_relation_data[set->size - removed_count - skip_count - 1] == MAX_CELL_INDEX)
                 {
                     skip_count++;
                 }
@@ -547,7 +547,7 @@ void oppic_finalize_particle_move_core(oppic_set set)
             // current_oppic_dat->data = (char *)realloc(current_oppic_dat->data, (size_t)(set->size - removed_count) * (size_t)current_oppic_dat->size);
         }
 
-        free(cell_index_data);
+        free(mesh_relation_data);
     }
     else
     {
@@ -616,9 +616,9 @@ void oppic_particle_sort_core(oppic_set set)
     
     if (OP_DEBUG) printf("\toppic_particle_sort set [%s]\n", set->name);
     
-    int* cell_index_data = (int*)set->cell_index_dat->data;
+    int* mesh_relation_data = (int*)set->mesh_relation_dat->data;
 
-    std::vector<size_t> idx_before_sort = sort_indexes(cell_index_data, set->set_capacity);
+    std::vector<size_t> idx_before_sort = sort_indexes(mesh_relation_data, set->set_capacity);
 
     for (int i = 0; i < (int)set->particle_dats->size(); i++)
     {    
@@ -643,7 +643,7 @@ void oppic_particle_sort_core(oppic_set set)
 
     //     for (int j = 0; j < set->size; j++)
     //     {    
-    //         current_cell_index = cell_index_data[j];
+    //         current_cell_index = mesh_relation_data[j];
         
     //         if ((current_cell_index != previous_cell_index) && (current_cell_index >= 0))
     //         {

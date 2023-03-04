@@ -40,8 +40,8 @@ void oppic_seq_loop_inject__Increase_particle_count(
     if (FP_DEBUG) printf("FEMPIC - oppic_seq_loop_inject__Increase_particle_count num_particles %d diff %d\n", set->size, set->diff);
 
     int nargs = 5; // Add one more to have mesh_relation arg
-    oppic_arg args[nargs] = { arg0, arg1, arg2, arg3, oppic_arg_dat(particles_set->cell_index_dat, OP_RW) };
-    particles_set->cell_index_dat->dirty_hd = Dirty::Host; // make mesh relation dirty and download new data from device
+    oppic_arg args[nargs] = { arg0, arg1, arg2, arg3, oppic_arg_dat(particles_set->mesh_relation_dat, OP_RW) };
+    particles_set->mesh_relation_dat->dirty_hd = Dirty::Host; // make mesh relation dirty and download new data from device
 
     int set_size = oppic_mpi_halo_exchanges_grouped(set, nargs, args, Device_CPU);
 
@@ -57,7 +57,8 @@ void oppic_seq_loop_inject__Increase_particle_count(
 
     oppic_increase_particle_count(particles_set, *((int *)arg0.data));
 
-    int* part_mesh_relation = (int *)particles_set->cell_index_dat->data;
+    oppic_dat mesh_rel_dat  = particles_set->mesh_relation_dat;
+    int* part_mesh_relation = (int *)mesh_rel_dat->data;
     int* distribution       = (int *)arg2.data;
 
     int start = (particles_set->size - particles_set->diff);
@@ -70,6 +71,14 @@ void oppic_seq_loop_inject__Increase_particle_count(
     }  
 
     oppic_mpi_set_dirtybit_grouped(nargs, args, Device_CPU);
+
+    int size = start * mesh_rel_dat->size;
+    char* inj_start_data   = (mesh_rel_dat->data + size);
+    char* inj_start_data_d = (mesh_rel_dat->data_d + size);
+
+    oppic_cpHostToDevice((void **)&(inj_start_data_d), (void **)&(inj_start_data), (mesh_rel_dat->size * particles_set->diff));
+
+    mesh_rel_dat->dirty_hd = Dirty::NotDirty;
 }
 
 

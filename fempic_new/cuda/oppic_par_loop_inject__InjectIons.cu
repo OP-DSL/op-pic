@@ -195,7 +195,7 @@ void oppic_par_loop_inject__InjectIons(
             int nblocks = (end - start - 1) / nthread + 1;
 
             oppic_cuda_InjectIons<<<nblocks, nthread>>>(
-                (int *)    set->cell_index_dat->data_d,
+                (int *)    set->mesh_relation_dat->data_d,
                 (double *) arg0.data_d,
                 (double *) arg1.data_d,
                 (int *)    arg2.data_d,

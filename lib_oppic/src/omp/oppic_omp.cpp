@@ -217,8 +217,8 @@ void oppic_finalize_particle_move_omp(oppic_set set)
 
     if (OP_auto_sort == 0) // if not auto sorting, fill the holes
     {
-        int *cell_index_data = (int *)malloc(set->set_capacity * set->cell_index_dat->size); // getting a backup of cell index since it will also be rearranged using a random OMP thread
-        memcpy((char*)cell_index_data, set->cell_index_dat->data, set->set_capacity * set->cell_index_dat->size);
+        int *mesh_relation_data = (int *)malloc(set->set_capacity * set->mesh_relation_dat->size); // getting a backup of cell index since it will also be rearranged using a random OMP thread
+        memcpy((char*)mesh_relation_data, set->mesh_relation_dat->data, set->set_capacity * set->mesh_relation_dat->size);
 
         #pragma omp parallel for
         for (int i = 0; i < (int)set->particle_dats->size(); i++)
@@ -229,13 +229,13 @@ void oppic_finalize_particle_move_omp(oppic_set set)
 
             for (int j = 0; j < set->size; j++)
             {
-                if (cell_index_data[j] != MAX_CELL_INDEX) continue;
+                if (mesh_relation_data[j] != MAX_CELL_INDEX) continue;
 
                 char* dat_removed_ptr = (char *)(current_oppic_dat->data + (j * current_oppic_dat->size));
 
                 // BUG_FIX: (set->size - removed_count - 1) This index could marked to be removed, and if marked, 
                 // then there could be an array index out of bounds access error in the future
-                while (cell_index_data[set->size - removed_count - skip_count - 1] == MAX_CELL_INDEX)
+                while (mesh_relation_data[set->size - removed_count - skip_count - 1] == MAX_CELL_INDEX)
                 {
                     skip_count++;
                 }
@@ -257,7 +257,7 @@ void oppic_finalize_particle_move_omp(oppic_set set)
             // current_oppic_dat->data = (char *)realloc(current_oppic_dat->data, (size_t)(set->size - removed_count) * (size_t)current_oppic_dat->size);
         }
 
-        free(cell_index_data);
+        free(mesh_relation_data);
     }
 
     set->size -= set->particle_remove_count;
@@ -270,9 +270,9 @@ void oppic_particle_sort(oppic_set set)
     
     if (OP_DEBUG) printf("\toppic_particle_sort set [%s]\n", set->name);
     
-    int* cell_index_data = (int*)set->cell_index_dat->data;
+    int* mesh_relation_data = (int*)set->mesh_relation_dat->data;
 
-    std::vector<size_t> idx_before_sort = sort_indexes(cell_index_data, set->size);
+    std::vector<size_t> idx_before_sort = sort_indexes(mesh_relation_data, set->size);
 
     #pragma omp parallel for
     for (int i = 0; i < (int)set->particle_dats->size(); i++)

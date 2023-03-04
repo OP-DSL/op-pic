@@ -78,7 +78,7 @@ void oppic_mpi_set_dirtybit_grouped(int nargs, oppic_arg *args, DeviceType devic
 
 void print_last_cuda_error();
 
-void oppic_cpHostToDevice(void **data_d, void **data_h, int copy_size, int alloc_size, bool create_new = false);
+void oppic_cpHostToDevice(void **data_d, void **data_h, int copy_size, int alloc_size = 0, bool create_new = false);
 
 template <class T> 
 void sort_dat_according_to_index(oppic_dat dat, const thrust::device_vector<int>& new_idx_dv, int set_capacity, int size)

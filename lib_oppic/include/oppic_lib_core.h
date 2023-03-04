@@ -152,7 +152,7 @@ struct oppic_set_core {
     int set_capacity;                       /* capacity of the allocated array */
     int diff;                               /* number of particles to change */
     std::vector<int>* indexes_to_remove;
-    oppic_dat cell_index_dat = NULL;
+    oppic_dat mesh_relation_dat = NULL;
     std::vector<oppic_dat>* particle_dats;
     std::map<int, part_index>* cell_index_v_part_index_map;
     int* particle_statuses;

@@ -76,7 +76,7 @@ void oppic_seq_loop_inject__Increase_particle_count
 
     oppic_increase_particle_count(particles_set, *((int *)arg0.data));
 
-    int* part_mesh_connectivity = (int *)particles_set->cell_index_dat->data;
+    int* part_mesh_connectivity = (int *)particles_set->mesh_relation_dat->data;
     int* distribution           = (int *)arg2.data;
 
     int start = (particles_set->size - particles_set->diff);
@@ -118,7 +118,7 @@ void oppic_par_loop_inject__InjectIons(
     
     //     for (int i = start; i < finish; i++)
     //     {    
-    //         int map0idx    = ((int *)set->cell_index_dat->data)[(inj_start + i) * set->cell_index_dat->dim]; // iface index
+    //         int map0idx    = ((int *)set->mesh_relation_dat->data)[(inj_start + i) * set->mesh_relation_dat->dim]; // iface index
 
     //         const int map1idx = arg4.map_data[map0idx]; // cell index
 
@@ -140,7 +140,7 @@ void oppic_par_loop_inject__InjectIons(
 
     for (int i = 0; i < set->diff; i++)
     {    
-        int map0idx    = ((int *)set->cell_index_dat->data)[(inj_start + i) * set->cell_index_dat->dim]; // iface index
+        int map0idx    = ((int *)set->mesh_relation_dat->data)[(inj_start + i) * set->mesh_relation_dat->dim]; // iface index
 
         const int map1idx = arg4.map_data[map0idx]; // cell index
 
@@ -185,7 +185,7 @@ void oppic_par_loop_particle_all__MoveToCells(
     
     oppic_init_particle_move(set);
 
-    int *cell_index_data = ((int *)set->cell_index_dat->data);
+    int *mesh_relation_data = ((int *)set->mesh_relation_dat->data);
     int remove_count = 0;
     // set->particle_remove_count = 0;
 
@@ -201,7 +201,7 @@ void oppic_par_loop_particle_all__MoveToCells(
 
             do
             { 
-                int& map0idx      = cell_index_data[i];
+                int& map0idx      = mesh_relation_data[i];
 
                 const int map1idx = arg8.map_data[map0idx * arg8.map->dim + 0];
                 const int map2idx = arg8.map_data[map0idx * arg8.map->dim + 1];
@@ -232,7 +232,7 @@ void oppic_par_loop_particle_all__MoveToCells(
             if (m.OPP_move_status == OPP_NEED_REMOVE) /*outside the mesh*/
             {  
                 remove_count += 1;
-                cell_index_data[i] = MAX_CELL_INDEX;
+                mesh_relation_data[i] = MAX_CELL_INDEX;
             }
         }
     }

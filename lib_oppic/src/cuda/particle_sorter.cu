@@ -41,7 +41,7 @@ void particle_sort_cuda(oppic_set set)
 
     if (OP_DEBUG) printf("\tparticle_sort_cuda set [%s] with set capacity [%d] set size plus removed [%d]\n", set->name, set_capacity, set_size_plus_removed);
 
-    thrust::device_ptr<int> cellIdx_dp = thrust::device_pointer_cast((int*)set->cell_index_dat->data_d);
+    thrust::device_ptr<int> cellIdx_dp = thrust::device_pointer_cast((int*)set->mesh_relation_dat->data_d);
     thrust::device_vector<int> cellIdx_dv(cellIdx_dp, cellIdx_dp + set_size_plus_removed);
 
     thrust::device_vector<int> i_dv(set_size_plus_removed);
