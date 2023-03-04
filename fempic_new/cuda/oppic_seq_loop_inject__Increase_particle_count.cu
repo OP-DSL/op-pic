@@ -27,6 +27,8 @@ inline void calculate_injection_distribution(
     (*particle_distribution) = (*injected_total);
 }
 
+#ifdef USE_CPU_ASSIGN
+
 void oppic_seq_loop_inject__Increase_particle_count(
     oppic_set particles_set,    // particles_set
     oppic_set set,              // inlect_face_set
@@ -80,5 +82,102 @@ void oppic_seq_loop_inject__Increase_particle_count(
 
     mesh_rel_dat->dirty_hd = Dirty::NotDirty;
 }
+
+#else
+
+//*************************************************************************************************
+__global__ void oppic_cuda_AssignMeshRelation(
+    int *__restrict mesh_relation,
+    const int *__restrict distribution,
+    int start,
+    int end,
+    int inj_start,
+    int inlet_size
+    ) 
+{
+    int tid = threadIdx.x + blockIdx.x * blockDim.x;
+
+    if (tid + start < end) 
+    {    
+        int n = tid + start;
+
+        for (int i = 0; i < inlet_size; i++)
+        {
+            if (tid < distribution[i])
+            {
+                mesh_relation[n + inj_start] = i;
+                break;
+            } 
+        }  
+    }
+}
+
+
+void oppic_seq_loop_inject__Increase_particle_count(
+    oppic_set particles_set,    // particles_set
+    oppic_set set,              // inlect_face_set
+    oppic_arg arg0,             // injected total global,
+    oppic_arg arg1,             // iface_area,
+    oppic_arg arg2,             // iface_inj_part_dist,
+    oppic_arg arg3              // remainder global,
+)
+{ TRACE_ME;
+
+    if (FP_DEBUG) printf("FEMPIC - oppic_seq_loop_inject__Increase_particle_count num_particles %d diff %d\n", set->size, set->diff);
+
+    int nargs = 4; // Add one more to have mesh_relation arg
+    oppic_arg args[nargs] = { arg0, arg1, arg2, arg3 };
+
+    int set_size = oppic_mpi_halo_exchanges_grouped(set, nargs, args, Device_CPU);
+
+    for (int i = 0; i < set_size; i++)
+    {   
+        calculate_injection_distribution(
+            ((int *)arg0.data),
+            &((double *)arg1.data)[i],
+            &((int *)arg2.data)[i],
+            ((double *)arg3.data) 
+        );
+    }
+
+    oppic_increase_particle_count(particles_set, *((int *)arg0.data));
+
+    oppic_mpi_set_dirtybit_grouped(nargs, args, Device_CPU);
+
+    arg2.acc = OP_READ; // if not, iface_inj_part_dist will not get uploaded to device
+    oppic_dat mesh_rel_dat  = particles_set->mesh_relation_dat;
+
+    int nargs1 = 2; // Add one more to have mesh_relation arg
+    oppic_arg args1[nargs1] = { arg2, oppic_arg_dat(mesh_rel_dat, OP_WRITE) };
+
+    set_size = oppic_mpi_halo_exchanges_grouped(particles_set, nargs1, args1, Device_GPU);
+    if (set_size > 0) 
+    {
+        int start     = 0;
+        int end       = particles_set->diff;
+        int inj_start = (particles_set->size - particles_set->diff);
+
+        if (end - start > 0) 
+        {
+            int nthread = GPU_THREADS_PER_BLOCK;
+            int nblocks = (end - start - 1) / nthread + 1;
+
+            oppic_cuda_AssignMeshRelation<<<nblocks, nthread>>>(
+                (int *) mesh_rel_dat->data_d,
+                (int *) arg2.data_d,
+                start, 
+                end, 
+                inj_start,
+                set->size);
+        }
+    }
+
+    oppic_mpi_set_dirtybit_grouped(nargs1, args1, Device_GPU);
+    cutilSafeCall(cudaDeviceSynchronize());
+}
+
+#endif
+
+
 
 

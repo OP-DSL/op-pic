@@ -428,7 +428,7 @@ int oppic_mpi_halo_exchanges_grouped(oppic_set set, int nargs, oppic_arg *args, 
 //****************************************
 // DEVICE->HOST copy of Dirty::Host dats 
 int oppic_mpi_halo_exchanges(oppic_set set, int nargs, oppic_arg *args) 
-{
+{ TRACE_ME;
     for (int n = 0; n < nargs; n++)
     {
         if (args[n].opt && args[n].argtype == OP_ARG_DAT && args[n].dat->dirty_hd == Dirty::Host) 
@@ -443,7 +443,7 @@ int oppic_mpi_halo_exchanges(oppic_set set, int nargs, oppic_arg *args)
 //****************************************
 // HOST->DEVICE copy of Dirty::Device dats
 int oppic_mpi_halo_exchanges_cuda(oppic_set set, int nargs, oppic_arg *args) 
-{ 
+{ TRACE_ME;
     for (int n = 0; n < nargs; n++)
     { 
         if (args[n].opt && args[n].argtype == OP_ARG_DAT && args[n].dat->dirty_hd == Dirty::Device) 

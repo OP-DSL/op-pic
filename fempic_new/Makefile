@@ -23,6 +23,12 @@ else
 	NVCCFLAGS  += -O3
 endif
 
+# TODO: Remove; Only for development
+CPU_ASSIGN ?= 0
+ifeq ($(CPU_ASSIGN), 1)
+	NVCCFLAGS  += -DUSE_CPU_ASSIGN
+endif
+
 IEEE ?= 0
 ifeq ($(IEEE), 1)
 	CPPFLAGS   += -fp-model strict -fp-model source -prec-div -prec-sqrt
