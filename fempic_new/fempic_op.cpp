@@ -109,20 +109,22 @@ int main(int argc, char **argv)
         // max_iter = 3;
 bool X = false;
         auto start = std::chrono::system_clock::now();
-if (X) oppic_print_map_to_txtfile(cell_to_nodes_map  , "i", "cell_to_nodes_map.dat");
-if (X) oppic_print_dat_to_txtfile(node_volume  , "i", "node_volume.dat");
-if (X) oppic_print_dat_to_txtfile(cell_determinants  , "i", "cell_determinants_am.dat");
-if (X) oppic_print_dat_to_txtfile(cell_volume  , "i", "cell_volume_am.dat");
-if (X) oppic_print_dat_to_txtfile(dum_part_random  , "i", "dum_part_random.dat");
-if (X) oppic_print_dat_to_txtfile(cell_shape_deriv  , "i", "cell_shape_deriv.dat");
+        auto start_iter1 = std::chrono::system_clock::now();
+// if (X) oppic_print_map_to_txtfile(cell_to_nodes_map  , "i", "cell_to_nodes_map.dat");
+// if (X) oppic_print_dat_to_txtfile(node_volume  , "i", "node_volume.dat");
+// if (X) oppic_print_dat_to_txtfile(cell_determinants  , "i", "cell_determinants_am.dat");
+// if (X) oppic_print_dat_to_txtfile(cell_volume  , "i", "cell_volume_am.dat");
+// if (X) oppic_print_dat_to_txtfile(dum_part_random  , "i", "dum_part_random.dat");
+// if (X) oppic_print_dat_to_txtfile(cell_shape_deriv  , "i", "cell_shape_deriv.dat");
 
         for (ts = 0; ts < max_iter; ts++)
         {
 
+            if (ts == 1) start_iter1 = std::chrono::system_clock::now();
 // if (ts >= 39 && ts < 42) X = true; else X = false;
-std::string f = std::string("F_") + std::to_string(ts);
+// std::string f = std::string("F_") + std::to_string(ts);
 
-if (X) oppic_print_dat_to_txtfile(part_position  , f.c_str(), "part_position_biiii.dat");
+// if (X) oppic_print_dat_to_txtfile(part_position  , f.c_str(), "part_position_biiii.dat");
             int injected_count = 0;
             oppic_seq_loop_inject__Increase_particle_count(
                 particles_set,                                                  // particles_set
@@ -132,9 +134,13 @@ if (X) oppic_print_dat_to_txtfile(part_position  , f.c_str(), "part_position_bii
                 oppic_arg_dat(iface_inj_part_dist,           OP_WRITE),         // iface_inj_part_dist,
                 oppic_arg_gbl(&(remainder),     1, "double", OP_RW)             // remainder global,
             );
-if (X) oppic_print_dat_to_txtfile(part_position  , f.c_str(), "part_position_bi.dat");
-if (X) oppic_print_dat_to_txtfile(cell_electric_field  , f.c_str(), "cell_electric_field_bi.dat");
-if (X) oppic_print_dat_to_txtfile(part_mesh_relation  , f.c_str(), "part_mesh_relation_bi.dat");
+// if (X) oppic_print_dat_to_txtfile(part_position  , f.c_str(), "part_position_bi.dat");
+// if (X) oppic_print_dat_to_txtfile(cell_electric_field  , f.c_str(), "cell_electric_field_bi.dat");
+// if (X) oppic_print_dat_to_txtfile(part_mesh_relation  , f.c_str(), "part_mesh_relation_bi.dat");
+// if (X) oppic_print_dat_to_txtfile(iface_inj_part_dist  , f.c_str(), "iface_inj_part_dist.dat");
+
+// 
+
             int old_nparts = particles_set->size;
             oppic_par_loop_inject__InjectIons(
                 particles_set,                                                                               // particles_set
@@ -149,12 +155,12 @@ if (X) oppic_print_dat_to_txtfile(part_mesh_relation  , f.c_str(), "part_mesh_re
                 oppic_arg_dat(iface_node_pos,                            OP_READ, OPP_Map_from_Mesh_Rel),    // iface_node_pos
                 oppic_arg_dat(dum_part_random,                           OP_READ, OPP_Map_from_Inj_part)     // dum_part_random
             );
-if (X) oppic_print_dat_to_txtfile(part_position  , f.c_str(), "part_position_bm.dat"); // 2 OK
-if (X) oppic_print_dat_to_txtfile(part_velocity  , f.c_str(), "part_velocity_bm.dat"); // 2 OK
-if (X) oppic_print_dat_to_txtfile(part_mesh_relation  , f.c_str(), "part_mesh_relation_bm.dat"); // 2 OK
+// if (X) oppic_print_dat_to_txtfile(part_position  , f.c_str(), "part_position_bm.dat"); // 2 OK
+// if (X) oppic_print_dat_to_txtfile(part_velocity  , f.c_str(), "part_velocity_bm.dat"); // 2 OK
+// if (X) oppic_print_dat_to_txtfile(part_mesh_relation  , f.c_str(), "part_mesh_relation_bm.dat"); // 2 OK
 
             oppic_reset_dat(node_charge_density, (char*)opp_zero_double16);
-if (X) oppic_print_dat_to_txtfile(node_charge_density  , f.c_str(), "node_charge_density_bm.dat");
+// if (X) oppic_print_dat_to_txtfile(node_charge_density  , f.c_str(), "node_charge_density_bm.dat");
             oppic_par_loop_particle_all__MoveToCells(
                 particles_set,                                                                                // particles_set
                 oppic_arg_dat(cell_electric_field,                       OP_READ, OPP_Map_from_Mesh_Rel),     // cell_ef,
@@ -171,11 +177,11 @@ if (X) oppic_print_dat_to_txtfile(node_charge_density  , f.c_str(), "node_charge
                 oppic_arg_dat(node_charge_density, 3, cell_to_nodes_map, OP_INC,  OPP_Map_from_Mesh_Rel)      // node_charge_den3,
             );
 
-if (X) oppic_print_dat_to_txtfile(part_position  , f.c_str(), "part_position_am.dat"); // OK
-if (X) oppic_print_dat_to_txtfile(part_velocity  , f.c_str(), "part_velocity_am.dat"); // OK
-if (X) oppic_print_dat_to_txtfile(part_mesh_relation  , f.c_str(), "part_mesh_relation_am.dat"); // OK
-if (X) oppic_print_dat_to_txtfile(node_charge_density  , f.c_str(), "node_charge_density_am.dat"); // e-11
-if (X) oppic_print_dat_to_txtfile(part_lc  , f.c_str(), "part_lc_am.dat"); // OK
+// if (X) oppic_print_dat_to_txtfile(part_position  , f.c_str(), "part_position_am.dat"); // OK
+// if (X) oppic_print_dat_to_txtfile(part_velocity  , f.c_str(), "part_velocity_am.dat"); // OK
+// if (X) oppic_print_dat_to_txtfile(part_mesh_relation  , f.c_str(), "part_mesh_relation_am.dat"); // OK
+// if (X) oppic_print_dat_to_txtfile(node_charge_density  , f.c_str(), "node_charge_density_am.dat"); // e-11
+// if (X) oppic_print_dat_to_txtfile(part_lc  , f.c_str(), "part_lc_am.dat"); // OK
 
 
             oppic_par_loop_all__ComputeNodeChargeDensity(
@@ -184,7 +190,7 @@ if (X) oppic_print_dat_to_txtfile(part_lc  , f.c_str(), "part_lc_am.dat"); // OK
                 oppic_arg_dat(node_volume,          OP_READ)     // node_volume
             );
 
-if (X) oppic_print_dat_to_txtfile(node_charge_density  , f.c_str(), "node_charge_density_acomp.dat");  //e+2
+// if (X) oppic_print_dat_to_txtfile(node_charge_density  , f.c_str(), "node_charge_density_acomp.dat");  //e+2
 
             mesh.solver->computePhi(  // TODO: Change this to kernel calls
                 mesh.fesolver_method,
@@ -194,8 +200,8 @@ if (X) oppic_print_dat_to_txtfile(node_charge_density  , f.c_str(), "node_charge
 
             oppic_reset_dat(cell_electric_field, (char*)opp_zero_double16);
 
-if (X) oppic_print_dat_to_txtfile(node_potential  , f.c_str(), "node_potential_acomp.dat");
-if (X) oppic_print_dat_to_txtfile(cell_electric_field  , f.c_str(), "cell_electric_field.dat");
+// if (X) oppic_print_dat_to_txtfile(node_potential  , f.c_str(), "node_potential_acomp.dat");
+// if (X) oppic_print_dat_to_txtfile(cell_electric_field  , f.c_str(), "cell_electric_field.dat");
             
             oppic_par_loop_all__ComputeElectricField(
                 cells_set,                                                        // cells_set
@@ -207,7 +213,7 @@ if (X) oppic_print_dat_to_txtfile(cell_electric_field  , f.c_str(), "cell_electr
                 oppic_arg_dat(node_potential, 3, cell_to_nodes_map, OP_READ)      // node_potential3,
             );
 
-if (X) oppic_print_dat_to_txtfile(cell_electric_field  , f.c_str(), "cell_electric_field_acomp.dat"); // OK
+// if (X) oppic_print_dat_to_txtfile(cell_electric_field  , f.c_str(), "cell_electric_field_acomp.dat"); // OK
 
             {
                 double max_den = 0.0, max_phi = 0.0;
@@ -228,8 +234,10 @@ if (X) oppic_print_dat_to_txtfile(cell_electric_field  , f.c_str(), "cell_electr
             }
         }
 
-        std::chrono::duration<double> diff = std::chrono::system_clock::now() - start;
-        std::cout << "\nFEMPIC - Time to iterate " << max_iter << " takes <chrono>: " << diff.count() << " s\n\n";
+        std::chrono::duration<double> diff   = std::chrono::system_clock::now() - start;
+        std::chrono::duration<double> diff_1 = std::chrono::system_clock::now() - start_iter1;
+        std::cout << "\nFEMPIC - Time to iterate ts=" << max_iter << " <sec>: " << 
+            diff.count() << " and (ts-1) <sec>:" << diff_1.count() << "\n\n";
 
         oppic_exit();
     } // End Scope for oppic

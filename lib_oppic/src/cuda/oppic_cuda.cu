@@ -559,7 +559,7 @@ void oppic_cpHostToDevice(void **data_d, void **data_h, int copy_size, int alloc
 
 void oppic_create_device_arrays(oppic_dat dat, bool create_new)
 {
-    printf("oppic_create_device_arrays %s %s\n", dat->name, dat->type);
+    if (OP_DEBUG) printf("oppic_create_device_arrays %s %s\n", dat->name, dat->type);
 
     if (strcmp(dat->type, "double") == 0)
     {
