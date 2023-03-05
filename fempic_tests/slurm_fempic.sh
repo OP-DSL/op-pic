@@ -76,7 +76,7 @@ for i in ${!configs[@]}; do
     export OMP_NUM_THREADS=1
 
     srun $binFolder/seq $file | tee $folder/log_seq.log;
-    $binFolder/seq $file > $folder/log_seq.log;
+    # $binFolder/seq $file > $folder/log_seq.log;
 
     # ****************************************
 done
