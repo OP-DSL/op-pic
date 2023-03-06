@@ -57,28 +57,6 @@ __device__ void compute_electric_field__kernel_gpu(
         cell_electric_field[dim * computeElectricField_stride_OPP_CUDA_0] -= (cell_shape_deriv[(1 * DIMENSIONS + dim) * computeElectricField_stride_OPP_CUDA_1] * (*node_potential1));
         cell_electric_field[dim * computeElectricField_stride_OPP_CUDA_0] -= (cell_shape_deriv[(2 * DIMENSIONS + dim) * computeElectricField_stride_OPP_CUDA_1] * (*node_potential2));
         cell_electric_field[dim * computeElectricField_stride_OPP_CUDA_0] -= (cell_shape_deriv[(3 * DIMENSIONS + dim) * computeElectricField_stride_OPP_CUDA_1] * (*node_potential3));
-
-        // double cf = cell_electric_field[dim * computeElectricField_stride_OPP_CUDA_0];
-
-        // double c1 = (cell_shape_deriv[(0 * DIMENSIONS + dim) * computeElectricField_stride_OPP_CUDA_1] * (*node_potential0));
-        // double c2 = (cell_shape_deriv[(1 * DIMENSIONS + dim) * computeElectricField_stride_OPP_CUDA_1] * (*node_potential1));
-        // double c3 = (cell_shape_deriv[(2 * DIMENSIONS + dim) * computeElectricField_stride_OPP_CUDA_1] * (*node_potential2));
-        // double c4 = (cell_shape_deriv[(3 * DIMENSIONS + dim) * computeElectricField_stride_OPP_CUDA_1] * (*node_potential3));
-
-        // cell_electric_field[dim * computeElectricField_stride_OPP_CUDA_0] -= (c1 + c2 + c3 + c4);
-
-        // atomicAdd(&(cell_electric_field[dim * computeElectricField_stride_OPP_CUDA_0]), (-1 * (c1 + c2 + c3 + c4)));
-        
-        //if (dim == 2) 
-        // printf("%lf ", cell_electric_field[dim * computeElectricField_stride_OPP_CUDA_0]);
-        // printf("%d - %+2.20lE %+2.20lE - %+2.20lE %+2.20lE %+2.20lE %+2.20lE\n", dim,
-        //     cf, cell_electric_field[dim * computeElectricField_stride_OPP_CUDA_0],
-        //     c1, 
-        //     c2, 
-        //     c3, 
-        //     c4);
-        
-        // __syncthreads();
     }    
 }
 

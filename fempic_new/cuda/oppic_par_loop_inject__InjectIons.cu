@@ -81,23 +81,6 @@ __device__ void inject_ions__kernel_gpu(
 
         part_vel[i * injectIons_stride_OPP_CUDA_1] = (iface_normal[i * injectIons_stride_OPP_CUDA_7] * CONST_ion_velocity_cuda);
         part_vel[i * injectIons_stride_OPP_CUDA_1] -= CONST_charge_cuda / CONST_mass_cuda * cell_ef[i * injectIons_stride_OPP_CUDA_4] * (0.5 * CONST_dt_cuda);
-
-        // double v1 = (iface_normal[i * injectIons_stride_OPP_CUDA_7] * CONST_ion_velocity_cuda);
-        // double v2 = (CONST_charge_cuda / CONST_mass_cuda);
-        // double v3 = (0.5 * CONST_dt_cuda);
-        // double v4 = (cell_ef[i * injectIons_stride_OPP_CUDA_4] * v3);
-        // double v5 = (v2 * v4);
-
-        // part_vel[i * injectIons_stride_OPP_CUDA_1] = (v1 - v5);
-        
-        // printf("%d %+2.20lE - %+2.20lE %+2.20lE\n - %+2.20lE %+2.20lE %+2.20lE %+2.20lE %+2.20lE\n\n", i,
-        //     part_vel[i * injectIons_stride_OPP_CUDA_1],
-        //     iface_normal[i * injectIons_stride_OPP_CUDA_7], cell_ef[i * injectIons_stride_OPP_CUDA_4],
-        //     v1, 
-        //     v2,
-        //     v3, 
-        //     v4,
-        //     v5);
     }
 
     (*part_cell_connectivity) = (*cell_id);

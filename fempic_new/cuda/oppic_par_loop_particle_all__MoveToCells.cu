@@ -71,24 +71,7 @@ __device__ void move_all_particles_to_cell__kernel(
     if (m->OPP_iteration_one)
     {
         for (int i = 0; i < DIMENSIONS; i++)
-        {
-            // double v0 = part_vel[i * moveToCells_all_stride_OPP_CUDA_2];
-            // double v1 = (CONST_charge_cuda / CONST_mass_cuda);
-            // double v2 = (cell_ef[i] * CONST_dt_cuda);
-            // double v3 = (v1 * v2);
-            // part_vel[i * moveToCells_all_stride_OPP_CUDA_2] = (v0 + v3);
-
-            part_vel[i * moveToCells_all_stride_OPP_CUDA_2] += (CONST_charge_cuda / CONST_mass_cuda * cell_ef[i * moveToCells_all_stride_OPP_CUDA_0] * (CONST_dt_cuda));
-// printf("%d %+2.20lE - %+2.20lE %+2.20lE\n - %+2.20lE %+2.20lE %+2.20lE %+2.20lE %+2.20lE\n\n", i,
-//     part_vel[i * injectIons_stride_OPP_CUDA_1],
-//     iface_normal[i * injectIons_stride_OPP_CUDA_7], cell_ef[i * injectIons_stride_OPP_CUDA_4],
-//     v1, 
-//     v2,
-//     v3, 
-//     v4,
-//     v5);      
-        
-        }
+            part_vel[i * moveToCells_all_stride_OPP_CUDA_2] += (CONST_charge_cuda / CONST_mass_cuda * cell_ef[i * moveToCells_all_stride_OPP_CUDA_0] * (CONST_dt_cuda));           
    
         for (int i = 0; i < DIMENSIONS; i++)
             part_pos[i * moveToCells_all_stride_OPP_CUDA_1] += part_vel[i * moveToCells_all_stride_OPP_CUDA_2] * (CONST_dt_cuda); // v = u + at
@@ -168,16 +151,15 @@ __global__ void oppic_cuda_all_MoveToCells(
     if (tid + start < end) 
     {
         int n = tid + start;
-        
-        // int& map0idx = dir_arg4[n];
-        // int& map0idx = d_cell_index[n]; // TODO : I dont know why this isn't working ??? dir_arg2 and d_cell_index has same pointer values, but this get stuck!
 
         move_var m;
 
         do
         {
             m.OPP_inside_cell = true;
+
             int map0idx = dir_arg4[n];
+            // int map0idx = d_cell_index[n]; // TODO : I dont know why this isn't working ??? dir_arg2 and d_cell_index has same pointer values, but this get stuck!
 
             const int map1idx = opDat8Map[map0idx + moveToCells_all_stride_OPP_CUDA_8 * 0];
             const int map2idx = opDat8Map[map0idx + moveToCells_all_stride_OPP_CUDA_8 * 1];
@@ -201,16 +183,6 @@ __global__ void oppic_cuda_all_MoveToCells(
             );                
             
             m.OPP_iteration_one = false;
-
-// if (m.OPP_move_status != (int)OPP_NEED_MOVE)
-// {
-//     printf("%d %d - %d - %d %d %d %d -\n\t\t %+2.25lE %+2.25lE %+2.25lE %+2.25lE\n", n, map0idx, (int)m.OPP_move_status,
-//         map1idx, map2idx, map3idx, map4idx,
-//         (dir_arg3 + n)[0 * moveToCells_all_stride_OPP_CUDA_3],
-//         (dir_arg3 + n)[1 * moveToCells_all_stride_OPP_CUDA_3],
-//         (dir_arg3 + n)[2 * moveToCells_all_stride_OPP_CUDA_3],
-//         (dir_arg3 + n)[3 * moveToCells_all_stride_OPP_CUDA_3]);                
-// }
 
         } while (m.OPP_move_status == (int)OPP_NEED_MOVE);
 

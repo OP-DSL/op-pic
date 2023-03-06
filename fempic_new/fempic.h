@@ -165,7 +165,7 @@ inline FieldPointers LoadMesh(opp::Params& params, int argc, char **argv)
         switch (volume->nodes[n].type)
         {
             case INLET:    mesh.node_bnd_pot[n] = 0; break;                                         /*phi_inlet*/
-            case FIXED:    mesh.node_bnd_pot[n] = -(params.get<REAL>("wall_potential")); break;      /*fixed phi points*/
+            case FIXED:    mesh.node_bnd_pot[n] = -(params.get<REAL>("wall_potential")); break;     /*fixed phi points*/
             default:       mesh.node_bnd_pot[n] = 0;                                                /*default*/
         }
 

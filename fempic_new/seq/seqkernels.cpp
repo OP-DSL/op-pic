@@ -190,20 +190,8 @@ void oppic_par_loop_particle_all__MoveToCells(
             
             m.OPP_iteration_one = false;
 
-// if (m.OPP_move_status != (int)OPP_NEED_MOVE)
-// {
-//     printf("%d %d - %d - %d %d %d %d -\n\t\t %+2.25lE %+2.25lE %+2.25lE %+2.25lE\n", i, map0idx, (int)m.OPP_move_status,
-//         map1idx, map2idx, map3idx, map4idx,
-//         ((double *)arg3.data)[i * arg3.dim + 0],
-//         ((double *)arg3.data)[i * arg3.dim + 1],
-//         ((double *)arg3.data)[i * arg3.dim + 2],
-//         ((double *)arg3.data)[i * arg3.dim + 3]);                
-// }
-
         } while (m.OPP_move_status == (int)OPP_NEED_MOVE);
 
-        // oppic_mark_particle_to_move(set, i, (int)OPP_move_status); // send the enum directly
-        
         if (m.OPP_move_status == OPP_NEED_REMOVE) 
         {
             set->particle_remove_count += 1;
@@ -254,20 +242,6 @@ void oppic_par_loop_all__ComputeElectricField(
         const int map3idx = arg2.map_data[i * arg2.map->dim + 2];
         const int map4idx = arg2.map_data[i * arg2.map->dim + 3];
 
-// if (ts == 19) 
-// {
-//     if (map1idx == 1468) printf("oppic_par_loop_all__ComputeElectricField map1idx %d | %+2.20lE\n", i, ((double*)arg2.data)[map1idx]);
-//     if (map2idx == 1468) printf("oppic_par_loop_all__ComputeElectricField map2idx %d | %+2.20lE\n", i, ((double*)arg2.data)[map2idx]);
-//     if (map3idx == 1468) printf("oppic_par_loop_all__ComputeElectricField map3idx %d | %+2.20lE\n", i, ((double*)arg2.data)[map3idx]);
-//     if (map4idx == 1468) printf("oppic_par_loop_all__ComputeElectricField map4idx %d | %+2.20lE\n", i, ((double*)arg2.data)[map4idx]);
-
-//         // printf("%d - %+2.20lE %+2.20lE - %+2.20lE %+2.20lE %+2.20lE %+2.20lE\n", dim,
-//         //     cf, cell_electric_field[dim * computeElectricField_stride_OPP_CUDA_0],
-//         //     c1, 
-//         //     c2, 
-//         //     c3, 
-//         //     c4);    
-// }
         compute_electric_field__kernel(
             &((double*)arg0.data)[i * arg0.dim],    // cell_electric_field
             &((double*)arg1.data)[i * arg1.dim],    // cell_shape_deriv

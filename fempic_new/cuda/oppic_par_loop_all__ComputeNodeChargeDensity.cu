@@ -41,9 +41,7 @@ __device__ void compute_node_charge_density__kernel_gpu(
     const double *node_volume
 )
 {
-    // double a = (*node_charge_density);
     (*node_charge_density) *= (CONST_spwt_cuda / (*node_volume));
-    // printf("%+2.25lE %+2.25lE - %+2.25lE %+2.25lE\n", CONST_spwt_cuda, (*node_volume), a, (*node_charge_density));
 }
 
 // CUDA kernel function

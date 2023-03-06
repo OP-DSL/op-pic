@@ -95,47 +95,9 @@ inline void inject_ions__kernel(
         
         part_vel[i] = (iface_normal[i] * CONST_ion_velocity);
         part_vel[i] -= CONST_charge / CONST_mass * cell_ef[i] * (0.5 * CONST_dt);
-       
-        // double v1 = (iface_normal[i] * CONST_ion_velocity);
-        // double v2 = (CONST_charge / CONST_mass);
-        // double v3 = (0.5 * CONST_dt);
-        // double v4 = (cell_ef[i] * v3);
-        // double v5 = (v2 * v4);
-
-        // part_vel[i] = (v1 - v5);
-        // printf("%d %+2.20lE - %+2.20lE %+2.20lE\n - %+2.20lE %+2.20lE %+2.20lE %+2.20lE %+2.20lE\n\n", i,
-        //     part_vel[i],
-        //     iface_normal[i], cell_ef[i],
-        //     v1, 
-        //     v2,
-        //     v3, 
-        //     v4,
-        //     v5);
     }
 
     (*part_cell_connectivity) = (*cell_id);
-}
-
-//*************************************************************************************************
-inline void reset_ion_density__kernel(
-    double *ion_den
-)
-{
-    ion_den[0] = 0.0;
-}
-
-//*************************************************************************************************
-inline void move_particles__kernel(
-    double *pos,    
-    double *vel,
-    const double *cell_ef
-)
-{
-    for (int i = 0; i < DIMENSIONS; i++)
-        vel[i] += (CONST_charge / CONST_mass * cell_ef[i] * (CONST_dt));
-    
-    for (int i = 0; i < DIMENSIONS; i++)
-        pos[i] += vel[i] * (CONST_dt); // v = u + at
 }
 
 //*************************************************************************************************
@@ -158,16 +120,7 @@ inline void move_all_particles_to_cell__kernel(
     if (m->OPP_iteration_one)
     {
         for (int i = 0; i < DIMENSIONS; i++)
-        {
-            // double v0 = part_vel[i];
-            // double v1 = (CONST_charge / CONST_mass);
-            // double v2 = (cell_ef[i] * CONST_dt);
-            // double v3 = (v1 * v2);
-            // part_vel[i] = (v0 + v3);  
-
-            part_vel[i] += (CONST_charge / CONST_mass * cell_ef[i] * (CONST_dt));          
-        }
-            
+            part_vel[i] += (CONST_charge / CONST_mass * cell_ef[i] * (CONST_dt));                  
         
         for (int i = 0; i < DIMENSIONS; i++)
             part_pos[i] += part_vel[i] * (CONST_dt); // v = u + at
@@ -242,20 +195,13 @@ inline void compute_electric_field__kernel(
 )
 {
     for (int dim = 0; dim < DIMENSIONS; dim++)
-    { //double cf = cell_electric_field[dim];
+    { 
         double c1 = (cell_shape_deriv[0 * DIMENSIONS + dim] * (*node_potential0));
         double c2 = (cell_shape_deriv[1 * DIMENSIONS + dim] * (*node_potential1));
         double c3 = (cell_shape_deriv[2 * DIMENSIONS + dim] * (*node_potential2));
         double c4 = (cell_shape_deriv[3 * DIMENSIONS + dim] * (*node_potential3));
 
         cell_electric_field[dim] -= (c1 + c2 + c3 + c4);
-        // if (dim == 2) 
-        // printf("%d - %+2.20lE %+2.20lE - %+2.20lE %+2.20lE %+2.20lE %+2.20lE\n", dim,
-        //     cf, cell_electric_field[dim],
-        //     c1, 
-        //     c2, 
-        //     c3, 
-        //     c4);
     }    
 }
 
