@@ -29,7 +29,10 @@ OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
+//*********************************************
 // AUTO GENERATED CODE
+//*********************************************
+
 
 int moveToCells_all_stride_OPP_HOST_0 = -1;
 int moveToCells_all_stride_OPP_HOST_1 = -1;
