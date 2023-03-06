@@ -1,5 +1,10 @@
 #pragma once
 
+//*********************************************
+// USER WRITTEN CODE
+//*********************************************
+
+
 #include <oppic_lib.h>
 #include <memory>
 #include <regex>
@@ -116,62 +121,6 @@ class FieldPointers
 
         FESolver::Method fesolver_method = FESolver::Method::GaussSeidel;
 };
-
-void oppic_seq_loop_inject__Increase_particle_count
-(
-    oppic_set particles_set,    // particles_set
-    oppic_set set,              // inlect_face_set
-    oppic_arg arg0,             // injected total global,
-    oppic_arg arg1,             // iface_area,
-    oppic_arg arg2,             // iface_inj_part_dist,
-    oppic_arg arg3              // remainder global,
-);
-
-void oppic_par_loop_inject__InjectIons(
-    oppic_set set,      // particles_set
-    oppic_arg arg0,     // part_position,
-    oppic_arg arg1,     // part_velocity,
-    oppic_arg arg2,     // part_cell_connectivity,
-    oppic_arg arg3,     // iface to cell map
-    oppic_arg arg4,     // cell_ef,
-    oppic_arg arg5,     // iface_u,
-    oppic_arg arg6,     // iface_v,
-    oppic_arg arg7,     // iface_normal,
-    oppic_arg arg8,     // iface_node_pos
-    oppic_arg arg9      // dummy_part_random
-);
-
-void oppic_par_loop_particle_all__MoveToCells(
-    oppic_set set,      // particles_set
-    oppic_arg arg0,     // cell_ef,
-    oppic_arg arg1,     // part_pos,
-    oppic_arg arg2,     // part_vel,
-    oppic_arg arg3,     // part_lc,
-    oppic_arg arg4,     // current_cell_index,
-    oppic_arg arg5,     // current_cell_volume,
-    oppic_arg arg6,     // current_cell_det,
-    oppic_arg arg7,     // cell_connectivity,
-    oppic_arg arg8,     // node_charge_den0,
-    oppic_arg arg9,     // node_charge_den1,
-    oppic_arg arg10,    // node_charge_den2,
-    oppic_arg arg11     // node_charge_den3,
-);
-
-void oppic_par_loop_all__ComputeNodeChargeDensity(
-    oppic_set set,     // nodes_set
-    oppic_arg arg0,    // node_charge_density
-    oppic_arg arg1     // node_volume
-);
-
-void oppic_par_loop_all__ComputeElectricField(
-    oppic_set set,      // cells_set
-    oppic_arg arg0,     // cell_electric_field,
-    oppic_arg arg1,     // cell_shape_deriv,
-    oppic_arg arg2,     // node_potential0,
-    oppic_arg arg3,     // node_potential1,
-    oppic_arg arg4,     // node_potential2,
-    oppic_arg arg5      // node_potential3,
-);
 
 inline FieldPointers LoadMesh(opp::Params& params, int argc, char **argv)
 { TRACE_ME;

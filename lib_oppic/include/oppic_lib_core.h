@@ -96,6 +96,12 @@ enum move_status
     OPP_NEED_REMOVE,
 };
 
+enum opp_data_type 
+{
+    OPP_INT = 0,
+    OPP_REAL,
+};
+
 enum DeviceType
 {
     Device_CPU = 1,

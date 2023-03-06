@@ -58,8 +58,22 @@ oppic_map oppic_decl_map(oppic_set from, oppic_set to, int dim, int *imap, char 
 }
 
 //****************************************
-oppic_dat oppic_decl_dat(oppic_set set, int dim, char const *type, int size, char *data, char const *name)
+oppic_dat oppic_decl_dat(oppic_set set, int dim, opp_data_type dtype, char *data, char const *name)
 {
+    char* type = nullptr;
+    int size = -1;
+
+    if (dtype == OPP_REAL)
+    {
+        type = "double";
+        size = sizeof(double);
+    }
+    else if (dtype == OPP_INT)
+    {
+        type = "int";
+        size = sizeof(int);       
+    }
+
     return oppic_decl_dat_core(set, dim, type, size, data, name);
 }
 
@@ -76,11 +90,25 @@ oppic_map oppic_decl_map_txt(oppic_set from, oppic_set to, int dim, const char* 
 }
 
 //****************************************
-oppic_dat oppic_decl_dat_txt(oppic_set set, int dim, char const *type, int size, const char* file_name, char const *name)
+oppic_dat oppic_decl_dat_txt(oppic_set set, int dim, opp_data_type dtype, const char* file_name, char const *name)
 {
+    char* type = nullptr;
+    int size = -1;
+
+    if (dtype == OPP_REAL)
+    {
+        type = "double";
+        size = sizeof(double);
+    }
+    else if (dtype == OPP_INT)
+    {
+        type = "int";
+        size = sizeof(int);       
+    }
+
     char* dat_data = (char*)oppic_load_from_file_core(file_name, set->size, dim, type, size);
 
-    oppic_dat dat = oppic_decl_dat(set, dim, type, size, dat_data, name);
+    oppic_dat dat = oppic_decl_dat_core(set, dim, type, size, dat_data, name);
 
     free(dat_data);
 
@@ -138,14 +166,42 @@ oppic_set oppic_decl_particle_set(char const *name, oppic_set cells_set)
 }
 
 //****************************************
-oppic_dat oppic_decl_particle_dat(oppic_set set, int dim, char const *type, int size, char *data, char const *name, bool cell_index)
+oppic_dat oppic_decl_particle_dat(oppic_set set, int dim, opp_data_type dtype, char *data, char const *name, bool cell_index)
 {
+    char* type = nullptr;
+    int size = -1;
+
+    if (dtype == OPP_REAL)
+    {
+        type = "double";
+        size = sizeof(double);
+    }
+    else if (dtype == OPP_INT)
+    {
+        type = "int";
+        size = sizeof(int);       
+    }
+
     return oppic_decl_particle_dat_core(set, dim, type, size, data, name, cell_index);
 }
 
 //****************************************
-oppic_dat oppic_decl_particle_dat_txt(oppic_set set, int dim, char const *type, int size, const char* file_name, char const *name, bool cell_index)
+oppic_dat oppic_decl_particle_dat_txt(oppic_set set, int dim, opp_data_type dtype, const char* file_name, char const *name, bool cell_index)
 {
+    char* type = nullptr;
+    int size = -1;
+
+    if (dtype == OPP_REAL)
+    {
+        type = "double";
+        size = sizeof(double);
+    }
+    else if (dtype == OPP_INT)
+    {
+        type = "int";
+        size = sizeof(int);       
+    }
+
     char* dat_data = (char*)oppic_load_from_file_core(file_name, set->size, dim, type, size);
 
     oppic_dat dat = oppic_decl_particle_dat_core(set, dim, type, size, dat_data, name, cell_index);

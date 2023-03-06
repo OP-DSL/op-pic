@@ -49,10 +49,10 @@ void oppic_exit();
 oppic_set oppic_decl_set(int size, char const *name);
 
 oppic_map oppic_decl_map(oppic_set from, oppic_set to, int dim, int *imap, char const *name);
-oppic_dat oppic_decl_dat(oppic_set set, int dim, char const *type, int size, char *data, char const *name);
+oppic_dat oppic_decl_dat(oppic_set set, int dim, opp_data_type dtype, char *data, char const *name);
 
 oppic_map oppic_decl_map_txt(oppic_set from, oppic_set to, int dim, const char* file_name, char const *name);
-oppic_dat oppic_decl_dat_txt(oppic_set set, int dim, char const *type, int size, const char* file_name, char const *name);
+oppic_dat oppic_decl_dat_txt(oppic_set set, int dim, opp_data_type dtype, const char* file_name, char const *name);
 
 oppic_arg oppic_arg_dat(oppic_dat dat, int idx, oppic_map map, int dim, const char *typ, oppic_access acc, opp_mapping mapping = OPP_Map_Default);
 oppic_arg oppic_arg_dat(oppic_dat dat, int idx, oppic_map map, oppic_access acc, opp_mapping mapping = OPP_Map_Default);
@@ -68,9 +68,9 @@ oppic_arg oppic_arg_gbl(const bool *data, int dim, char const *typ, oppic_access
 oppic_set oppic_decl_particle_set(int size, char const *name, oppic_set cells_set);
 oppic_set oppic_decl_particle_set(char const *name, oppic_set cells_set);
 
-oppic_dat oppic_decl_particle_dat(oppic_set set, int dim, char const *type, int size, char *data, char const *name, bool cell_index = false);
+oppic_dat oppic_decl_particle_dat(oppic_set set, int dim, opp_data_type dtype, char *data, char const *name, bool cell_index = false);
 
-oppic_dat oppic_decl_particle_dat_txt(oppic_set set, int dim, char const *type, int size, const char* file_name, char const *name, bool cell_index = false);
+oppic_dat oppic_decl_particle_dat_txt(oppic_set set, int dim, opp_data_type dtype, const char* file_name, char const *name, bool cell_index = false);
 
 template <typename T> 
 void oppic_decl_const(int dim, T* data, const char* name)

@@ -31,6 +31,11 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #pragma once
 
+//*********************************************
+// USER WRITTEN CODE
+//*********************************************
+
+
 #include "fempic_ori/maths.h"
 #include "oppic_lib.h"
 

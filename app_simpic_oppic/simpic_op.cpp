@@ -57,15 +57,15 @@ int main(int argc, char* argv[])
     
         oppic_map cell_to_nodes_map = oppic_decl_map(cells_set, nodes_set, 2, loader.cell_to_nodes_tmp, "cell_to_edges_map");
         
-        oppic_dat node_field_E      = oppic_decl_dat(nodes_set, 1, "double",  sizeof(double),  (char*)loader.node_field_E_tmp,  "node_field_E");
-        oppic_dat node_field_J      = oppic_decl_dat(nodes_set, 1, "double",  sizeof(double),  (char*)loader.node_field_J_tmp,  "node_field_J");
-        oppic_dat node_field_P      = oppic_decl_dat(nodes_set, 1, "double",  sizeof(double),  (char*)loader.node_field_P_tmp,  "node_field_P");
-        oppic_dat node_xlocal       = oppic_decl_dat(nodes_set, 1, "double",  sizeof(double),  (char*)loader.node_xlocal_tmp,   "node_xlocal"); 
+        oppic_dat node_field_E      = oppic_decl_dat(nodes_set, 1, OPP_REAL, (char*)loader.node_field_E_tmp, "node_field_E");
+        oppic_dat node_field_J      = oppic_decl_dat(nodes_set, 1, OPP_REAL, (char*)loader.node_field_J_tmp, "node_field_J");
+        oppic_dat node_field_P      = oppic_decl_dat(nodes_set, 1, OPP_REAL, (char*)loader.node_field_P_tmp, "node_field_P");
+        oppic_dat node_xlocal       = oppic_decl_dat(nodes_set, 1, OPP_REAL, (char*)loader.node_xlocal_tmp,  "node_xlocal"); 
 
-        oppic_dat part_position_x   = oppic_decl_particle_dat(particles_set,  1, "double", sizeof(double), (char*)loader.part_position_x_tmp, "part_position_x");      
-        oppic_dat part_velocity_x   = oppic_decl_particle_dat(particles_set,  1, "double", sizeof(double), (char*)loader.part_velocity_x_tmp, "part_velocity_x");      
-        oppic_dat part_field_E      = oppic_decl_particle_dat(particles_set,  1, "double", sizeof(double), (char*)loader.part_field_E_tmp,    "part_field_E");         
-        oppic_dat part_cell_index   = oppic_decl_particle_dat(particles_set,  1, "int",    sizeof(int),    (char*)loader.part_cell_index_tmp, "part_cell_index", true);
+        oppic_dat part_position_x   = oppic_decl_particle_dat(particles_set, 1, OPP_REAL, (char*)loader.part_position_x_tmp, "part_position_x");      
+        oppic_dat part_velocity_x   = oppic_decl_particle_dat(particles_set, 1, OPP_REAL, (char*)loader.part_velocity_x_tmp, "part_velocity_x");      
+        oppic_dat part_field_E      = oppic_decl_particle_dat(particles_set, 1, OPP_REAL, (char*)loader.part_field_E_tmp,    "part_field_E");         
+        oppic_dat part_cell_index   = oppic_decl_particle_dat(particles_set, 1, OPP_INT,  (char*)loader.part_cell_index_tmp, "part_cell_index", true);
 
         // Set constants here, using oppic_decl_const<>() if constant values are used in kernels
 
