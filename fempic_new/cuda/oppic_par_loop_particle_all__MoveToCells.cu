@@ -236,7 +236,7 @@ void oppic_par_loop_particle_all__MoveToCells(
 )
 { TRACE_ME;
     
-    if (FP_DEBUG) printf("FEMPIC - oppic_par_loop_particle_all__MoveToCells num_particles %d\n", set->size);
+    if (FP_DEBUG) printf("FEMPIC - oppic_par_loop_particle_all__MoveToCells set_size %d\n", set->size);
 
     int nargs = 12;
     oppic_arg args[nargs] = { arg0, arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9, arg10, arg11 };

@@ -128,7 +128,7 @@ void oppic_par_loop_all__ComputeElectricField(
 )
 { TRACE_ME;
 
-    if (FP_DEBUG) printf("FEMPIC - oppic_par_loop_all__ComputeElectricField size %d\n", set->size);
+    if (FP_DEBUG) printf("FEMPIC - oppic_par_loop_all__ComputeElectricField set_size %d\n", set->size);
 
     int nargs = 6;
     oppic_arg args[nargs] = { arg0, arg1, arg2, arg3, arg4, arg5 };

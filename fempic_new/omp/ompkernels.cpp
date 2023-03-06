@@ -62,7 +62,7 @@ void oppic_seq_loop_inject__Increase_particle_count
 )
 { TRACE_ME;
 
-    if (FP_DEBUG) printf("FEMPIC - oppic_seq_loop_inject__Increase_particle_count num_particles %d diff %d\n", set->size, set->diff);
+    if (FP_DEBUG) printf("FEMPIC - oppic_seq_loop_inject__Increase_particle_count set_size %d diff %d\n", set->size, set->diff);
 
     for (int i = 0; i < set->size; i++)
     {   
@@ -105,7 +105,7 @@ void oppic_par_loop_inject__InjectIons(
 )
 { TRACE_ME;
 
-    if (FP_DEBUG) printf("FEMPIC - oppic_par_loop_inject__InjectIons num_particles %d diff %d\n", set->size, set->diff);
+    if (FP_DEBUG) printf("FEMPIC - oppic_par_loop_inject__InjectIons set_size %d diff %d\n", set->size, set->diff);
 
     // int inj_start = (set->size - set->diff);
     // int nthreads = omp_get_max_threads();
@@ -177,7 +177,7 @@ void oppic_par_loop_particle_all__MoveToCells(
 )
 { TRACE_ME;
 
-    if (FP_DEBUG) printf("FEMPIC - oppic_par_loop_particle_all__MoveToCells num_particles %d diff %d\n", set->size, set->diff);
+    if (FP_DEBUG) printf("FEMPIC - oppic_par_loop_particle_all__MoveToCells set_size %d diff %d\n", set->size, set->diff);
 
     int nthreads = omp_get_max_threads();
     
@@ -251,7 +251,7 @@ void oppic_par_loop_all__ComputeNodeChargeDensity(
 )
 { TRACE_ME;
     
-    if (FP_DEBUG) printf("FEMPIC - oppic_par_loop_all__ComputeNodeChargeDensity num_nodes %d\n", set->size);
+    if (FP_DEBUG) printf("FEMPIC - oppic_par_loop_all__ComputeNodeChargeDensity set_size %d\n", set->size);
 
     int nthreads = omp_get_max_threads();
 
@@ -283,7 +283,7 @@ void oppic_par_loop_all__ComputeElectricField(
 )
 { TRACE_ME;
 
-    if (FP_DEBUG) printf("FEMPIC - oppic_par_loop_all__ComputeElectricField size %d\n", set->size);
+    if (FP_DEBUG) printf("FEMPIC - oppic_par_loop_all__ComputeElectricField set_size %d\n", set->size);
 
     int nthreads = omp_get_max_threads();
 
