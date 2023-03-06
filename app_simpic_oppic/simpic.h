@@ -1,18 +1,27 @@
 #pragma once
 
+//*********************************************
+// USER WRITTEN CODE
+//*********************************************
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
 #include <string>
 #include <stdarg.h>
+#include <oppic_lib.h>
+
+#ifdef DEBUG_LOG
+    #define SP_DEBUG true
+#else
+    #define SP_DEBUG false
+#endif
 
 // global variables
 #define MPI_double MPI_DOUBLE
 #define STR_SIZE         501
 #define NG               100
 #define NP               10
-
-#define DEBUG
 
 // definitions for diagnostics
 #define NDENSITY        0
@@ -100,8 +109,6 @@ inline double xcoord(int i);
 
 void gradient(double *grad, double *arr, int n, double scale);
 
-void parsecmdline(int argc, char **argv);
-
 void init(void);
 
 double rhsV(double t);
@@ -109,33 +116,6 @@ double rhsV(double t);
 double lhsV(double t);
 
 void setcoeffs(double scale);
-
-
-//*************************************************************************************************
-void init_particles(
-    double *&particle_position_x_tmp, 
-    double *&particle_velocity_x_tmp, 
-    double *&particle_field_E_tmp, 
-    int *&particle_cell_index_tmp);
-    
-void init_fields(
-    double *&node_field_E_tmp, 
-    double *&node_field_J_tmp, 
-    double *&node_field_P_tmp,
-    double *&node_xlocal_tmp, 
-    int *&node_index_tmp, 
-    int *&cell_to_nodes_tmp);
-
-void printDataToFiles(
-    int n_nodes,
-    int n_particles,
-    double* node_field_E, 
-    double* node_field_J, 
-    double* node_field_P,
-    double* particle_position_x, 
-    double* particle_velocity_x, 
-    int* particle_cell_index,
-    const std::string suffix);
 
 //*************************************************************************************************
 void seq_field_solve_poissons_equation(
@@ -150,5 +130,135 @@ void seq_field_solve_get_potential_gradient(
     const double* nodes_field_P);
 
 //*************************************************************************************************
+void oppic_par_loop_all__WeightFieldsToParticles(oppic_set,oppic_arg,oppic_arg,oppic_arg,oppic_arg);
+void oppic_par_loop_particle_all__PushParticles(oppic_set,oppic_arg,oppic_arg,oppic_arg,oppic_arg);
+void oppic_par_loop_all__WeightParticlesToFields(oppic_set,oppic_arg,oppic_arg,oppic_arg);
+void oppic_par_loop_all__FieldSolveSumLaplace(oppic_set,oppic_arg,oppic_arg);
+
+//*************************************************************************************************
 
 
+class Loader
+{
+    public:
+        Loader() {}
+        virtual ~Loader()
+        {
+            DeleteValues();   
+        }
+
+        inline void DeleteValues()
+        {
+            if (node_field_E_tmp) delete[] node_field_E_tmp;
+            if (node_field_J_tmp) delete[] node_field_J_tmp;
+            if (node_field_P_tmp) delete[] node_field_P_tmp;
+            if (node_xlocal_tmp) delete[] node_xlocal_tmp;
+            if (node_index_tmp) delete[] node_index_tmp;
+            if (cell_to_nodes_tmp) delete[] cell_to_nodes_tmp;
+
+            if (part_position_x_tmp) delete[] part_position_x_tmp;
+            if (part_velocity_x_tmp) delete[] part_velocity_x_tmp;
+            if (part_field_E_tmp) delete[] part_field_E_tmp;
+            if (part_cell_index_tmp) delete[] part_cell_index_tmp;
+
+            node_field_E_tmp = nullptr;
+            node_field_J_tmp = nullptr;
+            node_field_P_tmp = nullptr;
+            node_xlocal_tmp = nullptr;
+            node_index_tmp = nullptr;
+            cell_to_nodes_tmp = nullptr;
+
+            part_position_x_tmp = nullptr;
+            part_velocity_x_tmp = nullptr;
+            part_field_E_tmp = nullptr;
+            part_cell_index_tmp = nullptr;
+        }
+
+        int n_nodes;
+        int n_cells;
+        int n_particles;
+
+        double *node_field_E_tmp = nullptr;
+        double *node_field_J_tmp = nullptr;
+        double *node_field_P_tmp = nullptr;
+        double *node_xlocal_tmp = nullptr;
+        int *node_index_tmp = nullptr;
+        int *cell_to_nodes_tmp = nullptr;
+
+        double *part_position_x_tmp = nullptr;
+        double *part_velocity_x_tmp = nullptr;
+        double *part_field_E_tmp = nullptr;
+        int *part_cell_index_tmp = nullptr;
+};
+
+inline Loader Load(opp::Params& params, int argc, char **argv)
+{ TRACE_ME;
+
+    ntimesteps = params.get<INT>("nt");
+    nc         = params.get<INT>("ncpp");
+    ng         = params.get<INT>("ncpp") + 1;
+    npart      = nc * params.get<INT>("ppc");;
+    dtfactor   = params.get<REAL>("dtfactor");;
+    lhsvoltage = params.get<INT>("lhsv");;
+
+    init();
+
+    Loader loader;
+    loader.n_particles = npart;
+
+    loader.part_position_x_tmp = new double[npart];
+    loader.part_velocity_x_tmp = new double[npart];
+    loader.part_field_E_tmp    = new double[npart];
+    loader.part_cell_index_tmp = new int[npart];
+
+    for (int i=0; i < npart; i++)
+    {
+        double position                = xl + ((i + 1)*(xr-xl))/double(npart + 1);
+        loader.part_position_x_tmp[i]  = position;
+        loader.part_velocity_x_tmp[i]  = 0.0;
+        loader.part_cell_index_tmp[i]  = ((position - xl)/dx);
+        loader.part_field_E_tmp[i]     = 0.0;
+    }
+
+    loader.n_nodes = ng;
+    loader.n_cells = nc;
+
+    loader.node_field_E_tmp  = new double[ng];
+    loader.node_field_J_tmp  = new double[ng];
+    loader.node_field_P_tmp  = new double[ng];
+    loader.node_xlocal_tmp   = new double[ng];
+    loader.node_index_tmp    = new int[ng];
+    loader.cell_to_nodes_tmp = new int[nc * 2];
+    double xlocal = xl;
+
+    for (int i=0, j=0; i < nc; i++, j+=2)
+    {
+        loader.cell_to_nodes_tmp[j]     = i;
+        loader.cell_to_nodes_tmp[j+1]   = (i+1);
+    }
+
+    for (int i=0; i < ng; i++, xlocal +=dx)
+    {
+        loader.node_field_E_tmp[i] = 0.0;      // Earray (Electric field)
+        loader.node_field_J_tmp[i] = 0.0;      // narray (Current density)
+        loader.node_field_P_tmp[i] = 0.0;      // phiarray (Potential)
+        loader.node_xlocal_tmp[i]  = xlocal;   // Local position of the node
+        loader.node_index_tmp[i]   = i;
+    }
+
+    {    
+        tri_a = new double[ng];
+        tri_b = new double[ng];
+        tri_c = new double[ng];
+        gam   = new double[ng];
+
+        for(int i=0; i < ng; i++)
+        {
+            tri_a[i] = tri_b[i] = tri_c[i] = 0.0;
+        }
+
+        setcoeffs(-epsilon/(q*dx*dx));
+    }
+
+    return loader;
+} 

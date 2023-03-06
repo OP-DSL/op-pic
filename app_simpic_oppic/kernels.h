@@ -1,5 +1,10 @@
 #pragma once
 
+//*********************************************
+// USER WRITTEN CODE
+//*********************************************
+
+
 #include "simpic.h"
 
 //*************************************************************************************************
@@ -22,7 +27,7 @@ void weight_fields_to_particles__kernel(
 
 //*************************************************************************************************
 void particle_push__kernel(
-        int* move_status,
+        move_var *m,
         const double* part_field_E,
         double* part_velocity_x,
         double* part_position_x,
@@ -36,7 +41,7 @@ void particle_push__kernel(
     (*part_cell_index) = int(xx);
 
     // since particle cell index can be easily calculated with global positioning, no need to search by iterating
-    *move_status = MOVE_DONE; 
+    m->OPP_move_status = OPP_MOVE_DONE; 
 };
 
 
@@ -73,13 +78,5 @@ void field_solve_sum_laplace__kernel(
     (*node0_field_P) += (frac * rv + (1. - frac) * lv);
 }
 
-
-//*************************************************************************************************
-void reset_current_density__kernel(
-    double *current_den
-)
-{
-    *current_den = 0.0;
-}
 
 //*************************************************************************************************
