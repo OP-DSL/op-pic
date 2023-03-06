@@ -29,43 +29,40 @@ OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
+//*********************************************
 // AUTO GENERATED CODE
+//*********************************************
 
-#include "../../lib_oppic/oppic.h"
+#include "oppic_seq.h"
+
+//****************************************
+// double CONST_spwt = 0;
+void oppic_decl_const_impl(int dim, int size, char* data, const char* name)
+{
+    // These will be created when oppic_decl_const<>() is used in simpic.cpp
+
+    // if (!strcmp(name,"CONST_spwt"))              CONST_spwt = *((double*)data);
+    // else std::cerr << "error: unknown const name" << std::endl;
+}
+//****************************************
+
 #include "../kernels.h"
 
 //*************************************************************************************************
-void op_par_loop_all__ResetCurrentDensity(
-    op_set set,     // nodes_set
-    op_arg arg0     // node_charge_density
-    )
-{ TRACE_ME;
-    
-    if (OP_DEBUG) printf("SIMPIC - op_par_loop_all__ResetCurrentDensity [%d]\n", set->size);
-
-    for (int n=0; n<set->size; n++) 
-    {
-        reset_current_density__kernel(
-            &((double*)arg0.data)[n * arg0.dim]
-        );
-    }    
-}
-
-//*************************************************************************************************
-void op_par_loop_all__WeightFieldsToParticles(
-    op_set set,     // particles
-    op_arg arg0,    // lhs node0_field_E
-    op_arg arg1,    // rhs node1_field_E
-    op_arg arg2,    // particle0_position_x
-    op_arg arg3     // particle0_field_E
+void oppic_par_loop_all__WeightFieldsToParticles(
+    oppic_set set,     // particles
+    oppic_arg arg0,    // lhs node0_field_E
+    oppic_arg arg1,    // rhs node1_field_E
+    oppic_arg arg2,    // particle0_position_x
+    oppic_arg arg3     // particle0_field_E
     )
 { TRACE_ME;
 
-    if (OP_DEBUG) printf("SIMPIC - op_par_loop_all__WeightFieldsToParticles [%d]\n", set->size);
+    if (SP_DEBUG) printf("SIMPIC - oppic_par_loop_all__WeightFieldsToParticles [%d]\n", set->size);
 
     for (int n = 0; n < set->size; n++)
     {
-        int map0idx    = ((int *)set->cell_index_dat->data)[n * set->cell_index_dat->dim]; // this is the cell_index
+        int map0idx    = ((int *)set->mesh_relation_dat->data)[n]; // this is the cell_index
 
         int map1idx = arg0.map_data[map0idx * arg0.map->dim + 0]; //LHS node
         int map2idx = arg1.map_data[map0idx * arg1.map->dim + 1]; //RHS node
@@ -79,63 +76,67 @@ void op_par_loop_all__WeightFieldsToParticles(
 }
 
 //*************************************************************************************************
-void op_par_loop_particle_all__PushParticles( 
-    op_set set,     // particles
-    op_arg arg0,    // particle0_field_E
-    op_arg arg1,    // particle0_velocity_x
-    op_arg arg2,    // particle0_position_x
-    op_arg arg3     // particle0_cell_index
+void oppic_par_loop_particle_all__PushParticles( 
+    oppic_set set,     // particles
+    oppic_arg arg0,    // particle0_field_E
+    oppic_arg arg1,    // particle0_velocity_x
+    oppic_arg arg2,    // particle0_position_x
+    oppic_arg arg3     // particle0_cell_index
     )
 { TRACE_ME;
 
-    if (OP_DEBUG) printf("SIMPIC - op_par_loop_particle_all__PushParticles [%d]\n", set->size);
+    if (SP_DEBUG) printf("SIMPIC - oppic_par_loop_particle_all__PushParticles [%d]\n", set->size);
 
-    const int num_cells    = set->cells_set->size; 
+    oppic_init_particle_move(set);
+
+    int *mesh_relation_data = ((int *)set->mesh_relation_dat->data);
 
     for (int i = 0; i < set->size; i++)
-    {        
-        int& map0idx    = ((int *)set->cell_index_dat->data)[i * set->cell_index_dat->dim];    // this is the cell_index
-        int move_status = (int)NEED_MOVE;
+    {              
+        move_var m;
 
         do
         { 
+            m.OPP_inside_cell = true;
+
+            int& map0idx    = mesh_relation_data[i];    // this is the cell_index
+
             particle_push__kernel(
-                &(move_status),
+                &(m),
                 &((double*)arg0.data)[i],
                 &((double*)arg1.data)[i],
                 &((double*)arg2.data)[i],
                 &((int*)arg3.data)[i]
             );
 
-        } while ((move_status == (int)NEED_MOVE) && (map0idx < num_cells));
+            m.OPP_iteration_one = false;
 
-        if (move_status == (int)NEED_REMOVE) /*outside the mesh*/
+        } while (m.OPP_move_status == (int)OPP_NEED_MOVE);
+
+        if (m.OPP_move_status == OPP_NEED_REMOVE) 
         {
-            op_mark_particle_to_remove(set, i);
-        }
-        else if (move_status != (int)MOVE_DONE) 
-        {
-            std::cerr << "Failed to find the cell - Particle Index " << i << std::endl;
+            set->particle_remove_count += 1;
+            mesh_relation_data[i] = MAX_CELL_INDEX;
         }
     }
 
-    op_remove_marked_particles_from_set(set);
+    oppic_finalize_particle_move(set);
 }
 
 //*************************************************************************************************
-void op_par_loop_all__WeightParticlesToFields(
-    op_set set,     // particles
-    op_arg arg0,    // lhs node0_field_J
-    op_arg arg1,    // rhs node1_field_J
-    op_arg arg2     // particle0_position_x
+void oppic_par_loop_all__WeightParticlesToFields(
+    oppic_set set,     // particles
+    oppic_arg arg0,    // lhs node0_field_J
+    oppic_arg arg1,    // rhs node1_field_J
+    oppic_arg arg2     // particle0_position_x
     )
 { TRACE_ME;
 
-    if (OP_DEBUG) printf("SIMPIC - op_par_loop_all__WeightParticlesToFields [%d]\n", set->size);
+    if (SP_DEBUG) printf("SIMPIC - oppic_par_loop_all__WeightParticlesToFields [%d]\n", set->size);
 
     for (int n = 0; n < set->size; n++)
     {
-        int map0idx    = ((int *)set->cell_index_dat->data)[n * set->cell_index_dat->dim]; // this is the cell_index
+        int map0idx    = ((int *)set->mesh_relation_dat->data)[n]; // this is the cell_index
 
         int map1idx = arg0.map_data[map0idx * arg0.map->dim + 0]; //LHS node
         int map2idx = arg1.map_data[map0idx * arg1.map->dim + 1]; //RHS node
@@ -148,13 +149,13 @@ void op_par_loop_all__WeightParticlesToFields(
 }
 
 //*************************************************************************************************
-void op_par_loop_all__FieldSolveSumLaplace(
-    op_set set,   // nodes
-    op_arg arg0,  // node0_xlocal
-    op_arg arg1)  // node0_field_P
+void oppic_par_loop_all__FieldSolveSumLaplace(
+    oppic_set set,   // nodes
+    oppic_arg arg0,  // node0_xlocal
+    oppic_arg arg1)  // node0_field_P
 { TRACE_ME;
 
-    if (OP_DEBUG) printf("SIMPIC - op_par_loop__FieldSolveSumLaplace [%d]\n", set->size);
+    if (SP_DEBUG) printf("SIMPIC - oppic_par_loop__FieldSolveSumLaplace [%d]\n", set->size);
 
     for(int n = 0; n < set->size; n++)
     {

@@ -39,7 +39,7 @@ void oppic_seq_loop_inject__Increase_particle_count(
 )
 { TRACE_ME;
 
-    if (FP_DEBUG) printf("FEMPIC - oppic_seq_loop_inject__Increase_particle_count num_particles %d diff %d\n", set->size, set->diff);
+    if (FP_DEBUG) printf("FEMPIC - oppic_seq_loop_inject__Increase_particle_count set_size %d diff %d\n", set->size, set->diff);
 
     int nargs = 5; // Add one more to have mesh_relation arg
     oppic_arg args[nargs] = { arg0, arg1, arg2, arg3, oppic_arg_dat(particles_set->mesh_relation_dat, OP_RW) };
@@ -123,7 +123,7 @@ void oppic_seq_loop_inject__Increase_particle_count(
 )
 { TRACE_ME;
 
-    if (FP_DEBUG) printf("FEMPIC - oppic_seq_loop_inject__Increase_particle_count num_particles %d diff %d\n", set->size, set->diff);
+    if (FP_DEBUG) printf("FEMPIC - oppic_seq_loop_inject__Increase_particle_count set_size %d diff %d\n", set->size, set->diff);
 
     int nargs = 4; // Add one more to have mesh_relation arg
     oppic_arg args[nargs] = { arg0, arg1, arg2, arg3 };
