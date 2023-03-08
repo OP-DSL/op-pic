@@ -54,7 +54,7 @@ void oppic_decl_const_impl(int dim, int size, char* data, const char* name)
 #include "../kernels.h"
 
 //*************************************************************************************************
-void oppic_seq_loop_inject__Increase_particle_count
+void oppic_inject__Increase_particle_count
 (
     oppic_set particles_set,    // particles_set
     oppic_set set,              // inlect_face_set
@@ -65,7 +65,7 @@ void oppic_seq_loop_inject__Increase_particle_count
 )
 { TRACE_ME;
 
-    if (FP_DEBUG) printf("FEMPIC - oppic_seq_loop_inject__Increase_particle_count set_size %d diff %d\n", set->size, set->diff);
+    if (FP_DEBUG) printf("FEMPIC - oppic_inject__Increase_particle_count set_size %d diff %d\n", set->size, set->diff);
 
     for (int i = 0; i < set->size; i++)
     {   

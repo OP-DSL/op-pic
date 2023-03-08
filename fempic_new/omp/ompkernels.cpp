@@ -54,7 +54,7 @@ void oppic_decl_const_impl(int dim, int size, char* data, const char* name)
 #include "../kernels.h"
 
 //*************************************************************************************************
-void oppic_seq_loop_inject__Increase_particle_count
+void oppic_inject__Increase_particle_count
 (
     oppic_set particles_set,    // particles_set
     oppic_set set,              // inlect_face_set
@@ -65,7 +65,7 @@ void oppic_seq_loop_inject__Increase_particle_count
 )
 { TRACE_ME;
 
-    if (FP_DEBUG) printf("FEMPIC - oppic_seq_loop_inject__Increase_particle_count set_size %d diff %d\n", set->size, set->diff);
+    if (FP_DEBUG) printf("FEMPIC - oppic_inject__Increase_particle_count set_size %d diff %d\n", set->size, set->diff);
 
     for (int i = 0; i < set->size; i++)
     {   
@@ -112,6 +112,7 @@ void oppic_par_loop_inject__InjectIons(
 
     int inj_start = (set->size - set->diff);
 
+    #pragma omp parallel for
     for (int i = 0; i < set->diff; i++)
     {    
         int map0idx    = ((int *)set->mesh_relation_dat->data)[(inj_start + i) * set->mesh_relation_dat->dim]; // iface index
@@ -160,16 +161,19 @@ void oppic_par_loop_particle_all__MoveToCells(
     oppic_init_particle_move(set);
 
     int *mesh_relation_data = ((int *)set->mesh_relation_dat->data);
-    int remove_count = 0;
-    // set->particle_remove_count = 0;
+    int remove_count[nthreads] = { 0 };
 
-    #pragma omp parallel for reduction (+:remove_count)
+    int64_t set_size = set->size;
+
+    #pragma omp parallel for
     for (int thr = 0; thr < nthreads; thr++)
     {
-        int start  = (set->size* thr)/nthreads;
-        int finish = (set->size*(thr+1))/nthreads;
+        int64_t start  = (set_size * thr) / nthreads;
+        int64_t finish = (set_size * (thr + 1)) / nthreads;
 
-        for (int i = start; i < finish; i++)
+        char* arg8_dat_thread_data = (*(arg8.dat->thread_data))[thr];
+
+        for (int64_t i = start; i < finish; i++)
         {  
             move_var m;    
 
@@ -184,18 +188,18 @@ void oppic_par_loop_particle_all__MoveToCells(
 
                 move_all_particles_to_cell__kernel(
                     &(m),
-                    &((double *)arg0.data)[map0idx * arg0.dim],                 // const double *cell_ef,
-                    &((double *)arg1.data)[i * arg1.dim],                       // double *part_pos,
-                    &((double *)arg2.data)[i * arg2.dim],                       // double *part_vel,
-                    &((double *)arg3.data)[i * arg3.dim],                       // double *part_lc,
-                    &((int *)arg4.data)[i * arg4.dim],                          // int* current_cell_index,
-                    &((double*)arg5.data)[map0idx * arg5.dim],                  // const double *current_cell_volume,
-                    &((double*)arg6.data)[map0idx * arg6.dim],                  // const double *current_cell_det,
-                    &((int*)arg7.data)[map0idx * arg7.dim],                     // const int *cell_connectivity,
-                    &((double*)arg8.dat->thread_data->at(thr))[map1idx],        // double *node_charge_den0,
-                    &((double*)arg8.dat->thread_data->at(thr))[map2idx],        // double *node_charge_den1,
-                    &((double*)arg8.dat->thread_data->at(thr))[map3idx],        // double *node_charge_den2,
-                    &((double*)arg8.dat->thread_data->at(thr))[map4idx]         // double *node_charge_den3,
+                    &((double *)arg0.data)[map0idx * arg0.dim],       // const double *cell_ef,
+                    &((double *)arg1.data)[i * arg1.dim],             // double *part_pos,
+                    &((double *)arg2.data)[i * arg2.dim],             // double *part_vel,
+                    &((double *)arg3.data)[i * arg3.dim],             // double *part_lc,
+                    &((int *)arg4.data)[i * arg4.dim],                // int* current_cell_index,
+                    &((double*)arg5.data)[map0idx * arg5.dim],        // const double *current_cell_volume,
+                    &((double*)arg6.data)[map0idx * arg6.dim],        // const double *current_cell_det,
+                    &((int*)arg7.data)[map0idx * arg7.dim],           // const int *cell_connectivity,
+                    &((double*)arg8_dat_thread_data)[map1idx],        // double *node_charge_den0,
+                    &((double*)arg8_dat_thread_data)[map2idx],        // double *node_charge_den1,
+                    &((double*)arg8_dat_thread_data)[map3idx],        // double *node_charge_den2,
+                    &((double*)arg8_dat_thread_data)[map4idx]         // double *node_charge_den3,
                 );             
                 
                 m.OPP_iteration_one = false;
@@ -205,13 +209,13 @@ void oppic_par_loop_particle_all__MoveToCells(
 
             if (m.OPP_move_status == OPP_NEED_REMOVE) /*outside the mesh*/
             {  
-                remove_count += 1;
+                remove_count[thr] += 1;
                 mesh_relation_data[i] = MAX_CELL_INDEX;
             }
         }
     }
 
-    set->particle_remove_count = remove_count;
+    for (int i = 0; i < nthreads; i++) set->particle_remove_count += remove_count[i];
 
     oppic_finalize_particle_move(set);
     oppic_reduce_thread_level_data<double>(arg8);
@@ -261,13 +265,15 @@ void oppic_par_loop_all__ComputeElectricField(
 
     int nthreads = omp_get_max_threads();
 
+    int64_t set_size = set->size;
+
     #pragma omp parallel for
     for (int thr = 0; thr < nthreads; thr++)
     {
-        int start  = (set->size* thr)/nthreads;
-        int finish = (set->size*(thr+1))/nthreads;
+        int64_t start  = (set_size * thr)/nthreads;
+        int64_t finish = (set_size * (thr+1))/nthreads;
 
-        for (int i = start; i < finish; i++)
+        for (int64_t i = start; i < finish; i++)
         { 
             const int map1idx = arg2.map_data[i * arg2.map->dim + 0];
             const int map2idx = arg2.map_data[i * arg2.map->dim + 1];

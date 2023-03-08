@@ -68,6 +68,8 @@ void oppic_cuda_exit()
         // cutilSafeCall(cudaFree(a->data_d));
         if (a->thrust_int) delete a->thrust_int;
         if (a->thrust_real) delete a->thrust_real;
+        if (a->thrust_int_sort) delete a->thrust_int_sort;
+        if (a->thrust_real_sort) delete a->thrust_real_sort;
     }
 
 }
@@ -104,21 +106,12 @@ oppic_map oppic_decl_map(oppic_set from, oppic_set to, int dim, int *imap, char 
 //****************************************
 oppic_dat oppic_decl_dat(oppic_set set, int dim, opp_data_type dtype, char *data, char const *name)
 {
-    char* type = nullptr;
+    std::string type = "";
     int size = -1;
 
-    if (dtype == OPP_REAL)
-    {
-        type = "double";
-        size = sizeof(double);
-    }
-    else if (dtype == OPP_INT)
-    {
-        type = "int";
-        size = sizeof(int);       
-    }
+    getDatTypeSize(dtype, type, size);
     
-    oppic_dat dat = oppic_decl_dat_core(set, dim, type, size, data, name);
+    oppic_dat dat = oppic_decl_dat_core(set, dim, type.c_str(), size, data, name);
 
     oppic_create_device_arrays(dat);
 
@@ -142,23 +135,13 @@ oppic_map oppic_decl_map_txt(oppic_set from, oppic_set to, int dim, const char* 
 //****************************************
 oppic_dat oppic_decl_dat_txt(oppic_set set, int dim, opp_data_type dtype, const char* file_name, char const *name)
 {
-    char* type = nullptr;
+    std::string type = "";
     int size = -1;
+    getDatTypeSize(dtype, type, size);
 
-    if (dtype == OPP_REAL)
-    {
-        type = "double";
-        size = sizeof(double);
-    }
-    else if (dtype == OPP_INT)
-    {
-        type = "int";
-        size = sizeof(int);       
-    }
+    char* dat_data = (char*)oppic_load_from_file_core(file_name, set->size, dim, type.c_str(), size);
 
-    char* dat_data = (char*)oppic_load_from_file_core(file_name, set->size, dim, type, size);
-
-    oppic_dat dat = oppic_decl_dat_core(set, dim, type, size, dat_data, name);
+    oppic_dat dat = oppic_decl_dat_core(set, dim, type.c_str(), size, dat_data, name);
 
     free(dat_data);
 
@@ -222,21 +205,11 @@ oppic_set oppic_decl_particle_set(char const *name, oppic_set cells_set)
 //****************************************
 oppic_dat oppic_decl_particle_dat(oppic_set set, int dim, opp_data_type dtype, char *data, char const *name, bool cell_index)
 {
-    char* type = nullptr;
+    std::string type = "";
     int size = -1;
+    getDatTypeSize(dtype, type, size);
 
-    if (dtype == OPP_REAL)
-    {
-        type = "double";
-        size = sizeof(double);
-    }
-    else if (dtype == OPP_INT)
-    {
-        type = "int";
-        size = sizeof(int);       
-    }
-
-    oppic_dat dat = oppic_decl_particle_dat_core(set, dim, type, size, data, name, cell_index);
+    oppic_dat dat = oppic_decl_particle_dat_core(set, dim, type.c_str(), size, data, name, cell_index);
 
     oppic_create_device_arrays(dat);
 
@@ -248,23 +221,13 @@ oppic_dat oppic_decl_particle_dat(oppic_set set, int dim, opp_data_type dtype, c
 //****************************************
 oppic_dat oppic_decl_particle_dat_txt(oppic_set set, int dim, opp_data_type dtype, const char* file_name, char const *name, bool cell_index)
 {
-    char* type = nullptr;
+    std::string type = "";
     int size = -1;
+    getDatTypeSize(dtype, type, size);
 
-    if (dtype == OPP_REAL)
-    {
-        type = "double";
-        size = sizeof(double);
-    }
-    else if (dtype == OPP_INT)
-    {
-        type = "int";
-        size = sizeof(int);       
-    }
+    char* dat_data = (char*)oppic_load_from_file_core(file_name, set->size, dim, type.c_str(), size);
 
-    char* dat_data = (char*)oppic_load_from_file_core(file_name, set->size, dim, type, size);
-
-    oppic_dat dat = oppic_decl_particle_dat_core(set, dim, type, size, dat_data, name, cell_index);
+    oppic_dat dat = oppic_decl_particle_dat_core(set, dim, type.c_str(), size, dat_data, name, cell_index);
 
     free(dat_data);
 

@@ -66,7 +66,7 @@ void oppic_decl_const_impl(int dim, int size, char* data, const char* name)
 //****************************************
 
 //*************************************************************************************************
-#include "oppic_seq_loop_inject__Increase_particle_count.cu"
+#include "oppic_inject__Increase_particle_count.cu"
 
 //*************************************************************************************************
 #include "oppic_par_loop_inject__InjectIons.cu"

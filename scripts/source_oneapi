@@ -20,14 +20,25 @@ LIBRARY_PATH=$LD_LIBRARY_PATH
 
 #NVIDIA CUDA
 module load cuda/toolkit-10.2.89
-export CUDA_INSTALL_PATH=/opt/cuda/10.2.89/toolkit/
-# export NV_ARCH=Pascal
-export NV_ARCH=Volta
-# export CUDA_VISIBLE_DEVICES=0,1,2
-export CUDA_VISIBLE_DEVICES=0
+export CUDA_INSTALL_PATH=/opt/cuda/10.2.89/toolkit
 
-#export NV_ARCH=Volta
-#Pascal
+if [ "$(hostname)" == 'telos' ]; then
+  export NV_ARCH=Volta
+  export CUDA_VISIBLE_DEVICES=0
+  echo $NV_ARCH
+  export LD_LIBRARY_PATH=/ext-home/zl/lib_install/petsc-3.18.3-oneapi-2021.3-cuda-rel/lib:$LD_LIBRARY_PATH
+  export PETSC_INSTALL_PATH=/ext-home/zl/lib_install/petsc-3.18.3-oneapi-2021.3-cuda-rel
+  export NVCCFLAGS_ADD='-gencode arch=compute_70,code=sm_70'
+else
+  export NV_ARCH=Pascal
+  export CUDA_VISIBLE_DEVICES=0,1
+  echo $NV_ARCH
+  export LD_LIBRARY_PATH=/ext-home/zl/lib_install/petsc-3.18.3-oneapi-2021.3-cuda-kos/lib:$LD_LIBRARY_PATH
+  export PETSC_INSTALL_PATH=/ext-home/zl/lib_install/petsc-3.18.3-oneapi-2021.3-cuda-kos
+  export NVCCFLAGS_ADD='-gencode arch=compute_60,code=sm_60'
+fi
+
+export OPPIC_PATH=/ext-home/zl/phd/OP-PIC/lib_oppic
 
 #Intel MPI and Compilers
 source /opt/intel/oneapi/2021.3/setvars.sh
@@ -43,4 +54,4 @@ export MPICH_F90=/opt/intel/oneapi/2021.3/compiler/latest/linux/bin/intel64/ifor
 export SLOPE_INSTALL_PATH=/ext-home/zl/slope/SLOPE/
 export METIS_INSTALL_PATH=/ext-home/zl/libs/metis/5.1.0/
 
-export LD_LIBRARY_PATH=/ext-home/zl/lib_install/petsc-3.18.3-oneapi-2021.3-cuda-rel/lib:$LD_LIBRARY_PATH
+# export LD_LIBRARY_PATH=/ext-home/zl/lib_install/petsc-3.18.3-oneapi-2021.3-cuda-rel/lib:$LD_LIBRARY_PATH

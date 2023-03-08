@@ -40,6 +40,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <oppic_util.h>
 #include <cstring>
 #include <limits.h>
+#include <inttypes.h>
 
 //*************************************************************************************************
 
@@ -120,6 +121,7 @@ enum opp_mapping
     OPP_Map_Default = 0,
     OPP_Map_from_Mesh_Rel,
     OPP_Map_from_Inj_part,
+    OPP_Map_to_Mesh_Rel,
 };
 
 struct part_index {
@@ -285,3 +287,21 @@ extern std::vector<oppic_dat> oppic_dats;
 extern opp::Params* opp_params;
 
 void* oppic_load_from_file_core(const char* file_name, int set_size, int dim, char const *type, int size);
+
+inline void getDatTypeSize(opp_data_type dtype, std::string& type, int& size)
+{
+    if (dtype == OPP_REAL)
+    {
+        type = "double";
+        size = sizeof(double);
+    }
+    else if (dtype == OPP_INT)
+    {
+        type = "int";
+        size = sizeof(int);       
+    }
+    else
+    {
+        std::cerr << "Data type in Dat not supported" << std::endl;
+    }
+}

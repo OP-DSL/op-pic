@@ -18,7 +18,7 @@ CPP        = mpicxx
 MPICPP	   = mpicxx
 
 CPPFLAGS   = -std=c++11 -Wall -fopenmp -fPIC
-NVCCFLAGS  = -m64 -Xptxas -dlcm=ca -Xptxas=-v
+NVCCFLAGS  = -m64 -Xptxas -dlcm=ca -Xptxas=-v $(NVCCFLAGS_ADD)
 
 DEBUG ?= 0
 ifeq ($(DEBUG), 1)
@@ -42,30 +42,19 @@ ifeq ($(DEBUG_LOG), 1)
 	NVCCFLAGS  += -DDEBUG_LOG
 endif
 
-TELOS ?= 1
-ifeq ($(TELOS), 1)
-	NVCCFLAGS  += -gencode arch=compute_70,code=sm_70
-	PETSC_PATH = /ext-home/zl/lib_install/petsc-3.18.3-oneapi-2021.3-cuda-rel
-else
-	NVCCFLAGS  += -gencode arch=compute_60,code=sm_60
-	PETSC_PATH = /ext-home/zl/lib_install/petsc-3.18.3-oneapi-2021.3-cuda-kos
-endif
-
 PETSC ?= 1
 ifeq ($(PETSC), 1)
 	CPPFLAGS   += -DUSE_PETSC
-	PETSC_INC  = -I$(PETSC_PATH)/include
-	PETSC_LIB  = -L$(PETSC_PATH)/lib -lpetsc
-else
-	PETSC_INC  = 
-	PETSC_LIB  = 
+	PETSC_INC  = -I$(PETSC_INSTALL_PATH)/include
+	PETSC_LIB  = -L$(PETSC_INSTALL_PATH)/lib -lpetsc
 endif
 
-CUDA_INSTALL_PATH = /opt/cuda/10.2.89/toolkit
-CUDA_INC   = -I$(CUDA_INSTALL_PATH)/include
-CUDA_LIB   = -L$(CUDA_INSTALL_PATH)/lib64 -lcudart -lcuda
+CUDA ?= 1
+ifeq ($(CUDA), 1)
+	CUDA_INC   = -I$(CUDA_INSTALL_PATH)/include
+	CUDA_LIB   = -L$(CUDA_INSTALL_PATH)/lib64 -lcudart -lcuda
+endif
 
-OPPIC_PATH = /ext-home/zl/phd/OP-PIC/lib_oppic
 ALL_INC    = -I$(OPPIC_PATH)/include $(PETSC_INC) $(CUDA_INC)
 ALL_LIBS   = -L$(OPPIC_PATH)/lib $(PETSC_LIB) $(CUDA_LIB)
 

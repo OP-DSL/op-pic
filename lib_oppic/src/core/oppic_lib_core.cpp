@@ -82,7 +82,7 @@ void oppic_exit_core()
 
     for (auto& a : oppic_dats) {
         free(a->data);
-        for (int thr = 0; thr < (int)a->thread_data->size(); thr++) { free(a->thread_data->at(thr)); }
+        for (int thr = 1; thr < (int)a->thread_data->size(); thr++) { free(a->thread_data->at(thr)); }
         free(a);
     }
     oppic_dats.clear();

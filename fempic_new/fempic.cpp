@@ -30,17 +30,12 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
 //*********************************************
-// AUTO GENERATED CODE
+// USER WRITTEN CODE
 //*********************************************
 
-
+#include <oppic_seq.h>
 #include "fempic.h"
-
-void oppic_inject__Increase_particle_count(oppic_set,oppic_set,oppic_arg,oppic_arg,oppic_arg,oppic_arg);
-void oppic_par_loop_inject__InjectIons(oppic_set,oppic_arg,oppic_arg,oppic_arg,oppic_arg,oppic_arg,oppic_arg,oppic_arg,oppic_arg,oppic_arg,oppic_arg);
-void oppic_par_loop_particle_all__MoveToCells(oppic_set,oppic_arg,oppic_arg,oppic_arg,oppic_arg,oppic_arg,oppic_arg,oppic_arg,oppic_arg,oppic_arg,oppic_arg,oppic_arg,oppic_arg);
-void oppic_par_loop_all__ComputeNodeChargeDensity(oppic_set,oppic_arg,oppic_arg);
-void oppic_par_loop_all__ComputeElectricField(oppic_set,oppic_arg,oppic_arg,oppic_arg,oppic_arg,oppic_arg,oppic_arg);
+#include "kernels.h"
 
 //*********************************************MAIN****************************************************
 int main(int argc, char **argv) 
@@ -81,10 +76,10 @@ int main(int argc, char **argv)
         oppic_dat cell_volume          = oppic_decl_dat(cells_set, 1,                            OPP_REAL, (char*)mesh.cell_volume,      "cell_volume");        
         oppic_dat cell_electric_field  = oppic_decl_dat(cells_set, DIMENSIONS,                   OPP_REAL, (char*)mesh.cell_ef,          "cell_electric_field");
         oppic_dat cell_shape_deriv     = oppic_decl_dat(cells_set, (NODES_PER_CELL*DIMENSIONS),  OPP_REAL, (char*)mesh.cell_shape_deriv, "cell_shape_deriv"); 
-   
-        oppic_dat node_volume          = oppic_decl_dat(nodes_set, 1, OPP_REAL, (char*)mesh.node_volume,  "node_volume");        
-        oppic_dat node_potential       = oppic_decl_dat(nodes_set, 1, OPP_REAL, (char*)mesh.node_pot,     "node_potential");     
-        oppic_dat node_charge_density  = oppic_decl_dat(nodes_set, 1, OPP_REAL, (char*)mesh.node_ion_den, "node_charge_density");
+    
+        oppic_dat node_volume          = oppic_decl_dat(nodes_set, 1,          OPP_REAL, (char*)mesh.node_volume,  "node_volume");        
+        oppic_dat node_potential       = oppic_decl_dat(nodes_set, 1,          OPP_REAL, (char*)mesh.node_pot,     "node_potential");     
+        oppic_dat node_charge_density  = oppic_decl_dat(nodes_set, 1,          OPP_REAL, (char*)mesh.node_ion_den, "node_charge_density");
 
         oppic_dat iface_v_normal       = oppic_decl_dat(ifaces_set, DIMENSIONS, OPP_REAL, (char*)mesh.iface_v_normal,      "iface_v_normal");        
         oppic_dat iface_u_normal       = oppic_decl_dat(ifaces_set, DIMENSIONS, OPP_REAL, (char*)mesh.iface_u_normal,      "iface_u_normal"); 
@@ -129,7 +124,8 @@ int main(int argc, char **argv)
 
             int old_nparts = particles_set->size;
             oppic_par_loop_inject__InjectIons(
-                particles_set,                                                                               // particles_set
+                inject_ions__kernel, "inject_ions__kernel",
+                particles_set, OP_ITERATE_INJECTED,                                                          // particles_set
                 oppic_arg_dat(part_position,                             OP_WRITE),                          // part_position,
                 oppic_arg_dat(part_velocity,                             OP_WRITE),                          // part_velocity,
                 oppic_arg_dat(part_mesh_relation,                        OP_RW),                             // part_cell_connectivity,
@@ -144,7 +140,8 @@ int main(int argc, char **argv)
 
             oppic_reset_dat(node_charge_density, (char*)opp_zero_double16);
             oppic_par_loop_particle_all__MoveToCells(
-                particles_set,                                                                                // particles_set
+                move_all_particles_to_cell__kernel, "move_all_particles_to_cell__kernel",
+                particles_set, OP_ITERATE_ALL,                                                                // particles_set
                 oppic_arg_dat(cell_electric_field,                       OP_READ, OPP_Map_from_Mesh_Rel),     // cell_ef,
                 oppic_arg_dat(part_position,                             OP_RW),                              // part_pos,
                 oppic_arg_dat(part_velocity,                             OP_RW),                              // part_vel,
@@ -160,7 +157,8 @@ int main(int argc, char **argv)
             );
 
             oppic_par_loop_all__ComputeNodeChargeDensity(
-                nodes_set,                                       // nodes_set
+                compute_node_charge_density__kernel, "compute_node_charge_density__kernel",
+                nodes_set, OP_ITERATE_ALL,                       // nodes_set
                 oppic_arg_dat(node_charge_density,  OP_RW),      // node_charge_density
                 oppic_arg_dat(node_volume,          OP_READ)     // node_volume
             );
@@ -173,7 +171,8 @@ int main(int argc, char **argv)
 
             oppic_reset_dat(cell_electric_field, (char*)opp_zero_double16); 
             oppic_par_loop_all__ComputeElectricField(
-                cells_set,                                                        // cells_set
+                compute_electric_field__kernel, "compute_electric_field__kernel",
+                cells_set, OP_ITERATE_ALL,                                        // cells_set
                 oppic_arg_dat(cell_electric_field,                  OP_INC),      // cell_electric_field,
                 oppic_arg_dat(cell_shape_deriv,                     OP_READ),     // cell_shape_deriv,
                 oppic_arg_dat(node_potential, 0, cell_to_nodes_map, OP_READ),     // node_potential0,
