@@ -157,7 +157,6 @@ void oppic_par_loop_particle_all__MoveToCells(
     int nthreads = omp_get_max_threads();
     
     oppic_create_thread_level_data<double>(arg8, 0.0);
-    
     oppic_init_particle_move(set);
 
     int *mesh_relation_data = ((int *)set->mesh_relation_dat->data);
@@ -166,53 +165,48 @@ void oppic_par_loop_particle_all__MoveToCells(
     int64_t set_size = set->size;
 
     #pragma omp parallel for
-    for (int thr = 0; thr < nthreads; thr++)
+    for (int i = 0; i < set_size; i++)
     {
-        int64_t start  = (set_size * thr) / nthreads;
-        int64_t finish = (set_size * (thr + 1)) / nthreads;
-
+        int thr = omp_get_thread_num();
         char* arg8_dat_thread_data = (*(arg8.dat->thread_data))[thr];
+        move_var m;    
 
-        for (int64_t i = start; i < finish; i++)
+        do
+        { 
+            int& map0idx      = mesh_relation_data[i];
+
+            const int map1idx = arg8.map_data[map0idx * arg8.map->dim + 0];
+            const int map2idx = arg8.map_data[map0idx * arg8.map->dim + 1];
+            const int map3idx = arg8.map_data[map0idx * arg8.map->dim + 2];
+            const int map4idx = arg8.map_data[map0idx * arg8.map->dim + 3];
+
+            move_all_particles_to_cell__kernel(
+                &(m),
+                &((double *)arg0.data)[map0idx * arg0.dim],       // const double *cell_ef,
+                &((double *)arg1.data)[i * arg1.dim],             // double *part_pos,
+                &((double *)arg2.data)[i * arg2.dim],             // double *part_vel,
+                &((double *)arg3.data)[i * arg3.dim],             // double *part_lc,
+                &((int *)arg4.data)[i * arg4.dim],                // int* current_cell_index,
+                &((double*)arg5.data)[map0idx * arg5.dim],        // const double *current_cell_volume,
+                &((double*)arg6.data)[map0idx * arg6.dim],        // const double *current_cell_det,
+                &((int*)arg7.data)[map0idx * arg7.dim],           // const int *cell_connectivity,
+                &((double*)arg8_dat_thread_data)[map1idx],        // double *node_charge_den0,
+                &((double*)arg8_dat_thread_data)[map2idx],        // double *node_charge_den1,
+                &((double*)arg8_dat_thread_data)[map3idx],        // double *node_charge_den2,
+                &((double*)arg8_dat_thread_data)[map4idx]         // double *node_charge_den3,
+            );  
+            
+            m.OPP_iteration_one = false;
+            m.OPP_inside_cell = true;
+
+        } while (m.OPP_move_status == (int)OPP_NEED_MOVE);
+
+        if (m.OPP_move_status == OPP_NEED_REMOVE) /*outside the mesh*/
         {  
-            move_var m;    
-
-            do
-            { 
-                int& map0idx      = mesh_relation_data[i];
-
-                const int map1idx = arg8.map_data[map0idx * arg8.map->dim + 0];
-                const int map2idx = arg8.map_data[map0idx * arg8.map->dim + 1];
-                const int map3idx = arg8.map_data[map0idx * arg8.map->dim + 2];
-                const int map4idx = arg8.map_data[map0idx * arg8.map->dim + 3];
-
-                move_all_particles_to_cell__kernel(
-                    &(m),
-                    &((double *)arg0.data)[map0idx * arg0.dim],       // const double *cell_ef,
-                    &((double *)arg1.data)[i * arg1.dim],             // double *part_pos,
-                    &((double *)arg2.data)[i * arg2.dim],             // double *part_vel,
-                    &((double *)arg3.data)[i * arg3.dim],             // double *part_lc,
-                    &((int *)arg4.data)[i * arg4.dim],                // int* current_cell_index,
-                    &((double*)arg5.data)[map0idx * arg5.dim],        // const double *current_cell_volume,
-                    &((double*)arg6.data)[map0idx * arg6.dim],        // const double *current_cell_det,
-                    &((int*)arg7.data)[map0idx * arg7.dim],           // const int *cell_connectivity,
-                    &((double*)arg8_dat_thread_data)[map1idx],        // double *node_charge_den0,
-                    &((double*)arg8_dat_thread_data)[map2idx],        // double *node_charge_den1,
-                    &((double*)arg8_dat_thread_data)[map3idx],        // double *node_charge_den2,
-                    &((double*)arg8_dat_thread_data)[map4idx]         // double *node_charge_den3,
-                );             
-                
-                m.OPP_iteration_one = false;
-                m.OPP_inside_cell = true;
-
-            } while (m.OPP_move_status == (int)OPP_NEED_MOVE);
-
-            if (m.OPP_move_status == OPP_NEED_REMOVE) /*outside the mesh*/
-            {  
-                remove_count[thr] += 1;
-                mesh_relation_data[i] = MAX_CELL_INDEX;
-            }
+            remove_count[thr] += 1;
+            mesh_relation_data[i] = MAX_CELL_INDEX;
         }
+    
     }
 
     for (int i = 0; i < nthreads; i++) set->particle_remove_count += remove_count[i];
