@@ -25,17 +25,22 @@ export CUDA_INSTALL_PATH=/opt/cuda/10.2.89/toolkit
 if [ "$(hostname)" == 'telos' ]; then
   export NV_ARCH=Volta
   export CUDA_VISIBLE_DEVICES=0
-  echo $NV_ARCH
+  echo $NV_ARCH $(hostname)
   export LD_LIBRARY_PATH=/ext-home/zl/lib_install/petsc-3.18.3-oneapi-2021.3-cuda-rel/lib:$LD_LIBRARY_PATH
   export PETSC_INSTALL_PATH=/ext-home/zl/lib_install/petsc-3.18.3-oneapi-2021.3-cuda-rel
   export NVCCFLAGS_ADD='-gencode arch=compute_70,code=sm_70'
-else
+elif [ "$(hostname)" == 'kos' ]; then
   export NV_ARCH=Pascal
   export CUDA_VISIBLE_DEVICES=0,1
-  echo $NV_ARCH
+  echo $NV_ARCH $(hostname)
   export LD_LIBRARY_PATH=/ext-home/zl/lib_install/petsc-3.18.3-oneapi-2021.3-cuda-kos/lib:$LD_LIBRARY_PATH
   export PETSC_INSTALL_PATH=/ext-home/zl/lib_install/petsc-3.18.3-oneapi-2021.3-cuda-kos
   export NVCCFLAGS_ADD='-gencode arch=compute_60,code=sm_60'
+elif [ "$(hostname)" == 'amos' ]; then
+  echo AMD $(hostname)
+  export LD_LIBRARY_PATH=/ext-home/zl/lib_install/petsc-3.18.3-oneapi-2021.3-cpu-rel-amos/lib:$LD_LIBRARY_PATH
+  export PETSC_INSTALL_PATH=/ext-home/zl/lib_install/petsc-3.18.3-oneapi-2021.3-cpu-rel-amos
+  export PATH=/opt/rocm-5.4.3/bin:$PATH
 fi
 
 export OPPIC_PATH=/ext-home/zl/phd/OP-PIC/lib_oppic

@@ -71,8 +71,6 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #define ZERO_ull       0
 #define ZERO_bool      0
 
-#define USE_THRUST
-
 #ifdef USE_THRUST
     #include <thrust/device_vector.h>
     #include <thrust/host_vector.h>

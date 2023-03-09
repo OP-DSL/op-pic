@@ -46,17 +46,14 @@ PETSC ?= 1
 ifeq ($(PETSC), 1)
 	CPPFLAGS   += -DUSE_PETSC
 	PETSC_INC  = -I$(PETSC_INSTALL_PATH)/include
-	PETSC_LIB  = -L$(PETSC_INSTALL_PATH)/lib -lpetsc
 endif
 
 CUDA ?= 1
 ifeq ($(CUDA), 1)
 	CUDA_INC   = -I$(CUDA_INSTALL_PATH)/include
-	CUDA_LIB   = -L$(CUDA_INSTALL_PATH)/lib64 -lcudart -lcuda
 endif
 
-ALL_INC    = -I$(OPPIC_PATH)/include $(PETSC_INC) $(CUDA_INC)
-ALL_LIBS   = -L$(OPPIC_PATH)/lib $(PETSC_LIB) $(CUDA_LIB)
+OPP_INC    = -I$(OPPIC_PATH)/include
 
 .PHONY: clean mklib
 
@@ -67,24 +64,29 @@ all: $(ALL_TARGETS)
 mklib:
 	@mkdir -p $(LIB) $(OBJ)
 
-
-oppic_core: mklib
-	     $(CPP) $(CPPFLAGS) -c $(OPPIC_PATH)/$(SRC)/core/oppic_lib_core.cpp -o $(OBJ)/oppic_lib_core.o $(ALL_INC)
-	     $(CPP) $(CPPFLAGS) -c $(OPPIC_PATH)/$(SRC)/core/oppic_util.cpp -o $(OBJ)/oppic_util.o $(ALL_INC)
-	     $(CPP) $(CPPFLAGS) -c $(OPPIC_PATH)/$(SRC)/core/trace.cpp -o $(OBJ)/trace.o $(ALL_INC)
-		 $(CPP) $(CPPFLAGS) -c $(OPPIC_PATH)/$(SRC)/core/opp_params.cpp -o $(OBJ)/opp_params.o $(ALL_INC)
-
-oppic_seq: mklib oppic_core
-	     $(CPP) $(CPPFLAGS) -c $(OPPIC_PATH)/$(SRC)/seq/oppic_seq.cpp -o $(OBJ)/oppic_seq.o $(ALL_INC)
+oppic_seq: mklib
+	     $(CPP) $(CPPFLAGS) -c $(SRC)/core/oppic_lib_core.cpp -o $(OBJ)/oppic_lib_core.o $(OPP_INC) $(PETSC_INC)
+	     $(CPP) $(CPPFLAGS) -c $(SRC)/core/oppic_util.cpp -o $(OBJ)/oppic_util.o $(OPP_INC) $(PETSC_INC)
+	     $(CPP) $(CPPFLAGS) -c $(SRC)/core/trace.cpp -o $(OBJ)/trace.o $(OPP_INC) $(PETSC_INC)
+		 $(CPP) $(CPPFLAGS) -c $(SRC)/core/opp_params.cpp -o $(OBJ)/opp_params.o $(OPP_INC) $(PETSC_INC)
+	     $(CPP) $(CPPFLAGS) -c $(SRC)/seq/oppic_seq.cpp -o $(OBJ)/oppic_seq.o $(OPP_INC) $(PETSC_INC)
 	     ar -r $(LIB)/liboppic_seq.a $(OBJ)/oppic_lib_core.o $(OBJ)/oppic_util.o $(OBJ)/trace.o $(OBJ)/opp_params.o $(OBJ)/oppic_seq.o
 
-oppic_omp: mklib oppic_core
-	     $(CPP) $(CPPFLAGS) -c $(OPPIC_PATH)/$(SRC)/omp/oppic_omp.cpp -o $(OBJ)/oppic_omp.o $(ALL_INC)
+oppic_omp: mklib
+	     $(CPP) $(CPPFLAGS) -c $(SRC)/core/oppic_lib_core.cpp -o $(OBJ)/oppic_lib_core.o $(OPP_INC) $(PETSC_INC)
+	     $(CPP) $(CPPFLAGS) -c $(SRC)/core/oppic_util.cpp -o $(OBJ)/oppic_util.o $(OPP_INC) $(PETSC_INC)
+	     $(CPP) $(CPPFLAGS) -c $(SRC)/core/trace.cpp -o $(OBJ)/trace.o $(OPP_INC) $(PETSC_INC)
+		 $(CPP) $(CPPFLAGS) -c $(SRC)/core/opp_params.cpp -o $(OBJ)/opp_params.o $(OPP_INC) $(PETSC_INC)
+	     $(CPP) $(CPPFLAGS) -c $(SRC)/omp/oppic_omp.cpp -o $(OBJ)/oppic_omp.o $(OPP_INC) $(PETSC_INC)
 	     ar -r $(LIB)/liboppic_omp.a $(OBJ)/oppic_lib_core.o $(OBJ)/oppic_util.o $(OBJ)/trace.o $(OBJ)/opp_params.o $(OBJ)/oppic_omp.o
 
-oppic_cuda: mklib oppic_core
-	     nvcc $(NVCCFLAGS) -c $(OPPIC_PATH)/$(SRC)/cuda/oppic_cuda.cu -o $(OBJ)/oppic_cuda.o $(ALL_INC)
-		 nvcc $(NVCCFLAGS) -c $(OPPIC_PATH)/$(SRC)/cuda/particle_sorter.cu -o $(OBJ)/particle_sorter.o $(ALL_INC)
+oppic_cuda: mklib
+	     $(CPP) $(CPPFLAGS) -DUSE_THRUST -c $(SRC)/core/oppic_lib_core.cpp -o $(OBJ)/oppic_lib_core.o $(OPP_INC) $(PETSC_INC) $(CUDA_INC)
+	     $(CPP) $(CPPFLAGS) -DUSE_THRUST -c $(SRC)/core/oppic_util.cpp -o $(OBJ)/oppic_util.o $(OPP_INC) $(PETSC_INC) $(CUDA_INC)
+	     $(CPP) $(CPPFLAGS) -DUSE_THRUST -c $(SRC)/core/trace.cpp -o $(OBJ)/trace.o $(OPP_INC) $(PETSC_INC) $(CUDA_INC)
+		 $(CPP) $(CPPFLAGS) -DUSE_THRUST -c $(SRC)/core/opp_params.cpp -o $(OBJ)/opp_params.o $(OPP_INC) $(PETSC_INC) $(CUDA_INC)
+	     nvcc $(NVCCFLAGS) -DUSE_THRUST -c $(SRC)/cuda/oppic_cuda.cu -o $(OBJ)/oppic_cuda.o $(OPP_INC) $(PETSC_INC) $(CUDA_INC)
+		 nvcc $(NVCCFLAGS) -DUSE_THRUST -c $(SRC)/cuda/particle_sorter.cu -o $(OBJ)/particle_sorter.o $(OPP_INC) $(PETSC_INC) $(CUDA_INC)
 	     ar -r $(LIB)/liboppic_cuda.a $(OBJ)/oppic_lib_core.o $(OBJ)/oppic_util.o $(OBJ)/trace.o $(OBJ)/opp_params.o $(OBJ)/oppic_cuda.o $(OBJ)/particle_sorter.o
 
 clean: 
