@@ -52,6 +52,8 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #define MAX_CELL_INDEX     INT_MAX
 
+#define UNUSED(expr) do { (void)(expr); } while (0)
+
 #define OP_READ        0
 #define OP_WRITE       1
 #define OP_RW          2
@@ -88,7 +90,7 @@ enum oppic_iterate_type
     OP_ITERATE_INJECTED,
 };
 
-enum move_status 
+enum opp_move_status 
 {
     OPP_MOVE_DONE = 0,
     OPP_NEED_MOVE,

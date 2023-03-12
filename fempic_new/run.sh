@@ -24,3 +24,5 @@ echo "OMP DONE"
 
 # bin/cuda /ext-home/zl/phd/OP-PIC/fempic_tests/configs/medium_1.param -vec_type cuda -mat_type aijcusparse
 # https://www.youtube.com/watch?v=jiOWnG_Kk-U
+
+# watch -n 0.1 /opt/rocm-5.4.3/bin/rocm-smi

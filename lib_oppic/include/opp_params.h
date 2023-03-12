@@ -12,6 +12,8 @@
     #define STRING std::string
 #endif
 
+#define UNUSED(expr) do { (void)(expr); } while (0)
+
 namespace opp
 {
     class Params
@@ -22,6 +24,7 @@ namespace opp
             template <typename T>
             inline void add(std::string key, T value) // refer specilized template functions
             {
+                UNUSED(value);
                 std::cerr << "Params add not implemented for type of : " << key << std::endl;
                 // exit(-1);
             }

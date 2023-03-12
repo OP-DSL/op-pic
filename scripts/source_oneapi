@@ -40,13 +40,21 @@ elif [ "$(hostname)" == 'amos' ]; then
   echo AMD $(hostname)
   export LD_LIBRARY_PATH=/ext-home/zl/lib_install/petsc-3.18.3-oneapi-2021.3-cpu-rel-amos/lib:$LD_LIBRARY_PATH
   export PETSC_INSTALL_PATH=/ext-home/zl/lib_install/petsc-3.18.3-oneapi-2021.3-cpu-rel-amos
-  export PATH=/opt/rocm-5.4.3/bin:$PATH
+  export ROCM_INSTALL_DIR=/opt/rocm-5.4.3
+  export PATH=$ROCM_INSTALL_DIR/bin:$PATH
+  export ROCM_THRUST_DIR=/ext-home/zl/lib_install/rocThrust_rel
+  export ROCM_PRIM_DIR=/ext-home/zl/lib_install/rocPrim_rel
+else
+  echo The machine not configured, PETSC_INSTALL_PATH and some other variables may be missing!
 fi
 
 export OPPIC_PATH=/ext-home/zl/phd/OP-PIC/lib_oppic
 
 #Intel MPI and Compilers
 source /opt/intel/oneapi/2021.3/setvars.sh
+
+# module load gnu-6.3.0/ompi-1.10.6
+
 #source /opt/intel/parallelstudio/2018/update2/parallel_studio_xe_2018.2.046/psxevars.sh
 
 export MPI_INSTALL_PATH=/opt/intel/oneapi/2021.3/mpi/latest

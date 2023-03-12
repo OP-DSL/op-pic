@@ -169,7 +169,8 @@ void oppic_par_loop_particle_all__MoveToCells(
     {
         int thr = omp_get_thread_num();
         char* arg8_dat_thread_data = (*(arg8.dat->thread_data))[thr];
-        move_var m;    
+        
+        opp_move_var m;    
 
         do
         { 
@@ -181,7 +182,7 @@ void oppic_par_loop_particle_all__MoveToCells(
             const int map4idx = arg8.map_data[map0idx * arg8.map->dim + 3];
 
             move_all_particles_to_cell__kernel(
-                &(m),
+                (m),
                 &((double *)arg0.data)[map0idx * arg0.dim],       // const double *cell_ef,
                 &((double *)arg1.data)[i * arg1.dim],             // double *part_pos,
                 &((double *)arg2.data)[i * arg2.dim],             // double *part_vel,

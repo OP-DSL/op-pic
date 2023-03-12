@@ -34,10 +34,9 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <oppic_lib.h>
 
-#include <cuda.h>
-#include <cuda_runtime.h>
-#include <cuda_runtime_api.h>
-#include <device_launch_parameters.h>
+#include <hip/hip_runtime.h>
+#include <hip/hip_runtime_api.h>
+// #include <device_launch_parameters.h>
 
 #include <thrust/sort.h>
 #include <thrust/device_vector.h>
@@ -53,7 +52,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 //*************************************************************************************************
 
-void __cudaSafeCall(cudaError_t err, const char *file, const int line);
+void __cudaSafeCall(hipError_t err, const char *file, const int line);
 
 void __cutilCheckMsg(const char *errorMessage, const char *file, const int line);
 

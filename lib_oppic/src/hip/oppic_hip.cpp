@@ -30,7 +30,7 @@ OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-#include <oppic_cuda.h>
+#include <oppic_hip.h>
 
 //****************************************
 void oppic_init(int argc, char **argv, opp::Params* params)
@@ -38,8 +38,8 @@ void oppic_init(int argc, char **argv, opp::Params* params)
     oppic_init_core(argc, argv, params);
     cutilDeviceInit(argc, argv);
 
-    cutilSafeCall(cudaDeviceSetCacheConfig(cudaFuncCachePreferShared));
-    cutilSafeCall(cudaDeviceSetSharedMemConfig(cudaSharedMemBankSizeEightByte));
+    // cutilSafeCall(hipDeviceSetCacheConfig(hipFuncCachePreferShared));
+    // cutilSafeCall(hipDeviceSetSharedMemConfig(hipSharedMemBankSizeEightByte));
 
     OP_auto_soa = 1; // TODO : Make this configurable with args
     OP_auto_sort = 1;
@@ -60,12 +60,12 @@ void oppic_cuda_exit()
 
     for (auto& a : oppic_maps) 
     {
-        cutilSafeCall(cudaFree(a->map_d));
+        cutilSafeCall(hipFree(a->map_d));
     }
 
     for (auto& a : oppic_dats) 
     {
-        // cutilSafeCall(cudaFree(a->data_d));
+        // cutilSafeCall(hipFree(a->data_d));
         if (a->thrust_int) delete a->thrust_int;
         if (a->thrust_real) delete a->thrust_real;
         if (a->thrust_int_sort) delete a->thrust_int_sort;
@@ -192,8 +192,8 @@ oppic_set oppic_decl_particle_set(int size, char const *name, oppic_set cells_se
 {
     oppic_set set = oppic_decl_particle_set_core(size, name, cells_set);
 
-    cutilSafeCall(cudaMalloc((void**)&(set->particle_remove_count_d), sizeof(int)));
-    cutilSafeCall(cudaDeviceSynchronize());
+    cutilSafeCall(hipMalloc((void**)&(set->particle_remove_count_d), sizeof(int)));
+    cutilSafeCall(hipDeviceSynchronize());
   
     return set;
 }
@@ -271,14 +271,14 @@ void oppic_init_particle_move(oppic_set set)
 
     oppic_init_particle_move_core(set);
 
-    cutilSafeCall(cudaMemcpy(set->particle_remove_count_d, &(set->particle_remove_count), sizeof(int), cudaMemcpyHostToDevice));
+    cutilSafeCall(hipMemcpy(set->particle_remove_count_d, &(set->particle_remove_count), sizeof(int), hipMemcpyHostToDevice));
 }
 
 //****************************************
 void oppic_finalize_particle_move(oppic_set set)
 { TRACE_ME;
 
-    cudaMemcpy(&(set->particle_remove_count), set->particle_remove_count_d, sizeof(int), cudaMemcpyDeviceToHost);
+    hipMemcpy(&(set->particle_remove_count), set->particle_remove_count_d, sizeof(int), hipMemcpyDeviceToHost);
 
     if (OP_DEBUG) printf("\toppic_finalize_particle_move set [%s] with particle_remove_count [%d]\n", set->name, set->particle_remove_count);
     
@@ -339,7 +339,7 @@ void oppic_download_dat(oppic_dat dat)
         if (OP_DEBUG) printf("\toppic_download_dat GPU->CPU SOA | %s\n", dat->name);
 
         char *temp_data = (char *)malloc(dat->size * set_size * sizeof(char));
-        cutilSafeCall(cudaMemcpy(temp_data, dat->data_d, set_size * dat->size, cudaMemcpyDeviceToHost));
+        cutilSafeCall(hipMemcpy(temp_data, dat->data_d, set_size * dat->size, hipMemcpyDeviceToHost));
         
         int element_size = dat->size / dat->dim;
         for (int i = 0; i < dat->dim; i++) 
@@ -358,7 +358,7 @@ void oppic_download_dat(oppic_dat dat)
     {
         if (OP_DEBUG) printf("\toppic_download_dat GPU->CPU NON-SOA| %s\n", dat->name);
 
-        cutilSafeCall(cudaMemcpy(dat->data, dat->data_d, set_size * dat->size, cudaMemcpyDeviceToHost));
+        cutilSafeCall(hipMemcpy(dat->data, dat->data_d, set_size * dat->size, hipMemcpyDeviceToHost));
     }
 
     dat->dirty_hd = Dirty::NotDirty;
@@ -369,7 +369,7 @@ void oppic_download_dat(oppic_dat dat)
 void oppic_upload_dat(oppic_dat dat)
 { TRACE_ME;
 
-    size_t set_capacity = dat->set->set_capacity;
+    int set_capacity = dat->set->set_capacity;
 
     if (strstr(dat->type, ":soa") != NULL || (OP_auto_soa && dat->dim > 1)) 
     {
@@ -437,9 +437,9 @@ void oppic_upload_particle_set(oppic_set particles_set, bool realloc)
         {
             // TODO : CONVERT TO THRUST VECTORS, WILL BREAK IF NOT 
             if (current_dat->data_d != NULL) 
-                cutilSafeCall(cudaFree(current_dat->data_d));
+                cutilSafeCall(hipFree(current_dat->data_d));
 
-            cutilSafeCall(cudaMalloc(&(current_dat->data_d), particles_set->set_capacity * current_dat->size));
+            cutilSafeCall(hipMalloc(&(current_dat->data_d), particles_set->set_capacity * current_dat->size));
         }
 
         oppic_upload_dat(current_dat);
@@ -527,11 +527,13 @@ void oppic_mpi_set_dirtybit_cuda(int nargs, oppic_arg *args)
 // Set the complete dat to zero (upto array capacity)
 void oppic_reset_dat(oppic_dat dat, char* val)
 {
+    UNUSED(val);
+
     if (OP_DEBUG) printf("\toppic_reset_dat dat [%s]\n", dat->name);
 
     int set_size = dat->set->set_capacity;
 
-    cutilSafeCall(cudaMemset((double*)(dat->data_d), 0, dat->size * set_size));
+    cutilSafeCall(hipMemset((double*)(dat->data_d), 0, dat->size * set_size));
 
     dat->dirty_hd = Dirty::Host;
 }
@@ -544,21 +546,21 @@ void oppic_reset_dat(oppic_dat dat, char* val)
 
 // **************************************** UTILITY FUNCTIONS ****************************************
 
-void __cudaSafeCall(cudaError_t err, const char *file, const int line) 
+void __cudaSafeCall(hipError_t err, const char *file, const int line) 
 {
-    if (cudaSuccess != err) 
+    if (hipSuccess != err) 
     {
-        fprintf(stderr, "%s(%i) : cutilSafeCall() Runtime API error : %s.\n", file, line, cudaGetErrorString(err));
+        fprintf(stderr, "%s(%i) : cutilSafeCall() Runtime API error : %s.\n", file, line, hipGetErrorString(err));
         exit(-1);
     }
 }
 
 void __cutilCheckMsg(const char *errorMessage, const char *file, const int line) 
 {
-    cudaError_t err = cudaGetLastError();
-    if (cudaSuccess != err) 
+    hipError_t err = hipGetLastError();
+    if (hipSuccess != err) 
     {
-        fprintf(stderr, "%s(%i) : cutilCheckMsg() error : %s : %s.\n", file, line, errorMessage, cudaGetErrorString(err));
+        fprintf(stderr, "%s(%i) : cutilCheckMsg() error : %s : %s.\n", file, line, errorMessage, hipGetErrorString(err));
         exit(-1);
     }
 }
@@ -568,12 +570,12 @@ void oppic_cpHostToDevice(void **data_d, void **data_h, int copy_size, int alloc
 {
     if (create_new)
     {
-        if (*data_d != NULL) cutilSafeCall(cudaFree(*data_d));
-        cutilSafeCall(cudaMalloc(data_d, alloc_size));
+        if (*data_d != NULL) cutilSafeCall(hipFree(*data_d));
+        cutilSafeCall(hipMalloc(data_d, alloc_size));
     }
 
-    cutilSafeCall(cudaMemcpy(*data_d, *data_h, copy_size, cudaMemcpyHostToDevice));
-    cutilSafeCall(cudaDeviceSynchronize());
+    cutilSafeCall(hipMemcpy(*data_d, *data_h, copy_size, hipMemcpyHostToDevice));
+    cutilSafeCall(hipDeviceSynchronize());
 }
 
 void oppic_create_device_arrays(oppic_dat dat, bool create_new)
@@ -625,7 +627,7 @@ void cutilDeviceInit(int argc, char **argv)
     (void)argv;
     int deviceCount;
 
-    cutilSafeCall(cudaGetDeviceCount(&deviceCount));
+    cutilSafeCall(hipGetDeviceCount(&deviceCount));
     if (deviceCount == 0) 
     {
         printf("cutil error: no devices supporting CUDA\n");
@@ -634,21 +636,21 @@ void cutilDeviceInit(int argc, char **argv)
 
     // Test we have access to a device
     float *test;
-    cudaError_t err = cudaMalloc((void **)&test, sizeof(float));
-    if (err != cudaSuccess) OP_hybrid_gpu = 0;
+    hipError_t err = hipMalloc((void **)&test, sizeof(float));
+    if (err != hipSuccess) OP_hybrid_gpu = 0;
     else  OP_hybrid_gpu = 1;
 
     if (OP_hybrid_gpu) 
     {
-        cudaFree(test);
+        hipFree(test);
 
-        cutilSafeCall(cudaDeviceSetCacheConfig(cudaFuncCachePreferL1));
+        // cutilSafeCall(hipDeviceSetCacheConfig(hipFuncCachePreferL1));
 
         int deviceId = -1;
-        cudaGetDevice(&deviceId);
-        cudaDeviceProp deviceProp;
-        cutilSafeCall(cudaGetDeviceProperties(&deviceProp, deviceId));
-        printf("\n Using CUDA device: %d %s\n\n", deviceId, deviceProp.name);
+        hipGetDevice(&deviceId);
+        hipDeviceProp_t deviceProp;
+        cutilSafeCall(hipGetDeviceProperties(&deviceProp, deviceId));
+        printf("\n Using AMD device: %d %s\n\n", deviceId, deviceProp.name);
     } 
     else 
     {
@@ -658,7 +660,7 @@ void cutilDeviceInit(int argc, char **argv)
 
 void print_last_cuda_error()
 {
-    printf("ANY CUDA ERRORS? %s\n", cudaGetErrorString(cudaGetLastError()));
+    printf("ANY CUDA ERRORS? %s\n", hipGetErrorString(hipGetLastError()));
 }
 
 
@@ -680,7 +682,7 @@ void print_last_cuda_error()
 //****************************************
 void oppic_finalize_particle_move_cuda(oppic_set set)
 {
-    cutilSafeCall(cudaMemcpy(set->particle_statuses, set->particle_statuses_d, set->size * sizeof(int), cudaMemcpyDeviceToHost));
+    cutilSafeCall(hipMemcpy(set->particle_statuses, set->particle_statuses_d, set->size * sizeof(int), hipMemcpyDeviceToHost));
 
     set->particle_remove_count = 0;
 
@@ -696,7 +698,7 @@ void oppic_finalize_particle_move_cuda(oppic_set set)
 
     if (set->particle_remove_count <= 0)
     {
-        cutilSafeCall(cudaFree(set->particle_statuses_d));
+        cutilSafeCall(hipFree(set->particle_statuses_d));
         set->particle_statuses_d = NULL;
         return;
     }
@@ -707,7 +709,7 @@ void oppic_finalize_particle_move_cuda(oppic_set set)
 
     oppic_upload_particle_set(set, true /* realloc the device pointers */);
 
-    cutilSafeCall(cudaFree(set->particle_statuses_d));
+    cutilSafeCall(hipFree(set->particle_statuses_d));
     set->particle_statuses_d = NULL;
 
     if (OP_DEBUG) printf("\toppic_finalize_particle_move_cuda set [%s] with new size [%d]\n", set->name, set->size);

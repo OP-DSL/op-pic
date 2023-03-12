@@ -39,6 +39,8 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "fempic_ori/maths.h"
 #include "oppic_lib.h"
 
+const double ONE_OVER_SIX = (1.0 / 6.0);
+
 //*************************************************************************************************
 inline void calculate_injection_distribution(
     int* injected_total,
@@ -102,7 +104,7 @@ inline void inject_ions__kernel(
 
 //*************************************************************************************************
 inline void move_all_particles_to_cell__kernel(
-    move_var* m,
+    opp_move_var& m,
     const double *cell_ef,
     double *part_pos,
     double *part_vel,
@@ -117,31 +119,36 @@ inline void move_all_particles_to_cell__kernel(
     double *node_charge_den3
 )
 {
-    if (m->OPP_iteration_one)
+    if (m.OPP_iteration_one)
     {
+        double coefficient1 = CONST_charge / CONST_mass * (CONST_dt);
         for (int i = 0; i < DIMENSIONS; i++)
-            part_vel[i] += (CONST_charge / CONST_mass * cell_ef[i] * (CONST_dt));                  
+            part_vel[i] += (coefficient1 * cell_ef[i]);                  
         
         for (int i = 0; i < DIMENSIONS; i++)
             part_pos[i] += part_vel[i] * (CONST_dt); // v = u + at
     }
 
-
+    bool inside = true;
+    double coefficient2 = ONE_OVER_SIX / (*current_cell_volume) ;
     for (int i=0; i<NODES_PER_CELL; i++) /*loop over vertices*/
     {
-        part_lc[i] = (1.0/6.0) * (
+        part_lc[i] = coefficient2 * (
             current_cell_det[i * DET_FIELDS + 0] - 
             current_cell_det[i * DET_FIELDS + 1] * part_pos[0] + 
             current_cell_det[i * DET_FIELDS + 2] * part_pos[1] - 
-            current_cell_det[i * DET_FIELDS + 3] * part_pos[2]
-                ) / (*current_cell_volume);
+            current_cell_det[i * DET_FIELDS + 3] * part_pos[2]);
         
-        if (part_lc[i]<0 || part_lc[i]>1.0) m->OPP_inside_cell = false;
+        if (part_lc[i] < 0.0 || 
+            part_lc[i] > 1.0)  
+                inside = false;
+                // m.OPP_inside_cell = false;
     }    
     
-    if (m->OPP_inside_cell)
+    // if (m.OPP_inside_cell)
+    if (inside)
     {
-        m->OPP_move_status = OPP_MOVE_DONE;
+        m.OPP_move_status = OPP_MOVE_DONE;
 
         (*node_charge_den0) += part_lc[0];
         (*node_charge_den1) += part_lc[1];
@@ -167,11 +174,11 @@ inline void move_all_particles_to_cell__kernel(
     if (cell_connectivity[min_i] >= 0) // is there a neighbor in this direction?
     {
         (*current_cell_index) = cell_connectivity[min_i];
-        m->OPP_move_status = OPP_NEED_MOVE;
+        m.OPP_move_status = OPP_NEED_MOVE;
     }
     else
     {
-        m->OPP_move_status = OPP_NEED_REMOVE;
+        m.OPP_move_status = OPP_NEED_REMOVE;
     }
 }
 
