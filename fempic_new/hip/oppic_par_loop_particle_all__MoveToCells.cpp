@@ -54,7 +54,7 @@ __constant__ int moveToCells_all_stride_OPP_CUDA_8;
 //user function
 //*************************************************************************************************
 __device__ void move_all_particles_to_cell__kernel(
-    move_var* m,
+    opp_move_var& m,
     const double *cell_ef,
     double *part_pos,
     double *part_vel,
@@ -69,7 +69,7 @@ __device__ void move_all_particles_to_cell__kernel(
     double *node_charge_den3
 )
 {
-    if (m->OPP_iteration_one)
+    if (m.OPP_iteration_one)
     {
         for (int i = 0; i < DIMENSIONS; i++)
             part_vel[i * moveToCells_all_stride_OPP_CUDA_2] += (CONST_charge_cuda / CONST_mass_cuda * cell_ef[i * moveToCells_all_stride_OPP_CUDA_0] * (CONST_dt_cuda));           
@@ -87,12 +87,12 @@ __device__ void move_all_particles_to_cell__kernel(
             current_cell_det[(i * DET_FIELDS + 3) * moveToCells_all_stride_OPP_CUDA_6] * part_pos[2 * moveToCells_all_stride_OPP_CUDA_1]
                 ) / (*current_cell_volume);
         
-        if (part_lc[i * moveToCells_all_stride_OPP_CUDA_3]<0 || part_lc[i * moveToCells_all_stride_OPP_CUDA_3]>1.0) m->OPP_inside_cell = false;
+        if (part_lc[i * moveToCells_all_stride_OPP_CUDA_3]<0 || part_lc[i * moveToCells_all_stride_OPP_CUDA_3]>1.0) m.OPP_inside_cell = false;
     }    
 
-    if (m->OPP_inside_cell)
+    if (m.OPP_inside_cell)
     {
-        m->OPP_move_status = OPP_MOVE_DONE;
+        m.OPP_move_status = OPP_MOVE_DONE;
 
         atomicAdd(node_charge_den0, (part_lc[0 * moveToCells_all_stride_OPP_CUDA_3]));
         atomicAdd(node_charge_den1, (part_lc[1 * moveToCells_all_stride_OPP_CUDA_3]));
@@ -118,11 +118,11 @@ __device__ void move_all_particles_to_cell__kernel(
     if (cell_connectivity[min_i * moveToCells_all_stride_OPP_CUDA_7] >= 0) // is there a neighbor in this direction?
     {
         (*current_cell_index) = cell_connectivity[min_i * moveToCells_all_stride_OPP_CUDA_7];
-        m->OPP_move_status = OPP_NEED_MOVE;
+        m.OPP_move_status = OPP_NEED_MOVE;
     }
     else
     {
-        m->OPP_move_status = OPP_NEED_REMOVE;
+        m.OPP_move_status = OPP_NEED_REMOVE;
     }
 }
 
@@ -153,7 +153,7 @@ __global__ void oppic_cuda_all_MoveToCells(
     {
         int n = tid + start;
 
-        move_var m;
+        opp_move_var m;
 
         do
         {
@@ -168,7 +168,7 @@ __global__ void oppic_cuda_all_MoveToCells(
             const int map4idx = opDat8Map[map0idx + moveToCells_all_stride_OPP_CUDA_8 * 3];
 
             move_all_particles_to_cell__kernel(
-                &(m),
+                (m),
                 (ind_arg0 + map0idx),   // cell_ef,
                 (dir_arg1 + n),         // part_pos,
                 (dir_arg2 + n),         // part_vel,
