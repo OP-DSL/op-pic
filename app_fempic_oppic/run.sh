@@ -1,32 +1,28 @@
-#! /bin/bash
 
-rm -rf files;
-mkdir files;
+rm -rf files/*;
 
-rm -rf fempic
-
-export OMP_NUM_THREADS=4
+export OMP_NUM_THREADS=1
 export OMP_PROC_BIND=close
+export OMP_PLACES=cores
 
-# module load gnu-9.3.0/openmpi-4.0.4
-# export LD_LIBRARY_PATH=/ext-home/zl/phd/OP-PIC/app_fempic_oppic:$LD_LIBRARY_PATH
+make all
 
-# ./fempic_seq 
+echo "BUILD DONE"
 
-# ./fempic_genseq 
+/ext-home/zl/phd/OP-PIC/fempic_new/bin/cuda /ext-home/zl/phd/OP-PIC/fempic_tests/configs/coarse_3.param
 
-# ./fempic_openmp 
+echo "CUDA DONE"
 
-./fempic_genseq_wopet 
+/ext-home/zl/phd/OP-PIC/fempic_new/bin/seq /ext-home/zl/phd/OP-PIC/fempic_tests/configs/coarse_3.param
 
-./fempic_openmp_wopet
+echo "SEQ DONE"
 
-cuda-memcheck --tool racecheck --racecheck-report analysis bin/fempic_cuda > x.log
+export OMP_NUM_THREADS=48
+/ext-home/zl/phd/OP-PIC/fempic_new/bin/omp /ext-home/zl/phd/OP-PIC/fempic_tests/configs/coarse_3.param
 
-cuda-memcheck bin/fempic_cuda |more  > x.log
+echo "OMP DONE"
 
-bin/fempic_cuda -vec_type cuda -mat_type aijcusparse
+# bin/cuda /ext-home/zl/phd/OP-PIC/fempic_tests/configs/medium_1.param -vec_type cuda -mat_type aijcusparse
+# https://www.youtube.com/watch?v=jiOWnG_Kk-U
 
-valgrind --log-file=vg_genseq bin/fempic_genseq
-
-valgrind --leak-check=full --show-leak-kinds=all --log-file=vg bin/fempic_genseq
+# watch -n 0.1 /opt/rocm-5.4.3/bin/rocm-smi

@@ -7,15 +7,15 @@ Redistribution and use in source and binary forms, with or without
 modification, are permitted provided that the following conditions are met:
 
 1. Redistributions of source code must retain the above copyright notice, this
-   list of conditions and the following disclaimer.
+list of conditions and the following disclaimer.
 
 2. Redistributions in binary form must reproduce the above copyright notice,
-   this list of conditions and the following disclaimer in the documentation
-   and/or other materials provided with the distribution.
+this list of conditions and the following disclaimer in the documentation
+and/or other materials provided with the distribution.
 
 3. Neither the name of the copyright holder nor the names of its
-   contributors may be used to endorse or promote products derived from
-   this software without specific prior written permission.
+contributors may be used to endorse or promote products derived from
+this software without specific prior written permission.
 
 THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
 AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
@@ -29,31 +29,55 @@ OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
+//*********************************************
 // AUTO GENERATED CODE
+//*********************************************
+
 
 #include "../fempic.h"
 #include <oppic_cuda.h>
 
-#define GPU_THREADS_PER_BLOCK 16
+#define GPU_THREADS_PER_BLOCK 32
 
-__constant__ double OP_CONST_CUDA_charge = 1.602e-19;                // TODO : Make this OP2 constants
-__constant__ double OP_CONST_CUDA_mass   = (16 * 1.660538921e-27);   // TODO : Make this OP2 constants
-__constant__ double OP_CONST_CUDA_spwt   = 2e2;                      // TODO : Make this OP2 constants
+// TODO : This should be removed
+double CONST_spwt = 0, CONST_ion_velocity = 0, CONST_dt = 0, CONST_plasma_den = 0, CONST_mass = 0, CONST_charge = 0;
+
+//****************************************
+__constant__ double CONST_spwt_cuda, CONST_ion_velocity_cuda = 0, CONST_dt_cuda = 0, CONST_plasma_den_cuda = 0, CONST_mass_cuda = 0, CONST_charge_cuda = 0;
+void oppic_decl_const_impl(int dim, int size, char* data, const char* name)
+{
+    if (!strcmp(name,"CONST_spwt"))              cutilSafeCall(cudaMemcpyToSymbol(CONST_spwt_cuda, data, dim*size));
+    else if (!strcmp(name,"CONST_ion_velocity")) cutilSafeCall(cudaMemcpyToSymbol(CONST_ion_velocity_cuda, data, dim*size));
+    else if (!strcmp(name,"CONST_dt"))           cutilSafeCall(cudaMemcpyToSymbol(CONST_dt_cuda, data, dim*size));
+    else if (!strcmp(name,"CONST_plasma_den"))   cutilSafeCall(cudaMemcpyToSymbol(CONST_plasma_den_cuda, data, dim*size));
+    else if (!strcmp(name,"CONST_mass"))         cutilSafeCall(cudaMemcpyToSymbol(CONST_mass_cuda, data, dim*size));
+    else if (!strcmp(name,"CONST_charge"))       cutilSafeCall(cudaMemcpyToSymbol(CONST_charge_cuda, data, dim*size));
+    else std::cerr << "error: unknown const name" << std::endl;
+
+    // TODO : This block should be removed
+    {    if (!strcmp(name,"CONST_spwt"))              CONST_spwt = *((double*)data);
+        else if (!strcmp(name,"CONST_ion_velocity")) CONST_ion_velocity = *((double*)data);
+        else if (!strcmp(name,"CONST_dt"))           CONST_dt = *((double*)data);
+        else if (!strcmp(name,"CONST_plasma_den"))   CONST_plasma_den = *((double*)data);
+        else if (!strcmp(name,"CONST_mass"))         CONST_mass = *((double*)data);
+        else if (!strcmp(name,"CONST_charge"))       CONST_charge = *((double*)data);
+        else std::cerr << "error: unknown const name" << std::endl; } // TODO : This block should be removed
+}
+//****************************************
 
 //*************************************************************************************************
+#include "oppic_inject__Increase_particle_count.cu"
 
-#include "oppic_par_loop__InjectIons.cu"
+//*************************************************************************************************
+#include "oppic_par_loop_inject__InjectIons.cu"
 
-#include "oppic_par_loop_particle_inject__MoveToCells.cu"
-
-#include "oppic_par_loop__WeightFieldsToParticles.cu"
-
-#include "oppic_par_loop__MoveParticles.cu"
-
+//*************************************************************************************************
 #include "oppic_par_loop_particle_all__MoveToCells.cu"
 
-#include "oppic_par_loop__ResetIonDensity.cu"
+//*************************************************************************************************
+#include "oppic_par_loop_all__ComputeNodeChargeDensity.cu"
 
-#include "oppic_par_loop__WeightParticleToMeshNodes.cu"
+//*************************************************************************************************
+#include "oppic_par_loop_all__ComputeElectricField.cu"
 
 //*************************************************************************************************
