@@ -99,8 +99,8 @@ enum opp_move_status
 
 enum opp_data_type 
 {
-    OPP_INT = 0,
-    OPP_REAL,
+    OPP_TYPE_INT = 0,
+    OPP_TYPE_REAL,
 };
 
 enum DeviceType
@@ -171,6 +171,7 @@ struct oppic_set_core {
     bool is_particle;                       /* is it a particle set */
     int set_capacity;                       /* capacity of the allocated array */
     int diff;                               /* number of particles to change */
+    int particle_size;                      /* size of particle */
     std::vector<int>* indexes_to_remove;
     oppic_dat mesh_relation_dat = NULL;
     std::vector<oppic_dat>* particle_dats;
@@ -179,6 +180,7 @@ struct oppic_set_core {
     int* particle_statuses_d;
     int particle_remove_count;
     int* particle_remove_count_d;
+    void* mpi_part_buffers;
     oppic_set cells_set;
 };
 
@@ -218,6 +220,18 @@ struct oppic_dat_core {
     THRUST_INT *thrust_int_sort;
     THRUST_REAL *thrust_real_sort;
 };
+
+//*************************************************************************************************
+// TODO : Remove these
+#define op_set oppic_set
+#define op_map oppic_map
+#define op_dat oppic_dat
+#define OP_set_index oppic_sets.size()
+#define OP_map_index oppic_maps.size()
+#define OP_dat_index oppic_dats.size()
+#define OP_set_list oppic_sets
+#define OP_map_list oppic_maps
+#define OP_dat_list oppic_dats
 
 //*************************************************************************************************
 // oppic API calls
@@ -279,6 +293,9 @@ extern int OP_maps_base_index;
 extern int OP_auto_soa;
 extern int OP_part_alloc_mult;
 extern int OP_auto_sort;
+extern int OPP_mpi_part_alloc_mult;
+extern int OPP_my_rank;
+extern int OPP_comm_size;
 
 extern std::vector<oppic_set> oppic_sets;
 extern std::vector<oppic_map> oppic_maps;
@@ -290,15 +307,15 @@ void* oppic_load_from_file_core(const char* file_name, int set_size, int dim, ch
 
 inline void getDatTypeSize(opp_data_type dtype, std::string& type, int& size)
 {
-    if (dtype == OPP_REAL)
+    if (dtype == OPP_TYPE_REAL)
     {
         type = "double";
-        size = sizeof(double);
+        size = sizeof(OPP_REAL);
     }
-    else if (dtype == OPP_INT)
+    else if (dtype == OPP_TYPE_INT)
     {
         type = "int";
-        size = sizeof(int);       
+        size = sizeof(OPP_INT);       
     }
     else
     {

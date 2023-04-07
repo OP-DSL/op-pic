@@ -43,6 +43,12 @@ void oppic_create_thread_level_data(oppic_arg arg, T init_value)
     oppic_dat dat = arg.dat;
     int nthreads = omp_get_max_threads();
 
+    if (dat->set->is_particle)
+    {
+        std::cerr << "Cannot create thread level data for particle dat [" << dat->name << "] (dat in a dynamic set)" << std::endl;
+        exit(-1);
+    }
+
     if (OP_DEBUG) printf("oppic_create_thread_level_data template[%d]\n", nthreads);
 
     if (dat->thread_data->size() <= 0)

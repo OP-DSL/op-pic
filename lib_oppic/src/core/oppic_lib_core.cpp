@@ -49,6 +49,9 @@ int OP_maps_base_index = 0;
 int OP_auto_soa        = 0;
 int OP_part_alloc_mult = 1;
 int OP_auto_sort       = 1;
+int OPP_mpi_part_alloc_mult = 1;
+int OPP_my_rank             = 0;
+int OPP_comm_size           = 1;
 
 opp::Params* opp_params = nullptr;
 
@@ -62,8 +65,8 @@ void oppic_init_core(int argc, char **argv, opp::Params* params)
     opp_params = params;
     
     // these will be overidden by args
-    OP_auto_sort = params->get<BOOL>("opp_auto_sort");
-    OP_part_alloc_mult = params->get<INT>("opp_allocation_multiple");
+    OP_auto_sort = params->get<OPP_BOOL>("opp_auto_sort");
+    OP_part_alloc_mult = params->get<OPP_INT>("opp_allocation_multiple");
 
     for (int n = 1; n < argc; n++) 
     {
@@ -128,6 +131,15 @@ void oppic_set_args_core(char *argv)
         if (!(OP_auto_sort == 1 || OP_auto_sort == 0))
             std::cerr << "OPP_AUTO_SORT should be 0 or 1, Not Auto Sorting" << std::endl;
     }
+
+    pch = strstr(argv, "OPP_MPI_ALLOC_MULT=");
+    if (pch != NULL) 
+    {
+        strncpy(temp, pch, 20);
+        OPP_mpi_part_alloc_mult = atoi(temp + 15);
+        
+        printf("\toppic_set_args_core OPP_mpi_part_alloc_mult = %d\n", OPP_mpi_part_alloc_mult);
+    }
 }
 
 //****************************************
@@ -146,6 +158,7 @@ oppic_set oppic_decl_set_core(int size, char const *name)
     set->diff              = 0;
     set->mesh_relation_dat = NULL;
     set->cells_set         = NULL;
+    set->particle_size     = 0;
 
     set->indexes_to_remove           = new std::vector<int>();
     set->particle_dats               = new std::vector<oppic_dat>();
@@ -247,6 +260,8 @@ oppic_dat oppic_decl_dat_core(oppic_set set, int dim, char const *type, int size
     dat->thrust_real        = NULL;
     dat->thrust_int_sort    = NULL;
     dat->thrust_real_sort   = NULL;
+
+    set->particle_size += dat->size;
 
     oppic_dats.push_back(dat);
     return dat;

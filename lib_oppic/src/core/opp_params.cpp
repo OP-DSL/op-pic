@@ -34,15 +34,15 @@ Params::Params(std::string file_name)
 
             if (type == "STRING")
             {
-                add<STRING>(key, value);
+                add<OPP_STRING>(key, value);
             }
             else if (type == "INT")
             {
-                add<INT>(key, std::stoi(value));
+                add<OPP_INT>(key, std::stoi(value));
             }
             else if (type == "REAL")
             {
-                add<REAL>(key, std::stod(value));
+                add<OPP_REAL>(key, std::stod(value));
             }
             else if (type == "BOOL")
             {
@@ -55,7 +55,7 @@ Params::Params(std::string file_name)
                     insertValue = false;
                 }
 
-                add<BOOL>(key, insertValue);
+                add<OPP_BOOL>(key, insertValue);
             }
             else
             {
