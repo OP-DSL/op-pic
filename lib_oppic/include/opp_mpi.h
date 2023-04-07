@@ -206,6 +206,9 @@ typedef op_import_core *op_import_handle;
 /*******************************************************************************
 * Functions declared in opp_mpi_partition.cpp
 *******************************************************************************/
+#if __cplusplus
+extern "C" {
+#endif
 void opp_partition_kway(op_map primary_map);
 void opp_partition_destroy();
 
@@ -220,6 +223,12 @@ void opp_partition_destroy();
 /* static */ void create_imp_list_2(op_set set, int *temp_list, halo_list h_list, int total_size, int *ranks, int *sizes, int ranks_size, int comm_size, int my_rank);
 /* static */ int partition_from_set(op_map map, int my_rank, int comm_size, int **part_range);
 /* static */ int partition_to_set(op_map map, int my_rank, int comm_size, int **part_range);
+#if __cplusplus
+}
+#endif
+
+void opp_sanitize_all_maps();
+void opp_desanitize_all_maps();
 /*******************************************************************************/
 
 /*******************************************************************************

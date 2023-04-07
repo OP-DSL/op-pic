@@ -339,8 +339,14 @@ int oppic_mpi_halo_exchanges(oppic_set set, int nargs, oppic_arg *args)
 //*******************************************************************************
 void opp_partition(op_set prime_set, op_map prime_map, op_dat data)
 {
+    // remove all negative mappings and copy the first mapping of the current element for all negative mappings
+    opp_sanitize_all_maps();
+
     opp_partition_core(prime_set, prime_map, data);
+
+    opp_desanitize_all_maps();
 }
+
 //*******************************************************************************
 void opp_partition_core(op_set prime_set, op_map prime_map, op_dat data)
 {
@@ -371,3 +377,46 @@ void opp_partition_core(op_set prime_set, op_map prime_map, op_dat data)
     printf("Orphan edges: %d\n", ctr);
 }
 
+//*******************************************************************************
+void opp_sanitize_all_maps()
+{
+    for (int i = 0; i < oppic_maps.size(); i++)
+    {
+        oppic_map map = oppic_maps[i];
+
+        if (map->dim == 1) continue;
+
+        for (int n = 0; n < map->from->size; n++)
+        {
+            for (int d = 1; d < map->from->size; d++)
+            {
+                if (map->map[n * map->dim + d] < 0)
+                {
+                    map->map[n * map->dim + d] = map->map[n * map->dim];
+                }
+            }
+        }
+    }
+}
+
+//*******************************************************************************
+void opp_desanitize_all_maps()
+{
+    for (int i = 0; i < oppic_maps.size(); i++)
+    {
+        oppic_map map = oppic_maps[i];
+
+        if (map->dim == 1) continue;
+
+        for (int n = 0; n < map->from->size; n++)
+        {
+            for (int d = 1; d < map->from->size; d++)
+            {
+                if (map->map[n * map->dim + d] == map->map[n * map->dim])
+                {
+                    map->map[n * map->dim + d] = -1;;
+                }
+            }
+        }
+    }
+}

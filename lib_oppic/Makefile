@@ -66,7 +66,7 @@ ifeq ($(HIP), 1)
 	HIP_INC   = -I$(ROCM_INSTALL_DIR)/include -I$(ROCM_THRUST_DIR)/include -I$(ROCM_PRIM_DIR)/include
 endif
 
-OPP_INC    = -I$(OPPIC_PATH)/include
+OPP_INC    = -I$(OPPIC_PATH)/include -I/ext-home/zl/lib/include
 
 .PHONY: clean mklib
 

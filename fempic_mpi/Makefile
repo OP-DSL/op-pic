@@ -67,8 +67,8 @@ ifeq ($(HIP), 1)
 	HIP_INC   = -I$(ROCM_INSTALL_DIR)/include -I$(ROCM_THRUST_DIR)/include -I$(ROCM_PRIM_DIR)/include
 endif
 
-ALL_INC    = -I$(OPPIC_PATH)/include $(PETSC_INC)
-ALL_LIBS   = -L$(OPPIC_PATH)/lib $(PETSC_LIB)
+ALL_INC    = -I$(OPPIC_PATH)/include $(PETSC_INC) -I/ext-home/zl/lib/inclide
+ALL_LIBS   = -L$(OPPIC_PATH)/lib -L/ext-home/zl/lib/lib -lparmetis -lmetis $(PETSC_LIB) 
 
 .PHONY: clean mklib
 
@@ -97,7 +97,7 @@ omp: common
 
 mpi: common
 		 $(CPP) $(CPPFLAGS) -c mpi/mpikernels.cpp -o $(OBJ)/mpikernels.o $(ALL_INC)
-	     $(CPP) $(CPPFLAGS) -o $(BIN)/mpi $(OBJ)/fempic_op.o $(OBJ)/meshes.o $(OBJ)/particles.o $(OBJ)/maths.o $(OBJ)/mpikernels.o $(OBJ)/FESolver.o $(ALL_INC) $(ALL_LIBS) -loppic_mpi
+	     $(CPP) $(CPPFLAGS) -o $(BIN)/mpi $(OBJ)/fempic_op.o $(OBJ)/meshes.o $(OBJ)/particles.o $(OBJ)/maths.o $(OBJ)/mpikernels.o $(OBJ)/FESolver.o  -loppic_mpi $(ALL_INC) $(ALL_LIBS)
 
 cuda: common
 		 $(NVCC) $(NVCCFLAGS) -c cuda/cudakernels.cu -o $(OBJ)/cudakernels.o $(ALL_INC) $(CUDA_INC)

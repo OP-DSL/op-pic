@@ -38,6 +38,8 @@
  *
  * written by: Gihan R. Mudalige, (Started 07-04-2011)
  */
+// export PARMETIS_INSTALL_PATH=$HOME/lib
+// export LD_LIBRARY_PATH=$HOME/lib/lib:$LD_LIBRARY_PATH
 
 // mpi header
 #include <mpi.h>
@@ -50,22 +52,26 @@
 
 #include <opp_mpi.h>
 
-// #include <parmetis.h>
+#include <parmetis.h>
 
-#ifdef PARMETIS_VER_4
+// #ifdef PARMETIS_VER_4
     typedef idx_t idxtype;
-#else
-    typedef int idx_t;
-#endif
-
-
-MPI_Comm OP_PART_WORLD;
+// #else
+//     typedef int idx_t;
+// #endif
 
 //**********************************
 // TODO : Remove these
 double OP_hybrid_balance = 1.0;
-#define real_t int
+#define real_t float
 //**********************************
+
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+MPI_Comm OP_PART_WORLD;
 
 /*******************************************************************************
  * Utility function to find the number of times a value appears in an array
@@ -1726,8 +1732,10 @@ void opp_partition_kway(op_map primary_map)
         printf("ParMETIS_V3_PartKway Output\n");
         printf("-----------------------------------------------------------\n");
     }
-    // ParMETIS_V3_PartKway(vtxdist, xadj, adjncy, NULL, NULL, &wgtflag, &numflag, &ncon, &comm_size_pm, tpwgts, ubvec, 
-    //     options, &edge_cut, partition_pm, &OP_PART_WORLD);
+
+    ParMETIS_V3_PartKway(vtxdist, xadj, adjncy, NULL, NULL, &wgtflag, &numflag, &ncon, &comm_size_pm, tpwgts, ubvec, 
+        options, &edge_cut, partition_pm, &OP_PART_WORLD);
+        
     if (my_rank == MPI_ROOT)
         printf("-----------------------------------------------------------\n");
     free(vtxdist);
@@ -1774,3 +1782,6 @@ void opp_partition_kway(op_map primary_map)
 }
 
 
+#ifdef __cplusplus
+}
+#endif
