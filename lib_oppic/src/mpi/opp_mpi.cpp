@@ -59,7 +59,9 @@ void oppic_init(int argc, char **argv, opp::Params* params)
 //*******************************************************************************
 void oppic_exit() 
 {
-    if (OP_DEBUG) printf("\topp_exit\n");
+    if (OP_DEBUG) opp_printf("oppic_exit", OPP_my_rank, "");
+
+    // MPI_Barrier(MPI_COMM_WORLD);
 
     {   
         opp_halo_destroy(); // free memory allocated to halos and mpi_buffers 
@@ -77,13 +79,17 @@ void oppic_exit()
         // if (OP_export_list)
         //     free(OP_export_list);
     }
+    // if (OP_DEBUG) opp_printf("oppic_exit", OPP_my_rank, "before oppic_exit_core");
 
     // opp_rt_exit();
     oppic_exit_core();
 
-    int flag = 0;
-    MPI_Finalized(&flag);
-    if (!flag)
+    // if (OP_DEBUG) opp_printf("oppic_exit", OPP_my_rank, "after oppic_exit_core");
+
+    // MPI_Barrier(MPI_COMM_WORLD);
+    // int flag = 0;
+    // MPI_Finalized(&flag);
+    // if (!flag)
     {
         MPI_Finalize();
     }
@@ -98,7 +104,11 @@ oppic_set oppic_decl_set(int size, char const *name)
 //****************************************
 oppic_map oppic_decl_map(oppic_set from, oppic_set to, int dim, int *imap, char const *name)
 {
-    return oppic_decl_map_core(from, to, dim, imap, name);
+    oppic_map map = oppic_decl_map_core(from, to, dim, imap, name);
+
+    opp_printf("oppic_decl_map", OPP_my_rank, " map: %s | ptr: %p | dim: %d", map->name, map->map, map->dim);
+
+    return map;
 }
 
 //****************************************
@@ -250,18 +260,18 @@ void oppic_particle_sort(oppic_set set)
     oppic_particle_sort_core(set);
 }
 
-// //****************************************
-// void oppic_print_dat_to_txtfile(oppic_dat dat, const char *file_name_prefix, const char *file_name_suffix)
-// {
-//     std::string prefix = std::string(file_name_prefix) + "_s";
-//     oppic_print_dat_to_txtfile_core(dat, prefix.c_str(), file_name_suffix);
-// }
+//****************************************
+void oppic_print_dat_to_txtfile(oppic_dat dat, const char *file_name_prefix, const char *file_name_suffix)
+{
+    std::string prefix = std::string(file_name_prefix) + "_s";
+    oppic_print_dat_to_txtfile_core(dat, prefix.c_str(), file_name_suffix);
+}
 
-// //****************************************
-// void oppic_print_map_to_txtfile(oppic_map map, const char *file_name_prefix, const char *file_name_suffix)
-// {
-//     oppic_print_map_to_txtfile_core(map, file_name_prefix, file_name_suffix);
-// }
+//****************************************
+void oppic_print_map_to_txtfile(oppic_map map, const char *file_name_prefix, const char *file_name_suffix)
+{
+    oppic_print_map_to_txtfile_core(map, file_name_prefix, file_name_suffix);
+}
 
 // //****************************************
 // void oppic_dump_dat(oppic_dat dat)
@@ -361,7 +371,7 @@ void opp_partition_core(op_set prime_set, op_map prime_map, op_dat data)
         std::cerr << "Partitioning prime_map : NULL - UNSUPPORTED Partitioner Specification" << std::endl;
         exit(-1);
     }
-
+printf("ZZ at partition\n");
     opp_halo_create();
 
     // set_import_buffer_size = (int *)malloc(OP_set_index * sizeof(int));
@@ -374,7 +384,7 @@ void opp_partition_core(op_set prime_set, op_map prime_map, op_dat data)
     {
         if (prime_map->map[2 * i] >= prime_map->to->size && prime_map->map[2 * i + 1] >= prime_map->to->size) ctr++;
     }
-    printf("Orphan edges: %d\n", ctr);
+    opp_printf("opp_partition()", OPP_my_rank, "%s Orphans in prime map [%s]: %d", (ctr > 0) ? "Error: " : "", prime_map->name, ctr);
 }
 
 //*******************************************************************************
@@ -386,17 +396,59 @@ void opp_sanitize_all_maps()
 
         if (map->dim == 1) continue;
 
+        if (OP_DEBUG) opp_printf("opp_sanitize_all_maps", OPP_my_rank, " map: %s | ptr: %p | dim: %d", map->name, map->map, map->dim);
+
         for (int n = 0; n < map->from->size; n++)
         {
-            for (int d = 1; d < map->from->size; d++)
+            int positive_mapping = -1;
+            std::vector<int> index;
+
+            for (int d = 0; d < map->dim; d++)
             {
                 if (map->map[n * map->dim + d] < 0)
                 {
-                    map->map[n * map->dim + d] = map->map[n * map->dim];
+                    index.push_back(n * map->dim + d);
                 }
+                else
+                {
+                    positive_mapping = map->map[n * map->dim + d];
+                }
+            }
+
+            if (positive_mapping >= 0)
+            {
+                for (int i : index)
+                {
+                    map->map[i] = positive_mapping;
+                }
+            }
+            else
+            {
+                opp_printf("opp_sanitize_all_maps", OPP_my_rank, "Error: No positive mapping found at %d in map: %s", n, map->name);
             }
         }
     }
+
+    // if (OP_DEBUG)
+    // {
+    //     for (int i = 0; i < oppic_maps.size(); i++)
+    //     {
+    //         oppic_map map = oppic_maps[i];
+            
+    //         opp_printf("opp_sanitize_all_maps", OPP_my_rank, " map: %s | from->size: %d | dim: %d", map->name, map->from->size, map->dim);
+
+    //         for (int n = 0; n < map->from->size; n++)
+    //         {
+    //             for (int d = 1; d < map->dim; d++)
+    //             {
+    //                 if (map->map[n * map->dim + d] < 0)
+    //                 {
+    //                     opp_printf("opp_sanitize_all_maps", OPP_my_rank, "Error: map: %s | ptr: %p | negative mapping at index: %d [%d]", map->name, map->map, n, n * map->dim + d);
+    //                 }
+    //             }
+    //         }
+    //     }
+    // }
 }
 
 //*******************************************************************************
@@ -408,13 +460,15 @@ void opp_desanitize_all_maps()
 
         if (map->dim == 1) continue;
 
+        //if (OP_DEBUG) opp_printf("opp_desanitize_all_maps", OPP_my_rank, " map: %s | ptr: %p | dim: %d", map->name, map->map, map->dim);
+
         for (int n = 0; n < map->from->size; n++)
         {
-            for (int d = 1; d < map->from->size; d++)
+            for (int d = 1; d < map->dim; d++)
             {
                 if (map->map[n * map->dim + d] == map->map[n * map->dim])
                 {
-                    map->map[n * map->dim + d] = -1;;
+                    map->map[n * map->dim + d] = -1;
                 }
             }
         }

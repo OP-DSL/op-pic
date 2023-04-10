@@ -5,12 +5,10 @@
 #include <cmath>
 #include <sys/queue.h>
 
-#ifdef MPI_ROOT
-    #undef MPI_ROOT
+#ifdef OPP_MPI_ROOT
+    #undef OPP_MPI_ROOT
 #endif
-#define MPI_ROOT 0
-
-
+#define OPP_MPI_ROOT 0
 
 
 
@@ -258,12 +256,12 @@ void create_import_list(op_set set, int *temp_list, halo_list h_list, int total_
 * Inline Utility Functions
 *******************************************************************************/
 
-inline int opp_get_uniform_local_size(int global_size, int mpi_comm_size, int mpi_rank) 
+inline int opp_get_uniform_local_size(int global_size, int rank) 
 {
-    int local_size = global_size / mpi_comm_size;
-    int remainder = (int)fmod(global_size, mpi_comm_size);
+    int local_size = global_size / OPP_comm_size;
+    int remainder = (int)fmod(global_size, OPP_comm_size);
 
-    if (mpi_rank < remainder) 
+    if (rank < remainder) 
     {
         local_size = local_size + 1;
     }
@@ -271,38 +269,37 @@ inline int opp_get_uniform_local_size(int global_size, int mpi_comm_size, int mp
     return local_size;
 }
 
-template <typename T> 
-inline void opp_uniform_scatter_array(T *g_array, T *l_array, int comm_size, int g_size, int l_size, int elem_size) 
+inline int opp_get_uniform_local_size(int global_size) 
 {
-    int *sendcnts = (int *)malloc(comm_size * sizeof(int));
-    int *displs = (int *)malloc(comm_size * sizeof(int));
+    return opp_get_uniform_local_size(global_size, OPP_my_rank);
+}
+
+template <typename T> 
+inline void opp_uniform_scatter_array(T *g_array, T *l_array, int g_size, int l_size, int elem_size) 
+{
+    int *sendcnts = (int *)malloc(OPP_comm_size * sizeof(int));
+    int *displs = (int *)malloc(OPP_comm_size * sizeof(int));
     int disp = 0;
 
-    for (int i = 0; i < comm_size; i++) 
+    for (int i = 0; i < OPP_comm_size; i++) 
     {
-        sendcnts[i] = elem_size * opp_get_uniform_local_size(g_size, comm_size, i);
+        sendcnts[i] = elem_size * opp_get_uniform_local_size(g_size, i) * sizeof(T);
+        //printf("RANK %d %d\t| sendcount %d | %d\n", OPP_my_rank, g_size, sendcnts[i], opp_get_uniform_local_size(g_size, i));
     }
-    for (int i = 0; i < comm_size; i++) 
+    for (int i = 0; i < OPP_comm_size; i++) 
     {
         displs[i] = disp;
         disp = disp + sendcnts[i];
+        //printf("RANK %d %d\t| displs %d\n", OPP_my_rank, g_size, displs[i]);
     }
 
-    MPI_Scatterv((char*)g_array, sendcnts * sizeof(T), displs * sizeof(T), MPI_CHAR, 
-        (char*)l_array, (l_size * elem_size * sizeof(T)), MPI_CHAR, MPI_ROOT, MPI_COMM_WORLD);
+    MPI_Scatterv((char*)g_array, sendcnts, displs, MPI_CHAR, 
+        (char*)l_array, (l_size * elem_size * sizeof(T)), MPI_CHAR, OPP_MPI_ROOT, MPI_COMM_WORLD);
 
     free(sendcnts);
     free(displs);
 }
 
-inline void opp_mpi_printf(char* function, int rank, char *format, ...)
-{
-    va_list args;
-    va_start(args, format);
-    printf("%s[%d] - ", function, rank);
-    vprintf(format, args);
-    va_end(args);
-}
 /*******************************************************************************/
 
 void opp_partition(op_set prime_set, op_map prime_map, op_dat data = NULL);

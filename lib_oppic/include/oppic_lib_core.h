@@ -83,6 +83,8 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
     #define THRUST_INT void
 #endif
 
+#define LOG_STR_LEN 200
+
 //*************************************************************************************************
 enum oppic_iterate_type
 {
@@ -321,4 +323,15 @@ inline void getDatTypeSize(opp_data_type dtype, std::string& type, int& size)
     {
         std::cerr << "Data type in Dat not supported" << std::endl;
     }
+}
+
+inline void opp_printf(char* function, int rank, char *format, ...)
+{
+    char buf[LOG_STR_LEN];
+    va_list args;
+    va_start(args, format);
+    vsnprintf(buf, LOG_STR_LEN, format, args);
+    va_end(args);
+
+    printf("%s[%d] - %s\n", function, rank, buf);
 }

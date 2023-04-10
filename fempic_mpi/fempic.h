@@ -122,10 +122,10 @@ class FieldPointers
         FESolver::Method fesolver_method = FESolver::Method::GaussSeidel;
 };
 
-inline FieldPointers LoadMesh(opp::Params& params, int argc, char **argv)
+inline std::shared_ptr<FieldPointers> LoadMesh(opp::Params& params, int argc, char **argv)
 { TRACE_ME;
 
-    FieldPointers mesh;
+    std::shared_ptr<FieldPointers> mesh(new FieldPointers());
 
     std::shared_ptr<Volume> volume(new Volume());
     if (!LoadVolumeMesh(params.get<OPP_STRING>("global_mesh"), *(volume.get())) ||
@@ -134,135 +134,136 @@ inline FieldPointers LoadMesh(opp::Params& params, int argc, char **argv)
 
     volume->summarize(std::cout);
 
-    mesh.n_nodes         = volume->nodes.size();
-    mesh.n_cells         = volume->elements.size();
-    mesh.n_ifaces        = volume->inlet_faces.size();
+    mesh->n_nodes         = volume->nodes.size();
+    mesh->n_cells         = volume->elements.size();
+    mesh->n_ifaces        = volume->inlet_faces.size();
 
-    mesh.cell_ef         = new double[mesh.n_cells * DIMENSIONS];
-    mesh.cell_to_nodes   = new int[mesh.n_cells * NODES_PER_CELL];
-    mesh.cell_to_cell    = new int[mesh.n_cells * NEIGHBOUR_CELLS];
-    mesh.cell_det        = new double[mesh.n_cells * DET_FIELDS * NEIGHBOUR_CELLS]; // arranged as [alpha,beta,gamma,delta] * 4 neighbours
-    mesh.cell_volume     = new double[mesh.n_cells];
-    mesh.cell_shape_deriv = new double[mesh.n_cells * NODES_PER_CELL*DIMENSIONS]; // arranged as [x,y,z] * 4 neighbours
+    mesh->cell_ef         = new double[mesh->n_cells * DIMENSIONS];
+    mesh->cell_to_nodes   = new int[mesh->n_cells * NODES_PER_CELL];
+    mesh->cell_to_cell    = new int[mesh->n_cells * NEIGHBOUR_CELLS];
+    mesh->cell_det        = new double[mesh->n_cells * DET_FIELDS * NEIGHBOUR_CELLS]; // arranged as [alpha,beta,gamma,delta] * 4 neighbours
+    mesh->cell_volume     = new double[mesh->n_cells];
+    mesh->cell_shape_deriv = new double[mesh->n_cells * NODES_PER_CELL*DIMENSIONS]; // arranged as [x,y,z] * 4 neighbours
 
-    mesh.node_bnd_pot    = new double[mesh.n_nodes];
-    mesh.node_pot        = new double[mesh.n_nodes];
-    mesh.node_ion_den    = new double[mesh.n_nodes];
-    mesh.node_pos        = new double[mesh.n_nodes * DIMENSIONS];
-    mesh.node_volume     = new double[mesh.n_nodes];
+    mesh->node_bnd_pot    = new double[mesh->n_nodes];
+    mesh->node_pot        = new double[mesh->n_nodes];
+    mesh->node_ion_den    = new double[mesh->n_nodes];
+    mesh->node_pos        = new double[mesh->n_nodes * DIMENSIONS];
+    mesh->node_volume     = new double[mesh->n_nodes];
 
-    mesh.iface_to_cell   = new int[mesh.n_ifaces];
-    mesh.iface_to_nodes  = new int[mesh.n_ifaces * DIMENSIONS]; 
-    mesh.iface_v_normal  = new double[mesh.n_ifaces * DIMENSIONS]; 
-    mesh.iface_u_normal  = new double[mesh.n_ifaces * DIMENSIONS]; 
-    mesh.iface_normal    = new double[mesh.n_ifaces * DIMENSIONS]; 
-    mesh.iface_area      = new double[mesh.n_ifaces]; 
-    mesh.iface_inj_part_dist = new int[mesh.n_ifaces];
-    mesh.iface_node_pos  = new double[mesh.n_ifaces * DIMENSIONS]; 
+    mesh->iface_to_cell   = new int[mesh->n_ifaces];
+    mesh->iface_to_nodes  = new int[mesh->n_ifaces * DIMENSIONS]; 
+    mesh->iface_v_normal  = new double[mesh->n_ifaces * DIMENSIONS]; 
+    mesh->iface_u_normal  = new double[mesh->n_ifaces * DIMENSIONS]; 
+    mesh->iface_normal    = new double[mesh->n_ifaces * DIMENSIONS]; 
+    mesh->iface_area      = new double[mesh->n_ifaces]; 
+    mesh->iface_inj_part_dist = new int[mesh->n_ifaces];
+    mesh->iface_node_pos  = new double[mesh->n_ifaces * DIMENSIONS]; 
 
-    for (int n=0; n<mesh.n_nodes; n++)
+    for (int n=0; n<mesh->n_nodes; n++)
     {
         switch (volume->nodes[n].type)
         {
-            case INLET:    mesh.node_bnd_pot[n] = 0; break;                                         /*phi_inlet*/
-            case FIXED:    mesh.node_bnd_pot[n] = -(params.get<OPP_REAL>("wall_potential")); break;     /*fixed phi points*/
-            default:       mesh.node_bnd_pot[n] = 0;                                                /*default*/
+            case INLET:    mesh->node_bnd_pot[n] = 0; break;                                         /*phi_inlet*/
+            case FIXED:    mesh->node_bnd_pot[n] = -(params.get<OPP_REAL>("wall_potential")); break;     /*fixed phi points*/
+            default:       mesh->node_bnd_pot[n] = 0;                                                /*default*/
         }
 
-        mesh.node_pot[n] = 0.0f;
-        mesh.node_ion_den[n] = 0.0f;
+        mesh->node_pot[n] = 0.0f;
+        mesh->node_ion_den[n] = 0.0f;
 
         Node &node = volume->nodes[n];
     
         for (int dim=0; dim<DIMENSIONS; dim++)
-            mesh.node_pos[n * DIMENSIONS + dim] = node.pos[dim];
+            mesh->node_pos[n * DIMENSIONS + dim] = node.pos[dim];
     
-        mesh.node_volume[n]     = node.volume;
+        mesh->node_volume[n]     = node.volume;
     }
 
-    for (int cellID=0; cellID<mesh.n_cells; cellID++)
+    for (int cellID=0; cellID<mesh->n_cells; cellID++)
     {
         Tetra &tet = volume->elements[cellID];
         
         for (int nodeCon=0; nodeCon<NODES_PER_CELL; nodeCon++)
         {
-            mesh.cell_to_nodes[cellID * NODES_PER_CELL + nodeCon] = tet.con[nodeCon];
+            mesh->cell_to_nodes[cellID * NODES_PER_CELL + nodeCon] = tet.con[nodeCon];
 
-            mesh.cell_shape_deriv[cellID * (NODES_PER_CELL*DIMENSIONS) + nodeCon * DIMENSIONS + 0 ] = 0.0;
-            mesh.cell_shape_deriv[cellID * (NODES_PER_CELL*DIMENSIONS) + nodeCon * DIMENSIONS + 1 ] = 0.0;
-            mesh.cell_shape_deriv[cellID * (NODES_PER_CELL*DIMENSIONS) + nodeCon * DIMENSIONS + 2 ] = 0.0;
+            mesh->cell_shape_deriv[cellID * (NODES_PER_CELL*DIMENSIONS) + nodeCon * DIMENSIONS + 0 ] = 0.0;
+            mesh->cell_shape_deriv[cellID * (NODES_PER_CELL*DIMENSIONS) + nodeCon * DIMENSIONS + 1 ] = 0.0;
+            mesh->cell_shape_deriv[cellID * (NODES_PER_CELL*DIMENSIONS) + nodeCon * DIMENSIONS + 2 ] = 0.0;
         }
-        
+// printf("X %d %d %d %d\n", mesh->cell_to_nodes[cellID * NODES_PER_CELL],mesh->cell_to_nodes[cellID * NODES_PER_CELL + 1],
+// mesh->cell_to_nodes[cellID * NODES_PER_CELL + 2],mesh->cell_to_nodes[cellID * NODES_PER_CELL + 3]);        
         for (int cellCon=0; cellCon<NEIGHBOUR_CELLS; cellCon++)
         {
-            mesh.cell_to_cell[cellID * NEIGHBOUR_CELLS + cellCon]     = tet.cell_con[cellCon];
+            mesh->cell_to_cell[cellID * NEIGHBOUR_CELLS + cellCon]     = tet.cell_con[cellCon];
 
-            mesh.cell_det[(cellID * NEIGHBOUR_CELLS + cellCon) * DET_FIELDS + 0] = tet.alpha[cellCon];
-            mesh.cell_det[(cellID * NEIGHBOUR_CELLS + cellCon) * DET_FIELDS + 1] = tet.beta[cellCon];
-            mesh.cell_det[(cellID * NEIGHBOUR_CELLS + cellCon) * DET_FIELDS + 2] = tet.gamma[cellCon];
-            mesh.cell_det[(cellID * NEIGHBOUR_CELLS + cellCon) * DET_FIELDS + 3] = tet.delta[cellCon];
+            mesh->cell_det[(cellID * NEIGHBOUR_CELLS + cellCon) * DET_FIELDS + 0] = tet.alpha[cellCon];
+            mesh->cell_det[(cellID * NEIGHBOUR_CELLS + cellCon) * DET_FIELDS + 1] = tet.beta[cellCon];
+            mesh->cell_det[(cellID * NEIGHBOUR_CELLS + cellCon) * DET_FIELDS + 2] = tet.gamma[cellCon];
+            mesh->cell_det[(cellID * NEIGHBOUR_CELLS + cellCon) * DET_FIELDS + 3] = tet.delta[cellCon];
         }
 
-        mesh.cell_volume[cellID] = tet.volume;
+        mesh->cell_volume[cellID] = tet.volume;
 
-        mesh.cell_ef[cellID * DIMENSIONS + 0] = 0.0;
-        mesh.cell_ef[cellID * DIMENSIONS + 1] = 0.0;
-        mesh.cell_ef[cellID * DIMENSIONS + 2] = 0.0;
+        mesh->cell_ef[cellID * DIMENSIONS + 0] = 0.0;
+        mesh->cell_ef[cellID * DIMENSIONS + 1] = 0.0;
+        mesh->cell_ef[cellID * DIMENSIONS + 2] = 0.0;
     }
 
-    for (int faceID=0; faceID<mesh.n_ifaces; faceID++)
+    for (int faceID=0; faceID<mesh->n_ifaces; faceID++)
     {
         Face &face = volume->inlet_faces[faceID];
         Node &node = volume->nodes[face.con[0]];
 
-        mesh.iface_to_cell[faceID] = face.cell_con;
-        mesh.iface_area[faceID] = face.area;
-        mesh.iface_inj_part_dist[faceID] = 0;
+        mesh->iface_to_cell[faceID] = face.cell_con;
+        mesh->iface_area[faceID] = face.area;
+        mesh->iface_inj_part_dist[faceID] = 0;
 
         for (int dim=0; dim<3; dim++)
         {
-            mesh.iface_to_nodes[faceID * 3 + dim] = face.con[dim]; 
-            mesh.iface_v_normal[faceID * 3 + dim] = face.v[dim];   
-            mesh.iface_u_normal[faceID * 3 + dim] = face.u[dim];   
-            mesh.iface_normal[faceID * 3 + dim]   = face.normal[dim]; 
+            mesh->iface_to_nodes[faceID * 3 + dim] = face.con[dim]; 
+            mesh->iface_v_normal[faceID * 3 + dim] = face.v[dim];   
+            mesh->iface_u_normal[faceID * 3 + dim] = face.u[dim];   
+            mesh->iface_normal[faceID * 3 + dim]   = face.normal[dim]; 
 
-            mesh.iface_node_pos[faceID * 3 + dim] = node.pos[dim];
+            mesh->iface_node_pos[faceID * 3 + dim] = node.pos[dim];
         }
     }
 
-    mesh.solver = std::make_shared<FESolver>(volume, argc, argv);
+    mesh->solver = std::make_shared<FESolver>(volume, argc, argv);
 
-    mesh.solver->phi0 = 0;
-    mesh.solver->n0 = params.get<OPP_REAL>("plasma_den");
-    mesh.solver->kTe = Kb * params.get<OPP_REAL>("electron_temperature");
+    mesh->solver->phi0 = 0;
+    mesh->solver->n0 = params.get<OPP_REAL>("plasma_den");
+    mesh->solver->kTe = Kb * params.get<OPP_REAL>("electron_temperature");
 
-    for (int n = 0; n < mesh.n_nodes; n++) // This g array is a duplicate, can remove and attach node_bnd_pot dat instead
+    for (int n = 0; n < mesh->n_nodes; n++) // This g array is a duplicate, can remove and attach node_bnd_pot dat instead
     {
         switch (volume->nodes[n].type)
         {
-            case INLET:    mesh.solver->g[n] = 0; break;                                         /*phi_inlet*/
-            case FIXED:    mesh.solver->g[n] = -(params.get<OPP_REAL>("wall_potential")); break;     /*fixed phi points*/
-            default:       mesh.solver->g[n] = 0;                                                /*default*/
+            case INLET:    mesh->solver->g[n] = 0; break;                                         /*phi_inlet*/
+            case FIXED:    mesh->solver->g[n] = -(params.get<OPP_REAL>("wall_potential")); break;     /*fixed phi points*/
+            default:       mesh->solver->g[n] = 0;                                                /*default*/
         }
     }
 
-    mesh.solver->startAssembly();
-    mesh.solver->preAssembly();    /*this will form K and F0*/
+    mesh->solver->startAssembly();
+    mesh->solver->preAssembly();    /*this will form K and F0*/
 
-    mesh.solver->summarize(std::cout);
+    mesh->solver->summarize(std::cout);
 
-    if      (std::regex_match(params.get<OPP_STRING>("fesolver_method"), std::regex("nonlinear", std::regex_constants::icase))) mesh.fesolver_method = FESolver::NonLinear;
-    else if (std::regex_match(params.get<OPP_STRING>("fesolver_method"), std::regex("gaussseidel", std::regex_constants::icase))) mesh.fesolver_method = FESolver::GaussSeidel;
-    else if (std::regex_match(params.get<OPP_STRING>("fesolver_method"), std::regex("lapack", std::regex_constants::icase))) mesh.fesolver_method = FESolver::Lapack;
-    else if (std::regex_match(params.get<OPP_STRING>("fesolver_method"), std::regex("petsc", std::regex_constants::icase))) mesh.fesolver_method = FESolver::Petsc;
+    if      (std::regex_match(params.get<OPP_STRING>("fesolver_method"), std::regex("nonlinear", std::regex_constants::icase))) mesh->fesolver_method = FESolver::NonLinear;
+    else if (std::regex_match(params.get<OPP_STRING>("fesolver_method"), std::regex("gaussseidel", std::regex_constants::icase))) mesh->fesolver_method = FESolver::GaussSeidel;
+    else if (std::regex_match(params.get<OPP_STRING>("fesolver_method"), std::regex("lapack", std::regex_constants::icase))) mesh->fesolver_method = FESolver::Lapack;
+    else if (std::regex_match(params.get<OPP_STRING>("fesolver_method"), std::regex("petsc", std::regex_constants::icase))) mesh->fesolver_method = FESolver::Petsc;
 
-    for (int cellID=0; cellID<mesh.n_cells; cellID++)
+    for (int cellID=0; cellID<mesh->n_cells; cellID++)
     {
         for (int nodeCon=0; nodeCon<NODES_PER_CELL; nodeCon++)
         {
-            mesh.cell_shape_deriv[cellID * (NODES_PER_CELL*DIMENSIONS) + nodeCon * DIMENSIONS + 0 ] = mesh.solver->NX[cellID][nodeCon][0];
-            mesh.cell_shape_deriv[cellID * (NODES_PER_CELL*DIMENSIONS) + nodeCon * DIMENSIONS + 1 ] = mesh.solver->NX[cellID][nodeCon][1];
-            mesh.cell_shape_deriv[cellID * (NODES_PER_CELL*DIMENSIONS) + nodeCon * DIMENSIONS + 2 ] = mesh.solver->NX[cellID][nodeCon][2];
+            mesh->cell_shape_deriv[cellID * (NODES_PER_CELL*DIMENSIONS) + nodeCon * DIMENSIONS + 0 ] = mesh->solver->NX[cellID][nodeCon][0];
+            mesh->cell_shape_deriv[cellID * (NODES_PER_CELL*DIMENSIONS) + nodeCon * DIMENSIONS + 1 ] = mesh->solver->NX[cellID][nodeCon][1];
+            mesh->cell_shape_deriv[cellID * (NODES_PER_CELL*DIMENSIONS) + nodeCon * DIMENSIONS + 2 ] = mesh->solver->NX[cellID][nodeCon][2];
         }
     }
 
@@ -271,29 +272,29 @@ inline FieldPointers LoadMesh(opp::Params& params, int argc, char **argv)
     double ion_velocity = params.get<OPP_REAL>("ion_velocity");
     double spwt = params.get<OPP_REAL>("spwt");
 
-    mesh.n_approx_injected = 0;
+    mesh->n_approx_injected = 0;
     double remainder = 0.0;
 
-    for (int faceID=0; faceID<mesh.n_ifaces; faceID++)
+    for (int faceID=0; faceID<mesh->n_ifaces; faceID++)
     {   
         {   // DUPLICATE: This calculation is in kernels
-            double num_per_sec = plasma_den * ion_velocity * mesh.iface_area[faceID];
+            double num_per_sec = plasma_den * ion_velocity * mesh->iface_area[faceID];
             double num_real = num_per_sec * dt;
             double fnum_mp = num_real / spwt + remainder;
             int num_mp = (int)fnum_mp;
             remainder = fnum_mp - num_mp;
-            mesh.n_approx_injected += num_mp;
+            mesh->n_approx_injected += num_mp;
         }
     }
 
-    mesh.n_approx_injected += 100; // Add a few (100) for safety
+    mesh->n_approx_injected += 100; // Add a few (100) for safety
     
-    mesh.dummy_part_random  = new double[mesh.n_approx_injected * 2]; 
+    mesh->dummy_part_random  = new double[mesh->n_approx_injected * 2]; 
 
-    for (int i=0; i<mesh.n_approx_injected; i++)
+    for (int i=0; i<mesh->n_approx_injected; i++)
     {   
-        mesh.dummy_part_random[i * 2 + 0] = rnd();
-        mesh.dummy_part_random[i * 2 + 1] = rnd();
+        mesh->dummy_part_random[i * 2 + 0] = rnd();
+        mesh->dummy_part_random[i * 2 + 1] = rnd();
     }
 
     return mesh;
