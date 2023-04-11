@@ -374,10 +374,6 @@ void opp_partition_core(op_set prime_set, op_map prime_map, op_dat data)
 printf("ZZ at partition\n");
     opp_halo_create();
 
-    // set_import_buffer_size = (int *)malloc(OP_set_index * sizeof(int));
-    // for (int i = 0; i < OP_set_index; i++)
-    //     set_import_buffer_size[i] = 0;
-
     // sanity check to identify if the partitioning results in ophan elements
     int ctr = 0;
     for (int i = 0; i < prime_map->from->size; i++)
@@ -385,6 +381,8 @@ printf("ZZ at partition\n");
         if (prime_map->map[2 * i] >= prime_map->to->size && prime_map->map[2 * i + 1] >= prime_map->to->size) ctr++;
     }
     opp_printf("opp_partition()", OPP_my_rank, "%s Orphans in prime map [%s]: %d", (ctr > 0) ? "Error: " : "", prime_map->name, ctr);
+
+    opp_particle_comm_init(); 
 }
 
 //*******************************************************************************

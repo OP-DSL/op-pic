@@ -88,6 +88,31 @@ class FieldPointers
             dummy_part_random = nullptr;
         }
 
+        inline void CreateMeshArrays()
+        {
+            cell_ef          = new double[n_cells * DIMENSIONS];
+            cell_to_nodes    = new int[n_cells * NODES_PER_CELL];
+            cell_to_cell     = new int[n_cells * NEIGHBOUR_CELLS];
+            cell_det         = new double[n_cells * DET_FIELDS * NEIGHBOUR_CELLS]; // arranged as [alpha,beta,gamma,delta] * 4 neighbours
+            cell_volume      = new double[n_cells];
+            cell_shape_deriv = new double[n_cells * NODES_PER_CELL*DIMENSIONS]; // arranged as [x,y,z] * 4 neighbours
+
+            node_bnd_pot     = new double[n_nodes];
+            node_pot         = new double[n_nodes];
+            node_ion_den     = new double[n_nodes];
+            node_pos         = new double[n_nodes * DIMENSIONS];
+            node_volume      = new double[n_nodes];
+
+            iface_to_cell    = new int[n_ifaces];
+            iface_to_nodes   = new int[n_ifaces * DIMENSIONS]; 
+            iface_v_normal   = new double[n_ifaces * DIMENSIONS]; 
+            iface_u_normal   = new double[n_ifaces * DIMENSIONS]; 
+            iface_normal     = new double[n_ifaces * DIMENSIONS]; 
+            iface_area       = new double[n_ifaces]; 
+            iface_inj_part_dist = new int[n_ifaces];
+            iface_node_pos   = new double[n_ifaces * DIMENSIONS]; 
+        };
+
         int n_nodes;
         int n_cells;
         int n_ifaces;
@@ -138,27 +163,7 @@ inline std::shared_ptr<FieldPointers> LoadMesh(opp::Params& params, int argc, ch
     mesh->n_cells         = volume->elements.size();
     mesh->n_ifaces        = volume->inlet_faces.size();
 
-    mesh->cell_ef         = new double[mesh->n_cells * DIMENSIONS];
-    mesh->cell_to_nodes   = new int[mesh->n_cells * NODES_PER_CELL];
-    mesh->cell_to_cell    = new int[mesh->n_cells * NEIGHBOUR_CELLS];
-    mesh->cell_det        = new double[mesh->n_cells * DET_FIELDS * NEIGHBOUR_CELLS]; // arranged as [alpha,beta,gamma,delta] * 4 neighbours
-    mesh->cell_volume     = new double[mesh->n_cells];
-    mesh->cell_shape_deriv = new double[mesh->n_cells * NODES_PER_CELL*DIMENSIONS]; // arranged as [x,y,z] * 4 neighbours
-
-    mesh->node_bnd_pot    = new double[mesh->n_nodes];
-    mesh->node_pot        = new double[mesh->n_nodes];
-    mesh->node_ion_den    = new double[mesh->n_nodes];
-    mesh->node_pos        = new double[mesh->n_nodes * DIMENSIONS];
-    mesh->node_volume     = new double[mesh->n_nodes];
-
-    mesh->iface_to_cell   = new int[mesh->n_ifaces];
-    mesh->iface_to_nodes  = new int[mesh->n_ifaces * DIMENSIONS]; 
-    mesh->iface_v_normal  = new double[mesh->n_ifaces * DIMENSIONS]; 
-    mesh->iface_u_normal  = new double[mesh->n_ifaces * DIMENSIONS]; 
-    mesh->iface_normal    = new double[mesh->n_ifaces * DIMENSIONS]; 
-    mesh->iface_area      = new double[mesh->n_ifaces]; 
-    mesh->iface_inj_part_dist = new int[mesh->n_ifaces];
-    mesh->iface_node_pos  = new double[mesh->n_ifaces * DIMENSIONS]; 
+    mesh->CreateMeshArrays();
 
     for (int n=0; n<mesh->n_nodes; n++)
     {

@@ -83,7 +83,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
     #define THRUST_INT void
 #endif
 
-#define LOG_STR_LEN 200
+#define LOG_STR_LEN 1000
 
 //*************************************************************************************************
 enum oppic_iterate_type

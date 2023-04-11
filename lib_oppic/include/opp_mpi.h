@@ -308,3 +308,5 @@ void opp_wait_all_particles(oppic_set set);
 bool opp_check_part_need_comm(int map0idx, oppic_set set, int particle_index);
 void opp_exchange_particles(oppic_set set);
 void opp_partition_core(op_set prime_set, op_map prime_map, op_dat data);
+void opp_particle_comm_init();
+void opp_particle_set_comm_init(oppic_set set);

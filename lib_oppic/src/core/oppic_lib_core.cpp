@@ -44,11 +44,11 @@ std::vector<oppic_set> oppic_sets;
 std::vector<oppic_map> oppic_maps;
 std::vector<oppic_dat> oppic_dats;
 
-int OP_hybrid_gpu      = 0;
-int OP_maps_base_index = 0;
-int OP_auto_soa        = 0;
-int OP_part_alloc_mult = 1;
-int OP_auto_sort       = 1;
+int OP_hybrid_gpu           = 0;
+int OP_maps_base_index      = 0;
+int OP_auto_soa             = 0;
+int OP_part_alloc_mult      = 1;
+int OP_auto_sort            = 1;
 int OPP_mpi_part_alloc_mult = 1;
 int OPP_my_rank             = 0;
 int OPP_comm_size           = 1;
@@ -76,7 +76,7 @@ void oppic_init_core(int argc, char **argv, opp::Params* params)
 
 //****************************************
 void oppic_exit_core() 
-{
+{  
     for (auto& a : oppic_maps) {
         free(a->map);
         free(a);
@@ -188,6 +188,12 @@ oppic_map oppic_decl_map_core(oppic_set from, oppic_set to, int dim, int *imap, 
     if (dim <= 0) 
     {
         printf("\toppic_decl_map error -- negative/zero dimension for map %s\n", name);
+        exit(-1);
+    }
+
+    if (from->is_particle || to->is_particle) 
+    {
+        printf("\toppic_decl_map error -- cannot have mappings between a dynamic (particle) set [%s to %s]\n", from->name, to->name);
         exit(-1);
     }
 

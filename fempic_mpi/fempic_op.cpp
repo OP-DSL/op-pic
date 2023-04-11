@@ -81,32 +81,14 @@ opp_printf("XXXXXXXXXX", OPP_my_rank, " 2");
     
     FieldPointers mesh;
 
-        mesh.n_nodes  = opp_get_uniform_local_size(g1_mesh->n_nodes);
-        mesh.n_cells  = opp_get_uniform_local_size(g1_mesh->n_cells);
-        mesh.n_ifaces = opp_get_uniform_local_size(g1_mesh->n_ifaces);
+    mesh.n_nodes  = opp_get_uniform_local_size(g1_mesh->n_nodes);
+    mesh.n_cells  = opp_get_uniform_local_size(g1_mesh->n_cells);
+    mesh.n_ifaces = opp_get_uniform_local_size(g1_mesh->n_ifaces);
 
 opp_printf("opp_get_uniform_local_size", OPP_my_rank, " %d %d %d",mesh.n_nodes,mesh.n_cells,mesh.n_ifaces);
 opp_printf("XXXXXXXXXX", OPP_my_rank, " 3");
 
-        mesh.cell_ef             = new double[mesh.n_cells * DIMENSIONS];
-        mesh.cell_to_nodes       = new int[mesh.n_cells * NODES_PER_CELL];
-        mesh.cell_to_cell        = new int[mesh.n_cells * NEIGHBOUR_CELLS];
-        mesh.cell_det            = new double[mesh.n_cells * DET_FIELDS * NEIGHBOUR_CELLS]; // arranged as [alpha,beta,gamma,delta] * 4 neighbours
-        mesh.cell_volume         = new double[mesh.n_cells];
-        mesh.cell_shape_deriv    = new double[mesh.n_cells * NODES_PER_CELL*DIMENSIONS]; // arranged as [x,y,z] * 4 neighbours
-        mesh.node_bnd_pot        = new double[mesh.n_nodes];
-        mesh.node_pot            = new double[mesh.n_nodes];
-        mesh.node_ion_den        = new double[mesh.n_nodes];
-        mesh.node_pos            = new double[mesh.n_nodes * DIMENSIONS];
-        mesh.node_volume         = new double[mesh.n_nodes];
-        mesh.iface_to_cell       = new int[mesh.n_ifaces];
-        mesh.iface_to_nodes      = new int[mesh.n_ifaces * DIMENSIONS]; 
-        mesh.iface_v_normal      = new double[mesh.n_ifaces * DIMENSIONS]; 
-        mesh.iface_u_normal      = new double[mesh.n_ifaces * DIMENSIONS]; 
-        mesh.iface_normal        = new double[mesh.n_ifaces * DIMENSIONS]; 
-        mesh.iface_area          = new double[mesh.n_ifaces]; 
-        mesh.iface_inj_part_dist = new int[mesh.n_ifaces];
-        mesh.iface_node_pos      = new double[mesh.n_ifaces * DIMENSIONS]; 
+    mesh.CreateMeshArrays();
 
 opp_printf("XXXXXXXXXX", OPP_my_rank, " 4");
 
@@ -183,6 +165,7 @@ opp_printf("XXXXXXXXXX", OPP_my_rank, " 66");
         oppic_dat part_lc              = oppic_decl_particle_dat(particles_set, NODES_PER_CELL, OPP_TYPE_REAL, nullptr, "part_lc");
         oppic_dat part_mesh_relation   = oppic_decl_particle_dat(particles_set, 1,              OPP_TYPE_INT,  nullptr, "part_mesh_relation", true); // new cell index field
 opp_printf("XXXXXXXXXX", OPP_my_rank, " 67");
+    // TODO : Need to enrich mesh.dummy_part_random before using dummy_part
         // oppic_set dummy_part_set       = oppic_decl_particle_set(mesh.n_approx_injected, "dummy particles", cells_set); 
         // oppic_dat dum_part_random      = oppic_decl_dat(dummy_part_set, 2, OPP_TYPE_REAL, (char*)mesh.dummy_part_random, "dum_part_random");
 
@@ -221,7 +204,7 @@ opp_printf("XXXXXXXXXX", OPP_my_rank, " 10");
 
         auto start = std::chrono::system_clock::now();
         auto start_iter1 = std::chrono::system_clock::now();
-
+max_iter = 0;
         for (ts = 0; ts < max_iter; ts++)
         {
             if (ts == 1) start_iter1 = std::chrono::system_clock::now();
