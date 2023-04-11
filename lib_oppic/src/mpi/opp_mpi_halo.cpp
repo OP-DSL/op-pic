@@ -322,6 +322,8 @@ void create_import_list(op_set set, int *temp_list, halo_list h_list, int total_
  *******************************************************************************/
 void opp_halo_create() 
 {
+    opp_printf("opp_halo_create", OPP_my_rank, "start");
+
     // declare timers
     double cpu_t1, cpu_t2, wall_t1, wall_t2;
     double time;
@@ -1239,6 +1241,8 @@ void opp_halo_create()
         printf("Max total halo creation time = %lf\n", max_time);
         printf("Average (worst case) Halo size = %d Bytes\n", avg_halo_size / comm_size);
     }
+
+    opp_printf("opp_halo_create", OPP_my_rank, "end");
 }
 
 /*******************************************************************************

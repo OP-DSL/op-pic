@@ -498,7 +498,7 @@ void oppic_reset_num_particles_to_insert_core(oppic_set set)
 //****************************************
 void oppic_init_particle_move_core(oppic_set set)
 {
-    if (OP_DEBUG) printf("\toppic_init_particle_move_core set [%s]\n", set->name);
+    if (OP_DEBUG) opp_printf("oppic_init_particle_move_core", "set [%s]\n", set->name);
 
     // if (set->particle_statuses) free(set->particle_statuses);
 
@@ -513,7 +513,7 @@ void oppic_mark_particle_to_move_core(oppic_set set, int particle_index, int mov
 {
     if (move_status == (int)OPP_NEED_REMOVE) /*outside the mesh*/
     {  
-        if (OP_DEBUG) printf("\toppic_mark_particle_to_move_core set [%s] particle_index [%d]\n", set->name, particle_index);
+        if (OP_DEBUG) opp_printf("oppic_mark_particle_to_move_core", "set [%s] particle_index [%d]\n", set->name, particle_index);
 
         set->particle_statuses[particle_index] = OPP_NEED_REMOVE;
         (set->particle_remove_count)++;
@@ -527,7 +527,7 @@ void oppic_mark_particle_to_move_core(oppic_set set, int particle_index, int mov
 //****************************************
 void oppic_finalize_particle_move_core(oppic_set set)
 {
-    if (OP_DEBUG) printf("\toppic_finalize_particle_move_core set [%s] size[%d] with particle_remove_count [%d]\n", set->name, set->size, set->particle_remove_count);
+    if (OP_DEBUG) opp_printf("oppic_finalize_particle_move_core", "set [%s] size[%d] with particle_remove_count [%d]", set->name, set->size, set->particle_remove_count);
 
     if (set->particle_remove_count <= 0) return;
 
@@ -556,7 +556,7 @@ void oppic_finalize_particle_move_core(oppic_set set)
                 }
                 if (j >= (set->size - removed_count - skip_count - 1)) 
                 {
-                    if (OP_DEBUG) printf("\toppic_finalize_particle_move_core Current Iteration index [%d] and replacement index %d; hence breaking\n", j, (set->size - removed_count - skip_count - 1));
+                    if (OP_DEBUG) opp_printf("oppic_finalize_particle_move_core", "Current Iteration index [%d] and replacement index %d; hence breaking", j, (set->size - removed_count - skip_count - 1));
                     break;
                 }
 
@@ -576,7 +576,7 @@ void oppic_finalize_particle_move_core(oppic_set set)
     }
     else
     {
-        if (OP_DEBUG) printf("\toppic_finalize_particle_move_core Not processing dats since OP_auto_sort = TRUE\n");
+        if (OP_DEBUG) opp_printf("oppic_finalize_particle_move_core", "Not processing dats since OP_auto_sort = TRUE");
     }
 
     set->size -= set->particle_remove_count;

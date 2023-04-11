@@ -4,6 +4,7 @@
 #include <regex>
 
 #include "opp_params.h"
+#include "oppic_lib_core.h"
 
 using namespace opp;
 
@@ -69,6 +70,8 @@ Params::Params(std::string file_name)
 
 void Params::write(std::ostream &out) {
 
+    if (OPP_my_rank != OPP_MPI_ROOT) return;
+    
     out << std::endl << "SIMULATION PARAMETERS"  << std::endl;
     out << "---------------------" << std::endl;
 

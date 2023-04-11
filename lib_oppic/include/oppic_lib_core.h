@@ -50,6 +50,11 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
     #define OP_DEBUG false
 #endif
 
+#ifdef OPP_MPI_ROOT
+    #undef OPP_MPI_ROOT
+#endif
+#define OPP_MPI_ROOT 0
+
 #define MAX_CELL_INDEX     INT_MAX
 
 #define UNUSED(expr) do { (void)(expr); } while (0)
@@ -334,4 +339,15 @@ inline void opp_printf(char* function, int rank, char *format, ...)
     va_end(args);
 
     printf("%s[%d] - %s\n", function, rank, buf);
+}
+
+inline void opp_printf(char* function, char *format, ...)
+{
+    char buf[LOG_STR_LEN];
+    va_list args;
+    va_start(args, format);
+    vsnprintf(buf, LOG_STR_LEN, format, args);
+    va_end(args);
+
+    printf("%s[%d] - %s\n", function, OPP_my_rank, buf);
 }

@@ -157,7 +157,8 @@ inline std::shared_ptr<FieldPointers> LoadMesh(opp::Params& params, int argc, ch
         !LoadSurfaceMesh(params.get<OPP_STRING>("inlet_mesh"), *(volume.get()),INLET, params.get<OPP_BOOL>("invert_normals")) ||
         !LoadSurfaceMesh(params.get<OPP_STRING>("wall_mesh"), *(volume.get()), FIXED, params.get<OPP_BOOL>("invert_normals"))) return mesh;
 
-    volume->summarize(std::cout);
+    if (OPP_my_rank == OPP_MPI_ROOT)
+        volume->summarize(std::cout);
 
     mesh->n_nodes         = volume->nodes.size();
     mesh->n_cells         = volume->elements.size();
@@ -255,7 +256,8 @@ inline std::shared_ptr<FieldPointers> LoadMesh(opp::Params& params, int argc, ch
     mesh->solver->startAssembly();
     mesh->solver->preAssembly();    /*this will form K and F0*/
 
-    mesh->solver->summarize(std::cout);
+    if (OPP_my_rank == OPP_MPI_ROOT)
+        mesh->solver->summarize(std::cout);
 
     if      (std::regex_match(params.get<OPP_STRING>("fesolver_method"), std::regex("nonlinear", std::regex_constants::icase))) mesh->fesolver_method = FESolver::NonLinear;
     else if (std::regex_match(params.get<OPP_STRING>("fesolver_method"), std::regex("gaussseidel", std::regex_constants::icase))) mesh->fesolver_method = FESolver::GaussSeidel;

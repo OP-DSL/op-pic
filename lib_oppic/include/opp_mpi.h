@@ -5,13 +5,6 @@
 #include <cmath>
 #include <sys/queue.h>
 
-#ifdef OPP_MPI_ROOT
-    #undef OPP_MPI_ROOT
-#endif
-#define OPP_MPI_ROOT 0
-
-
-
 
 
 /** extern variables for halo creation and exchange**/
@@ -93,7 +86,7 @@ struct opp_mpi_part_buffer
 struct opp_all_mpi_part_buffers 
 { 
     int total_recv;
-    std::map<int,opp_mpi_part_buffer> buffers;
+    std::map<int,opp_mpi_part_buffer> buffers; // rank -> opp_mpi_part_buffer
     std::map<int,int> import_counts; // rank -> count
     std::map<int,int> export_counts; // rank -> count
     std::vector<MPI_Request> send_req;

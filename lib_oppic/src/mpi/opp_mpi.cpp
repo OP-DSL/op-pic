@@ -371,7 +371,7 @@ void opp_partition_core(op_set prime_set, op_map prime_map, op_dat data)
         std::cerr << "Partitioning prime_map : NULL - UNSUPPORTED Partitioner Specification" << std::endl;
         exit(-1);
     }
-printf("ZZ at partition\n");
+
     opp_halo_create();
 
     // sanity check to identify if the partitioning results in ophan elements
@@ -383,6 +383,36 @@ printf("ZZ at partition\n");
     opp_printf("opp_partition()", OPP_my_rank, "%s Orphans in prime map [%s]: %d", (ctr > 0) ? "Error: " : "", prime_map->name, ctr);
 
     opp_particle_comm_init(); 
+
+    std::vector<std::vector<int>> set_sizes(oppic_sets.size());
+    for (oppic_set set : oppic_sets)
+    {
+        std::vector<int>& recv_vec = set_sizes[set->index];
+        recv_vec.resize(OPP_comm_size);
+
+        MPI_Gather(&(set->size), 1, MPI_INT, &(recv_vec[0]), 1, MPI_INT, OPP_MPI_ROOT, OP_MPI_WORLD);
+    }
+
+    // print the set sizes of all ranks after partitioning
+    if (OPP_my_rank == OPP_MPI_ROOT)
+    {
+        std::string log = "";
+
+        for (oppic_set set : oppic_sets)
+            log += "\t" + std::string(set->name);
+
+        opp_printf("opp_partition()", OPP_MPI_ROOT, "\t\t\t%s", log.c_str());
+
+        for (int i = 0; i < OPP_comm_size; i++)
+        {
+            log = "RANK [" + std::to_string(i) + "]";
+            
+            for (int j = 0; j < oppic_sets.size(); j++)
+                log += "\t\t\t" + std::to_string(set_sizes[j][i]);
+
+            opp_printf("opp_partition()", OPP_MPI_ROOT, "%s", log.c_str());
+        }
+    }
 }
 
 //*******************************************************************************

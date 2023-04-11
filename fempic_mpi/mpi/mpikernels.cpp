@@ -242,7 +242,8 @@ void oppic_par_loop_particle_all__MoveToCells(
             oppic_finalize_particle_move(set); // Can fill the holes here since the comunicated particles will be added at the end
 
         // check whether every MPI rank says, I am done!, if yes, break this do while
-
+        comm_iteration++;
+        
     } while (true);
 
     // if auto_sort is set and if (comm_iteration != 0), then sort here

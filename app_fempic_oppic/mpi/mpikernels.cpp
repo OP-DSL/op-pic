@@ -158,12 +158,9 @@ void oppic_par_loop_particle_all__MoveToCells(
     int comm_iteration = 0;
     int start = 0;
     int end = set->size;
-    bool decode_comm_buffer = false;
 
     do
     {   
-        oppic_init_particle_move(set);
-
         if (comm_iteration != 0)
         {
             if (opp_check_all_done(set))
@@ -179,6 +176,8 @@ void oppic_par_loop_particle_all__MoveToCells(
                 end = set->size;
             }
         }
+
+        oppic_init_particle_move(set);
 
         for (int i = start; i < end; i++)
         {        
@@ -238,10 +237,8 @@ void oppic_par_loop_particle_all__MoveToCells(
         // send the counts and send the particles  
         opp_exchange_particles(set);   
 
-        if (comm_iteration == 0) 
+        if (comm_iteration == 0) // should remove this if and simply call oppic_finalize_particle_move, if multiple hops over multiple mpi ranks is expected
             oppic_finalize_particle_move(set); // Can fill the holes here since the comunicated particles will be added at the end
-
-        // check whether every MPI rank says, I am done!, if yes, break this do while
 
     } while (true);
 

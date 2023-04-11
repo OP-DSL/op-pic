@@ -991,6 +991,9 @@ MPI_Comm OP_PART_WORLD;
     for (int s = 0; s < OP_set_index; s++) 
     { // for each set
         op_set set = OP_set_list[s];
+
+        if (set->is_particle) continue;
+
         part p = OP_part_list[set->index];
 
         // create a temporaty scratch space to hold export list for this set's partition information
@@ -1024,7 +1027,9 @@ MPI_Comm OP_PART_WORLD;
     for (int s = 0; s < OP_set_index; s++)  // for each set
     { 
         op_set set = OP_set_list[s];
-
+        
+        if (set->is_particle) continue;
+        
         halo_list exp = pe_list[set->index];
 
         //-----Discover neighbors-----
@@ -1078,6 +1083,8 @@ MPI_Comm OP_PART_WORLD;
     for (int s = 0; s < OP_set_index; s++)  // for each set
     {    
         op_set set = OP_set_list[s];
+
+        if (set->is_particle) continue;
 
         halo_list imp = pi_list[set->index];
         halo_list exp = pe_list[set->index];
@@ -1157,6 +1164,8 @@ MPI_Comm OP_PART_WORLD;
     {
         op_set set = OP_set_list[s];
 
+        if (set->is_particle) continue;
+
         halo_list imp = pi_list[set->index];
         halo_list exp = pe_list[set->index];
 
@@ -1233,6 +1242,8 @@ MPI_Comm OP_PART_WORLD;
     for (int s = 0; s < OP_set_index; s++) 
     { // for each set
         op_set set = OP_set_list[s];
+
+        if (set->is_particle) continue;
 
         halo_list imp = pi_list[set->index];
         halo_list exp = pe_list[set->index];
@@ -1316,6 +1327,9 @@ MPI_Comm OP_PART_WORLD;
     for (int k = 0; k < OP_dat_index; k++)
     {
         op_dat dat = OP_dat_list[k];
+
+        if (dat->set->is_particle) continue;
+
         dat->set = OP_set_list[dat->set->index];
     }
 
@@ -1324,6 +1338,8 @@ MPI_Comm OP_PART_WORLD;
     for (int s = 0; s < OP_set_index; s++) // for each set
     { 
         op_set set = OP_set_list[s];
+
+        if (set->is_particle) continue;
 
         // first ... data on this set
         for (int k = 0; k < OP_dat_index; k++)
@@ -1366,6 +1382,9 @@ MPI_Comm OP_PART_WORLD;
     for (int s = 0; s < OP_set_index; s++)  // for each set
     { 
         op_set set = OP_set_list[s];
+
+        if (set->is_particle) continue;
+
         free(pe_list[set->index]->ranks);
         free(pe_list[set->index]->disps);
         free(pe_list[set->index]->sizes);
@@ -1409,7 +1428,9 @@ void opp_partition_kway(op_map primary_map)
         std::cerr << "from set == to set in provided primary map: " << primary_map->name << std::endl;
         return;
     }
-printf("ZZ1 at partition\n");
+
+    opp_printf("opp_partition_kway", OPP_my_rank, "start");
+
     // declare timers
     double cpu_t1, cpu_t2, wall_t1, wall_t2, time, max_time;
 
@@ -1787,6 +1808,8 @@ printf("ZZ at STEP 7\n");
     if (my_rank == OPP_MPI_ROOT) printf("Max total Kway partitioning time = %lf\n", max_time);
 
     free(request_send);
+
+    opp_printf("opp_partition_kway", OPP_my_rank, "end");
 }
 
 

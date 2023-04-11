@@ -13,6 +13,20 @@ void opp_pack_particle(oppic_set set, int index, int send_rank)
     if (OP_DEBUG) opp_printf("opp_pack_particle", OPP_my_rank, " set %s | index %d | send_rank %d", set->name, index, send_rank);
 
     opp_all_mpi_part_buffers* send_buffers = (opp_all_mpi_part_buffers*)set->mpi_part_buffers;
+
+    // check whether send_rank is a neighbour or not
+    if (OP_DEBUG)
+    {
+// for (int i : send_buffers->neighbours)
+//     opp_printf("SSSSS", OPP_my_rank, "size %d SSSSSSS %d", send_buffers->neighbours.size(), i);
+        if (std::find(send_buffers->neighbours.begin(), send_buffers->neighbours.end(), send_rank) == send_buffers->neighbours.end())
+        {
+            opp_printf("opp_pack_particle", OPP_my_rank, "Error: send_rank %d is not a neighbour, cannot send index %d of set %s",
+                send_rank, index, set->name);
+            MPI_Abort(OP_MPI_WORLD, 1);
+        }
+    }
+
     opp_mpi_part_buffer& send_rank_buffer = send_buffers->buffers[send_rank];
 
     // resize the export buffer if required
@@ -47,7 +61,7 @@ void opp_pack_particle(oppic_set set, int index, int send_rank)
     send_rank_buffer.buf_export_index += set->particle_size;
     (send_buffers->export_counts)[send_rank] += 1;
 
-    if (OP_DEBUG) opp_printf("opp_pack_particle", OPP_my_rank, " end");
+    if (OP_DEBUG) opp_printf("opp_pack_particle", OPP_my_rank, " end send_rank %d exp count %d", send_rank, (send_buffers->export_counts)[send_rank]);
 }
 
 //*******************************************************************************
@@ -105,7 +119,7 @@ bool opp_check_part_need_comm(int map0idx, oppic_set set, int particle_index)
 {
     if (map0idx >= set->cells_set->size)
     {
-        // map0idx cell is not owned by the current mpi rank, need to communicate
+        // map0idx cell is not owned by the current mpi rank (it is in the import exec halo region), need to communicate
 
         std::map<int, opp_particle_comm_data>& set_part_com_data = opp_part_comm_neighbour_data[set->index];
 
@@ -122,7 +136,10 @@ bool opp_check_part_need_comm(int map0idx, oppic_set set, int particle_index)
         // change the cell_index to reflect the correct neighbour ranks local cell index before packing
         ((int*)set->mesh_relation_dat->data)[particle_index] = comm_data.local_index;
 
+        // if (OP_DEBUG) opp_printf("opp_check_part_need_comm", OPP_my_rank, "Packing particle at index %d to be sent to rank %d", particle_index, comm_data.cell_residing_rank);
         opp_pack_particle(set, particle_index, comm_data.cell_residing_rank);
+
+        return true;
     }
 
     // map0idx is an own cell
@@ -132,24 +149,35 @@ bool opp_check_part_need_comm(int map0idx, oppic_set set, int particle_index)
 //*******************************************************************************
 void opp_exchange_particles(oppic_set set)
 {
-    if (OP_DEBUG) opp_printf("opp_exchange_particles", OPP_my_rank, " set %s", set->name);
+    if (OP_DEBUG) opp_printf("opp_exchange_particles", OPP_my_rank, " set %s - particle size", set->name, set->particle_size);
 
-    int particle_size = set->particle_size;
+opp_printf("opp_exchange_particles X1", OPP_my_rank, " set %s", set->name);
+    int particle_size = set->particle_size;opp_printf("opp_exchange_particles 1", OPP_my_rank, " set %s", set->name);
     opp_all_mpi_part_buffers* mpi_buffers = (opp_all_mpi_part_buffers*)set->mpi_part_buffers;
+
+opp_printf("opp_exchange_particles X2", OPP_my_rank, " set %s", set->name);
     std::vector<int>& neighbours = mpi_buffers->neighbours;
     int neighbour_count = neighbours.size();
+
+    opp_printf("opp_exchange_particles X3", OPP_my_rank, " set %s  NNNNNNN %d", set->name, neighbour_count);
     mpi_buffers->total_recv = 0;
-    
-    std::vector<MPI_Status> status(neighbour_count);
 
-    std::vector<MPI_Request> send_req_countEx(neighbour_count);
-    std::vector<MPI_Request> recv_req_countEx(neighbour_count);
+ opp_printf("opp_exchange_particles X4", OPP_my_rank, " set %s", set->name);   
 
+    // for (auto it = mpi_buffers->export_counts.begin(); it != mpi_buffers->export_counts.end(); it++) it->second = 0;
+    for (auto it = mpi_buffers->import_counts.begin(); it != mpi_buffers->import_counts.end(); it++) it->second = 0;
+
+opp_printf("opp_exchange_particles 1", OPP_my_rank, " set %s", set->name);
     mpi_buffers->recv_req.clear();
     mpi_buffers->send_req.clear();
+ opp_printf("opp_exchange_particles X5", OPP_my_rank, " set %s", set->name); 
 
-    for (auto it = mpi_buffers->export_counts.begin(); it != mpi_buffers->export_counts.end(); it++) it->second = 0;
-    for (auto it = mpi_buffers->import_counts.begin(); it != mpi_buffers->import_counts.end(); it++) it->second = 0;
+  MPI_Request *send_req_countEx = (MPI_Request *)malloc(neighbour_count * sizeof(MPI_Request));
+  MPI_Request *recv_req_countEx = (MPI_Request *)malloc(neighbour_count * sizeof(MPI_Request));
+
+    // std::vector<MPI_Request> send_req_countEx(neighbour_count);
+    // std::vector<MPI_Request> recv_req_countEx(neighbour_count);
+ opp_printf("opp_exchange_particles X6", OPP_my_rank, " set %s", set->name); 
 
     // send/receive send_counts to/from only to neighbours
     for (int i = 0; i < neighbour_count; i++)
@@ -163,6 +191,7 @@ void opp_exchange_particles(oppic_set set)
         MPI_Irecv(&recv_count, 1, MPI_INT, neighbour_rank, MPI_COUNT_EXCHANGE, OP_MPI_WORLD, &(recv_req_countEx[i]));
     }
 
+opp_printf("opp_exchange_particles 3", OPP_my_rank, " set %s", set->name);
     // send the particle data only to neighbours
     for (int i = 0; i < neighbour_count; i++)
     {
@@ -171,20 +200,33 @@ void opp_exchange_particles(oppic_set set)
 
         if (send_size <= 0)
         {
-            if (OP_DEBUG) printf("\topp_exchange_particles nothing to send to rank %d\n", neighbour_rank);
+            if (OP_DEBUG) opp_printf("opp_exchange_particles", "nothing to send to rank %d\n", neighbour_rank);
             continue;
+        }
+        else
+        {   
+            if (OP_DEBUG) opp_printf("opp_exchange_particles", "sending %d particle/s to rank %d\n", 
+                (send_size/ set->particle_size), neighbour_rank);
         }
 
         char* send_buffer = mpi_buffers->buffers[neighbour_rank].buf_export;
         
+        opp_printf("opp_exchange_particles 4", OPP_my_rank, " ZZZ set %s", set->name);
+
         MPI_Request req;
         MPI_Isend(&send_buffer, send_size, MPI_CHAR, neighbour_rank, MPI_PARTICLE_EXCHANGE, OP_MPI_WORLD, &req);
-        mpi_buffers->send_req.push_back(req);
+        opp_printf("opp_exchange_particles 4", OPP_my_rank, " HERE set %s", set->name);
+        // mpi_buffers->send_req.push_back(req);
     }
+opp_printf("opp_exchange_particles 4", OPP_my_rank, " set %s", set->name);
+
+    // std::vector<MPI_Status> status(neighbour_count);
+  MPI_Status *status = (MPI_Status *)malloc(neighbour_count * sizeof(MPI_Status));
+opp_printf("opp_exchange_particles 2", OPP_my_rank, " set %s", set->name);
 
     // wait for the counts to receive only from neighbours
     MPI_Waitall(neighbour_count, &recv_req_countEx[0], &status[0]);
-
+opp_printf("opp_exchange_particles 5", OPP_my_rank, " set %s", set->name);
     // create/resize data structures and receive particle data from neighbours
     for (int i = 0; i < neighbour_count; i++)
     {
@@ -194,7 +236,7 @@ void opp_exchange_particles(oppic_set set)
 
         if (recv_size <= 0)
         {
-            if (OP_DEBUG) printf("\topp_exchange_particles nothing to receive from rank %d\n", neighbour_rank);
+            if (OP_DEBUG) printf("opp_exchange_particles", "nothing to receive from rank %d\n", neighbour_rank);
             continue;
         }
 
@@ -244,10 +286,12 @@ void opp_wait_all_particles(oppic_set set)
 //*******************************************************************************
 bool opp_check_all_done(oppic_set set)
 {
-    if (OP_DEBUG) opp_printf("opp_check_all_done", OPP_my_rank, " start");
+    if (OP_DEBUG) opp_printf("opp_check_all_done", " start");
 
     opp_all_mpi_part_buffers* mpi_buffers = (opp_all_mpi_part_buffers*)set->mpi_part_buffers;
     bool imported_parts = (mpi_buffers->total_recv != 0);
+
+    opp_printf("opp_check_all_done", OPP_my_rank, "MY %s %d", imported_parts ? "TRUE" : "FALSE", mpi_buffers->total_recv);
 
     bool bool_ret = false;
     bool* buffer_recv = (bool *)malloc(OPP_comm_size * sizeof(bool));
@@ -263,9 +307,24 @@ bool opp_check_all_done(oppic_set set)
         if (OP_DEBUG) log += (buffer_recv[i] ? "true " : " false");
     }
 
-    if (OP_DEBUG) opp_printf("opp_check_all_done", OPP_my_rank, " end %s", log.c_str());
+    if (OP_DEBUG) opp_printf("opp_check_all_done", " end %s", log.c_str());
 
     return bool_ret;
+}
+
+//*******************************************************************************
+void opp_particle_comm_init()
+{
+    if (OP_DEBUG) opp_printf("opp_particle_comm_init", OPP_my_rank, " start");
+
+    for (oppic_set& set : oppic_sets)
+    {
+        if (!set->is_particle) continue;
+
+        opp_particle_set_comm_init(set);
+    }
+
+    if (OP_DEBUG) opp_printf("opp_particle_comm_init", OPP_my_rank, " end");
 }
 
 //*******************************************************************************
@@ -358,20 +417,43 @@ void opp_particle_set_comm_init(oppic_set set)
         }
     }  
 
-    if (OP_DEBUG) opp_printf("opp_particle_set_comm_init", OPP_my_rank, "set: %s END", set->name); 
-}
+    // create communication buffers in set
+    opp_all_mpi_part_buffers* mpi_buffers = new opp_all_mpi_part_buffers();
+    
+    mpi_buffers->total_recv = 0;
+    mpi_buffers->send_req.clear();
+    mpi_buffers->recv_req.clear();
 
-//*******************************************************************************
-void opp_particle_comm_init()
-{
-    if (OP_DEBUG) opp_printf("opp_particle_comm_init", OPP_my_rank, " start");
-
-    for (oppic_set& set : oppic_sets)
+    for (int i = 0; i < imp_exec_list->ranks_size; i++) 
     {
-        if (!set->is_particle) continue;
+        mpi_buffers->neighbours.push_back(imp_exec_list->ranks[i]);
+opp_printf("opp_particle_set_comm_init", OPP_my_rank, "XXX %d", mpi_buffers->neighbours[mpi_buffers->neighbours.size()-1]);
+        mpi_buffers->import_counts[imp_exec_list->ranks[i]] = 0;
 
-        opp_particle_set_comm_init(set);
+        opp_mpi_part_buffer& part_buffer = mpi_buffers->buffers[i];
+        part_buffer.buf_import           = nullptr;
+        part_buffer.buf_import_capacity  = -1;
+        part_buffer.buf_import_index     = 0;
     }
 
-    if (OP_DEBUG) opp_printf("opp_particle_comm_init", OPP_my_rank, " end");
+    for (int i = 0; i < exp_exec_list->ranks_size; i++) 
+    {
+        if (std::find(mpi_buffers->neighbours.begin(), mpi_buffers->neighbours.end(), exp_exec_list->ranks[i]) == mpi_buffers->neighbours.end())
+        {
+            opp_printf("opp_particle_set_comm_init", OPP_my_rank, "UNLIKELY %d is on export list, but not on import list of set %s", 
+                exp_exec_list->ranks[i], set->name); 
+            mpi_buffers->neighbours.push_back(exp_exec_list->ranks[i]);
+        }
+
+        mpi_buffers->export_counts[exp_exec_list->ranks[i]] = 0;
+
+        opp_mpi_part_buffer& part_buffer = mpi_buffers->buffers[i];
+        part_buffer.buf_export           = nullptr;
+        part_buffer.buf_export_capacity  = -1;
+        part_buffer.buf_export_index     = 0;
+    }
+
+    set->mpi_part_buffers = (void*)mpi_buffers;
+
+    if (OP_DEBUG) opp_printf("opp_particle_set_comm_init", OPP_my_rank, "set: %s END", set->name); 
 }
