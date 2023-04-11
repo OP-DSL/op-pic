@@ -30,9 +30,9 @@ ifeq ($(DEBUG), 1)
 	HIPCCFLAGS += -O0 -g -lineinfo
 	DEBUG_LOG   = 1
 else
-	CPPFLAGS   += -O3 
-	NVCCFLAGS  += -O3
-	HIPCCFLAGS += -O3
+	CPPFLAGS   += -O3 -g
+	NVCCFLAGS  += -O3 -g
+	HIPCCFLAGS += -O3 -g
 endif
 
 IEEE ?= 0

@@ -140,23 +140,23 @@ opp_printf("main()", OPP_my_rank, " starting to decl opp structs: nodes:%d cells
         int pcount = 20;
         double* arr_part_position    = new double[pcount * DIMENSIONS];
         double* arr_part_velocity    = new double[pcount * DIMENSIONS];
-        int* arr_part_lc          = new int[pcount * NODES_PER_CELL];
+        int* arr_part_lc             = new int[pcount * NODES_PER_CELL];
         int* arr_part_mesh_relation  = new int[pcount];
 
         for (int z = 0; z < pcount; z++)
         {
-            arr_part_position[z * DIMENSIONS + 0] = OPP_my_rank * 1000 + z * DIMENSIONS + 0;
-            arr_part_position[z * DIMENSIONS + 1] = OPP_my_rank * 1000 + z * DIMENSIONS + 1;
-            arr_part_position[z * DIMENSIONS + 2] = OPP_my_rank * 1000 + z * DIMENSIONS + 2;
+            arr_part_position[z * DIMENSIONS + 0] = (OPP_my_rank+1) * 1000 + z * 10 + 0;
+            arr_part_position[z * DIMENSIONS + 1] = (OPP_my_rank+1) * 1000 + z * 10 + 1;
+            arr_part_position[z * DIMENSIONS + 2] = (OPP_my_rank+1) * 1000 + z * 10 + 2;
 
-            arr_part_velocity[z * DIMENSIONS + 0] = OPP_my_rank * 10000 + z * DIMENSIONS + 0;
-            arr_part_velocity[z * DIMENSIONS + 1] = OPP_my_rank * 10000 + z * DIMENSIONS + 1;
-            arr_part_velocity[z * DIMENSIONS + 2] = OPP_my_rank * 10000 + z * DIMENSIONS + 2;
+            arr_part_velocity[z * DIMENSIONS + 0] = (OPP_my_rank+1) * 10000 + z * 10 + 0;
+            arr_part_velocity[z * DIMENSIONS + 1] = (OPP_my_rank+1) * 10000 + z * 10 + 1;
+            arr_part_velocity[z * DIMENSIONS + 2] = (OPP_my_rank+1) * 10000 + z * 10 + 2;
 
-            arr_part_lc[z * DIMENSIONS + 0] = OPP_my_rank * 100000 + z * DIMENSIONS + 0;
-            arr_part_lc[z * DIMENSIONS + 1] = OPP_my_rank * 100000 + z * DIMENSIONS + 1;
-            arr_part_lc[z * DIMENSIONS + 2] = OPP_my_rank * 100000 + z * DIMENSIONS + 2;
-            arr_part_lc[z * DIMENSIONS + 3] = OPP_my_rank * 100000 + z * DIMENSIONS + 3;
+            arr_part_lc[z * NODES_PER_CELL + 0] = (OPP_my_rank+1) * 100000 + z * 10 + 0;
+            arr_part_lc[z * NODES_PER_CELL + 1] = (OPP_my_rank+1) * 100000 + z * 10 + 1;
+            arr_part_lc[z * NODES_PER_CELL + 2] = (OPP_my_rank+1) * 100000 + z * 10 + 2;
+            arr_part_lc[z * NODES_PER_CELL + 3] = (OPP_my_rank+1) * 100000 + z * 10 + 3;
 
             arr_part_mesh_relation[z] = ((z*873 +1) % mesh.n_cells);
         }
@@ -196,22 +196,27 @@ opp_printf("XXXXXXXXXX", OPP_my_rank, " 67");
         // oppic_dat dum_part_random      = oppic_decl_dat(dummy_part_set, 2, OPP_TYPE_REAL, (char*)mesh.dummy_part_random, "dum_part_random");
 
 opp_printf("XXXXXXXXXX", OPP_my_rank, " 9");
-// {
-//     std::string f = std::string("B_") + std::to_string(OPP_my_rank);
-//     oppic_print_map_to_txtfile(cell_to_nodes_map  , f.c_str(), "cell_to_nodes_map.dat");
-//     oppic_print_map_to_txtfile(cell_to_cell_map   , f.c_str(), "cell_to_cell_map.dat");
-//     oppic_print_map_to_txtfile(iface_to_cell_map  , f.c_str(), "iface_to_cell_map.dat");
+{
+    std::string f = std::string("B_") + std::to_string(OPP_my_rank);
+    // oppic_print_map_to_txtfile(cell_to_nodes_map  , f.c_str(), "cell_to_nodes_map.dat");
+    // oppic_print_map_to_txtfile(cell_to_cell_map   , f.c_str(), "cell_to_cell_map.dat");
+    // oppic_print_map_to_txtfile(iface_to_cell_map  , f.c_str(), "iface_to_cell_map.dat");
 
-//     oppic_print_dat_to_txtfile(node_charge_density, f.c_str(), "node_charge_density.dat");
-//     oppic_print_dat_to_txtfile(node_potential     , f.c_str(), "node_potential.dat");
-//     oppic_print_dat_to_txtfile(cell_electric_field, f.c_str(), "cell_electric_field.dat");
+    // oppic_print_dat_to_txtfile(node_charge_density, f.c_str(), "node_charge_density.dat");
+    // oppic_print_dat_to_txtfile(node_potential     , f.c_str(), "node_potential.dat");
+    // oppic_print_dat_to_txtfile(cell_electric_field, f.c_str(), "cell_electric_field.dat");
 
-//     oppic_print_dat_to_txtfile(iface_v_normal,      f.c_str(), "iface_v_normal.dat");
-//     oppic_print_dat_to_txtfile(iface_u_normal,      f.c_str(), "iface_u_normal.dat");
-//     oppic_print_dat_to_txtfile(iface_normal,        f.c_str(), "iface_normal.dat");
-//     oppic_print_dat_to_txtfile(iface_area,          f.c_str(), "iface_area.dat");
-//     oppic_print_dat_to_txtfile(iface_inj_part_dist, f.c_str(), "iface_inj_part_dist.dat");
-// }
+    // oppic_print_dat_to_txtfile(iface_v_normal,      f.c_str(), "iface_v_normal.dat");
+    // oppic_print_dat_to_txtfile(iface_u_normal,      f.c_str(), "iface_u_normal.dat");
+    // oppic_print_dat_to_txtfile(iface_normal,        f.c_str(), "iface_normal.dat");
+    // oppic_print_dat_to_txtfile(iface_area,          f.c_str(), "iface_area.dat");
+    // oppic_print_dat_to_txtfile(iface_inj_part_dist, f.c_str(), "iface_inj_part_dist.dat");
+
+    oppic_print_dat_to_txtfile(part_position     , f.c_str(), "part_position.dat");
+    oppic_print_dat_to_txtfile(part_velocity     , f.c_str(), "part_velocity.dat");
+    oppic_print_dat_to_txtfile(part_lc           , f.c_str(), "part_lc.dat");
+    oppic_print_dat_to_txtfile(part_mesh_relation, f.c_str(), "part_mesh_relation.dat");
+}
 
         oppic_decl_const<double>(1, &spwt,         "CONST_spwt");
         oppic_decl_const<double>(1, &ion_velocity, "CONST_ion_velocity");
@@ -230,9 +235,9 @@ opp_printf("XXXXXXXXXX", OPP_my_rank, " 10");
 
 {
     std::string f = std::string("A_") + std::to_string(OPP_my_rank);
-    oppic_print_map_to_txtfile(cell_to_nodes_map  , f.c_str(), "cell_to_nodes_map.dat");
-    oppic_print_map_to_txtfile(cell_to_cell_map   , f.c_str(), "cell_to_cell_map.dat");
-    oppic_print_map_to_txtfile(iface_to_cell_map  , f.c_str(), "iface_to_cell_map.dat");
+    // oppic_print_map_to_txtfile(cell_to_nodes_map  , f.c_str(), "cell_to_nodes_map.dat");
+    // oppic_print_map_to_txtfile(cell_to_cell_map   , f.c_str(), "cell_to_cell_map.dat");
+    // oppic_print_map_to_txtfile(iface_to_cell_map  , f.c_str(), "iface_to_cell_map.dat");
 
     // oppic_print_dat_to_txtfile(node_charge_density, f.c_str(), "node_charge_density.dat");
     // oppic_print_dat_to_txtfile(node_potential     , f.c_str(), "node_potential.dat");
@@ -258,11 +263,14 @@ opp_printf("XXXXXXXXXX", OPP_my_rank, " 10");
 
     do
     {   
+        opp_printf("Main()", "Starting iteration %d", comm_iteration);
+
         if (comm_iteration != 0)
         {
             if (opp_check_all_done(set))
             {
                 // all mpi ranks do not have anything to communicate to any rank
+                opp_printf("AM I DONE? YESS", "");
                 break;
             }
             else
@@ -280,13 +288,15 @@ opp_printf("XXXXXXXXXX", OPP_my_rank, " 10");
         {        
             opp_move_var m;
 
+            opp_printf("Main()", " Iter index %d", i);
+
             do
             { 
                 int& map0idx      = mesh_relation_data[i];
 
-                if (OPP_my_rank == 0 && i == 2)
+                if (OPP_my_rank == 0 && i == 2 && comm_iteration==0)
                 {
-                    opp_printf("ZZZZZZZZZZZZZZZZZZZZZ", OPP_my_rank, "3468");
+                    opp_printf("ZZZZZZZZZZZZZZZZZZZZZ", "3468");
                     ((int*)part_mesh_relation->data)[i] = 3862;
                     m.OPP_move_status = OPP_NEED_MOVE;
                 }
@@ -323,16 +333,14 @@ opp_printf("XXXXXXXXXX", OPP_my_rank, " 10");
 
 
 
+{
+    std::string f = std::string("E_") + std::to_string(OPP_my_rank);
 
-
-
-
-
-
-
-
-
-
+    oppic_print_dat_to_txtfile(part_position     , f.c_str(), "part_position.dat");
+    oppic_print_dat_to_txtfile(part_velocity     , f.c_str(), "part_velocity.dat");
+    oppic_print_dat_to_txtfile(part_lc           , f.c_str(), "part_lc.dat");
+    oppic_print_dat_to_txtfile(part_mesh_relation, f.c_str(), "part_mesh_relation.dat");
+}
 
 
 
@@ -349,7 +357,7 @@ opp_printf("XXXXXXXXXX", OPP_my_rank, " 11");
 
         auto start = std::chrono::system_clock::now();
         auto start_iter1 = std::chrono::system_clock::now();
-max_iter = 2;
+max_iter = 0;
         for (ts = 0; ts < max_iter; ts++)
         {
             if (ts == 1) start_iter1 = std::chrono::system_clock::now();
@@ -438,7 +446,8 @@ max_iter = 2;
 
         std::chrono::duration<double> diff   = std::chrono::system_clock::now() - start;
         std::chrono::duration<double> diff_1 = std::chrono::system_clock::now() - start_iter1;
-        std::cout << "\nFEMPIC - Time to iterate ts=" << max_iter << " <sec>: " << diff.count() << " and (ts-1) <sec>:" << diff_1.count() << "\n\n";
+        opp_printf("FEMPIC", "Time to iterate ts=%d <sec>: ", max_iter);
+        // std::cout << "\nFEMPIC - Time to iterate ts=" << max_iter << " <sec>: " << diff.count() << " and (ts-1) <sec>:" << diff_1.count() << "\n\n";
 
         oppic_exit();
     // } // End Scope for oppic

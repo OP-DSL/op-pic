@@ -243,7 +243,7 @@ void oppic_par_loop_particle_all__MoveToCells(
 
         // check whether every MPI rank says, I am done!, if yes, break this do while
         comm_iteration++;
-        
+
     } while (true);
 
     // if auto_sort is set and if (comm_iteration != 0), then sort here
@@ -258,7 +258,7 @@ void oppic_par_loop_all__ComputeNodeChargeDensity(
 )
 { TRACE_ME;
     
-    if (FP_DEBUG) printf("FEMPIC - oppic_par_loop_all__ComputeNodeChargeDensity set_size %d\n", set->size);
+    if (FP_DEBUG) opp_printf("FEMPIC - oppic_par_loop_all__ComputeNodeChargeDensity", "set_size %d", set->size);
 
     for (int i=0; i<set->size; i++) 
     {
