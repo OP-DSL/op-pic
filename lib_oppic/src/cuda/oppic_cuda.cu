@@ -275,7 +275,7 @@ void oppic_init_particle_move(oppic_set set)
 }
 
 //****************************************
-void oppic_finalize_particle_move(oppic_set set)
+bool oppic_finalize_particle_move(oppic_set set)
 { TRACE_ME;
 
     cudaMemcpy(&(set->particle_remove_count), set->particle_remove_count_d, sizeof(int), cudaMemcpyDeviceToHost);
@@ -291,6 +291,8 @@ void oppic_finalize_particle_move(oppic_set set)
         if (OP_DEBUG) printf("\toppic_finalize_particle_move auto sorting particle set [%s]\n", set->name);
         oppic_particle_sort(set);
     }
+
+    return true;
 }
 
 //****************************************

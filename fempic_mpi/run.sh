@@ -26,3 +26,9 @@ echo "OMP DONE"
 # https://www.youtube.com/watch?v=jiOWnG_Kk-U
 
 # watch -n 0.1 /opt/rocm-5.4.3/bin/rocm-smi
+
+
+# module load forge/arm-forge-22.1.3
+# export ALLINEA_FORCE_LICENCE_FILE=/opt/arm/forge/licences/licences_x86_64/License_Temp
+# export ALLINEA_FORCE_LICENCE_FILE=/opt/arm/forge/licences/licences_x86_64/License_Temp
+

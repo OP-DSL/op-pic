@@ -217,8 +217,9 @@ delete[] arr_part_mesh_relation;
 
 //  opp_printf("XXXXXXXXXX", OPP_my_rank, " 67");
 
+    if (false)
     {
-        std::string f = std::string("Init_") + std::to_string(OPP_my_rank);
+        std::string f = std::string("A_") + std::to_string(OPP_my_rank);
         // oppic_print_map_to_txtfile(cell_to_nodes_map  , f.c_str(), "cell_to_nodes_map.dat");
         // oppic_print_map_to_txtfile(cell_to_cell_map   , f.c_str(), "cell_to_cell_map.dat");
         // oppic_print_map_to_txtfile(iface_to_cell_map  , f.c_str(), "iface_to_cell_map.dat");
@@ -242,32 +243,34 @@ delete[] arr_part_mesh_relation;
     if (true)
     {
         oppic_set set = particles_set;
-        int *mesh_relation_data = ((int *)set->mesh_relation_dat->data); 
         int comm_iteration = 0;
         int start1 = 0;
         int end = set->size;
 
         do
-        {   
+        {    
             opp_printf("Main()", "Starting iteration %d", comm_iteration);
 
             oppic_init_particle_move(set);
+
+            int *mesh_relation_data = ((int *)set->mesh_relation_dat->data); 
 
             for (int i = start1; i < end; i++)
             {        
                 opp_move_var m;
 
-                opp_printf("Main()", "Iter index %d comm_iteration %d", i, comm_iteration);
+                opp_printf("Main()", "Iter index %d comm_iteration %d *******************************", i, comm_iteration);
 
                 do
                 { 
                     int& map0idx      = mesh_relation_data[i];
 
-                    // This is the kernel **************************************************************
+                    // Expect this as the kernel **************************************************************
                     if (OPP_my_rank == 0 && i == 2 && comm_iteration==0)
                     {
                         opp_printf("EXPECT COMM", "3468 cell of INDEX 1 ieh of RANK 0");
                         ((int*)part_mesh_relation->data)[i] = 3862;
+                        // ((int*)part_mesh_relation->data)[i] = 1800; 2457;
                         m.OPP_move_status = OPP_NEED_MOVE;
                     }
                     else if (OPP_my_rank == 0 && i == 19 && comm_iteration==0)
@@ -282,7 +285,7 @@ delete[] arr_part_mesh_relation;
                         ((int*)part_mesh_relation->data)[i] = 3653;
                         m.OPP_move_status = OPP_NEED_MOVE;
                     }
-                    else if (OPP_my_rank == 1 && i == 20 && comm_iteration==1)
+                    else if (OPP_my_rank == 1 && i == 19 && comm_iteration==1)
                     {
                         opp_printf("EXPECT COMM", "3672 cell of INDEX 1 ieh of RANK 0");
                         ((int*)part_mesh_relation->data)[i] = 3655;
@@ -306,12 +309,7 @@ delete[] arr_part_mesh_relation;
                 }
             }
 
-            // send the counts and send the particles  
-            opp_exchange_particles(set);   
-
-            oppic_finalize_particle_move(set); // Can fill the holes here, since the communicated particles will be added at the end
-
-            if (opp_check_all_done(set))
+            if (oppic_finalize_particle_move(set))
             {
                 // all mpi ranks do not have anything to communicate to any rank
                 break;
@@ -327,12 +325,11 @@ delete[] arr_part_mesh_relation;
             comm_iteration++;
 
         } while (true);
-
     }
 
 if (true)
 {
-    std::string f = std::string("E_") + std::to_string(OPP_my_rank);
+    std::string f = std::string("F_") + std::to_string(OPP_my_rank);
 
     oppic_print_dat_to_txtfile(part_position     , f.c_str(), "part_position.dat");
     oppic_print_dat_to_txtfile(part_velocity     , f.c_str(), "part_velocity.dat");

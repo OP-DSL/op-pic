@@ -86,7 +86,7 @@ void oppic_init_particle_move(oppic_set set);
 
 void oppic_mark_particle_to_move(oppic_set set, int particle_index, int move_status);
 
-void oppic_finalize_particle_move(oppic_set set);
+bool oppic_finalize_particle_move(oppic_set set);
 
 void oppic_mark_particle_to_remove(oppic_set set, int particle_index);
 

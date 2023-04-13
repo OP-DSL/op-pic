@@ -41,6 +41,8 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <cstring>
 #include <limits.h>
 #include <inttypes.h>
+#include <stdio.h>
+#include <stdarg.h>
 
 //*************************************************************************************************
 

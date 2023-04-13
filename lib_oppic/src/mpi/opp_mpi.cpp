@@ -277,9 +277,13 @@ void oppic_init_particle_move(oppic_set set)
 // }
 
 //****************************************
-void oppic_finalize_particle_move(oppic_set set)
+bool oppic_finalize_particle_move(oppic_set set)
 { TRACE_ME;
 
+    // send the counts and send the particles  
+    opp_exchange_particles(set);  
+
+    // Can fill the holes here, since the communicated particles will be added at the end
     oppic_finalize_particle_move_core(set);
 
     if (OP_auto_sort == 1)
@@ -287,6 +291,8 @@ void oppic_finalize_particle_move(oppic_set set)
         if (OP_DEBUG) printf("\toppic_finalize_particle_move auto sorting particle set [%s]\n", set->name);
         oppic_particle_sort(set);
     }
+
+    return opp_check_all_done(set); 
 }
 
 //****************************************
