@@ -217,10 +217,7 @@ void oppic_par_loop_particle_all__MoveToCells(
                 m.OPP_iteration_one = false;
 
                 // should check whether map0idx is in halo list or use the new mapping idea. if yes, return true and pack the particle data into MPI buffer
-                if (opp_check_part_need_comm(map0idx, set, i)) 
-                {
-                    m.OPP_move_status = OPP_NEED_REMOVE; // This particle will be communicated, hence needs to be removed from the current rank
-                }
+                opp_check_part_need_comm(map0idx, set, i, m);
 
             } while (m.OPP_move_status == (int)OPP_NEED_MOVE);
 
@@ -238,8 +235,7 @@ void oppic_par_loop_particle_all__MoveToCells(
         // send the counts and send the particles  
         opp_exchange_particles(set);   
 
-        if (comm_iteration == 0) 
-            oppic_finalize_particle_move(set); // Can fill the holes here since the comunicated particles will be added at the end
+        oppic_finalize_particle_move(set); // Can fill the holes here since the comunicated particles will be added at the end
 
         // check whether every MPI rank says, I am done!, if yes, break this do while
         comm_iteration++;

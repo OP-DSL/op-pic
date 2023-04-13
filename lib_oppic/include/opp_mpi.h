@@ -91,8 +91,8 @@ struct opp_all_mpi_part_buffers
     std::map<int,int> export_counts; // rank -> count
     std::vector<MPI_Request> send_req;
     std::vector<MPI_Request> recv_req;
-    MPI_Request *r_req;
-    int r_num_req;
+    // MPI_Request *r_req;
+    // int r_num_req;
     std::vector<int> neighbours;
 };
 
@@ -300,7 +300,7 @@ inline void opp_uniform_scatter_array(T *g_array, T *l_array, int g_size, int l_
 void opp_partition(op_set prime_set, op_map prime_map, op_dat data = NULL);
 bool opp_check_all_done(oppic_set set);
 void opp_wait_all_particles(oppic_set set);
-bool opp_check_part_need_comm(int map0idx, oppic_set set, int particle_index);
+bool opp_check_part_need_comm(int map0idx, oppic_set set, int particle_index, opp_move_var& m);
 void opp_exchange_particles(oppic_set set);
 void opp_partition_core(op_set prime_set, op_map prime_map, op_dat data);
 void opp_particle_comm_init();

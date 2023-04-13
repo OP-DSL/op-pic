@@ -38,15 +38,10 @@ MPI_Comm OP_MPI_GLOBAL;
 //*******************************************************************************
 void oppic_init(int argc, char **argv, opp::Params* params) 
 {
-    if (OP_DEBUG) printf("\topp_init\n");
-
-    int flag = 0;
-    MPI_Initialized(&flag);
-    if (!flag) 
-    {
-        MPI_Init(&argc, &argv);
-    }
+    MPI_Init(&argc, &argv);
     
+    if (OP_DEBUG) opp_printf("oppic_init", "");
+
     OP_MPI_WORLD = MPI_COMM_WORLD;
     OP_MPI_GLOBAL = MPI_COMM_WORLD;
     
@@ -59,9 +54,7 @@ void oppic_init(int argc, char **argv, opp::Params* params)
 //*******************************************************************************
 void oppic_exit() 
 {
-    if (OP_DEBUG) opp_printf("oppic_exit", OPP_my_rank, "");
-
-    // MPI_Barrier(MPI_COMM_WORLD);
+    if (OP_DEBUG) opp_printf("oppic_exit", "");
 
     {   
         opp_halo_destroy(); // free memory allocated to halos and mpi_buffers 
@@ -80,20 +73,10 @@ void oppic_exit()
         // if (OP_export_list)
         //     free(OP_export_list);
     }
-    // if (OP_DEBUG) opp_printf("oppic_exit", OPP_my_rank, "before oppic_exit_core");
 
-    // opp_rt_exit();
     oppic_exit_core();
 
-    // if (OP_DEBUG) opp_printf("oppic_exit", OPP_my_rank, "after oppic_exit_core");
-
-    // MPI_Barrier(MPI_COMM_WORLD);
-    // int flag = 0;
-    // MPI_Finalized(&flag);
-    // if (!flag)
-    {
-        MPI_Finalize();
-    }
+    MPI_Finalize();
 }
 
 //****************************************
@@ -503,3 +486,5 @@ void opp_desanitize_all_maps()
         }
     }
 }
+
+//*******************************************************************************
