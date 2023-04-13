@@ -441,14 +441,14 @@ void oppic_increase_particle_count_core(oppic_set particles_set, const int num_p
     if (num_particles_to_insert <= 0) return;
 
     if (OP_DEBUG) 
-        opp_printf("oppic_increase_particle_count_core", "set [%s] with size [%d]\n", particles_set->name, num_particles_to_insert);
+        opp_printf("oppic_increase_particle_count_core", "set [%s] with size [%d]", particles_set->name, num_particles_to_insert);
 
     int new_particle_set_size = particles_set->size + num_particles_to_insert;
 
     if (particles_set->set_capacity >= new_particle_set_size)
     {
         if (OP_DEBUG) 
-            opp_printf("oppic_increase_particle_count_core", "set [%s] No need to reallocate, new size[%d] set_capacity[%d]\n", particles_set->name, new_particle_set_size, particles_set->set_capacity);        
+            opp_printf("oppic_increase_particle_count_core", "set [%s] No need to reallocate, new size[%d] set_capacity[%d]", particles_set->name, new_particle_set_size, particles_set->set_capacity);        
         
         particles_set->size = new_particle_set_size;
         particles_set->diff = num_particles_to_insert;   
@@ -505,7 +505,7 @@ void oppic_reset_num_particles_to_insert_core(oppic_set set)
 //****************************************
 void oppic_init_particle_move_core(oppic_set set)
 {
-    if (OP_DEBUG) opp_printf("oppic_init_particle_move_core", "set [%s]\n", set->name);
+    if (OP_DEBUG) opp_printf("oppic_init_particle_move_core", "set [%s]", set->name);
 
     // if (set->particle_statuses) free(set->particle_statuses);
 

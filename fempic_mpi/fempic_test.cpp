@@ -279,7 +279,7 @@ opp_printf("XXXXXXXXXX", OPP_my_rank, " 10");
                 if (opp_check_all_done(set))
                 {
                     // all mpi ranks do not have anything to communicate to any rank
-                    opp_printf("AM I DONE? YESS", "");
+                    // opp_printf("AM I DONE? YESS", "");
                     break;
                 }
                 else

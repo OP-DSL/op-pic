@@ -10,7 +10,7 @@ std::map<int, std::map<int, opp_particle_comm_data>> opp_part_comm_neighbour_dat
 //*******************************************************************************
 void opp_pack_particle(oppic_set set, int index, int send_rank)
 {
-    if (OP_DEBUG) opp_printf("opp_pack_particle", OPP_my_rank, " set %s | index %d | send_rank %d", set->name, index, send_rank);
+    if (OP_DEBUG) opp_printf("opp_pack_particle", " set %s | index %d | send_rank %d", set->name, index, send_rank);
 
     opp_all_mpi_part_buffers* send_buffers = (opp_all_mpi_part_buffers*)set->mpi_part_buffers;
 
@@ -21,7 +21,7 @@ void opp_pack_particle(oppic_set set, int index, int send_rank)
 //     opp_printf("SSSSS", OPP_my_rank, "size %d SSSSSSS %d", send_buffers->neighbours.size(), i);
         if (std::find(send_buffers->neighbours.begin(), send_buffers->neighbours.end(), send_rank) == send_buffers->neighbours.end())
         {
-            opp_printf("opp_pack_particle", OPP_my_rank, "Error: send_rank %d is not a neighbour, cannot send index %d of set %s",
+            opp_printf("opp_pack_particle", "Error: send_rank %d is not a neighbour, cannot send index %d of set %s",
                 send_rank, index, set->name);
             MPI_Abort(OP_MPI_WORLD, 1);
         }
@@ -37,21 +37,21 @@ void opp_pack_particle(oppic_set set, int index, int send_rank)
             send_rank_buffer.buf_export_capacity  = OPP_mpi_part_alloc_mult * set->particle_size;
             send_rank_buffer.buf_export_index     = 0;
             send_rank_buffer.buf_export           = (char *)malloc(send_rank_buffer.buf_export_capacity);
-            memset(send_rank_buffer.buf_export, 0, send_rank_buffer.buf_export_capacity); // not essential, can remove
+            //memset(send_rank_buffer.buf_export, 0, send_rank_buffer.buf_export_capacity); // not essential, can remove
         }
         else
         {
             send_rank_buffer.buf_export_capacity += OPP_mpi_part_alloc_mult * set->particle_size;
             send_rank_buffer.buf_export           = (char *)realloc(send_rank_buffer.buf_export, send_rank_buffer.buf_export_capacity);
-            memset(&(send_rank_buffer.buf_export[send_rank_buffer.buf_export_capacity - OPP_mpi_part_alloc_mult * set->particle_size]),
-                0, OPP_mpi_part_alloc_mult * set->particle_size); // not essential, can remove
+            // memset(&(send_rank_buffer.buf_export[send_rank_buffer.buf_export_capacity - OPP_mpi_part_alloc_mult * set->particle_size]),
+            //     0, OPP_mpi_part_alloc_mult * set->particle_size); // not essential, can remove
         }
     }
 
     // char* buffer = (&(send_rank_buffer.buf_export[send_rank_buffer.buf_export_index]));
     std::vector<oppic_dat>& particle_dats = *(set->particle_dats);
     int displacement = 0;
-opp_printf("opp_pack_particles", "ZZZZZZZZZZZZZZZ send_rank_buffer.buf_export %p", send_rank_buffer.buf_export);
+// opp_printf("opp_pack_particles", "ZZZZZZZZZZZZZZZ send_rank_buffer.buf_export %p", send_rank_buffer.buf_export);
     // pack the particle data from dats into the export buffer 
     for (int i = 0; i < particle_dats.size(); i++)
     {
@@ -60,6 +60,11 @@ opp_printf("opp_pack_particles", "ZZZZZZZZZZZZZZZ send_rank_buffer.buf_export %p
         memcpy(&(send_rank_buffer.buf_export[send_rank_buffer.buf_export_index + displacement]), &(dat->data[index * dat->size]), dat->size);
 
 if (i == 0)
+{
+    double* d = (double*)(&(send_rank_buffer.buf_export[send_rank_buffer.buf_export_index + displacement]));
+    opp_printf("opp_pack_particleA", "%s - %lf %lf %lf", dat->name, d[0], d[1], d[2]);
+}
+if (i == 1)
 {
     double* d = (double*)(&(send_rank_buffer.buf_export[send_rank_buffer.buf_export_index + displacement]));
     opp_printf("opp_pack_particleA", "%s - %lf %lf %lf", dat->name, d[0], d[1], d[2]);
@@ -108,7 +113,7 @@ void opp_unpack_particles(oppic_set set)
         int new_part_index = (set->size - set->diff);
 
         oppic_increase_particle_count_core(set, num_particles);
-opp_printf("opp_unpack_particles", "set %s particle_size %d new_part_index %d, set_size: %d", set->name, particle_size, new_part_index, set->size);
+// opp_printf("opp_unpack_particles", "set %s particle_size %d new_part_index %d, set_size: %d", set->name, particle_size, new_part_index, set->size);
 
         for (int i = 0; i < neighbours.size(); i++)
         {
@@ -116,7 +121,7 @@ opp_printf("opp_unpack_particles", "set %s particle_size %d new_part_index %d, s
 
             opp_mpi_part_buffer& receive_rank_buffer = receive_buffers->buffers[neighbour_rank];
             int receive_count = receive_buffers->import_counts[neighbour_rank];
-opp_printf("opp_unpack_particles", "XXXXXXXXXXXX receive_buffer.buf_import %p", receive_rank_buffer.buf_import);
+// opp_printf("opp_unpack_particles", "XXXXXXXXXXXX receive_buffer.buf_import %p", receive_rank_buffer.buf_import);
             // unpack the received buffer from rank 'neighbour_rank' in to particle dats
             for (int part = 0; part < receive_count; part++)
             {
@@ -129,8 +134,8 @@ opp_printf("opp_unpack_particles", "XXXXXXXXXXXX receive_buffer.buf_import %p", 
 
                     char* write_to = dat->data + new_part_index * dat->size;
 
-opp_printf("opp_unpack_particles", "name %s %p write_to %p size %d dat->size:%d displacement_buff:%d displacement_dat:%d", 
-    dat->name, dat->data, write_to, (set->size * dat->size), dat->size, displacement, (new_part_index * dat->size));
+// opp_printf("opp_unpack_particles", "name %s %p write_to %p size %d dat->size:%d displacement_buff:%d displacement_dat:%d", 
+//     dat->name, dat->data, write_to, (set->size * dat->size), dat->size, displacement, (new_part_index * dat->size));
                                     
                     memcpy(write_to, part_buffer + displacement, dat->size);
 
@@ -163,7 +168,7 @@ else if (i == 3)
         }
     }
 
-    if (OP_DEBUG) opp_printf("opp_unpack_particles", OPP_my_rank, " end");
+    if (OP_DEBUG) opp_printf("opp_unpack_particles", " end");
 }
 
 //*******************************************************************************
@@ -203,7 +208,7 @@ bool opp_check_part_need_comm(int map0idx, oppic_set set, int particle_index)
 //*******************************************************************************
 void opp_exchange_particles(oppic_set set)
 {
-    if (OP_DEBUG) opp_printf("opp_exchange_particles", OPP_my_rank, " set %s - particle size", set->name, set->particle_size);
+    if (OP_DEBUG) opp_printf("opp_exchange_particles", "set %s - particle size", set->name, set->particle_size);
 
 // opp_printf("opp_exchange_particles X1", OPP_my_rank, " set %s", set->name);
     // int particle_size = set->particle_size;
@@ -257,35 +262,35 @@ void opp_exchange_particles(oppic_set set)
 
         if (send_size <= 0)
         {
-            if (OP_DEBUG) opp_printf("opp_exchange_particles", "nothing to send to rank %d\n", neighbour_rank);
+            if (OP_DEBUG) opp_printf("opp_exchange_particles", "nothing to send to rank %d", neighbour_rank);
             continue;
         }
         else
         {   
-            if (OP_DEBUG) opp_printf("opp_exchange_particles", "sending %d particle/s (size: %d) to rank %d\n", 
+            if (OP_DEBUG) opp_printf("opp_exchange_particles", "sending %d particle/s (size: %d) to rank %d", 
                 (send_size/ set->particle_size), send_size, neighbour_rank);
         }
 
         char* send_buffer = mpi_buffers->buffers[neighbour_rank].buf_export;
 
-{
-    double* d0 = (double*)(send_buffer);
-    opp_printf("opp_exchange_particlesA", "%s - %lf %lf %lf", "part_position", d0[0], d0[1], d0[2]);
+// {
+//     double* d0 = (double*)(send_buffer);
+//     opp_printf("opp_exchange_particlesA", "%s - %lf %lf %lf", "part_position", d0[0], d0[1], d0[2]);
 
-    int* d2 = (int*)(send_buffer + 48);
-    opp_printf("opp_exchange_particlesA", "%s - %d %d %d %d", "part_lc", d2[0], d2[1], d2[2], d2[3]);
+//     int* d2 = (int*)(send_buffer + 48);
+//     opp_printf("opp_exchange_particlesA", "%s - %d %d %d %d", "part_lc", d2[0], d2[1], d2[2], d2[3]);
 
-    int* d3 = (int*)(send_buffer + 64);
-    opp_printf("opp_exchange_particlesA", "%s - %d", "part_mesh_relation", d3[0]);   
-}        
-        // opp_printf("opp_exchange_particles 4", OPP_my_rank, " ZZZ set %s", set->name);
-opp_printf("opp_exchange_particles", "ZZZZZZZZZZZZZZZ send_buffer %p send_size %d", send_buffer, send_size);
+//     int* d3 = (int*)(send_buffer + 64);
+//     opp_printf("opp_exchange_particlesA", "%s - %d", "part_mesh_relation", d3[0]);   
+// }        
+// opp_printf("opp_exchange_particles 4", OPP_my_rank, " ZZZ set %s", set->name);
+// opp_printf("opp_exchange_particles", "ZZZZZZZZZZZZZZZ send_buffer %p send_size %d", send_buffer, send_size);
         MPI_Request req;
-        MPI_Isend(&send_buffer, send_size, MPI_CHAR, neighbour_rank, MPI_TAG_PART_EX, OP_MPI_WORLD, &req);
+        MPI_Isend(send_buffer, send_size, MPI_CHAR, neighbour_rank, MPI_TAG_PART_EX, OP_MPI_WORLD, &req);
         // opp_printf("opp_exchange_particles 4", OPP_my_rank, " HERE set %s", set->name);
         mpi_buffers->send_req.push_back(req);
     }
-opp_printf("opp_exchange_particles 4", OPP_my_rank, " set %s", set->name);
+// opp_printf("opp_exchange_particles 4", OPP_my_rank, " set %s", set->name);
 
     // std::vector<MPI_Status> status(neighbour_count);
 //   MPI_Status *status = (MPI_Status *)malloc(neighbour_count * sizeof(MPI_Status));
@@ -305,12 +310,12 @@ opp_printf("opp_exchange_particles 4", OPP_my_rank, " set %s", set->name);
 
         if (recv_size <= 0)
         {
-            if (OP_DEBUG) opp_printf("opp_exchange_particles", "nothing to receive from rank %d\n", neighbour_rank);
+            if (OP_DEBUG) opp_printf("opp_exchange_particles", "nothing to receive from rank %d", neighbour_rank);
             continue;
         }
 
-opp_printf("opp_exchange_particles", "neighbour_rank: %d, recv_size: %d, total_recv: %d", 
-    neighbour_rank, recv_size, mpi_buffers->total_recv);
+// opp_printf("opp_exchange_particles", "neighbour_rank: %d, recv_size: %d, total_recv: %d", 
+//     neighbour_rank, recv_size, mpi_buffers->total_recv);
 
         opp_mpi_part_buffer& receive_buffer = mpi_buffers->buffers[neighbour_rank];
 
@@ -320,78 +325,78 @@ opp_printf("opp_exchange_particles", "neighbour_rank: %d, recv_size: %d, total_r
             {
                 receive_buffer.buf_import_capacity  = OPP_mpi_part_alloc_mult * set->particle_size;           
                 receive_buffer.buf_import           = (char *)malloc(receive_buffer.buf_import_capacity);
-opp_printf("opp_exchange_particles", "%d buf_import malloc", receive_buffer.buf_import_capacity);
-                memset(receive_buffer.buf_import, 0 ,receive_buffer.buf_import_capacity); // not essential, can remove            
+// opp_printf("opp_exchange_particles", "%d buf_import malloc", receive_buffer.buf_import_capacity);
+                // memset(receive_buffer.buf_import, 0 ,receive_buffer.buf_import_capacity); // not essential, can remove            
             }
             else
             {
                 receive_buffer.buf_import_capacity += OPP_mpi_part_alloc_mult * set->particle_size;
                 receive_buffer.buf_import           = (char *)realloc(receive_buffer.buf_import, receive_buffer.buf_import_capacity);
-opp_printf("opp_exchange_particles", "%d buf_import realloc", receive_buffer.buf_import_capacity);
-                memset(&(receive_buffer.buf_import[receive_buffer.buf_import_capacity - OPP_mpi_part_alloc_mult * set->particle_size]),
-                    0, OPP_mpi_part_alloc_mult * set->particle_size); // not essential, can remove
+// opp_printf("opp_exchange_particles", "%d buf_import realloc", receive_buffer.buf_import_capacity);
+                // memset(&(receive_buffer.buf_import[receive_buffer.buf_import_capacity - OPP_mpi_part_alloc_mult * set->particle_size]),
+                //     0, OPP_mpi_part_alloc_mult * set->particle_size); // not essential, can remove
             }
         }
 //XXXXXX
 
-{
-    double* d0 = (double*)(receive_buffer.buf_import);
-    opp_printf("opp_exchange_particlesX", "%s %p - %lf %lf %lf", "part_position", receive_buffer.buf_import, d0[0], d0[1], d0[2]);
+// {
+//     double* d0 = (double*)(receive_buffer.buf_import);
+//     opp_printf("opp_exchange_particlesX", "%s %p - %lf %lf %lf", "part_position", receive_buffer.buf_import, d0[0], d0[1], d0[2]);
 
-    double* d1 = (double*)(receive_buffer.buf_import + 24);
-    opp_printf("opp_exchange_particlesX", "%s %p - %lf %lf %lf", "part_vel", receive_buffer.buf_import, d1[0], d1[1], d1[2]);
+//     double* d1 = (double*)(receive_buffer.buf_import + 24);
+//     opp_printf("opp_exchange_particlesX", "%s %p - %lf %lf %lf", "part_vel", receive_buffer.buf_import, d1[0], d1[1], d1[2]);
 
-    int* d2 = (int*)(receive_buffer.buf_import + 48);
-    opp_printf("opp_exchange_particlesX", "%s %p - %d %d %d %d", "part_lc", receive_buffer.buf_import, d2[0], d2[1], d2[2], d2[3]);
+//     int* d2 = (int*)(receive_buffer.buf_import + 48);
+//     opp_printf("opp_exchange_particlesX", "%s %p - %d %d %d %d", "part_lc", receive_buffer.buf_import, d2[0], d2[1], d2[2], d2[3]);
 
-    int* d3 = (int*)(receive_buffer.buf_import + 64);
-    opp_printf("opp_exchange_particlesX", "%s %p - %d", "part_mesh_relation", receive_buffer.buf_import, d3[0]);   
-}  
+//     int* d3 = (int*)(receive_buffer.buf_import + 64);
+//     opp_printf("opp_exchange_particlesX", "%s %p - %d", "part_mesh_relation", receive_buffer.buf_import, d3[0]);   
+// }  
 
-            opp_mpi_part_buffer& receive_rank_buffer = mpi_buffers->buffers[neighbour_rank];
-            int receive_count = 1;
+//             opp_mpi_part_buffer& receive_rank_buffer = mpi_buffers->buffers[neighbour_rank];
+//             int receive_count = 1;
 
-            // unpack the received buffer from rank 'neighbour_rank' in to particle dats
-            for (int part = 0; part < receive_count; part++)
-            {
-                char* part_buffer = &(receive_rank_buffer.buf_import[set->particle_size * part]);
-                int displacement = 0;
+//             // unpack the received buffer from rank 'neighbour_rank' in to particle dats
+//             for (int part = 0; part < receive_count; part++)
+//             {
+//                 char* part_buffer = &(receive_rank_buffer.buf_import[set->particle_size * part]);
+//                 int displacement = 0;
 
-                for (int i = 0; i < set->particle_dats->size(); i++)
-                {
-                    oppic_dat& dat = set->particle_dats->at(i);
+//                 for (int i = 0; i < set->particle_dats->size(); i++)
+//                 {
+//                     oppic_dat& dat = set->particle_dats->at(i);
 
-if (i == 0)
-{
-    double* d = (double*)(part_buffer + displacement);
-    opp_printf("opp_exchange_particles", "receive_rank_buffer.buf_import %s - %lf %lf %lf - displacement%d", dat->name, d[0], d[1], d[2], displacement);
-}
-if (i == 1)
-{
-    double* d = (double*)(part_buffer + displacement);
-    opp_printf("opp_exchange_particles", "receive_rank_buffer.buf_import %s - %lf %lf %lf - displacement%d", dat->name, d[0], d[1], d[2], displacement);
-}
-else if (i == 2)
-{
-    int* d = (int*)(part_buffer + displacement);
-    opp_printf("opp_exchange_particles", "receive_rank_buffer.buf_import %s - %d %d %d %d - displacement%d", dat->name, d[0], d[1], d[2], d[3], displacement);
-}
-else if (i == 3)
-{
-    int* d = (int*)(part_buffer + displacement);
-    opp_printf("opp_exchange_particles", "receive_rank_buffer.buf_import %s - %d - displacement%d", dat->name, d[0], displacement);   
-}
+// if (i == 0)
+// {
+//     double* d = (double*)(part_buffer + displacement);
+//     opp_printf("opp_exchange_particles", "receive_rank_buffer.buf_import %s - %lf %lf %lf - displacement%d", dat->name, d[0], d[1], d[2], displacement);
+// }
+// if (i == 1)
+// {
+//     double* d = (double*)(part_buffer + displacement);
+//     opp_printf("opp_exchange_particles", "receive_rank_buffer.buf_import %s - %lf %lf %lf - displacement%d", dat->name, d[0], d[1], d[2], displacement);
+// }
+// else if (i == 2)
+// {
+//     int* d = (int*)(part_buffer + displacement);
+//     opp_printf("opp_exchange_particles", "receive_rank_buffer.buf_import %s - %d %d %d %d - displacement%d", dat->name, d[0], d[1], d[2], d[3], displacement);
+// }
+// else if (i == 3)
+// {
+//     int* d = (int*)(part_buffer + displacement);
+//     opp_printf("opp_exchange_particles", "receive_rank_buffer.buf_import %s - %d - displacement%d", dat->name, d[0], displacement);   
+// }
 
-                    displacement += dat->size;
-                }
-            }
+//                     displacement += dat->size;
+//                 }
+//             }
 
 //XXXXXX
-        opp_printf("opp_exchange_particles", "XXXXXXXXXXXX receive_buffer.buf_import %p", receive_buffer.buf_import);
-        // MPI_Request req;
-        MPI_Request* req = &(mpi_buffers->r_req[(mpi_buffers->r_num_req)++]);
-        MPI_Irecv(receive_buffer.buf_import, recv_size, MPI_CHAR, neighbour_rank, MPI_TAG_PART_EX, OP_MPI_WORLD, req);
-        // mpi_buffers->recv_req.push_back(req);
+// opp_printf("opp_exchange_particles", "XXXXXXXXXXXX receive_buffer.buf_import %p", receive_buffer.buf_import);
+        MPI_Request req;
+        // MPI_Request* req = &(mpi_buffers->r_req[(mpi_buffers->r_num_req)++]);
+        MPI_Irecv(receive_buffer.buf_import, recv_size, MPI_CHAR, neighbour_rank, MPI_TAG_PART_EX, OP_MPI_WORLD, &req);
+        mpi_buffers->recv_req.push_back(req);
     }
 
     // reset the export counts for another iteration
@@ -401,86 +406,87 @@ else if (i == 3)
         mpi_buffers->buffers[it->first].buf_export_index = 0; // make the export index of that rank to zero for the next iteration
     }
 
-    if (OP_DEBUG) opp_printf("opp_exchange_particles", " end");
+    if (OP_DEBUG) opp_printf("opp_exchange_particles", "END");
 }
 
 //*******************************************************************************
 void opp_wait_all_particles(oppic_set set)
 {
-    if (OP_DEBUG) opp_printf("opp_wait_all_particles", OPP_my_rank, " start");
+    if (OP_DEBUG) opp_printf("opp_wait_all_particles", "START");
 
     opp_all_mpi_part_buffers* mpi_buffers = (opp_all_mpi_part_buffers*)set->mpi_part_buffers;
 
     std::vector<MPI_Request>& send_req = mpi_buffers->send_req;
     std::vector<MPI_Request>& recv_req = mpi_buffers->recv_req;
-opp_printf("opp_wait_all_particles", "sizes r%d s%d", mpi_buffers->r_num_req, send_req.size());
+// opp_printf("opp_wait_all_particles", "sizes r%d s%d", mpi_buffers->r_num_req, send_req.size());
 
-    std::vector<MPI_Status> recv_status(mpi_buffers->r_num_req);
+    std::vector<MPI_Status> recv_status(recv_req.size());
     std::vector<MPI_Status> send_status(send_req.size());
 
     // wait till all the particles from all the ranks are received
     // MPI_Waitall(recv_req.size(), &recv_req[0], &status[0]);
-    MPI_Waitall(send_req.size(), &(send_req[0]), &(send_status[0])); //MPI_STATUSES_IGNORE);
-    MPI_Waitall(mpi_buffers->r_num_req, mpi_buffers->r_req, &(recv_status[0])); //MPI_STATUSES_IGNORE);
+    MPI_Waitall(send_req.size(), &(send_req[0]), MPI_STATUSES_IGNORE); // &(send_status[0])); //
+    MPI_Waitall(recv_req.size(), &(recv_req[0]), MPI_STATUSES_IGNORE); // &(recv_status[0])); //
+    // MPI_Waitall(mpi_buffers->r_num_req, mpi_buffers->r_req, &(recv_status[0])); //MPI_STATUSES_IGNORE);
 
-if (OPP_my_rank == 0)
-{
-    char* send_buffer = mpi_buffers->buffers[1].buf_export;
-opp_printf("opp_wait_all_particles", "S ERROR CODE %d", send_status[0].MPI_ERROR);
+// if (OPP_my_rank == 0)
+// {
+//     char* send_buffer = mpi_buffers->buffers[1].buf_export;
+// opp_printf("opp_wait_all_particles", "S ERROR CODE %d", send_status[0].MPI_ERROR);
 
-    double* d0 = (double*)(send_buffer);
-    opp_printf("opp_wait_all_particles", "S %s - %lf %lf %lf", "part_position", d0[0], d0[1], d0[2]);
+//     double* d0 = (double*)(send_buffer);
+//     opp_printf("opp_wait_all_particles", "S %s - %lf %lf %lf", "part_position", d0[0], d0[1], d0[2]);
 
-    double* d1 = (double*)(send_buffer + 24);
-    opp_printf("opp_wait_all_particles", "S %s - %lf %lf %lf", "part_vel", d1[0], d1[1], d1[2]);
+//     double* d1 = (double*)(send_buffer + 24);
+//     opp_printf("opp_wait_all_particles", "S %s - %lf %lf %lf", "part_vel", d1[0], d1[1], d1[2]);
 
-    int* d2 = (int*)(send_buffer + 48);
-    opp_printf("opp_wait_all_particles", "S %s - %d %d %d %d", "part_lc", d2[0], d2[1], d2[2], d2[3]);
+//     int* d2 = (int*)(send_buffer + 48);
+//     opp_printf("opp_wait_all_particles", "S %s - %d %d %d %d", "part_lc", d2[0], d2[1], d2[2], d2[3]);
 
-    int* d3 = (int*)(send_buffer + 64);
-    opp_printf("opp_wait_all_particles", "S %s - %d", "part_mesh_relation", d3[0]);   
-}    
+//     int* d3 = (int*)(send_buffer + 64);
+//     opp_printf("opp_wait_all_particles", "S %s - %d", "part_mesh_relation", d3[0]);   
+// }    
 
-if (OPP_my_rank == 1)
-{
-    char* recv_buffer = mpi_buffers->buffers[0].buf_import;
-opp_printf("opp_wait_all_particles", "R ERROR CODE %d %p", recv_status[0].MPI_ERROR, mpi_buffers->buffers[0].buf_import);
+// if (OPP_my_rank == 1)
+// {
+//     char* recv_buffer = mpi_buffers->buffers[0].buf_import;
+// opp_printf("opp_wait_all_particles", "R ERROR CODE %d %p", recv_status[0].MPI_ERROR, mpi_buffers->buffers[0].buf_import);
 
-    double* d0 = (double*)(recv_buffer);
-    opp_printf("opp_wait_all_particles", "R %s - %lf %lf %lf", "part_position", d0[0], d0[1], d0[2]);
+//     double* d0 = (double*)(recv_buffer);
+//     opp_printf("opp_wait_all_particles", "R %s - %lf %lf %lf", "part_position", d0[0], d0[1], d0[2]);
 
-    double* d1 = (double*)(recv_buffer + 24);
-    opp_printf("opp_wait_all_particles", "R %s - %lf %lf %lf", "part_vel", d1[0], d1[1], d1[2]);
+//     double* d1 = (double*)(recv_buffer + 24);
+//     opp_printf("opp_wait_all_particles", "R %s - %lf %lf %lf", "part_vel", d1[0], d1[1], d1[2]);
 
-    int* d2 = (int*)(recv_buffer + 48);
-    opp_printf("opp_wait_all_particles", "R %s - %d %d %d %d", "part_lc", d2[0], d2[1], d2[2], d2[3]);
+//     int* d2 = (int*)(recv_buffer + 48);
+//     opp_printf("opp_wait_all_particles", "R %s - %d %d %d %d", "part_lc", d2[0], d2[1], d2[2], d2[3]);
 
-    int* d3 = (int*)(recv_buffer + 64);
-    opp_printf("opp_wait_all_particles", "R %s - %d", "part_mesh_relation", d3[0]);   
-} 
+//     int* d3 = (int*)(recv_buffer + 64);
+//     opp_printf("opp_wait_all_particles", "R %s - %d", "part_mesh_relation", d3[0]);   
+// } 
 
     send_req.clear();
     recv_req.clear();
 
-int k = 0;
+// int k = 0;
 // for (int i = 0; i < 100000000; i++)
 //     k += i%10;
     // increase the particle count if required and unpack the communicated particle buffer in to separate particle dats
     opp_unpack_particles(set);
 
-    if (OP_DEBUG) opp_printf("opp_wait_all_particles", " end %d", k);
+    if (OP_DEBUG) opp_printf("opp_wait_all_particles", "END");
 }
 
 //*******************************************************************************
 bool opp_check_all_done(oppic_set set)
 {
-    if (OP_DEBUG) opp_printf("opp_check_all_done", "start");
+    if (OP_DEBUG) opp_printf("opp_check_all_done", "START");
 
     opp_all_mpi_part_buffers* mpi_buffers = (opp_all_mpi_part_buffers*)set->mpi_part_buffers;
     bool imported_parts = (mpi_buffers->total_recv != 0);
 
-opp_printf("opp_check_all_done", "I am %s, received %d particle/s for the next iteration", 
-    (imported_parts ? "not done" : "done"), mpi_buffers->total_recv);
+// opp_printf("opp_check_all_done", "I am %s, received %d particle/s for the next iteration", 
+//     (imported_parts ? "not done" : "done"), mpi_buffers->total_recv);
 
     bool bool_ret = false;
     bool* buffer_recv = (bool *)malloc(OPP_comm_size * sizeof(bool));
@@ -618,7 +624,7 @@ void opp_particle_set_comm_init(oppic_set set)
     for (int i = 0; i < imp_exec_list->ranks_size; i++) 
     {
         mpi_buffers->neighbours.push_back(imp_exec_list->ranks[i]);
-opp_printf("opp_particle_set_comm_init", "XXX %d", mpi_buffers->neighbours[mpi_buffers->neighbours.size()-1]);
+// opp_printf("opp_particle_set_comm_init", "XXX %d", mpi_buffers->neighbours[mpi_buffers->neighbours.size()-1]);
         mpi_buffers->import_counts[imp_exec_list->ranks[i]] = 0;
 
         opp_mpi_part_buffer& part_buffer = mpi_buffers->buffers[i];
