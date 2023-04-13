@@ -458,15 +458,22 @@ void oppic_increase_particle_count_core(oppic_set particles_set, const int num_p
     int new_particle_set_capacity = particles_set->size + num_particles_to_insert * OP_part_alloc_mult;
     // int new_particle_set_capacity = new_particle_set_size;
 
+    if (OP_DEBUG)
+        opp_printf("oppic_increase_particle_count_core", "new_particle_set_capacity %d particles_set->size %d", new_particle_set_capacity, particles_set->size);
+
     for (auto& current_oppic_dat : *(particles_set->particle_dats))
     {
         if (current_oppic_dat->data == NULL) 
         {
             current_oppic_dat->data = (char *)malloc((size_t)(new_particle_set_capacity * current_oppic_dat->size));
+            // opp_printf("oppic_increase_particle_count_core", "malloc name %s %p size %d", current_oppic_dat->name, current_oppic_dat->data, (new_particle_set_capacity * current_oppic_dat->size));
+
         }
         else
         {
+            char* old = current_oppic_dat->data;
             current_oppic_dat->data = (char *)realloc(current_oppic_dat->data, (size_t)(new_particle_set_capacity * current_oppic_dat->size));
+            // opp_printf("oppic_increase_particle_count_core", "realloc %p name %s %p size %d", old, current_oppic_dat->name, current_oppic_dat->data, (new_particle_set_capacity * current_oppic_dat->size));
         }
 
         if (current_oppic_dat->is_cell_index)
@@ -692,13 +699,13 @@ void oppic_print_dat_to_txtfile_core(oppic_dat dat, const char *file_name_prefix
     FILE *fp;
     if ((fp = fopen(file_name.c_str(), "w")) == NULL) 
     {
-        printf("\toppic_print_dat_to_txtfile_core can't open file %s\n", file_name.c_str());
+        opp_printf("oppic_print_dat_to_txtfile_core", "can't open file %s\n", file_name.c_str());
         exit(2);
     }
 
     if (fprintf(fp, "%d %d\n", dat->set->size, dat->dim) < 0) 
     {
-        printf("\toppic_print_dat_to_txtfile_core error writing to %s\n", file_name.c_str());
+        opp_printf("oppic_print_dat_to_txtfile_core", "error writing to %s\n", file_name.c_str());
         exit(2);
     }
 

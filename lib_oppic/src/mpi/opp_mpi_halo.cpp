@@ -370,7 +370,7 @@ void opp_halo_create()
     for (int s = 0; s < OP_set_index; s++) // for each set
     { 
         op_set set = OP_set_list[s];
-
+if (set->is_particle) continue;
         // create a temporaty scratch space to hold export list for this set
         s_i = 0;
         cap_s = 1000;
@@ -423,7 +423,7 @@ void opp_halo_create()
     for (int s = 0; s < OP_set_index; s++) // for each set
     { 
         op_set set = OP_set_list[s];
-
+if (set->is_particle) continue;
         //-----Discover neighbors-----
         ranks_size = 0;
         neighbors = (int *)malloc(comm_size * sizeof(int));
@@ -526,6 +526,7 @@ void opp_halo_create()
     for (int s = 0; s < OP_set_index; s++) // for each set
     { 
         op_set set = OP_set_list[s];
+if (set->is_particle) continue;        
         halo_list exec_set_list = OP_import_exec_list[set->index];
 
         // create a temporaty scratch space to hold nonexec export list for this set
@@ -594,7 +595,7 @@ void opp_halo_create()
     for (int s = 0; s < OP_set_index; s++) // for each set
     { 
         op_set set = OP_set_list[s];
-
+if (set->is_particle) continue;
         //-----Discover neighbors-----
         ranks_size = 0;
         neighbors = (int *)malloc(comm_size * sizeof(int));
@@ -639,6 +640,7 @@ void opp_halo_create()
     for (int s = 0; s < OP_set_index; s++) // for each set
     { 
         op_set set = OP_set_list[s];
+if (set->is_particle) continue;        
         halo_list i_list = OP_import_exec_list[set->index];
         halo_list e_list = OP_export_exec_list[set->index];
 
@@ -696,6 +698,7 @@ void opp_halo_create()
     for (int s = 0; s < OP_set_index; s++) // for each set
     { 
         op_set set = OP_set_list[s];
+if (set->is_particle) continue;        
         halo_list i_list = OP_import_nonexec_list[set->index];
         halo_list e_list = OP_export_nonexec_list[set->index];
 
@@ -752,7 +755,7 @@ void opp_halo_create()
     for (int s = 0; s < OP_set_index; s++) // for each set
     { 
         op_set set = OP_set_list[s];
-
+if (set->is_particle) continue;
         for (int m = 0; m < OP_map_index; m++) // for each maping table
         { 
             op_map map = OP_map_list[m];
@@ -829,7 +832,7 @@ void opp_halo_create()
     for (int k = 0; k < OP_dat_index; k++) // for each dat
     {
         op_dat dat = OP_dat_list[k];
-
+if (dat->set->is_particle) continue;
         op_mpi_buffer mpi_buf = (op_mpi_buffer)malloc(sizeof(op_mpi_buffer_core));
 
         halo_list exec_e_list = OP_export_exec_list[dat->set->index];
@@ -866,7 +869,7 @@ void opp_halo_create()
     for (int s = 0; s < OP_set_index; s++) // for each set
     { 
         op_set set = OP_set_list[s];
-
+if (set->is_particle) continue;
         halo_list exec = OP_export_exec_list[set->index];
         halo_list nonexec = OP_export_nonexec_list[set->index];
 
@@ -1015,7 +1018,7 @@ void opp_halo_create()
         for (int s = 0; s < OP_set_index; s++)  // for each set
         {
             op_set set = OP_set_list[s];
-
+if (set->is_particle) continue;
             int *g_index = (int *)malloc(sizeof(int) * set->size);
             int *partition = (int *)malloc(sizeof(int) * set->size);
             for (int i = 0; i < set->size; i++) 
@@ -1046,7 +1049,7 @@ void opp_halo_create()
         for (int s = 0; s < OP_set_index; s++)  // for each set
         { 
             op_set set = OP_set_list[s];
-
+if (set->is_particle) continue;
             // combine core_elems and exp_elems to one memory block
             int *temp = (int *)malloc(sizeof(int) * set->size);
             memcpy(&temp[0], core_elems[set->index], set->core_size * sizeof(int));
@@ -1066,6 +1069,7 @@ void opp_halo_create()
     for (int s = 0; s < OP_set_index; s++) // for each set
     { 
         op_set set = OP_set_list[s];
+if (set->is_particle) continue;
         set->exec_size = OP_import_exec_list[set->index]->size;
         set->nonexec_size = OP_import_nonexec_list[set->index]->size;
     }
@@ -1074,6 +1078,8 @@ void opp_halo_create()
 
     for (int i = 0; i < OP_set_index; i++) 
     {
+        if (OP_set_list[i]->is_particle) continue;
+
         free(part_range[i]);
         free(core_elems[i]);
         free(exp_elems[i]);
@@ -1092,7 +1098,7 @@ void opp_halo_create()
     for (int s = 0; s < OP_set_index; s++) 
     {
         op_set set = OP_set_list[s];
-
+if (set->is_particle) continue;
         // number of set elements first
         MPI_Reduce(&set->size, &avg_size, 1, MPI_INT, MPI_SUM, OPP_MPI_ROOT,
                 OP_MPI_WORLD);
@@ -1175,7 +1181,7 @@ void opp_halo_create()
     for (int s = 0; s < OP_set_index; s++) 
     {
         op_set set = OP_set_list[s];
-
+if (set->is_particle) continue;
         // number of exec halo neighbors first
         MPI_Reduce(&OP_import_exec_list[set->index]->ranks_size, &avg_size, 1,
                 MPI_INT, MPI_SUM, OPP_MPI_ROOT, OP_MPI_WORLD);
@@ -1218,7 +1224,7 @@ void opp_halo_create()
     for (int s = 0; s < OP_set_index; s++) 
     {
         op_set set = OP_set_list[s];
-
+if (set->is_particle) continue;
         for (int k = 0; k < OP_dat_index; k++) // for each dat
         {
             op_dat dat = OP_dat_list[k];

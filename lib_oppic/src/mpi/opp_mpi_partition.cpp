@@ -1408,13 +1408,18 @@ void opp_partition_destroy()
     for (int s = 0; s < OP_set_index; s++)  // for each set
     { 
         op_set set = OP_set_list[s];
+        if (set->is_particle) continue;
         free(OP_part_list[set->index]->g_index);
         free(OP_part_list[set->index]->elem_part);
         free(OP_part_list[set->index]);
     }
     free(OP_part_list);
     for (int i = 0; i < OP_set_index; i++)
+    {
+        if (OP_set_list[i]->is_particle) continue;
         free(orig_part_range[i]);
+    }
+
     free(orig_part_range);
 }
 

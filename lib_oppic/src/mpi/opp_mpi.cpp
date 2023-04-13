@@ -66,6 +66,7 @@ void oppic_exit()
     {   
         opp_halo_destroy(); // free memory allocated to halos and mpi_buffers 
         opp_partition_destroy(); // free memory used for holding partition information
+        opp_particle_comm_destroy(); // free memory allocated for particle communication
         
         // free(set_import_buffer_size);
 

@@ -164,7 +164,7 @@ opp_printf("main()", OPP_my_rank, " starting to decl opp structs: nodes:%d cells
         oppic_set nodes_set            = oppic_decl_set(mesh.n_nodes, "mesh_nodes");
         oppic_set cells_set            = oppic_decl_set(mesh.n_cells, "mesh_cells");
         oppic_set ifaces_set           = oppic_decl_set(mesh.n_ifaces, "mesh_inlet_faces");
-        oppic_set particles_set        = oppic_decl_particle_set(pcount, "particles", cells_set); 
+        
 opp_printf("XXXXXXXXXX", OPP_my_rank, " 62");
         oppic_map cell_to_nodes_map    = oppic_decl_map(cells_set,  nodes_set, NODES_PER_CELL,  mesh.cell_to_nodes,  "cell_to_nodes_map");
         oppic_map cell_to_cell_map     = oppic_decl_map(cells_set,  cells_set, NEIGHBOUR_CELLS, mesh.cell_to_cell,   "cell_to_cell_map"); 
@@ -179,18 +179,23 @@ opp_printf("XXXXXXXXXX", OPP_my_rank, " 64");
         oppic_dat node_potential       = oppic_decl_dat(nodes_set, 1, OPP_TYPE_REAL, (char*)mesh.node_pot,     "node_potential");     
         oppic_dat node_charge_density  = oppic_decl_dat(nodes_set, 1, OPP_TYPE_REAL, (char*)mesh.node_ion_den, "node_charge_density");
 opp_printf("XXXXXXXXXX", OPP_my_rank, " 65");
-        oppic_dat iface_v_normal       = oppic_decl_dat(ifaces_set, DIMENSIONS, OPP_TYPE_REAL, (char*)mesh.iface_v_normal,      "iface_v_normal");        
-        oppic_dat iface_u_normal       = oppic_decl_dat(ifaces_set, DIMENSIONS, OPP_TYPE_REAL, (char*)mesh.iface_u_normal,      "iface_u_normal"); 
-        oppic_dat iface_normal         = oppic_decl_dat(ifaces_set, DIMENSIONS, OPP_TYPE_REAL, (char*)mesh.iface_normal,        "iface_normal");     
-        oppic_dat iface_area           = oppic_decl_dat(ifaces_set, 1,          OPP_TYPE_REAL, (char*)mesh.iface_area,          "iface_area");
-        oppic_dat iface_inj_part_dist  = oppic_decl_dat(ifaces_set, 1,          OPP_TYPE_INT,  (char*)mesh.iface_inj_part_dist, "iface_inj_part_dist");
-        oppic_dat iface_node_pos       = oppic_decl_dat(ifaces_set, DIMENSIONS, OPP_TYPE_REAL, (char*)mesh.iface_node_pos,      "iface_node_pos"); 
+        // oppic_dat iface_v_normal       = oppic_decl_dat(ifaces_set, DIMENSIONS, OPP_TYPE_REAL, (char*)mesh.iface_v_normal,      "iface_v_normal");        
+        // oppic_dat iface_u_normal       = oppic_decl_dat(ifaces_set, DIMENSIONS, OPP_TYPE_REAL, (char*)mesh.iface_u_normal,      "iface_u_normal"); 
+        // oppic_dat iface_normal         = oppic_decl_dat(ifaces_set, DIMENSIONS, OPP_TYPE_REAL, (char*)mesh.iface_normal,        "iface_normal");     
+        // oppic_dat iface_area           = oppic_decl_dat(ifaces_set, 1,          OPP_TYPE_REAL, (char*)mesh.iface_area,          "iface_area");
+        // oppic_dat iface_inj_part_dist  = oppic_decl_dat(ifaces_set, 1,          OPP_TYPE_INT,  (char*)mesh.iface_inj_part_dist, "iface_inj_part_dist");
+        // oppic_dat iface_node_pos       = oppic_decl_dat(ifaces_set, DIMENSIONS, OPP_TYPE_REAL, (char*)mesh.iface_node_pos,      "iface_node_pos"); 
 opp_printf("XXXXXXXXXX", OPP_my_rank, " 66");
+        oppic_set particles_set        = oppic_decl_particle_set(pcount, "particles", cells_set); 
         oppic_dat part_position        = oppic_decl_particle_dat(particles_set, DIMENSIONS,     OPP_TYPE_REAL, (char*)arr_part_position, "part_position");
         oppic_dat part_velocity        = oppic_decl_particle_dat(particles_set, DIMENSIONS,     OPP_TYPE_REAL, (char*)arr_part_velocity, "part_velocity");    
         oppic_dat part_lc              = oppic_decl_particle_dat(particles_set, NODES_PER_CELL, OPP_TYPE_INT, (char*)arr_part_lc, "part_lc");
         oppic_dat part_mesh_relation   = oppic_decl_particle_dat(particles_set, 1,              OPP_TYPE_INT,  (char*)arr_part_mesh_relation, "part_mesh_relation", true); // new cell index field
-opp_printf("XXXXXXXXXX", OPP_my_rank, " 67");
+
+delete[] arr_part_position;
+delete[] arr_part_velocity;
+delete[] arr_part_lc;
+delete[] arr_part_mesh_relation;
     // TODO : Need to enrich mesh.dummy_part_random before using dummy_part
         // oppic_set dummy_part_set       = oppic_decl_particle_set(mesh.n_approx_injected, "dummy particles", cells_set); 
         // oppic_dat dum_part_random      = oppic_decl_dat(dummy_part_set, 2, OPP_TYPE_REAL, (char*)mesh.dummy_part_random, "dum_part_random");
@@ -212,10 +217,10 @@ opp_printf("XXXXXXXXXX", OPP_my_rank, " 9");
     // oppic_print_dat_to_txtfile(iface_area,          f.c_str(), "iface_area.dat");
     // oppic_print_dat_to_txtfile(iface_inj_part_dist, f.c_str(), "iface_inj_part_dist.dat");
 
-    oppic_print_dat_to_txtfile(part_position     , f.c_str(), "part_position.dat");
-    oppic_print_dat_to_txtfile(part_velocity     , f.c_str(), "part_velocity.dat");
-    oppic_print_dat_to_txtfile(part_lc           , f.c_str(), "part_lc.dat");
-    oppic_print_dat_to_txtfile(part_mesh_relation, f.c_str(), "part_mesh_relation.dat");
+    // oppic_print_dat_to_txtfile(part_position     , f.c_str(), "part_position.dat");
+    // oppic_print_dat_to_txtfile(part_velocity     , f.c_str(), "part_velocity.dat");
+    // oppic_print_dat_to_txtfile(part_lc           , f.c_str(), "part_lc.dat");
+    // oppic_print_dat_to_txtfile(part_mesh_relation, f.c_str(), "part_mesh_relation.dat");
 }
 
         oppic_decl_const<double>(1, &spwt,         "CONST_spwt");
@@ -232,6 +237,8 @@ opp_printf("XXXXXXXXXX", OPP_my_rank, " 8");
 opp_printf("XXXXXXXXXX", OPP_my_rank, " 10");
 
         opp_partition(cells_set, cell_to_nodes_map);
+
+ opp_printf("XXXXXXXXXX", OPP_my_rank, " 67");
 
 {
     std::string f = std::string("A_") + std::to_string(OPP_my_rank);
@@ -255,84 +262,86 @@ opp_printf("XXXXXXXXXX", OPP_my_rank, " 10");
     oppic_print_dat_to_txtfile(part_mesh_relation, f.c_str(), "part_mesh_relation.dat");
 }
 
-    oppic_set set = particles_set;
-    int *mesh_relation_data = ((int *)set->mesh_relation_dat->data); 
-    int comm_iteration = 0;
-    int start1 = 0;
-    int end = set->size;
+    if (true)
+    {
+        oppic_set set = particles_set;
+        int *mesh_relation_data = ((int *)set->mesh_relation_dat->data); 
+        int comm_iteration = 0;
+        int start1 = 0;
+        int end = set->size;
 
-    do
-    {   
-        opp_printf("Main()", "Starting iteration %d", comm_iteration);
+        do
+        {   
+            opp_printf("Main()", "Starting iteration %d", comm_iteration);
 
-        if (comm_iteration != 0)
-        {
-            if (opp_check_all_done(set))
+            if (comm_iteration != 0)
             {
-                // all mpi ranks do not have anything to communicate to any rank
-                opp_printf("AM I DONE? YESS", "");
-                break;
-            }
-            else
-            {
-                // wait till all the particles are communicated and added to the dats
-                opp_wait_all_particles(set);
-                start1 = set->size - set->diff;
-                end = set->size;
-            }
-        }
-
-        oppic_init_particle_move(set);
-
-        for (int i = start1; i < end; i++)
-        {        
-            opp_move_var m;
-
-            opp_printf("Main()", " Iter index %d", i);
-
-            do
-            { 
-                int& map0idx      = mesh_relation_data[i];
-
-                if (OPP_my_rank == 0 && i == 2 && comm_iteration==0)
+                if (opp_check_all_done(set))
                 {
-                    opp_printf("ZZZZZZZZZZZZZZZZZZZZZ", "3468");
-                    ((int*)part_mesh_relation->data)[i] = 3862;
-                    m.OPP_move_status = OPP_NEED_MOVE;
+                    // all mpi ranks do not have anything to communicate to any rank
+                    opp_printf("AM I DONE? YESS", "");
+                    break;
                 }
                 else
                 {
-                    m.OPP_move_status = OPP_MOVE_DONE;
+                    // wait till all the particles are communicated and added to the dats
+                    opp_wait_all_particles(set);
+                    start1 = set->size - set->diff;
+                    end = set->size;
                 }
-
-                // should check whether map0idx is in halo list or use the new mapping idea. if yes, return true and pack the particle data into MPI buffer
-                if (opp_check_part_need_comm(map0idx, set, i)) 
-                {
-                    m.OPP_move_status = OPP_NEED_REMOVE; // This particle will be communicated, hence needs to be removed from the current rank
-                }
-
-            } while (m.OPP_move_status == (int)OPP_NEED_MOVE);
-
-            if (m.OPP_move_status == OPP_NEED_REMOVE) 
-            {
-                set->particle_remove_count += 1;
-                mesh_relation_data[i] = MAX_CELL_INDEX;
             }
-        }
 
-        // send the counts and send the particles  
-        opp_exchange_particles(set);   
+            oppic_init_particle_move(set);
 
-        if (comm_iteration == 0) // should remove this if and simply call oppic_finalize_particle_move, if multiple hops over multiple mpi ranks is expected
-            oppic_finalize_particle_move(set); // Can fill the holes here since the comunicated particles will be added at the end
+            for (int i = start1; i < end; i++)
+            {        
+                opp_move_var m;
 
-        comm_iteration++;
+                opp_printf("Main()", " Iter index %d", i);
 
-    } while (true);
+                do
+                { 
+                    int& map0idx      = mesh_relation_data[i];
 
+                    if (OPP_my_rank == 0 && i == 2 && comm_iteration==0)
+                    {
+                        opp_printf("ZZZZZZZZZZZZZZZZZZZZZ", "3468");
+                        ((int*)part_mesh_relation->data)[i] = 3862;
+                        m.OPP_move_status = OPP_NEED_MOVE;
+                    }
+                    else
+                    {
+                        m.OPP_move_status = OPP_MOVE_DONE;
+                    }
 
+                    // should check whether map0idx is in halo list or use the new mapping idea. if yes, return true and pack the particle data into MPI buffer
+                    if (opp_check_part_need_comm(map0idx, set, i)) 
+                    {
+                        m.OPP_move_status = OPP_NEED_REMOVE; // This particle will be communicated, hence needs to be removed from the current rank
+                    }
 
+                } while (m.OPP_move_status == (int)OPP_NEED_MOVE);
 
+                if (m.OPP_move_status == OPP_NEED_REMOVE) 
+                {
+                    set->particle_remove_count += 1;
+                    mesh_relation_data[i] = MAX_CELL_INDEX;
+                }
+            }
+
+            // send the counts and send the particles  
+            opp_exchange_particles(set);   
+
+            if (comm_iteration == 0) // should remove this if and simply call oppic_finalize_particle_move, if multiple hops over multiple mpi ranks is expected
+                oppic_finalize_particle_move(set); // Can fill the holes here since the comunicated particles will be added at the end
+
+            comm_iteration++;
+
+        } while (true);
+
+    }
+
+if (true)
 {
     std::string f = std::string("E_") + std::to_string(OPP_my_rank);
 
@@ -350,7 +359,7 @@ opp_printf("XXXXXXXXXX", OPP_my_rank, " 10");
 
 
 
-
+/*
 
 
 opp_printf("XXXXXXXXXX", OPP_my_rank, " 11");
@@ -448,8 +457,8 @@ max_iter = 0;
         std::chrono::duration<double> diff_1 = std::chrono::system_clock::now() - start_iter1;
         opp_printf("FEMPIC", "Time to iterate ts=%d <sec>: ", max_iter);
         // std::cout << "\nFEMPIC - Time to iterate ts=" << max_iter << " <sec>: " << diff.count() << " and (ts-1) <sec>:" << diff_1.count() << "\n\n";
-
-        oppic_exit();
+*/
+        oppic_exit(); 
     // } // End Scope for oppic
 
     return 0;

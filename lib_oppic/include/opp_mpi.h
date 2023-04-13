@@ -91,6 +91,8 @@ struct opp_all_mpi_part_buffers
     std::map<int,int> export_counts; // rank -> count
     std::vector<MPI_Request> send_req;
     std::vector<MPI_Request> recv_req;
+    MPI_Request *r_req;
+    int r_num_req;
     std::vector<int> neighbours;
 };
 
@@ -303,3 +305,4 @@ void opp_exchange_particles(oppic_set set);
 void opp_partition_core(op_set prime_set, op_map prime_map, op_dat data);
 void opp_particle_comm_init();
 void opp_particle_set_comm_init(oppic_set set);
+void opp_particle_comm_destroy();
