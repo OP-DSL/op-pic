@@ -297,7 +297,7 @@ opp_printf("XXXXXXXXXX", OPP_my_rank, " 10");
             {        
                 opp_move_var m;
 
-                opp_printf("Main()", " Iter index %d", i);
+                opp_printf("Main()", " Iter index %d comm_iteration %d", i, comm_iteration);
 
                 do
                 { 
@@ -305,8 +305,26 @@ opp_printf("XXXXXXXXXX", OPP_my_rank, " 10");
 
                     if (OPP_my_rank == 0 && i == 2 && comm_iteration==0)
                     {
-                        opp_printf("ZZZZZZZZZZZZZZZZZZZZZ", "3468");
+                        opp_printf("ZZZZZZZZZZZZZZZZZZZZZ", "3468 cell of INDEX 1 ieh of RANK 0");
                         ((int*)part_mesh_relation->data)[i] = 3862;
+                        m.OPP_move_status = OPP_NEED_MOVE;
+                    }
+                    else if (OPP_my_rank == 0 && i == 19 && comm_iteration==0)
+                    {
+                        opp_printf("ZZZZZZZZZZZZZZZZZZZZZ", "3649 cell of INDEX 182 ieh of RANK 0");
+                        ((int*)part_mesh_relation->data)[i] = 4043;
+                        m.OPP_move_status = OPP_NEED_MOVE;
+                    }
+                    else if (OPP_my_rank == 1 && i == 3 && comm_iteration==0)
+                    {
+                        opp_printf("ZZZZZZZZZZZZZZZZZZZZZ", "3670 cell of INDEX 3 ieh of RANK 1");
+                        ((int*)part_mesh_relation->data)[i] = 3653;
+                        m.OPP_move_status = OPP_NEED_MOVE;
+                    }
+                    else if (OPP_my_rank == 1 && i == 20 && comm_iteration==1)
+                    {
+                        opp_printf("ZZZZZZZZZZZZZZZZZZZZZ", "3672 cell of INDEX 1 ieh of RANK 0");
+                        ((int*)part_mesh_relation->data)[i] = 3655;
                         m.OPP_move_status = OPP_NEED_MOVE;
                     }
                     else
@@ -332,8 +350,8 @@ opp_printf("XXXXXXXXXX", OPP_my_rank, " 10");
             // send the counts and send the particles  
             opp_exchange_particles(set);   
 
-            if (comm_iteration == 0) // should remove this if and simply call oppic_finalize_particle_move, if multiple hops over multiple mpi ranks is expected
-                oppic_finalize_particle_move(set); // Can fill the holes here since the comunicated particles will be added at the end
+            // if (comm_iteration == 0) // should remove this if and simply call oppic_finalize_particle_move, if multiple hops over multiple mpi ranks is expected
+            oppic_finalize_particle_move(set); // Can fill the holes here since the comunicated particles will be added at the end
 
             comm_iteration++;
 

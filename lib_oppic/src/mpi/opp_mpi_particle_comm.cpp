@@ -59,26 +59,23 @@ void opp_pack_particle(oppic_set set, int index, int send_rank)
 // opp_printf("opp_pack_particle", "%s", dat->name); // check order issues
         memcpy(&(send_rank_buffer.buf_export[send_rank_buffer.buf_export_index + displacement]), &(dat->data[index * dat->size]), dat->size);
 
-if (i == 0)
-{
-    double* d = (double*)(&(send_rank_buffer.buf_export[send_rank_buffer.buf_export_index + displacement]));
-    opp_printf("opp_pack_particleA", "%s - %lf %lf %lf", dat->name, d[0], d[1], d[2]);
-}
-if (i == 1)
-{
-    double* d = (double*)(&(send_rank_buffer.buf_export[send_rank_buffer.buf_export_index + displacement]));
-    opp_printf("opp_pack_particleA", "%s - %lf %lf %lf", dat->name, d[0], d[1], d[2]);
-}
-else if (i == 2)
-{
-    int* d = (int*)(&(send_rank_buffer.buf_export[send_rank_buffer.buf_export_index + displacement]));
-    opp_printf("opp_pack_particleA", "%s - %d %d %d %d", dat->name, d[0], d[1], d[2], d[3]);
-}
-else if (i == 3)
-{
-    int* d = (int*)(&(send_rank_buffer.buf_export[send_rank_buffer.buf_export_index + displacement]));
-    opp_printf("opp_pack_particleA", "%s - %d", dat->name, d[0]);   
-}
+        if (OP_DEBUG)
+        {
+            char* part_buffer = &send_rank_buffer.buf_export[send_rank_buffer.buf_export_index];
+            std::string log = "";
+            if (strcmp(dat->type, "double") == 0)
+            {
+                double* d = (double*)(part_buffer + displacement);
+                for (int l = 0; l < dat->dim; l++) log += " " + std::to_string(d[l]);
+            }
+            else if (strcmp(dat->type, "int") == 0)
+            {
+                int* d = (int*)(part_buffer + displacement);
+                for (int l = 0; l < dat->dim; l++) log += " " + std::to_string(d[l]);
+            }
+
+            opp_printf("opp_pack_particle", "%s from index %d -%s", dat->name, index, log.c_str());
+        }
 
         displacement += dat->size;
     } 
@@ -110,9 +107,9 @@ void opp_unpack_particles(oppic_set set)
     if (num_particles > 0)
     {
         int particle_size = set->particle_size;
-        int new_part_index = (set->size - set->diff);
 
         oppic_increase_particle_count_core(set, num_particles);
+        int new_part_index = (set->size - set->diff);
 // opp_printf("opp_unpack_particles", "set %s particle_size %d new_part_index %d, set_size: %d", set->name, particle_size, new_part_index, set->size);
 
         for (int i = 0; i < neighbours.size(); i++)
@@ -139,26 +136,22 @@ void opp_unpack_particles(oppic_set set)
                                     
                     memcpy(write_to, part_buffer + displacement, dat->size);
 
-if (i == 0)
-{
-    double* d = (double*)(part_buffer + displacement);
-    opp_printf("opp_unpack_particles", "%s - %lf %lf %lf", dat->name, d[0], d[1], d[2]);
-}
-else if (i == 1)
-{
-    double* d = (double*)(part_buffer + displacement);
-    opp_printf("opp_unpack_particles", "%s - %lf %lf %lf", dat->name, d[0], d[1], d[2]);
-}
-else if (i == 2)
-{
-    int* d = (int*)(part_buffer + displacement);
-    opp_printf("opp_unpack_particles", "%s - %d %d %d %d", dat->name, d[0], d[1], d[2], d[3]);
-}
-else if (i == 3)
-{
-    int* d = (int*)(part_buffer + displacement);
-    opp_printf("opp_unpack_particles", "%s - %d", dat->name, d[0]);   
-}
+                    if (OP_DEBUG)
+                    {
+                        std::string log = "";
+                        if (strcmp(dat->type, "double") == 0)
+                        {
+                            double* d = (double*)(part_buffer + displacement);
+                            for (int l = 0; l < dat->dim; l++) log += " " + std::to_string(d[l]);
+                        }
+                        else if (strcmp(dat->type, "int") == 0)
+                        {
+                            int* d = (int*)(part_buffer + displacement);
+                            for (int l = 0; l < dat->dim; l++) log += " " + std::to_string(d[l]);
+                        }
+
+                        opp_printf("opp_unpack_particles", "%s to index %d -%s", dat->name, new_part_index, log.c_str());
+                    }
 
                     displacement += dat->size;     
                 }
@@ -483,7 +476,13 @@ bool opp_check_all_done(oppic_set set)
     if (OP_DEBUG) opp_printf("opp_check_all_done", "START");
 
     opp_all_mpi_part_buffers* mpi_buffers = (opp_all_mpi_part_buffers*)set->mpi_part_buffers;
-    bool imported_parts = (mpi_buffers->total_recv != 0);
+    bool imported_parts = true;
+    
+    if (mpi_buffers->total_recv == 0)
+    {
+        imported_parts = false;
+        set->diff = 0;
+    }
 
 // opp_printf("opp_check_all_done", "I am %s, received %d particle/s for the next iteration", 
 //     (imported_parts ? "not done" : "done"), mpi_buffers->total_recv);
