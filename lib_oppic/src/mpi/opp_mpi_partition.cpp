@@ -1408,7 +1408,7 @@ void opp_partition_destroy()
     for (int s = 0; s < OP_set_index; s++)  // for each set
     { 
         op_set set = OP_set_list[s];
-        if (set->is_particle) continue;
+        // if (set->is_particle) continue;
         free(OP_part_list[set->index]->g_index);
         free(OP_part_list[set->index]->elem_part);
         free(OP_part_list[set->index]);
@@ -1416,7 +1416,7 @@ void opp_partition_destroy()
     free(OP_part_list);
     for (int i = 0; i < OP_set_index; i++)
     {
-        if (OP_set_list[i]->is_particle) continue;
+        // if (OP_set_list[i]->is_particle) continue;
         free(orig_part_range[i]);
     }
 
@@ -1434,7 +1434,7 @@ void opp_partition_kway(op_map primary_map)
         return;
     }
 
-    opp_printf("opp_partition_kway", OPP_my_rank, "start");
+    opp_printf("opp_partition_kway", "START");
 
     // declare timers
     double cpu_t1, cpu_t2, wall_t1, wall_t2, time, max_time;
@@ -1450,14 +1450,14 @@ void opp_partition_kway(op_map primary_map)
 #ifdef DEBUG
     // check if the  primary_map is an on to map from the from-set to the to-set
     if (is_onto_map(primary_map) != 1) {
-        printf("Map %s is not an onto map from set %s to set %s \n",
+        opp_printf("opp_partition_kway", "Map %s is not an onto map from set %s to set %s",
             primary_map->name, primary_map->from->name, primary_map->to->name);
         MPI_Abort(OP_PART_WORLD, 2);
     }
 #endif
 
     /*--STEP 0 - initialise partitioning data stauctures with the current (block) partitioning information */
-printf("ZZ at STEP 0\n");
+
     // Compute global partition range information for each set
     int **part_range = (int **)malloc(OP_set_index * sizeof(int *));
     get_part_range(part_range, my_rank, comm_size, OP_PART_WORLD);
@@ -1475,7 +1475,7 @@ printf("ZZ at STEP 0\n");
             orig_part_range[set->index][2 * j + 1] = part_range[set->index][2 * j + 1];
         }
     }
-printf("ZZ1 at STEP 0\n");
+
     // allocate memory for list
     OP_part_list = (part *)malloc(OP_set_index * sizeof(part));
 
@@ -1490,7 +1490,7 @@ printf("ZZ1 at STEP 0\n");
     }
 
     /*--STEP 1 - Construct adjacency list of the to-set of the primary_map  -------*/
-printf("ZZ at STEP 1\n");
+
     // create export list
     int c = 0;
     int cap = 1000;
@@ -1514,11 +1514,11 @@ printf("ZZ at STEP 1\n");
                 list[c++] = e;
             }
         }
-    } printf("ZZ1 at STEP 1\n");
+    }
     halo_list exp_list = (halo_list)malloc(sizeof(halo_list_core));
     create_export_list(primary_map->from, list, exp_list, c, comm_size, my_rank);
     free(list); // free temp list
-printf("ZZ2 at STEP 1\n");
+
     // create import list
     int *neighbors, *sizes;
     int ranks_size;
@@ -1527,7 +1527,7 @@ printf("ZZ2 at STEP 1\n");
     ranks_size = 0;
     neighbors = (int *)malloc(comm_size * sizeof(int));
     sizes = (int *)malloc(comm_size * sizeof(int));
-printf("ZZ 3at STEP 1\n");
+
     // halo_list list = OP_export_exec_list[set->index];
     find_neighbors_set(exp_list, neighbors, sizes, &ranks_size, my_rank,
                         comm_size, OP_PART_WORLD);
@@ -1536,7 +1536,7 @@ printf("ZZ 3at STEP 1\n");
 
     int *rbuf, index = 0;
     cap = 0;
-printf("ZZ 4at STEP 1\n");
+
     for (int i = 0; i < exp_list->ranks_size; i++) 
     {
         int *sbuf = &exp_list->list[exp_list->disps[i]];
@@ -1546,7 +1546,7 @@ printf("ZZ 4at STEP 1\n");
     for (int i = 0; i < ranks_size; i++)
         cap = cap + sizes[i];
     int *temp = (int *)malloc(cap * sizeof(int));
-printf("ZZ 5at STEP 1\n");
+
     // import this list from those neighbors
     for (int i = 0; i < ranks_size; i++) 
     {
@@ -1557,11 +1557,11 @@ printf("ZZ 5at STEP 1\n");
         free(rbuf);
     }
     MPI_Waitall(exp_list->ranks_size, request_send, MPI_STATUSES_IGNORE);
-printf("ZZ 7at STEP 1\n");
+
     halo_list imp_list = (halo_list)malloc(sizeof(halo_list_core));
     create_import_list(primary_map->from, temp, imp_list, index, neighbors, sizes,
                         ranks_size, comm_size, my_rank);
-printf("ZZ 8at STEP 1\n");
+
     //
     // Exchange mapping table entries using the import/export lists
     //
@@ -1582,7 +1582,7 @@ printf("ZZ 8at STEP 1\n");
         MPI_Isend(sbuf[i], primary_map->dim * exp_list->sizes[i], MPI_INT, exp_list->ranks[i], primary_map->index, 
             OP_PART_WORLD, &request_send[i]);
     }
-printf("ZZ 9at STEP 1\n");
+
     // prepare space for the incomming mapping tables
     int *foreign_maps = (int *)malloc(primary_map->dim * (imp_list->size) * sizeof(int));
 
@@ -1590,7 +1590,7 @@ printf("ZZ 9at STEP 1\n");
         MPI_Recv(&foreign_maps[(size_t)imp_list->disps[i] * primary_map->dim], primary_map->dim * imp_list->sizes[i], MPI_INT, 
                 imp_list->ranks[i], primary_map->index, OP_PART_WORLD, MPI_STATUS_IGNORE);
     }
-printf("ZZq at STEP 1\n");
+
     MPI_Waitall(exp_list->ranks_size, request_send, MPI_STATUSES_IGNORE);
     for (int i = 0; i < exp_list->ranks_size; i++)
         free(sbuf[i]);
@@ -1606,7 +1606,7 @@ printf("ZZq at STEP 1\n");
         adj_cap[i] = primary_map->dim;
     for (int i = 0; i < primary_map->to->size; i++)
         adj[i] = (int *)malloc(adj_cap[i] * sizeof(int));
-printf("ZZ w at STEP 1\n");
+
     // go through each from-element of local primary_map and construct adjacency list
     for (int i = 0; i < primary_map->from->size; i++)
     {
@@ -1631,7 +1631,7 @@ printf("ZZ w at STEP 1\n");
             }
         }
     }
-printf("ZZ r at STEP 1\n");
+
     // go through each from-element of foreign primary_map and add to adjacency list
     for (int i = 0; i < imp_list->size; i++) 
     {
@@ -1655,7 +1655,7 @@ printf("ZZ r at STEP 1\n");
         }
     }
     free(foreign_maps);
-printf("ZZt at STEP 1\n");
+
     //
     // Setup data structures for ParMetis PartKway
     //
@@ -1670,7 +1670,7 @@ printf("ZZt at STEP 1\n");
 
     idx_t *xadj = (idx_t *)malloc(sizeof(idx_t) * (primary_map->to->size + 1));
     cap = (primary_map->to->size) * primary_map->dim;
-printf("ZZf at STEP 1\n");
+
     idx_t *adjncy = (idx_t *)malloc(sizeof(idx_t) * cap);
     int count = 0;
     int prev_count = 0;
@@ -1682,9 +1682,9 @@ printf("ZZf at STEP 1\n");
 
         if (adj_i[i] < 2) 
         {
-            printf("The from set: %s of primary map: %s is not an on to set of to-set: %s\n",
+            opp_printf("opp_partition_kway", "The from set: %s of primary map: %s is not an on to set of to-set: %s",
                     primary_map->from->name, primary_map->name, primary_map->to->name);
-            printf("Need to select a different primary map\n");
+            opp_printf("opp_partition_kway", "Need to select a different primary map");
             MPI_Abort(OP_PART_WORLD, 2);
         }
 
@@ -1713,13 +1713,13 @@ printf("ZZf at STEP 1\n");
         }
     }
     xadj[primary_map->to->size] = count;
-printf("ZZg at STEP 1\n");
+
     for (int i = 0; i < primary_map->to->size; i++)
         free(adj[i]);
     free(adj_i);
     free(adj_cap);
     free(adj);
-printf("ZZaa at STEP 1\n");
+
     idx_t *partition_pm = (idx_t *)malloc(sizeof(idx_t) * primary_map->to->size);
     for (int i = 0; i < primary_map->to->size; i++) 
     {
@@ -1730,7 +1730,7 @@ printf("ZZaa at STEP 1\n");
     idx_t numflag = 0;
     idx_t wgtflag = 0;
     idx_t options[3] = {1, 3, 15};
-printf("ZZqwq at STEP 1\n");
+
     int *hybrid_flags = (int *)malloc(comm_size * sizeof(int));
     MPI_Allgather(&OP_hybrid_gpu, 1, MPI_INT, hybrid_flags, 1, MPI_INT, OP_PART_WORLD);
     double total = 0;
@@ -1744,7 +1744,7 @@ printf("ZZqwq at STEP 1\n");
 
     real_t *ubvec = (real_t *)malloc(sizeof(real_t) * ncon);
     *ubvec = 1.05;
-printf("ZZqaq at STEP 1\n");
+
     // clean up before calling ParMetis
     for (int i = 0; i < OP_set_index; i++)
         free(part_range[i]);
@@ -1762,16 +1762,16 @@ printf("ZZqaq at STEP 1\n");
 
     if (my_rank == OPP_MPI_ROOT) 
     {
-        printf("-----------------------------------------------------------\n");
-        printf("ParMETIS_V3_PartKway Output\n");
-        printf("-----------------------------------------------------------\n");
+        opp_printf("opp_partition_kway", "-----------------------------------------------------------");
+        opp_printf("opp_partition_kway", "ParMETIS_V3_PartKway Output");
+        opp_printf("opp_partition_kway", "-----------------------------------------------------------");
     }
 
     ParMETIS_V3_PartKway(vtxdist, xadj, adjncy, NULL, NULL, &wgtflag, &numflag, &ncon, &comm_size_pm, tpwgts, ubvec, 
         options, &edge_cut, partition_pm, &OP_PART_WORLD);
         
     if (my_rank == OPP_MPI_ROOT)
-        printf("-----------------------------------------------------------\n");
+        opp_printf("opp_partition_kway", "-----------------------------------------------------------");
     free(vtxdist);
     free(xadj);
     free(adjncy);
@@ -1784,37 +1784,37 @@ printf("ZZqaq at STEP 1\n");
         // sanity check to see if all elements were partitioned
         if (partition_pm[i] < 0 || partition_pm[i] >= comm_size) 
         {
-            printf("Partitioning problem: on rank %d, set %s element %d not assigned a partition\n",
+            opp_printf("opp_partition_kway", "Partitioning problem: on rank %d, set %s element %d not assigned a partition",
                     my_rank, primary_map->to->name, i);
             MPI_Abort(OP_PART_WORLD, 2);
         }
         partition[i] = partition_pm[i];
     }
     free(partition_pm);
-printf("ZZqqq at STEP 1\n");
+
     // initialise primary set as partitioned
     OP_part_list[primary_map->to->index]->elem_part = partition;
     OP_part_list[primary_map->to->index]->is_partitioned = 1;
 
     /*-STEP 2 - Partition all other sets,migrate data and renumber mapping tables-*/
-printf("ZZ at STEP 2\n");
+
     partition_all(primary_map->to, my_rank, comm_size);
-printf("ZZ at STEP 3\n");
+
     migrate_all(my_rank, comm_size);
-printf("ZZ at STEP 4\n");
+
     renumber_maps(my_rank, comm_size);
-printf("ZZ at STEP 5\n");
+
     op_timers(&cpu_t2, &wall_t2); // timer stop for partitioning
-printf("ZZ at STEP 6\n");  
+
     time = wall_t2 - wall_t1;
     MPI_Reduce(&time, &max_time, 1, MPI_DOUBLE, MPI_MAX, OPP_MPI_ROOT, OP_PART_WORLD);
     MPI_Comm_free(&OP_PART_WORLD);
-printf("ZZ at STEP 7\n");    
-    if (my_rank == OPP_MPI_ROOT) printf("Max total Kway partitioning time = %lf\n", max_time);
+  
+    if (my_rank == OPP_MPI_ROOT) opp_printf("opp_partition_kway", "Max total Kway partitioning time = %lf", max_time);
 
     free(request_send);
 
-    opp_printf("opp_partition_kway", OPP_my_rank, "end");
+    opp_printf("opp_partition_kway", "end");
 }
 
 

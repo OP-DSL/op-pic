@@ -52,6 +52,7 @@ int OP_auto_sort            = 1;
 int OPP_mpi_part_alloc_mult = 1;
 int OPP_my_rank             = 0;
 int OPP_comm_size           = 1;
+int OPP_comm_iteration      = 1;
 
 opp::Params* opp_params = nullptr;
 
@@ -79,6 +80,7 @@ void oppic_exit_core()
 {  
     for (auto& a : oppic_maps) {
         free(a->map);
+        free((char*)a->name);
         free(a);
     }
     oppic_maps.clear();
@@ -86,6 +88,9 @@ void oppic_exit_core()
     for (auto& a : oppic_dats) {
         free(a->data);
         for (int thr = 1; thr < (int)a->thread_data->size(); thr++) { free(a->thread_data->at(thr)); }
+        delete a->thread_data;
+        free((char*)a->name);
+        free((char*)a->type);
         free(a);
     }
     oppic_dats.clear();
@@ -95,6 +100,7 @@ void oppic_exit_core()
         delete a->particle_dats;
         delete a->cell_index_v_part_index_map;
         if (a->particle_statuses) free(a->particle_statuses);
+        free((char*)a->name);
         free(a);
     }
     oppic_sets.clear();
@@ -255,6 +261,7 @@ oppic_dat oppic_decl_dat_core(oppic_set set, int dim, char const *type, int size
     dat->size          = dim * size;
     dat->user_managed  = 1;
     dat->mpi_buffer    = NULL;
+    dat->mpi_reduc_buffer = NULL;
     dat->buffer_d      = NULL;
     dat->buffer_d_r    = NULL;
     dat->dirty_hd      = Dirty::NotDirty;
@@ -309,6 +316,7 @@ oppic_arg oppic_arg_dat_core(oppic_dat dat, int idx, oppic_map map, int dim, con
     arg.acc         = acc;
     arg.opt         = 1;
     arg.sent        = 0;
+    arg.mesh_mapping= mapping;
     
     return arg;
 }

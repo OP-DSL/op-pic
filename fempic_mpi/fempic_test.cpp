@@ -200,12 +200,12 @@ delete[] arr_part_mesh_relation;
 
 // opp_printf("XXXXXXXXXX", OPP_my_rank, " 9");
 
-        oppic_decl_const<double>(1, &spwt,         "CONST_spwt");
-        oppic_decl_const<double>(1, &ion_velocity, "CONST_ion_velocity");
-        oppic_decl_const<double>(1, &dt,           "CONST_dt");
-        oppic_decl_const<double>(1, &plasma_den,   "CONST_plasma_den");
-        oppic_decl_const<double>(1, &mass,         "CONST_mass");
-        oppic_decl_const<double>(1, &charge,       "CONST_charge");
+        oppic_decl_const<OPP_REAL>(1, &spwt,         "CONST_spwt");
+        oppic_decl_const<OPP_REAL>(1, &ion_velocity, "CONST_ion_velocity");
+        oppic_decl_const<OPP_REAL>(1, &dt,           "CONST_dt");
+        oppic_decl_const<OPP_REAL>(1, &plasma_den,   "CONST_plasma_den");
+        oppic_decl_const<OPP_REAL>(1, &mass,         "CONST_mass");
+        oppic_decl_const<OPP_REAL>(1, &charge,       "CONST_charge");
 
 // opp_printf("XXXXXXXXXX", OPP_my_rank, " 8");
 
@@ -297,10 +297,10 @@ delete[] arr_part_mesh_relation;
                     }
                     // End of the kernel **************************************************************
 
-                    // should check whether map0idx is in halo list or use the new mapping idea. if yes, return true and pack the particle data into MPI buffer
+                    // should check whether map0idx is in halo list, if yes, pack the particle data into MPI buffer
                     opp_check_part_need_comm(map0idx, set, i, m);
 
-                } while (m.OPP_move_status == (int)OPP_NEED_MOVE);
+                } while (m.OPP_move_status == OPP_NEED_MOVE);
 
                 if (m.OPP_move_status == OPP_NEED_REMOVE) 
                 {

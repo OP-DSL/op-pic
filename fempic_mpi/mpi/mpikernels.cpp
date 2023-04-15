@@ -151,22 +151,95 @@ void oppic_par_loop_particle_all__MoveToCells(
 )
 { TRACE_ME;
 
-    if (FP_DEBUG) printf("FEMPIC - oppic_par_loop_particle_all__MoveToCells set_size %d diff %d\n", set->size, set->diff);
+    if (FP_DEBUG) opp_printf("FEMPIC", "oppic_par_loop_particle_all__MoveToCells set_size %d diff %d", set->size, set->diff);
 
-    // set the args 
-    int *mesh_relation_data = ((int *)set->mesh_relation_dat->data); 
-    int comm_iteration = 0;
-    int start = 0;
-    int end = set->size;
-    bool decode_comm_buffer = false;
+    int nargs = 12;
+    oppic_arg args[nargs];
 
-    do
-    {   
-        oppic_init_particle_move(set);
+    args[0] = arg0;
+    args[1] = arg1;
+    args[2] = arg2;
+    args[3] = arg3;
+    args[4] = arg4;
+    args[5] = arg5;
+    args[6] = arg6;
+    args[7] = arg7;
+    args[8] = arg8;
+    args[9] = arg9;
+    args[10] = arg10;
+    args[11] = arg11;
 
-        if (comm_iteration != 0)
+// if there is access to a dat with OPP_Map_from_Mesh_Rel and a mapping, 
+// then we should reduce the contributions to the element containing rank
+// Here we should make the values of that dat to zero prior loop, 
+// execute the loop and communicate the outcome to the residing rank, like in a halo exchange, 
+// but when received, that rank should do the reduction
+
+    int set_size = oppic_mpi_halo_exchanges(set, nargs, args);
+    if (set_size > 0) 
+    {
+        int start = 0;
+        int end = set->size;
+
+        // iterate untill all mpi ranks say, I am done
+        do
         {
-            if (opp_check_all_done(set))
+            oppic_init_particle_move(set);
+            
+            if (FP_DEBUG) opp_printf("FEMPIC", "oppic_par_loop_particle_all__MoveToCells Starting iteration %d, start[%d] end[%d]", OPP_comm_iteration, start, end);
+
+            int *mesh_relation_data = ((int *)set->mesh_relation_dat->data); 
+
+            for (int i = start; i < end; i++)
+            {
+                opp_move_var m;
+                
+                // (OPP_comm_iteration != 1) means communicated particles, no need to do the iteration one calculations in the kernel
+                if (OPP_comm_iteration != 1) 
+                    m.OPP_iteration_one = false;
+
+                do
+                { 
+                    m.OPP_inside_cell = true;
+
+                    int& map0idx      = mesh_relation_data[i];
+
+                    const int map1idx = arg8.map_data[map0idx * arg8.map->dim + 0];
+                    const int map2idx = arg8.map_data[map0idx * arg8.map->dim + 1];
+                    const int map3idx = arg8.map_data[map0idx * arg8.map->dim + 2];
+                    const int map4idx = arg8.map_data[map0idx * arg8.map->dim + 3];
+
+                    move_all_particles_to_cell__kernel(
+                        (m),
+                        &((double *)arg0.data)[map0idx * arg0.dim], // const double *cell_ef,
+                        &((double *)arg1.data)[i * arg1.dim],       // double *part_pos,
+                        &((double *)arg2.data)[i * arg2.dim],       // double *part_vel,
+                        &((double *)arg3.data)[i * arg3.dim],       // double *part_lc,
+                        &((int *)arg4.data)[i * arg4.dim],          // int* current_cell_index,
+                        &((double*)arg5.data)[map0idx * arg5.dim],  // const double *current_cell_volume,
+                        &((double*)arg6.data)[map0idx * arg6.dim],  // const double *current_cell_det,
+                        &((int*)arg7.data)[map0idx * arg7.dim],     // const int *cell_connectivity,
+                        &((double*)arg8.data)[map1idx],             // double *node_charge_den0,
+                        &((double*)arg8.data)[map2idx],             // double *node_charge_den1,
+                        &((double*)arg8.data)[map3idx],             // double *node_charge_den2,
+                        &((double*)arg8.data)[map4idx]              // double *node_charge_den3,
+                    );
+
+                    m.OPP_iteration_one = false;
+
+                    // should check whether map0idx is in halo list, if yes, pack the particle into MPI buffer and set status to ONEED_REMOVE
+                    opp_check_part_need_comm(map0idx, set, i, m);
+
+                } while (m.OPP_move_status == OPP_NEED_MOVE);
+
+                if (m.OPP_move_status == OPP_NEED_REMOVE) 
+                {
+                    set->particle_remove_count += 1;
+                    mesh_relation_data[i] = MAX_CELL_INDEX;
+                }
+            }
+
+            if (oppic_finalize_particle_move(set))
             {
                 // all mpi ranks do not have anything to communicate to any rank
                 break;
@@ -178,72 +251,15 @@ void oppic_par_loop_particle_all__MoveToCells(
                 start = set->size - set->diff;
                 end = set->size;
             }
-        }
 
-        for (int i = start; i < end; i++)
-        {        
-            opp_move_var m;
-            
-            if (comm_iteration != 0) 
-                m.OPP_iteration_one = false;
+            OPP_comm_iteration++;
 
-            do
-            { 
-                m.OPP_inside_cell = true;
+        } while (true);
 
-                int& map0idx      = mesh_relation_data[i];
+        // if auto_sort is set, then sort here
+    }
 
-                const int map1idx = arg8.map_data[map0idx * arg8.map->dim + 0];
-                const int map2idx = arg8.map_data[map0idx * arg8.map->dim + 1];
-                const int map3idx = arg8.map_data[map0idx * arg8.map->dim + 2];
-                const int map4idx = arg8.map_data[map0idx * arg8.map->dim + 3];
-
-                move_all_particles_to_cell__kernel(
-                    (m),
-                    &((double *)arg0.data)[map0idx * arg0.dim], // const double *cell_ef,
-                    &((double *)arg1.data)[i * arg1.dim],       // double *part_pos,
-                    &((double *)arg2.data)[i * arg2.dim],       // double *part_vel,
-                    &((double *)arg3.data)[i * arg3.dim],       // double *part_lc,
-                    &((int *)arg4.data)[i * arg4.dim],          // int* current_cell_index,
-                    &((double*)arg5.data)[map0idx * arg5.dim],  // const double *current_cell_volume,
-                    &((double*)arg6.data)[map0idx * arg6.dim],  // const double *current_cell_det,
-                    &((int*)arg7.data)[map0idx * arg7.dim],     // const int *cell_connectivity,
-                    &((double*)arg8.data)[map1idx],             // double *node_charge_den0,
-                    &((double*)arg8.data)[map2idx],             // double *node_charge_den1,
-                    &((double*)arg8.data)[map3idx],             // double *node_charge_den2,
-                    &((double*)arg8.data)[map4idx]              // double *node_charge_den3,
-                );             
-                
-                m.OPP_iteration_one = false;
-
-                // should check whether map0idx is in halo list or use the new mapping idea. if yes, return true and pack the particle data into MPI buffer
-                opp_check_part_need_comm(map0idx, set, i, m);
-
-            } while (m.OPP_move_status == (int)OPP_NEED_MOVE);
-
-            if (m.OPP_move_status == OPP_NEED_REMOVE) 
-            {
-                set->particle_remove_count += 1;
-                mesh_relation_data[i] = MAX_CELL_INDEX;
-            }
-            else if (comm_iteration != 0)
-            {
-                // add it to original particle list, can we do it as a batch?
-            }
-        }
-
-        // send the counts and send the particles  
-        opp_exchange_particles(set);   
-
-        oppic_finalize_particle_move(set); // Can fill the holes here since the comunicated particles will be added at the end
-
-        // check whether every MPI rank says, I am done!, if yes, break this do while
-        comm_iteration++;
-
-    } while (true);
-
-    // if auto_sort is set and if (comm_iteration != 0), then sort here
-    // set the dirty bits
+    oppic_mpi_set_dirtybit(nargs, args);
 }
 
 //*************************************************************************************************

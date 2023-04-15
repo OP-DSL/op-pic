@@ -267,6 +267,8 @@ void oppic_print_map_to_txtfile(oppic_map map, const char *file_name_prefix, con
 void oppic_init_particle_move(oppic_set set)
 { TRACE_ME;
 
+    OPP_comm_iteration = 1;
+
     oppic_init_particle_move_core(set);
 }
 
@@ -350,8 +352,6 @@ void opp_partition(op_set prime_set, op_map prime_map, op_dat data)
 //*******************************************************************************
 void opp_partition_core(op_set prime_set, op_map prime_map, op_dat data)
 {
-    printf("at partition\n");
-
     if (prime_map != NULL)
     {
         opp_partition_kway(prime_map); // use parmetis kaway partitioning
@@ -370,17 +370,19 @@ void opp_partition_core(op_set prime_set, op_map prime_map, op_dat data)
     {
         if (prime_map->map[2 * i] >= prime_map->to->size && prime_map->map[2 * i + 1] >= prime_map->to->size) ctr++;
     }
-    opp_printf("opp_partition()", OPP_my_rank, "%s Orphans in prime map [%s]: %d", (ctr > 0) ? "Error: " : "", prime_map->name, ctr);
+    opp_printf("opp_partition()", "%s Orphans in prime map [%s]: %d", (ctr > 0) ? "Error: " : "", prime_map->name, ctr);
 
     opp_particle_comm_init(); 
 
     std::vector<std::vector<int>> set_sizes(oppic_sets.size());
+
     for (oppic_set set : oppic_sets)
     {
         std::vector<int>& recv_vec = set_sizes[set->index];
-        recv_vec.resize(OPP_comm_size);
+        recv_vec.resize(OPP_comm_size * 3);
 
-        MPI_Gather(&(set->size), 1, MPI_INT, &(recv_vec[0]), 1, MPI_INT, OPP_MPI_ROOT, OP_MPI_WORLD);
+        std::vector<int> sizes{ set->size, set->exec_size, set->nonexec_size };
+        MPI_Gather(&(sizes[0]), 3, MPI_INT, &(recv_vec[0]), 3, MPI_INT, OPP_MPI_ROOT, OP_MPI_WORLD);
     }
 
     // print the set sizes of all ranks after partitioning
@@ -389,18 +391,19 @@ void opp_partition_core(op_set prime_set, op_map prime_map, op_dat data)
         std::string log = "";
 
         for (oppic_set set : oppic_sets)
-            log += "\t" + std::string(set->name);
+            log += "\t - " + std::string(set->name);
 
-        opp_printf("opp_partition()", OPP_MPI_ROOT, "\t\t\t%s", log.c_str());
+        opp_printf("opp_partition()", "(size|ieh|inh) %s", log.c_str());
 
         for (int i = 0; i < OPP_comm_size; i++)
         {
             log = "RANK [" + std::to_string(i) + "]";
             
             for (int j = 0; j < oppic_sets.size(); j++)
-                log += "\t\t\t" + std::to_string(set_sizes[j][i]);
+                log += "\t\t - " + std::to_string(set_sizes[j][i * 3]) + "|" + 
+                    std::to_string(set_sizes[j][i * 3 + 1]) + "|" + std::to_string(set_sizes[j][i * 3 + 2]);
 
-            opp_printf("opp_partition()", OPP_MPI_ROOT, "%s", log.c_str());
+            opp_printf("opp_partition()", "%s", log.c_str());
         }
     }
 }
@@ -414,7 +417,7 @@ void opp_sanitize_all_maps()
 
         if (map->dim == 1) continue;
 
-        if (OP_DEBUG) opp_printf("opp_sanitize_all_maps", OPP_my_rank, " map: %s | ptr: %p | dim: %d", map->name, map->map, map->dim);
+        if (OP_DEBUG) opp_printf("opp_sanitize_all_maps", " map: %s | ptr: %p | dim: %d", map->name, map->map, map->dim);
 
         for (int n = 0; n < map->from->size; n++)
         {
@@ -442,7 +445,7 @@ void opp_sanitize_all_maps()
             }
             else
             {
-                opp_printf("opp_sanitize_all_maps", OPP_my_rank, "Error: No positive mapping found at %d in map: %s", n, map->name);
+                opp_printf("opp_sanitize_all_maps", "Error: No positive mapping found at %d in map: %s", n, map->name);
             }
         }
     }
@@ -494,3 +497,38 @@ void opp_desanitize_all_maps()
 }
 
 //*******************************************************************************
+void opp_finalize_double_indirect_reductions(int nargs, oppic_arg *args) 
+{
+    opp_printf("opp_finalize_double_indirect_reductions", "ALL START");
+
+    for (int n = 0; n < nargs; n++) 
+    {
+        bool already_done = false;
+
+        // check if the dat is mapped with double indirect mapping
+        if (args[n].argtype == OP_ARG_DAT && args[n].mesh_mapping == OPP_Map_from_Mesh_Rel && args[n].idx != -1)
+        {
+            // Check if dat reduction was already done within these args
+            for (int m = 0; m < n; m++) 
+            {
+                if (args[n].dat == args[m].dat)
+                    already_done = true;
+            }
+
+            if (!already_done)
+                opp_finalize_double_indirect_reductions(args[n]);
+        }
+    }
+
+    opp_printf("opp_finalize_double_indirect_reductions", "ALL END");
+}
+
+//*******************************************************************************
+void opp_finalize_double_indirect_reductions(oppic_arg& arg) 
+{
+    opp_printf("opp_finalize_double_indirect_reductions", "ALL START dat %s", arg.dat->name);
+
+// TODO : IMPLEMENT
+
+    opp_printf("opp_finalize_double_indirect_reductions", "ALL END dat %s", arg.dat->name);
+}

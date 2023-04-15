@@ -370,7 +370,9 @@ void opp_halo_create()
     for (int s = 0; s < OP_set_index; s++) // for each set
     { 
         op_set set = OP_set_list[s];
-if (set->is_particle) continue;
+
+        if (set->is_particle) continue;
+
         // create a temporaty scratch space to hold export list for this set
         s_i = 0;
         cap_s = 1000;
@@ -423,7 +425,9 @@ if (set->is_particle) continue;
     for (int s = 0; s < OP_set_index; s++) // for each set
     { 
         op_set set = OP_set_list[s];
-if (set->is_particle) continue;
+
+        if (set->is_particle) continue;
+
         //-----Discover neighbors-----
         ranks_size = 0;
         neighbors = (int *)malloc(comm_size * sizeof(int));
@@ -526,7 +530,9 @@ if (set->is_particle) continue;
     for (int s = 0; s < OP_set_index; s++) // for each set
     { 
         op_set set = OP_set_list[s];
-if (set->is_particle) continue;        
+
+        if (set->is_particle) continue;   
+
         halo_list exec_set_list = OP_import_exec_list[set->index];
 
         // create a temporaty scratch space to hold nonexec export list for this set
@@ -595,7 +601,9 @@ if (set->is_particle) continue;
     for (int s = 0; s < OP_set_index; s++) // for each set
     { 
         op_set set = OP_set_list[s];
-if (set->is_particle) continue;
+
+        if (set->is_particle) continue;
+
         //-----Discover neighbors-----
         ranks_size = 0;
         neighbors = (int *)malloc(comm_size * sizeof(int));
@@ -640,7 +648,9 @@ if (set->is_particle) continue;
     for (int s = 0; s < OP_set_index; s++) // for each set
     { 
         op_set set = OP_set_list[s];
-if (set->is_particle) continue;        
+
+        if (set->is_particle) continue; 
+
         halo_list i_list = OP_import_exec_list[set->index];
         halo_list e_list = OP_export_exec_list[set->index];
 
@@ -755,7 +765,9 @@ if (set->is_particle) continue;
     for (int s = 0; s < OP_set_index; s++) // for each set
     { 
         op_set set = OP_set_list[s];
-if (set->is_particle) continue;
+
+        if (set->is_particle) continue;
+
         for (int m = 0; m < OP_map_index; m++) // for each maping table
         { 
             op_map map = OP_map_list[m];
@@ -832,26 +844,54 @@ if (set->is_particle) continue;
     for (int k = 0; k < OP_dat_index; k++) // for each dat
     {
         op_dat dat = OP_dat_list[k];
-if (dat->set->is_particle) continue;
-        op_mpi_buffer mpi_buf = (op_mpi_buffer)malloc(sizeof(op_mpi_buffer_core));
 
-        halo_list exec_e_list = OP_export_exec_list[dat->set->index];
-        halo_list nonexec_e_list = OP_export_nonexec_list[dat->set->index];
+        if (dat->set->is_particle) continue;
 
-        mpi_buf->buf_exec = (char *)malloc((size_t)(exec_e_list->size) * (size_t)dat->size);
-        mpi_buf->buf_nonexec = (char *)malloc((size_t)(nonexec_e_list->size) * (size_t)dat->size);
+        {
+            op_mpi_buffer mpi_buf = (op_mpi_buffer)malloc(sizeof(op_mpi_buffer_core));
 
-        halo_list exec_i_list = OP_import_exec_list[dat->set->index];
-        halo_list nonexec_i_list = OP_import_nonexec_list[dat->set->index];
+            halo_list exec_e_list = OP_export_exec_list[dat->set->index];
+            halo_list nonexec_e_list = OP_export_nonexec_list[dat->set->index];
 
-        mpi_buf->s_req = (MPI_Request *)malloc(
-            sizeof(MPI_Request) * (exec_e_list->ranks_size + nonexec_e_list->ranks_size));
-        mpi_buf->r_req = (MPI_Request *)malloc(
-            sizeof(MPI_Request) * (exec_i_list->ranks_size + nonexec_i_list->ranks_size));
+            mpi_buf->buf_exec = (char *)malloc((size_t)(exec_e_list->size) * (size_t)dat->size);
+            mpi_buf->buf_nonexec = (char *)malloc((size_t)(nonexec_e_list->size) * (size_t)dat->size);
 
-        mpi_buf->s_num_req = 0;
-        mpi_buf->r_num_req = 0;
-        dat->mpi_buffer = mpi_buf;
+            halo_list exec_i_list = OP_import_exec_list[dat->set->index];
+            halo_list nonexec_i_list = OP_import_nonexec_list[dat->set->index];
+
+            mpi_buf->s_req = (MPI_Request *)malloc(
+                sizeof(MPI_Request) * (exec_e_list->ranks_size + nonexec_e_list->ranks_size));
+            mpi_buf->r_req = (MPI_Request *)malloc(
+                sizeof(MPI_Request) * (exec_i_list->ranks_size + nonexec_i_list->ranks_size));
+
+            mpi_buf->s_num_req = 0;
+            mpi_buf->r_num_req = 0;
+            dat->mpi_buffer = mpi_buf;
+        }
+
+        // This is specifically for double indirected reduction operations
+        // for now, sending only non exec halos, check whether we need exec halos too!
+        {
+            op_mpi_buffer mpi_buf = (op_mpi_buffer)malloc(sizeof(op_mpi_buffer_core));
+
+            // halo_list exec_i_list = OP_import_exec_list[dat->set->index];
+            halo_list nonexec_i_list = OP_import_nonexec_list[dat->set->index];
+
+            // mpi_buf->buf_exec = (char *)malloc((size_t)(exec_i_list->size) * (size_t)dat->size);
+            mpi_buf->buf_nonexec = (char *)malloc((size_t)(nonexec_i_list->size) * (size_t)dat->size);
+
+            // halo_list exec_e_list = OP_export_exec_list[dat->set->index];
+            halo_list nonexec_e_list = OP_export_nonexec_list[dat->set->index];
+
+            mpi_buf->s_req = (MPI_Request *)malloc(
+                sizeof(MPI_Request) * (nonexec_i_list->ranks_size)); //(exec_i_list->ranks_size + nonexec_i_list->ranks_size));
+            mpi_buf->r_req = (MPI_Request *)malloc(
+                sizeof(MPI_Request) * (nonexec_e_list->ranks_size)); //(exec_e_list->ranks_size + nonexec_e_list->ranks_size));
+
+            mpi_buf->s_num_req = 0;
+            mpi_buf->r_num_req = 0;
+            dat->mpi_reduc_buffer = mpi_buf;
+        }
     }
 
     // set dirty bits of all data arrays to 0 for each data array
@@ -869,7 +909,9 @@ if (dat->set->is_particle) continue;
     for (int s = 0; s < OP_set_index; s++) // for each set
     { 
         op_set set = OP_set_list[s];
-if (set->is_particle) continue;
+
+        if (set->is_particle) continue;
+
         halo_list exec = OP_export_exec_list[set->index];
         halo_list nonexec = OP_export_nonexec_list[set->index];
 
@@ -1018,7 +1060,9 @@ if (set->is_particle) continue;
         for (int s = 0; s < OP_set_index; s++)  // for each set
         {
             op_set set = OP_set_list[s];
-if (set->is_particle) continue;
+
+            if (set->is_particle) continue;
+
             int *g_index = (int *)malloc(sizeof(int) * set->size);
             int *partition = (int *)malloc(sizeof(int) * set->size);
             for (int i = 0; i < set->size; i++) 
@@ -1049,7 +1093,9 @@ if (set->is_particle) continue;
         for (int s = 0; s < OP_set_index; s++)  // for each set
         { 
             op_set set = OP_set_list[s];
-if (set->is_particle) continue;
+
+            if (set->is_particle) continue;
+
             // combine core_elems and exp_elems to one memory block
             int *temp = (int *)malloc(sizeof(int) * set->size);
             memcpy(&temp[0], core_elems[set->index], set->core_size * sizeof(int));
@@ -1069,7 +1115,9 @@ if (set->is_particle) continue;
     for (int s = 0; s < OP_set_index; s++) // for each set
     { 
         op_set set = OP_set_list[s];
-if (set->is_particle) continue;
+
+        if (set->is_particle) continue;
+
         set->exec_size = OP_import_exec_list[set->index]->size;
         set->nonexec_size = OP_import_nonexec_list[set->index]->size;
     }
@@ -1098,7 +1146,9 @@ if (set->is_particle) continue;
     for (int s = 0; s < OP_set_index; s++) 
     {
         op_set set = OP_set_list[s];
-if (set->is_particle) continue;
+
+        if (set->is_particle) continue;
+
         // number of set elements first
         MPI_Reduce(&set->size, &avg_size, 1, MPI_INT, MPI_SUM, OPP_MPI_ROOT,
                 OP_MPI_WORLD);
@@ -1109,8 +1159,8 @@ if (set->is_particle) continue;
 
         if (my_rank == OPP_MPI_ROOT) 
         {
-            printf("Num of %8s (avg | min | max)\n", set->name);
-            printf("total elems         %10d %10d %10d\n", avg_size / comm_size, min_size, max_size);
+            opp_printf("opp_halo_create", "Num of %8s (avg | min | max)", set->name);
+            opp_printf("opp_halo_create", "total elems         %10d %10d %10d", avg_size / comm_size, min_size, max_size);
         }
 
         avg_size = 0;
@@ -1127,7 +1177,7 @@ if (set->is_particle) continue;
 
         if (my_rank == OPP_MPI_ROOT) 
         {
-            printf("core elems         %10d %10d %10d \n", avg_size / comm_size, min_size, max_size);
+            opp_printf("opp_halo_create", "core elems         %10d %10d %10d", avg_size / comm_size, min_size, max_size);
         }
         avg_size = 0;
         min_size = 0;
@@ -1143,7 +1193,7 @@ if (set->is_particle) continue;
 
         if (my_rank == OPP_MPI_ROOT) 
         {
-            printf("exec halo elems     %10d %10d %10d \n", avg_size / comm_size, min_size, max_size);
+            opp_printf("opp_halo_create", "exec halo elems     %10d %10d %10d", avg_size / comm_size, min_size, max_size);
         }
         avg_size = 0;
         min_size = 0;
@@ -1159,20 +1209,15 @@ if (set->is_particle) continue;
 
         if (my_rank == OPP_MPI_ROOT) 
         {
-            printf("non-exec halo elems %10d %10d %10d \n", avg_size / comm_size, min_size, max_size);
+            opp_printf("opp_halo_create", "non-exec halo elems %10d %10d %10d", avg_size / comm_size, min_size, max_size);
         }
         avg_size = 0;
         min_size = 0;
         max_size = 0;
         if (my_rank == OPP_MPI_ROOT) 
         {
-            printf("-----------------------------------------------------\n");
+            opp_printf("opp_halo_create", "-----------------------------------------------------");
         }
-    }
-
-    if (my_rank == OPP_MPI_ROOT) 
-    {
-        printf("\n\n");
     }
 
     // compute avg/min/max number of MPI neighbors per process accross the MPI
@@ -1181,7 +1226,9 @@ if (set->is_particle) continue;
     for (int s = 0; s < OP_set_index; s++) 
     {
         op_set set = OP_set_list[s];
-if (set->is_particle) continue;
+
+        if (set->is_particle) continue;
+
         // number of exec halo neighbors first
         MPI_Reduce(&OP_import_exec_list[set->index]->ranks_size, &avg_size, 1,
                 MPI_INT, MPI_SUM, OPP_MPI_ROOT, OP_MPI_WORLD);
@@ -1192,8 +1239,8 @@ if (set->is_particle) continue;
 
         if (my_rank == OPP_MPI_ROOT) 
         {
-            printf("MPI neighbors for exchanging %8s (avg | min | max)\n", set->name);
-            printf("exec halo elems     %4d %4d %4d\n", avg_size / comm_size, min_size, max_size);
+            opp_printf("opp_halo_create", "MPI neighbors for exchanging %8s (avg | min | max)", set->name);
+            opp_printf("opp_halo_create", "exec halo elems     %4d %4d %4d", avg_size / comm_size, min_size, max_size);
         }
         avg_size = 0;
         min_size = 0;
@@ -1209,13 +1256,13 @@ if (set->is_particle) continue;
 
         if (my_rank == OPP_MPI_ROOT) 
         {
-            printf("non-exec halo elems %4d %4d %4d\n", avg_size / comm_size, min_size, max_size);
+            opp_printf("opp_halo_create", "non-exec halo elems %4d %4d %4d", avg_size / comm_size, min_size, max_size);
         }
         avg_size = 0;
         min_size = 0;
         max_size = 0;
         if (my_rank == OPP_MPI_ROOT) {
-            printf("-----------------------------------------------------\n");
+            opp_printf("opp_halo_create", "-----------------------------------------------------");
         }
     }
 
@@ -1224,7 +1271,9 @@ if (set->is_particle) continue;
     for (int s = 0; s < OP_set_index; s++) 
     {
         op_set set = OP_set_list[s];
-if (set->is_particle) continue;
+
+        if (set->is_particle) continue;
+
         for (int k = 0; k < OP_dat_index; k++) // for each dat
         {
             op_dat dat = OP_dat_list[k];
@@ -1244,8 +1293,8 @@ if (set->is_particle) continue;
     // print performance results
     if (my_rank == OPP_MPI_ROOT) 
     {
-        printf("Max total halo creation time = %lf\n", max_time);
-        printf("Average (worst case) Halo size = %d Bytes\n", avg_halo_size / comm_size);
+        opp_printf("opp_halo_create", "Max total halo creation time = %lf", max_time);
+        opp_printf("opp_halo_create", "Average (worst case) Halo size = %d Bytes", avg_halo_size / comm_size);
     }
 
     opp_printf("opp_halo_create", OPP_my_rank, "end");
@@ -1264,50 +1313,57 @@ void opp_halo_destroy()
     }
 
     //free lists
-    // for (int s = 0; s < OP_set_index; s++) 
-    // {
-    //     op_set set = OP_set_list[s];
+    for (int s = 0; s < OP_set_index; s++) 
+    {
+        op_set set = OP_set_list[s];
 
-    //     if (set->is_particle) continue;
+        if (set->is_particle) continue;
 
-    //     free(OP_import_exec_list[set->index]->ranks);
-    //     free(OP_import_exec_list[set->index]->disps);
-    //     free(OP_import_exec_list[set->index]->sizes);
-    //     free(OP_import_exec_list[set->index]->list);
-    //     free(OP_import_exec_list[set->index]);
+        free(OP_import_exec_list[set->index]->ranks);
+        free(OP_import_exec_list[set->index]->disps);
+        free(OP_import_exec_list[set->index]->sizes);
+        free(OP_import_exec_list[set->index]->list);
+        free(OP_import_exec_list[set->index]);
 
-    //     free(OP_import_nonexec_list[set->index]->ranks);
-    //     free(OP_import_nonexec_list[set->index]->disps);
-    //     free(OP_import_nonexec_list[set->index]->sizes);
-    //     free(OP_import_nonexec_list[set->index]->list);
-    //     free(OP_import_nonexec_list[set->index]);
+        free(OP_import_nonexec_list[set->index]->ranks);
+        free(OP_import_nonexec_list[set->index]->disps);
+        free(OP_import_nonexec_list[set->index]->sizes);
+        free(OP_import_nonexec_list[set->index]->list);
+        free(OP_import_nonexec_list[set->index]);
 
-    //     free(OP_export_exec_list[set->index]->ranks);
-    //     free(OP_export_exec_list[set->index]->disps);
-    //     free(OP_export_exec_list[set->index]->sizes);
-    //     free(OP_export_exec_list[set->index]->list);
-    //     free(OP_export_exec_list[set->index]);
+        free(OP_export_exec_list[set->index]->ranks);
+        free(OP_export_exec_list[set->index]->disps);
+        free(OP_export_exec_list[set->index]->sizes);
+        free(OP_export_exec_list[set->index]->list);
+        free(OP_export_exec_list[set->index]);
 
-    //     free(OP_export_nonexec_list[set->index]->ranks);
-    //     free(OP_export_nonexec_list[set->index]->disps);
-    //     free(OP_export_nonexec_list[set->index]->sizes);
-    //     free(OP_export_nonexec_list[set->index]->list);
-    //     free(OP_export_nonexec_list[set->index]);
-    // }
-    // free(OP_import_exec_list);
-    // free(OP_import_nonexec_list);
-    // free(OP_export_exec_list);
-    // free(OP_export_nonexec_list);
+        free(OP_export_nonexec_list[set->index]->ranks);
+        free(OP_export_nonexec_list[set->index]->disps);
+        free(OP_export_nonexec_list[set->index]->sizes);
+        free(OP_export_nonexec_list[set->index]->list);
+        free(OP_export_nonexec_list[set->index]);
+    }
+    free(OP_import_exec_list);
+    free(OP_import_nonexec_list);
+    free(OP_export_exec_list);
+    free(OP_export_nonexec_list);
 
-    // for (int k = 0; k < OP_dat_index; k++) // for each dat
-    // {
-    //     op_dat dat = OP_dat_list[k];
+    for (int k = 0; k < OP_dat_index; k++) // for each dat
+    {
+        op_dat dat = OP_dat_list[k];
 
-    //     if (dat->set->is_particle) continue;
+        if (dat->set->is_particle) continue;
 
-    //     free(((op_mpi_buffer)(dat->mpi_buffer))->buf_exec);
-    //     free(((op_mpi_buffer)(dat->mpi_buffer))->buf_nonexec);
-    //     free(((op_mpi_buffer)(dat->mpi_buffer))->s_req);
-    //     free(((op_mpi_buffer)(dat->mpi_buffer))->r_req);
-    // }
+        free(((op_mpi_buffer)(dat->mpi_buffer))->buf_exec);
+        free(((op_mpi_buffer)(dat->mpi_buffer))->buf_nonexec);
+        free(((op_mpi_buffer)(dat->mpi_buffer))->s_req);
+        free(((op_mpi_buffer)(dat->mpi_buffer))->r_req);
+        free((op_mpi_buffer)(dat->mpi_buffer));
+
+        //free(((op_mpi_buffer)(dat->mpi_reduc_buffer))->buf_exec);
+        free(((op_mpi_buffer)(dat->mpi_reduc_buffer))->buf_nonexec);
+        free(((op_mpi_buffer)(dat->mpi_reduc_buffer))->s_req);
+        free(((op_mpi_buffer)(dat->mpi_reduc_buffer))->r_req);
+        ((op_mpi_buffer)(dat->mpi_reduc_buffer));
+    }
 }

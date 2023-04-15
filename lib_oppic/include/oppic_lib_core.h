@@ -167,6 +167,7 @@ struct oppic_arg {
     oppic_arg_type argtype;
     int sent;                   /* flag to indicate if this argument has data in flight under non-blocking MPI comms*/
     int opt;                    /* flag to indicate if this argument is in use */
+    opp_mapping mesh_mapping;
 };
 
 struct oppic_set_core {
@@ -219,6 +220,7 @@ struct oppic_dat_core {
     Dirty dirty_hd;             /* flag to indicate dirty status on host and device */
     int user_managed;           /* indicates whether the user is managing memory */
     void *mpi_buffer;           /* ponter to hold the mpi buffer struct for the op_dat*/    
+    void *mpi_reduc_buffer;     /* ponter to hold the mpi reduction buffer struct for the op_dat*/  
 
     std::vector<char*>* thread_data;
     bool is_cell_index;
@@ -305,6 +307,7 @@ extern int OP_auto_sort;
 extern int OPP_mpi_part_alloc_mult;
 extern int OPP_my_rank;
 extern int OPP_comm_size;
+extern int OPP_comm_iteration;
 
 extern std::vector<oppic_set> oppic_sets;
 extern std::vector<oppic_map> oppic_maps;

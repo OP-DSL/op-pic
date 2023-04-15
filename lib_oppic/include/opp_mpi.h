@@ -242,8 +242,10 @@ void create_list(int *list, int *ranks, int *disps, int *sizes, int *ranks_size,
 void create_export_list(op_set set, int *temp_list, halo_list h_list, int size, int comm_size, int my_rank);
 void create_import_list(op_set set, int *temp_list, halo_list h_list, int total_size, int *ranks, int *sizes, 
         int ranks_size, int comm_size, int my_rank);
-/* static */  void create_nonexec_import_list(op_set set, int *temp_list, halo_list h_list, int size, int comm_size, int my_rank);
-/* static */  void create_nonexec_export_list(op_set set, int *temp_list, halo_list h_list, int total_size,
+/* static */  
+void create_nonexec_import_list(op_set set, int *temp_list, halo_list h_list, int size, int comm_size, int my_rank);
+/* static */  
+void create_nonexec_export_list(op_set set, int *temp_list, halo_list h_list, int total_size,
         int *ranks, int *sizes, int ranks_size, int comm_size, int my_rank);
 /*******************************************************************************/
 
@@ -306,3 +308,6 @@ void opp_partition_core(op_set prime_set, op_map prime_map, op_dat data);
 void opp_particle_comm_init();
 void opp_particle_set_comm_init(oppic_set set);
 void opp_particle_comm_destroy();
+
+void opp_finalize_double_indirect_reductions(int nargs, oppic_arg *args) ;
+void opp_finalize_double_indirect_reductions(oppic_arg& arg);

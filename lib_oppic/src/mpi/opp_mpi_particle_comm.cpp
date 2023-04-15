@@ -436,15 +436,30 @@ void opp_particle_set_comm_init(oppic_set set)
 
     MPI_Waitall(recv_req.size(), &recv_req[0], MPI_STATUSES_IGNORE);
 
+    if (true) // TODO : this might break existing OP2 functionality, check for issues
+    { 
+        for (int i = 0; i < recv_buffers.size(); i++) 
+        {
+            int* imp_buffer = &(imp_exec_list->list[imp_exec_list->disps[i]]); 
+            
+            for (int k = 0; k < recv_buffers[i].size(); k++)
+                imp_buffer[k] = (recv_buffers[i])[k];  
+        }
+    }
+    
     // print the per rank received buffers
     if (OP_DEBUG)
     {
         for (int i = 0; i < recv_buffers.size(); i++) 
         {
+            // what I have (mappings) in import exec buffers, mappings before renumbering from that rank
+            int* imp_buffer = &(imp_exec_list->list[imp_exec_list->disps[i]]); 
+
             std::string log = "";
             for (int k = 0; k < recv_buffers[i].size(); k++)
-                log += std::to_string((recv_buffers[i])[k]) + " ";  
-            opp_printf("opp_particle_set_comm_init", "%s RECEIVE neighbour_rank %d recv_size %d -> %s", 
+                log += std::to_string((recv_buffers[i])[k]) + "|" + std::to_string(imp_buffer[k]) + " ";  
+
+            opp_printf("opp_particle_set_comm_init", "%s RECEIVE neighbour_rank %d recv_size %d (new|old) -> %s", 
                 set->cells_set->name, imp_exec_list->ranks[i], recv_buffers[i].size(), log.c_str());
         }
     }
