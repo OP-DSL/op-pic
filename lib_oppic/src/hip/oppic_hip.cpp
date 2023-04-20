@@ -527,7 +527,7 @@ void oppic_mpi_set_dirtybit_cuda(int nargs, oppic_arg *args)
 
 //****************************************
 // Set the complete dat to zero (upto array capacity)
-void oppic_reset_dat(oppic_dat dat, char* val)
+void oppic_reset_dat(oppic_dat dat, char* val, opp_reset reset)
 {
     UNUSED(val);
 

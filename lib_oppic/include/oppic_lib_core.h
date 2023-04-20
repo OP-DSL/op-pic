@@ -133,6 +133,22 @@ enum opp_mapping
     OPP_Map_to_Mesh_Rel,
 };
 
+enum opp_reset
+{
+    OPP_Reset_Core = 0,
+    OPP_Reset_Set,
+    OPP_Reset_ieh,
+    OPP_Reset_inh,
+};
+
+enum opp_reduc_comm
+{
+    OPP_Reduc_NO_Comm = 0,
+    OPP_Reduc_SUM_Comm,
+    OPP_Reduc_MIN_Comm,
+    OPP_Reduc_MAX_Comm,
+};
+
 struct part_index {
     int start;
     int end;
@@ -220,7 +236,8 @@ struct oppic_dat_core {
     Dirty dirty_hd;             /* flag to indicate dirty status on host and device */
     int user_managed;           /* indicates whether the user is managing memory */
     void *mpi_buffer;           /* ponter to hold the mpi buffer struct for the op_dat*/    
-    void *mpi_reduc_buffer;     /* ponter to hold the mpi reduction buffer struct for the op_dat*/  
+    void *mpi_reduc_buffer;     /* ponter to hold the mpi reduction buffer struct for the op_dat*/ 
+    opp_reduc_comm reduc_comm;  /* flag to check whether the dat is in between reduction communication */
 
     std::vector<char*>* thread_data;
     bool is_cell_index;
@@ -355,4 +372,26 @@ inline void opp_printf(char* function, char *format, ...)
     va_end(args);
 
     printf("%s[%d] - %s\n", function, OPP_my_rank, buf);
+}
+
+template <typename T> 
+inline void opp_reduce_dat_element(T* out_dat, const T* in_dat, int dim, opp_reduc_comm reduc_comm)
+{
+    for (int d = 0; d < dim; d++)
+    {
+// opp_printf("SS", "%lf %lf", in, out);
+
+        switch (reduc_comm)
+        {
+            case OPP_Reduc_SUM_Comm: 
+                out_dat[d] += in_dat[d];           
+                break;
+            case OPP_Reduc_MAX_Comm: 
+                out_dat[d] = MAX(out_dat[d], in_dat[d]);
+                break;
+            case OPP_Reduc_MIN_Comm: 
+                out_dat[d] = MIN(out_dat[d], in_dat[d]);
+                break;
+        }  
+    }   
 }

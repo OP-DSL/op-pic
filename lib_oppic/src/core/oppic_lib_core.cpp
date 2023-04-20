@@ -262,6 +262,7 @@ oppic_dat oppic_decl_dat_core(oppic_set set, int dim, char const *type, int size
     dat->user_managed  = 1;
     dat->mpi_buffer    = NULL;
     dat->mpi_reduc_buffer = NULL;
+    dat->reduc_comm    = OPP_Reduc_NO_Comm;
     dat->buffer_d      = NULL;
     dat->buffer_d_r    = NULL;
     dat->dirty_hd      = Dirty::NotDirty;

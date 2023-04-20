@@ -708,7 +708,9 @@ void opp_halo_create()
     for (int s = 0; s < OP_set_index; s++) // for each set
     { 
         op_set set = OP_set_list[s];
-if (set->is_particle) continue;        
+
+        if (set->is_particle) continue;  
+
         halo_list i_list = OP_import_nonexec_list[set->index];
         halo_list e_list = OP_export_nonexec_list[set->index];
 
@@ -876,17 +878,17 @@ if (set->is_particle) continue;
 
             // halo_list exec_i_list = OP_import_exec_list[dat->set->index];
             halo_list nonexec_i_list = OP_import_nonexec_list[dat->set->index];
-
-            // mpi_buf->buf_exec = (char *)malloc((size_t)(exec_i_list->size) * (size_t)dat->size);
-            mpi_buf->buf_nonexec = (char *)malloc((size_t)(nonexec_i_list->size) * (size_t)dat->size);
-
+            
             // halo_list exec_e_list = OP_export_exec_list[dat->set->index];
             halo_list nonexec_e_list = OP_export_nonexec_list[dat->set->index];
 
-            mpi_buf->s_req = (MPI_Request *)malloc(
-                sizeof(MPI_Request) * (nonexec_i_list->ranks_size)); //(exec_i_list->ranks_size + nonexec_i_list->ranks_size));
-            mpi_buf->r_req = (MPI_Request *)malloc(
-                sizeof(MPI_Request) * (nonexec_e_list->ranks_size)); //(exec_e_list->ranks_size + nonexec_e_list->ranks_size));
+            int recv_buf_size = (int)(nonexec_e_list->size) * (int)dat->size;           
+            mpi_buf->buf_nonexec = (char *)malloc(recv_buf_size);
+
+            if (OP_DEBUG) opp_printf("opp_halo_create", "STEP 9 - dat [%s] mpi_reduc_buffer buf_nonexec size [%d]", dat->name, recv_buf_size);
+            
+            mpi_buf->s_req = (MPI_Request *)malloc(sizeof(MPI_Request) * (nonexec_i_list->ranks_size)); //(exec_i_list->ranks_size + nonexec_i_list->ranks_size));
+            mpi_buf->r_req = (MPI_Request *)malloc(sizeof(MPI_Request) * (nonexec_e_list->ranks_size)); //(exec_e_list->ranks_size + nonexec_e_list->ranks_size));
 
             mpi_buf->s_num_req = 0;
             mpi_buf->r_num_req = 0;

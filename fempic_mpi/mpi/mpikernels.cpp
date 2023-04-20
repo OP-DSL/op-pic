@@ -174,6 +174,7 @@ void oppic_par_loop_particle_all__MoveToCells(
 // Here we should make the values of that dat to zero prior loop, 
 // execute the loop and communicate the outcome to the residing rank, like in a halo exchange, 
 // but when received, that rank should do the reduction
+    opp_init_double_indirect_reductions(nargs, args);
 
     int set_size = oppic_mpi_halo_exchanges(set, nargs, args);
     if (set_size > 0) 
@@ -259,6 +260,12 @@ void oppic_par_loop_particle_all__MoveToCells(
         // if auto_sort is set, then sort here
     }
 
+    opp_exchange_double_indirect_reductions(nargs, args);
+
+    // TODO : can this be added to oppic_mpi_halo_exchanges, to complete before the next usage?
+    opp_complete_double_indirect_reductions(nargs, args);
+
+    // TODO : Dirty bit should not be set for double indirect reductions, if opp_complete_double_indirect_reductions is called here
     oppic_mpi_set_dirtybit(nargs, args);
 }
 

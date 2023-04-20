@@ -254,7 +254,7 @@ bool oppic_finalize_particle_move(oppic_set set)
 }
 
 //****************************************
-void oppic_reset_dat(oppic_dat dat, char* val)
+void oppic_reset_dat(oppic_dat dat, char* val, opp_reset reset)
 {
     int set_size = dat->set->size;
 

@@ -176,6 +176,11 @@ opp_printf("main()", OPP_my_rank, " starting to decl opp structs: nodes:%d cells
         oppic_dat node_volume          = oppic_decl_dat(nodes_set, 1, OPP_TYPE_REAL, (char*)mesh.node_volume,  "node_volume");        
         oppic_dat node_potential       = oppic_decl_dat(nodes_set, 1, OPP_TYPE_REAL, (char*)mesh.node_pot,     "node_potential");     
         oppic_dat node_charge_density  = oppic_decl_dat(nodes_set, 1, OPP_TYPE_REAL, (char*)mesh.node_ion_den, "node_charge_density");
+
+double * test = new double[DIMENSIONS*mesh.n_nodes];
+        // This is only for testing, mesh.node_ion_den will be accessed out of counds but will reset
+        oppic_dat node_test            = oppic_decl_dat(nodes_set, DIMENSIONS, OPP_TYPE_REAL, (char*)test, "node_test"); 
+delete[] test;
 // opp_printf("XXXXXXXXXX", OPP_my_rank, " 65");
         // oppic_dat iface_v_normal       = oppic_decl_dat(ifaces_set, DIMENSIONS, OPP_TYPE_REAL, (char*)mesh.iface_v_normal,      "iface_v_normal");        
         // oppic_dat iface_u_normal       = oppic_decl_dat(ifaces_set, DIMENSIONS, OPP_TYPE_REAL, (char*)mesh.iface_u_normal,      "iface_u_normal"); 
@@ -216,7 +221,7 @@ delete[] arr_part_mesh_relation;
         opp_partition(cells_set, cell_to_nodes_map);
 
 //  opp_printf("XXXXXXXXXX", OPP_my_rank, " 67");
-
+    
     if (false)
     {
         std::string f = std::string("A_") + std::to_string(OPP_my_rank);
@@ -240,7 +245,8 @@ delete[] arr_part_mesh_relation;
         oppic_print_dat_to_txtfile(part_mesh_relation, f.c_str(), "part_mesh_relation.dat");
     }
 
-    if (true)
+    // Testing particle communications
+    if (false)
     {
         oppic_set set = particles_set;
         int comm_iteration = 0;
@@ -327,23 +333,88 @@ delete[] arr_part_mesh_relation;
         } while (true);
     }
 
-if (true)
-{
-    std::string f = std::string("F_") + std::to_string(OPP_my_rank);
+    if (false)
+    {
+        std::string f = std::string("F_") + std::to_string(OPP_my_rank);
 
-    oppic_print_dat_to_txtfile(part_position     , f.c_str(), "part_position.dat");
-    oppic_print_dat_to_txtfile(part_velocity     , f.c_str(), "part_velocity.dat");
-    oppic_print_dat_to_txtfile(part_lc           , f.c_str(), "part_lc.dat");
-    oppic_print_dat_to_txtfile(part_mesh_relation, f.c_str(), "part_mesh_relation.dat");
-}
-
-
+        oppic_print_dat_to_txtfile(part_position     , f.c_str(), "part_position.dat");
+        oppic_print_dat_to_txtfile(part_velocity     , f.c_str(), "part_velocity.dat");
+        oppic_print_dat_to_txtfile(part_lc           , f.c_str(), "part_lc.dat");
+        oppic_print_dat_to_txtfile(part_mesh_relation, f.c_str(), "part_mesh_relation.dat");
+    }
 
 
 
 
 
+    // Testing Double indirect reductions
+    if (true)
+    {
+        oppic_set set = particles_set;
 
+        oppic_arg arg8 = oppic_arg_dat(node_test, 0, cell_to_nodes_map, OP_INC,  OPP_Map_from_Mesh_Rel);
+        oppic_arg arg9 = oppic_arg_dat(part_position, OP_READ);
+
+        int nargs = 2;
+        oppic_arg args[nargs];
+
+        args[0] = arg8;
+        args[1] = arg9;
+
+        oppic_reset_dat(node_test, (char*)opp_zero_double16);
+
+        opp_init_double_indirect_reductions(nargs, args);
+
+        if (true)
+        {
+            std::string f = std::string("Be_") + std::to_string(OPP_my_rank);
+            oppic_print_dat_to_txtfile(node_test     , f.c_str(), "node_test.dat");
+        }  
+
+        int start = 0;
+        int end = set->size;
+
+        int *mesh_relation_data = ((int *)set->mesh_relation_dat->data);      
+                        
+        for (int i = start; i < end; i++)
+        {  
+            int& map0idx      = mesh_relation_data[i];
+
+            int map1idx = arg8.map_data[map0idx * arg8.map->dim + 0];
+            int map2idx = arg8.map_data[map0idx * arg8.map->dim + 1];
+            int map3idx = arg8.map_data[map0idx * arg8.map->dim + 2];
+            int map4idx = arg8.map_data[map0idx * arg8.map->dim + 3];
+
+            if (OPP_my_rank == 0 && i == start) map4idx = 881; // test works, can see in node_test.dat file 
+
+            ((double*)node_test->data)[map1idx * arg8.dim + 0] = (OPP_my_rank + 1) * 10000 + 1*1000 + i*10 + 0;
+            ((double*)node_test->data)[map1idx * arg8.dim + 1] = (OPP_my_rank + 1) * 10000 + 1*1000 + i*10 + 1;
+            ((double*)node_test->data)[map1idx * arg8.dim + 2] = (OPP_my_rank + 1) * 10000 + 1*1000 + i*10 + 2;
+
+            ((double*)node_test->data)[map2idx * arg8.dim + 0] = (OPP_my_rank + 1) * 10000 + 2*1000 + i*10 + 0;
+            ((double*)node_test->data)[map2idx * arg8.dim + 1] = (OPP_my_rank + 1) * 10000 + 2*1000 + i*10 + 1;
+            ((double*)node_test->data)[map2idx * arg8.dim + 2] = (OPP_my_rank + 1) * 10000 + 2*1000 + i*10 + 2;
+
+            ((double*)node_test->data)[map3idx * arg8.dim + 0] = (OPP_my_rank + 1) * 10000 + 3*1000 + i*10 + 0;
+            ((double*)node_test->data)[map3idx * arg8.dim + 1] = (OPP_my_rank + 1) * 10000 + 3*1000 + i*10 + 1;
+            ((double*)node_test->data)[map3idx * arg8.dim + 2] = (OPP_my_rank + 1) * 10000 + 3*1000 + i*10 + 2;
+
+            ((double*)node_test->data)[map4idx * arg8.dim + 0] = (OPP_my_rank + 1) * 10000 + 4*1000 + i*10 + 0;
+            ((double*)node_test->data)[map4idx * arg8.dim + 1] = (OPP_my_rank + 1) * 10000 + 4*1000 + i*10 + 1;
+            ((double*)node_test->data)[map4idx * arg8.dim + 2] = (OPP_my_rank + 1) * 10000 + 4*1000 + i*10 + 2;
+        }
+
+        opp_exchange_double_indirect_reductions(nargs, args);
+
+        // TODO : can this be added to oppic_mpi_halo_exchanges, to complete before the next usage?
+        opp_complete_double_indirect_reductions(nargs, args);
+
+        if (true)
+        {
+            std::string f = std::string("Af_") + std::to_string(OPP_my_rank);
+            oppic_print_dat_to_txtfile(node_test     , f.c_str(), "node_test.dat");
+        }  
+    }
 
 /*
 

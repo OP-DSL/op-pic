@@ -40,6 +40,13 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 typedef struct oppic_set_core *oppic_set;
 
+#ifndef MIN
+#define MIN(a, b) ((a < b) ? (a) : (b))
+#endif
+#ifndef MAX
+#define MAX(a, b) ((a > b) ? (a) : (b))
+#endif
+
 //********************************************************************************
 std::string getTimeStr();
 
@@ -74,3 +81,4 @@ int removeDups(int a[], int array_size);
 int compare_sets(oppic_set set1, oppic_set set2);
 
 void op_timers(double *cpu, double *et); 
+

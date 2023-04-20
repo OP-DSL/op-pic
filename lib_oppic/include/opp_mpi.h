@@ -309,5 +309,10 @@ void opp_particle_comm_init();
 void opp_particle_set_comm_init(oppic_set set);
 void opp_particle_comm_destroy();
 
-void opp_finalize_double_indirect_reductions(int nargs, oppic_arg *args) ;
-void opp_finalize_double_indirect_reductions(oppic_arg& arg);
+void opp_init_double_indirect_reductions(int nargs, oppic_arg *args);
+
+void opp_exchange_double_indirect_reductions(int nargs, oppic_arg *args) ;
+void opp_exchange_double_indirect_reductions(oppic_dat dat, opp_reduc_comm reduc_comm);
+
+void opp_complete_double_indirect_reductions(int nargs, oppic_arg *args);
+void opp_complete_double_indirect_reductions(oppic_dat dat);

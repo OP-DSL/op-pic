@@ -435,17 +435,6 @@ void opp_particle_set_comm_init(oppic_set set)
     }
 
     MPI_Waitall(recv_req.size(), &recv_req[0], MPI_STATUSES_IGNORE);
-
-    if (true) // TODO : this might break existing OP2 functionality, check for issues
-    { 
-        for (int i = 0; i < recv_buffers.size(); i++) 
-        {
-            int* imp_buffer = &(imp_exec_list->list[imp_exec_list->disps[i]]); 
-            
-            for (int k = 0; k < recv_buffers[i].size(); k++)
-                imp_buffer[k] = (recv_buffers[i])[k];  
-        }
-    }
     
     // print the per rank received buffers
     if (OP_DEBUG)
@@ -464,6 +453,17 @@ void opp_particle_set_comm_init(oppic_set set)
         }
     }
 
+    if (true) // TODO : this might break existing OP2 functionality, check for issues
+    { 
+        for (int i = 0; i < recv_buffers.size(); i++) 
+        {
+            int* imp_buffer = &(imp_exec_list->list[imp_exec_list->disps[i]]); 
+            
+            for (int k = 0; k < recv_buffers[i].size(); k++)
+                imp_buffer[k] = (recv_buffers[i])[k];  
+        }
+    }
+    
     std::map<int, opp_particle_comm_data>& set_part_com_data = opp_part_comm_neighbour_data[set->index];
 
     // create mappings of neighbour ranks cell information for easy access during particle communication

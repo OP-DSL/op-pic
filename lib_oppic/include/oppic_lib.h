@@ -35,6 +35,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <oppic_lib_core.h>
 
 const double opp_zero_double16[16] = { 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0 };
+const int opp_zero_int16[16] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
 
 struct opp_move_var
 {
@@ -100,7 +101,7 @@ void oppic_print_map_to_txtfile(oppic_map map, const char *file_name_prefix, con
 
 void oppic_dump_dat(oppic_dat data);
 
-void oppic_reset_dat(oppic_dat dat, char* val);
+void oppic_reset_dat(oppic_dat dat, char* val, opp_reset reset = OPP_Reset_Set);
 
 int oppic_mpi_halo_exchanges(oppic_set set, int nargs, oppic_arg *args);
 
