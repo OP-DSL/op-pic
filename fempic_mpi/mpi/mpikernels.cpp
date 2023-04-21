@@ -112,25 +112,47 @@ void oppic_par_loop_inject__InjectIons(
 
     int inj_start = (set->size - set->diff);
 
-    for (int i = 0; i < set->diff; i++)
-    {    
-        int map0idx    = ((int *)set->mesh_relation_dat->data)[inj_start + i]; // iface index
+    int nargs = 10;
+    oppic_arg args[nargs];
 
-        const int map1idx = arg4.map_data[map0idx]; // cell index
+    args[0] = arg0;
+    args[1] = arg1;
+    args[2] = arg2;
+    args[3] = arg3;
+    args[4] = arg4;
+    args[5] = arg5;
+    args[6] = arg6;
+    args[7] = arg7;
+    args[8] = arg8;
+    args[9] = arg9;
 
-        inject_ions__kernel(
-            &((double *)arg0.data)[(inj_start + i) * arg0.dim],    // part_position,
-            &((double *)arg1.data)[(inj_start + i) * arg1.dim],    // part_velocity,
-            &((int *)arg2.data)[(inj_start + i) * arg2.dim],       // part_cell_connectivity,
-            &((int *)arg3.data)[map0idx * arg3.dim],               // iface to cell map
-            &((double*)arg4.data)[map1idx * arg4.dim],             // cell_ef,
-            &((double*)arg5.data)[map0idx * arg5.dim],             // iface_u,
-            &((double*)arg6.data)[map0idx * arg6.dim],             // iface_v,
-            &((double*)arg7.data)[map0idx * arg7.dim],             // iface_normal,
-            &((double*)arg8.data)[map0idx * arg8.dim],             // iface_node_pos
-            &((double*)arg9.data)[i * arg9.dim]                    // dummy_part_random
-        );
+    int set_size = oppic_mpi_halo_exchanges(set, nargs, args);
+    opp_mpi_halo_wait_all(nargs, args); // 
+
+    if (set_size > 0) 
+    {
+        for (int i = 0; i < set->diff; i++)
+        {    
+            int map0idx    = ((int *)set->mesh_relation_dat->data)[inj_start + i]; // iface index
+
+            const int map1idx = arg4.map_data[map0idx]; // cell index
+
+            inject_ions__kernel(
+                &((double *)arg0.data)[(inj_start + i) * arg0.dim],    // part_position,
+                &((double *)arg1.data)[(inj_start + i) * arg1.dim],    // part_velocity,
+                &((int *)arg2.data)[(inj_start + i) * arg2.dim],       // part_cell_connectivity,
+                &((int *)arg3.data)[map0idx * arg3.dim],               // iface to cell map
+                &((double*)arg4.data)[map1idx * arg4.dim],             // cell_ef,
+                &((double*)arg5.data)[map0idx * arg5.dim],             // iface_u,
+                &((double*)arg6.data)[map0idx * arg6.dim],             // iface_v,
+                &((double*)arg7.data)[map0idx * arg7.dim],             // iface_normal,
+                &((double*)arg8.data)[map0idx * arg8.dim],             // iface_node_pos
+                &((double*)arg9.data)[i * arg9.dim]                    // dummy_part_random
+            );
+        }
     }
+
+    oppic_mpi_set_dirtybit(nargs, args);
 }
 
 //*************************************************************************************************
@@ -177,12 +199,14 @@ void oppic_par_loop_particle_all__MoveToCells(
     opp_init_double_indirect_reductions(nargs, args);
 
     int set_size = oppic_mpi_halo_exchanges(set, nargs, args);
+    opp_mpi_halo_wait_all(nargs, args);
+
     if (set_size > 0) 
     {
         int start = 0;
         int end = set->size;
 
-        // iterate untill all mpi ranks say, I am done
+        // iterate until all mpi ranks say, I am done
         do
         {
             oppic_init_particle_move(set);
@@ -229,7 +253,7 @@ void oppic_par_loop_particle_all__MoveToCells(
                     m.OPP_iteration_one = false;
 
                     // should check whether map0idx is in halo list, if yes, pack the particle into MPI buffer and set status to ONEED_REMOVE
-                    opp_check_part_need_comm(map0idx, set, i, m);
+                    opp_part_check_for_comm(map0idx, set, i, m);
 
                 } while (m.OPP_move_status == OPP_NEED_MOVE);
 
@@ -248,7 +272,7 @@ void oppic_par_loop_particle_all__MoveToCells(
             else
             {
                 // wait till all the particles are communicated and added to the dats
-                opp_wait_all_particles(set);
+                opp_part_wait_all(set);
                 start = set->size - set->diff;
                 end = set->size;
             }
@@ -279,13 +303,30 @@ void oppic_par_loop_all__ComputeNodeChargeDensity(
     
     if (FP_DEBUG) opp_printf("FEMPIC - oppic_par_loop_all__ComputeNodeChargeDensity", "set_size %d", set->size);
 
-    for (int i=0; i<set->size; i++) 
+    int nargs = 2;
+    oppic_arg args[nargs];
+
+    args[0] = arg0;
+    args[1] = arg1;
+
+    int set_size = oppic_mpi_halo_exchanges(set, nargs, args);
+    if (set_size > 0) 
     {
-        compute_node_charge_density__kernel(
-            &((double*)arg0.data)[i * arg0.dim],
-            &((double*)arg1.data)[i * arg1.dim]
-        );
-    }
+        for (int i=0; i < set_size; i++) 
+        {
+            if (i == set->core_size) 
+            {
+                opp_mpi_halo_wait_all(nargs, args);
+            }
+
+            compute_node_charge_density__kernel(
+                &((double*)arg0.data)[i * arg0.dim],
+                &((double*)arg1.data)[i * arg1.dim]
+            );
+        }
+    }  
+
+    oppic_mpi_set_dirtybit(nargs, args);
 }
 
 //*************************************************************************************************
@@ -302,20 +343,41 @@ void oppic_par_loop_all__ComputeElectricField(
 
     if (FP_DEBUG) printf("FEMPIC - oppic_par_loop_all__ComputeElectricField set_size %d\n", set->size);
 
-    for (int i = 0; i < set->size; i++)
-    {
-        const int map1idx = arg2.map_data[i * arg2.map->dim + 0];
-        const int map2idx = arg2.map_data[i * arg2.map->dim + 1];
-        const int map3idx = arg2.map_data[i * arg2.map->dim + 2];
-        const int map4idx = arg2.map_data[i * arg2.map->dim + 3];
+    int nargs = 6;
+    oppic_arg args[nargs];
 
-        compute_electric_field__kernel(
-            &((double*)arg0.data)[i * arg0.dim],    // cell_electric_field
-            &((double*)arg1.data)[i * arg1.dim],    // cell_shape_deriv
-            &((double*)arg2.data)[map1idx],         // node_potential0
-            &((double*)arg2.data)[map2idx],         // node_potential1
-            &((double*)arg2.data)[map3idx],         // node_potential2
-            &((double*)arg2.data)[map4idx]          // node_potential3
-        );
-    }   
+    args[0] = arg0;
+    args[1] = arg1;
+    args[2] = arg2;
+    args[3] = arg3;
+    args[4] = arg4;
+    args[5] = arg5;
+
+    int set_size = oppic_mpi_halo_exchanges(set, nargs, args);
+    if (set_size > 0) 
+    {
+        for (int i = 0; i < set_size; i++)
+        {
+            if (i == set->core_size) 
+            {
+                opp_mpi_halo_wait_all(nargs, args);
+            }
+
+            const int map1idx = arg2.map_data[i * arg2.map->dim + 0];
+            const int map2idx = arg2.map_data[i * arg2.map->dim + 1];
+            const int map3idx = arg2.map_data[i * arg2.map->dim + 2];
+            const int map4idx = arg2.map_data[i * arg2.map->dim + 3];
+
+            compute_electric_field__kernel(
+                &((double*)arg0.data)[i * arg0.dim],    // cell_electric_field
+                &((double*)arg1.data)[i * arg1.dim],    // cell_shape_deriv
+                &((double*)arg2.data)[map1idx],         // node_potential0
+                &((double*)arg2.data)[map2idx],         // node_potential1
+                &((double*)arg2.data)[map3idx],         // node_potential2
+                &((double*)arg2.data)[map4idx]          // node_potential3
+            );
+        } 
+    }  
+
+    oppic_mpi_set_dirtybit(nargs, args);
 }

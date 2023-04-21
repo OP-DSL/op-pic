@@ -49,19 +49,19 @@ ifeq ($(DEBUG_LOG), 1)
 	HIPCCFLAGS += -DDEBUG_LOG
 endif
 
-PETSC ?= 1
+PETSC ?= 0
 ifeq ($(PETSC), 1)
 	CPPFLAGS   += -DUSE_PETSC
 	# HIPCCFLAGS += -DUSE_PETSC
 	PETSC_INC  = -I$(PETSC_INSTALL_PATH)/include
 endif
 
-CUDA ?= 1
+CUDA ?= 0
 ifeq ($(CUDA), 1)
 	CUDA_INC   = -I$(CUDA_INSTALL_PATH)/include
 endif
 
-HIP ?= 1
+HIP ?= 0
 ifeq ($(HIP), 1)
 	HIP_INC   = -I$(ROCM_INSTALL_DIR)/include -I$(ROCM_THRUST_DIR)/include -I$(ROCM_PRIM_DIR)/include
 endif
@@ -120,7 +120,8 @@ mpi: mklib
 		 $(CPP) $(CPPFLAGS) -c $(SRC)/mpi/opp_mpi_partition.cpp -o $(OBJ)/opp_mpi_partition.o $(OPP_INC) $(PETSC_INC)
 		 $(CPP) $(CPPFLAGS) -c $(SRC)/mpi/opp_mpi.cpp -o $(OBJ)/opp_mpi.o $(OPP_INC) $(PETSC_INC)
 		 $(CPP) $(CPPFLAGS) -c $(SRC)/mpi/opp_mpi_particle_comm.cpp -o $(OBJ)/opp_mpi_particle_comm.o $(OPP_INC) $(PETSC_INC)
-	     ar -r $(LIB)/liboppic_mpi.a $(OBJ)/oppic_lib_core.o $(OBJ)/oppic_util.o $(OBJ)/trace.o $(OBJ)/opp_params.o $(OBJ)/opp_mpi.o $(OBJ)/opp_mpi_halo.o $(OBJ)/opp_mpi_partition.o $(OBJ)/opp_mpi_particle_comm.o
+		 $(CPP) $(CPPFLAGS) -c $(SRC)/mpi/opp_mpi_double_ind_reducs.cpp -o $(OBJ)/opp_mpi_double_ind_reducs.o $(OPP_INC) $(PETSC_INC)
+	     ar -r $(LIB)/liboppic_mpi.a $(OBJ)/oppic_lib_core.o $(OBJ)/oppic_util.o $(OBJ)/trace.o $(OBJ)/opp_params.o $(OBJ)/opp_mpi.o $(OBJ)/opp_mpi_halo.o $(OBJ)/opp_mpi_partition.o $(OBJ)/opp_mpi_particle_comm.o $(OBJ)/opp_mpi_double_ind_reducs.o
 		 
 		 
 clean: 

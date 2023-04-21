@@ -1,46 +1,4 @@
-/*
-* Open source copyright declaration based on BSD open source template:
-* http://www.opensource.org/licenses/bsd-license.php
-*
-* This file is part of the OP2 distribution.
-*
-* Copyright (c) 2011, Mike Giles and others. Please see the AUTHORS file in
-* the main source directory for a full list of copyright holders.
-* All rights reserved.
-*
-* Redistribution and use in source and binary forms, with or without
-* modification, are permitted provided that the following conditions are met:
-*     * Redistributions of source code must retain the above copyright
-*       notice, this list of conditions and the following disclaimer.
-*     * Redistributions in binary form must reproduce the above copyright
-*       notice, this list of conditions and the following disclaimer in the
-*       documentation and/or other materials provided with the distribution.
-*     * The name of Mike Giles may not be used to endorse or promote products
-*       derived from this software without specific prior written permission.
-*
-* THIS SOFTWARE IS PROVIDED BY Mike Giles ''AS IS'' AND ANY
-* EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
-* WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
-* DISCLAIMED. IN NO EVENT SHALL Mike Giles BE LIABLE FOR ANY
-* DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
-* (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
-* LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
-* ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-* (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
-* SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-*/
 
-/*
-* op_mpi_core.c
-*
-* Implements the OP2 Distributed memory (MPI) halo creation, halo exchange and
-* support utility routines/functions
-*
-* written by: Gihan R. Mudalige, (Started 01-03-2011)
-*/
-
-// mpi header
-#include <mpi.h>
 #include <opp_mpi.h>
 
 // MPI Halo related global variables
@@ -66,256 +24,6 @@ op_export_handle *OP_export_list = NULL;
 
 // Timing
 double t1, t2, c1, c2;
-
-
-/*******************************************************************************
- * Routine to declare partition information for a given set
- *******************************************************************************/
-void decl_partition(op_set set, int *g_index, int *partition) 
-{
-    part p = (part)malloc(sizeof(part_core));
-    p->set = set;
-    p->g_index = g_index;
-    p->elem_part = partition;
-    p->is_partitioned = 0;
-    OP_part_list[set->index] = p;
-    OP_part_index++;
-}
-
-/*******************************************************************************
- * Routine to get partition range on all mpi ranks for all sets
- *******************************************************************************/
-void get_part_range(int **part_range, int my_rank, int comm_size, MPI_Comm Comm) 
-{
-    (void)my_rank;
-    for (int s = 0; s < OP_set_index; s++) 
-    {
-        op_set set = OP_set_list[s];
-
-        int *sizes = (int *)malloc(sizeof(int) * comm_size);
-        MPI_Allgather(&set->size, 1, MPI_INT, sizes, 1, MPI_INT, Comm);
-
-        part_range[set->index] = (int *)malloc(2 * comm_size * sizeof(int));
-
-        int disp = 0;
-        for (int i = 0; i < comm_size; i++) 
-        {
-            part_range[set->index][2 * i] = disp;
-            disp = disp + sizes[i] - 1;
-            part_range[set->index][2 * i + 1] = disp;
-            disp++;
-        #ifdef DEBUG
-            if (my_rank == OPP_MPI_ROOT && OP_diags > 5)
-                printf("range of %10s in rank %d: %d-%d\n", set->name, i,
-                    part_range[set->index][2 * i],
-                    part_range[set->index][2 * i + 1]);
-        #endif
-        }
-        free(sizes);
-    }
-}
-
-/*******************************************************************************
- * Routine to get partition (i.e. mpi rank) where global_index is located and
- * its local index
- *******************************************************************************/
-int get_partition(int global_index, int *part_range, int *local_index, int comm_size) 
-{
-    for (int i = 0; i < comm_size; i++) 
-    {
-        if (global_index >= part_range[2 * i] && global_index <= part_range[2 * i + 1]) 
-        {
-            *local_index = global_index - part_range[2 * i];
-            return i;
-        }
-    }
-
-    if (OP_DEBUG) 
-    {    
-        std::string log = "";
-        for (int i = 0; i < comm_size; i++) 
-        {
-            log += std::to_string(i) + "|" + std::to_string(part_range[2 * i]) + "|" + std::to_string(part_range[2 * i + 1]) + "\n";
-        }
-
-        opp_printf("get_partition()", OPP_my_rank, "Error: orphan global index %d part_range->\n%s", global_index, log.c_str());
-    }
-
-    MPI_Abort(OP_MPI_WORLD, 2);
-    return 1;
-}
-
-/*******************************************************************************
- * Routine to convert a local index in to a global index
- *******************************************************************************/
-int get_global_index(int local_index, int partition, int *part_range, int comm_size) 
-{
-    (void)comm_size;
-    int g_index = part_range[2 * partition] + local_index;
-#ifdef DEBUG
-    if (g_index > part_range[2 * (comm_size - 1) + 1] && OP_diags > 2)
-        printf("Global index larger than set size\n");
-#endif
-    return g_index;
-}
-
-/*******************************************************************************
- * Routine to find the MPI neighbors given a halo list
- *******************************************************************************/
-void find_neighbors_set(halo_list List, int *neighbors, int *sizes, int *ranks_size, int my_rank, int comm_size, MPI_Comm Comm) 
-{
-    int *temp = (int *)malloc(comm_size * sizeof(int));
-    int *r_temp = (int *)malloc(comm_size * comm_size * sizeof(int));
-
-    for (int r = 0; r < comm_size * comm_size; r++)
-        r_temp[r] = -99;
-    for (int r = 0; r < comm_size; r++)
-        temp[r] = -99;
-
-    int n = 0;
-
-    for (int r = 0; r < comm_size; r++) 
-    {
-        if (List->ranks[r] >= 0)
-        temp[List->ranks[r]] = List->sizes[r];
-    }
-
-    MPI_Allgather(temp, comm_size, MPI_INT, r_temp, comm_size, MPI_INT, Comm);
-
-    for (int i = 0; i < comm_size; i++) 
-    {
-        if (i != my_rank)
-        {
-            if (r_temp[i * comm_size + my_rank] > 0) 
-            {
-                neighbors[n] = i;
-                sizes[n] = r_temp[i * comm_size + my_rank];
-                n++;
-            }
-        }
-    }
-    *ranks_size = n;
-    free(temp);
-    free(r_temp);
-}
-
-/*******************************************************************************
- * Routine to create a generic halo list
- * (used in both import and export list creation)
- *******************************************************************************/
-void create_list(int *list, int *ranks, int *disps, int *sizes, int *ranks_size, int *total, int *temp_list, 
-        int size, int comm_size, int my_rank) 
-{
-    (void)my_rank;
-    int index = 0;
-    int total_size = 0;
-    if (size < 0) printf("problem\n");
-
-    // negative values set as an initialisation
-    for (int r = 0; r < comm_size; r++) 
-    {
-        disps[r] = ranks[r] = -99;
-        sizes[r] = 0;
-    }
-
-    for (int r = 0; r < comm_size; r++) 
-    {
-        sizes[index] = disps[index] = 0;
-
-        int *temp = (int *)malloc((size / 2) * sizeof(int));
-        for (int i = 0; i < size; i = i + 2) 
-        {
-            if (temp_list[i] == r)
-                temp[sizes[index]++] = temp_list[i + 1];
-        }
-        if (sizes[index] > 0) 
-        {
-            ranks[index] = r;
-            // sort temp,
-            quickSort(temp, 0, sizes[index] - 1);
-            // eliminate duplicates in temp
-            sizes[index] = removeDups(temp, sizes[index]);
-            total_size = total_size + sizes[index];
-
-            if (index > 0)
-                disps[index] = disps[index - 1] + sizes[index - 1];
-            // add to end of exp_list
-            for (int e = 0; e < sizes[index]; e++)
-                list[disps[index] + e] = temp[e];
-
-            index++;
-        }
-        free(temp);
-    }
-
-    *total = total_size;
-    *ranks_size = index;
-}
-
-/*******************************************************************************
- * Routine to create an export list
- *******************************************************************************/
-void create_export_list(op_set set, int *temp_list, halo_list h_list, int size, int comm_size, int my_rank) 
-{
-    int *ranks = (int *)malloc(comm_size * sizeof(int));
-    int *list = (int *)malloc((size / 2) * sizeof(int));
-    int *disps = (int *)malloc(comm_size * sizeof(int));
-    int *sizes = (int *)malloc(comm_size * sizeof(int));
-
-    int ranks_size = 0;
-    int total_size = 0;
-
-    create_list(list, ranks, disps, sizes, &ranks_size, &total_size, temp_list, size, comm_size, my_rank);
-
-    h_list->set = set;
-    h_list->size = total_size;
-    h_list->ranks = ranks;
-    h_list->ranks_size = ranks_size;
-    h_list->disps = disps;
-    h_list->sizes = sizes;
-    h_list->list = list;
-}
-
-/*******************************************************************************
- * Routine to create an import list
- *******************************************************************************/
-void create_import_list(op_set set, int *temp_list, halo_list h_list, int total_size, int *ranks, int *sizes, 
-                        int ranks_size, int comm_size, int my_rank) 
-{
-    (void)my_rank;
-    int *disps = (int *)malloc(comm_size * sizeof(int));
-    disps[0] = 0;
-    for (int i = 0; i < ranks_size; i++) 
-    {
-        if (i > 0)
-            disps[i] = disps[i - 1] + sizes[i - 1];
-    }
-
-    h_list->set = set;
-    h_list->size = total_size;
-    h_list->ranks = ranks;
-    h_list->ranks_size = ranks_size;
-    h_list->disps = disps;
-    h_list->sizes = sizes;
-    h_list->list = temp_list;
-}
-
-/*******************************************************************************
- * Routine to create an nonexec-import list (only a wrapper)
- *******************************************************************************/
-/* static */  void create_nonexec_import_list(op_set set, int *temp_list, halo_list h_list, int size, int comm_size, int my_rank) 
-{
-    create_export_list(set, temp_list, h_list, size, comm_size, my_rank);
-}
-
-/*******************************************************************************
- * Routine to create an nonexec-export list (only a wrapper)
- *******************************************************************************/
-/* static */  void create_nonexec_export_list(op_set set, int *temp_list, halo_list h_list, int total_size,
-                                    int *ranks, int *sizes, int ranks_size, int comm_size, int my_rank) 
-{
-    create_import_list(set, temp_list, h_list, total_size, ranks, sizes, ranks_size, comm_size, my_rank);
-}
 
 /*******************************************************************************
  * Main MPI halo creation routine
@@ -1303,6 +1011,124 @@ void opp_halo_create()
 }
 
 /*******************************************************************************
+ * Routine to create a generic halo list
+ * (used in both import and export list creation)
+ *******************************************************************************/
+void create_list(int *list, int *ranks, int *disps, int *sizes, int *ranks_size, int *total, int *temp_list, 
+        int size, int comm_size, int my_rank) 
+{
+    (void)my_rank;
+    int index = 0;
+    int total_size = 0;
+    if (size < 0) printf("problem\n");
+
+    // negative values set as an initialisation
+    for (int r = 0; r < comm_size; r++) 
+    {
+        disps[r] = ranks[r] = -99;
+        sizes[r] = 0;
+    }
+
+    for (int r = 0; r < comm_size; r++) 
+    {
+        sizes[index] = disps[index] = 0;
+
+        int *temp = (int *)malloc((size / 2) * sizeof(int));
+        for (int i = 0; i < size; i = i + 2) 
+        {
+            if (temp_list[i] == r)
+                temp[sizes[index]++] = temp_list[i + 1];
+        }
+        if (sizes[index] > 0) 
+        {
+            ranks[index] = r;
+            // sort temp,
+            quickSort(temp, 0, sizes[index] - 1);
+            // eliminate duplicates in temp
+            sizes[index] = removeDups(temp, sizes[index]);
+            total_size = total_size + sizes[index];
+
+            if (index > 0)
+                disps[index] = disps[index - 1] + sizes[index - 1];
+            // add to end of exp_list
+            for (int e = 0; e < sizes[index]; e++)
+                list[disps[index] + e] = temp[e];
+
+            index++;
+        }
+        free(temp);
+    }
+
+    *total = total_size;
+    *ranks_size = index;
+}
+
+/*******************************************************************************
+ * Routine to create an export list
+ *******************************************************************************/
+void create_export_list(op_set set, int *temp_list, halo_list h_list, int size, int comm_size, int my_rank) 
+{
+    int *ranks = (int *)malloc(comm_size * sizeof(int));
+    int *list = (int *)malloc((size / 2) * sizeof(int));
+    int *disps = (int *)malloc(comm_size * sizeof(int));
+    int *sizes = (int *)malloc(comm_size * sizeof(int));
+
+    int ranks_size = 0;
+    int total_size = 0;
+
+    create_list(list, ranks, disps, sizes, &ranks_size, &total_size, temp_list, size, comm_size, my_rank);
+
+    h_list->set = set;
+    h_list->size = total_size;
+    h_list->ranks = ranks;
+    h_list->ranks_size = ranks_size;
+    h_list->disps = disps;
+    h_list->sizes = sizes;
+    h_list->list = list;
+}
+
+/*******************************************************************************
+ * Routine to create an import list
+ *******************************************************************************/
+void create_import_list(op_set set, int *temp_list, halo_list h_list, int total_size, int *ranks, int *sizes, 
+                        int ranks_size, int comm_size, int my_rank) 
+{
+    (void)my_rank;
+    int *disps = (int *)malloc(comm_size * sizeof(int));
+    disps[0] = 0;
+    for (int i = 0; i < ranks_size; i++) 
+    {
+        if (i > 0)
+            disps[i] = disps[i - 1] + sizes[i - 1];
+    }
+
+    h_list->set = set;
+    h_list->size = total_size;
+    h_list->ranks = ranks;
+    h_list->ranks_size = ranks_size;
+    h_list->disps = disps;
+    h_list->sizes = sizes;
+    h_list->list = temp_list;
+}
+
+/*******************************************************************************
+ * Routine to create an nonexec-import list (only a wrapper)
+ *******************************************************************************/
+void create_nonexec_import_list(op_set set, int *temp_list, halo_list h_list, int size, int comm_size, int my_rank) 
+{
+    create_export_list(set, temp_list, h_list, size, comm_size, my_rank);
+}
+
+/*******************************************************************************
+ * Routine to create an nonexec-export list (only a wrapper)
+ *******************************************************************************/
+void create_nonexec_export_list(op_set set, int *temp_list, halo_list h_list, int total_size,
+                                    int *ranks, int *sizes, int ranks_size, int comm_size, int my_rank) 
+{
+    create_import_list(set, temp_list, h_list, total_size, ranks, sizes, ranks_size, comm_size, my_rank);
+}
+
+/*******************************************************************************
  * Routine to Clean-up all MPI halos(called at the end of an OP2 MPI application)
 *******************************************************************************/
 void opp_halo_destroy() 
@@ -1368,4 +1194,226 @@ void opp_halo_destroy()
         free(((op_mpi_buffer)(dat->mpi_reduc_buffer))->r_req);
         ((op_mpi_buffer)(dat->mpi_reduc_buffer));
     }
+}
+
+//****************************************
+int oppic_mpi_halo_exchanges(oppic_set set, int nargs, oppic_arg *args) 
+{
+    opp_printf("oppic_mpi_halo_exchanges", "START");
+
+    int size = set->size;
+    bool direct_flag = true;
+
+    // check if this is a direct loop
+    for (int n = 0; n < nargs; n++)
+        if (args[n].opt && args[n].argtype == OP_ARG_DAT && args[n].idx != -1)
+            direct_flag = false;
+
+    // return set size if it is a direct loop
+    if (direct_flag)
+        return size;
+
+    // not a direct loop ...
+    int exec_flag = 0;
+    for (int n = 0; n < nargs; n++) 
+    {
+        if (args[n].opt && args[n].idx != -1 && args[n].acc != OP_READ) 
+        {
+            size = set->size + set->exec_size;
+            exec_flag = 1;
+        }
+    }
+
+    for (int n = 0; n < nargs; n++) 
+    {
+        if (args[n].opt && args[n].argtype == OP_ARG_DAT) 
+        {
+            bool already_done = false;
+
+            // Check if dat was already done within these args
+            for (int m = 0; m < n; m++) 
+            {
+                if (args[n].dat == args[m].dat)
+                    already_done = true;
+            }
+
+            if (!already_done)
+            {
+                if (OP_DEBUG) opp_printf("oppic_mpi_halo_exchanges", "opp_exchange_halo for dat [%s]", args[n].dat->name);
+                opp_mpi_halo_exchange(&args[n], exec_flag);
+            }
+            else
+            {
+                if (OP_DEBUG) opp_printf("oppic_mpi_halo_exchanges", "opp_exchange_halo SKIP for dat [%s]", args[n].dat->name);
+            }
+        }
+    }  
+
+    return size;
+}
+
+void opp_mpi_halo_exchange(oppic_arg *arg, int exec_flag)
+{
+    oppic_dat dat = arg->dat;
+
+opp_printf("opp_mpi_halo_exchange", "Dat [%s] exec_flag %d", dat->name, exec_flag);
+
+    if (arg->opt == 0)
+        return;
+
+    if (arg->sent == 1) 
+    {
+        opp_printf("opp_mpi_halo_exchange", "Error: Halo exchange already in flight for dat %s", dat->name);
+        fflush(stdout);
+        MPI_Abort(OP_MPI_WORLD, 2);
+    }
+
+    if (exec_flag == 0 && arg->idx == -1)
+        return;
+
+    // For a directly accessed op_dat do not do halo exchanges if not executing over redundant compute block
+    if (exec_flag == 0 && arg->idx == -1)
+        return;
+
+    arg->sent = 0; // reset flag
+
+    // need to exchange both direct and indirect data sets if they are dirty
+    if ((arg->acc == OP_READ || arg->acc == OP_RW) && (dat->dirtybit == 1)) 
+    {
+        if (OP_DEBUG) opp_printf("opp_mpi_halo_exchange", "Exchanging Halo of data array [%s]", dat->name);
+
+        halo_list imp_exec_list    = OP_import_exec_list[dat->set->index];
+        halo_list imp_nonexec_list = OP_import_nonexec_list[dat->set->index];
+
+        halo_list exp_exec_list    = OP_export_exec_list[dat->set->index];
+        halo_list exp_nonexec_list = OP_export_nonexec_list[dat->set->index];
+
+        //-------first exchange exec elements related to this data array--------
+
+        // sanity checks
+        if (compare_sets(imp_exec_list->set, dat->set) == 0) 
+        {
+            opp_printf("opp_mpi_halo_exchange", "Error: Import list and set mismatch\n");
+            MPI_Abort(OP_MPI_WORLD, 2);
+        }
+        if (compare_sets(exp_exec_list->set, dat->set) == 0) 
+        {
+            opp_printf("opp_mpi_halo_exchange", "Error: Export list and set mismatch\n");
+            MPI_Abort(OP_MPI_WORLD, 2);
+        }
+
+        op_mpi_buffer mpi_buffer = (op_mpi_buffer)(dat->mpi_buffer);
+
+        int set_elem_index = -1;
+        for (int i = 0; i < exp_exec_list->ranks_size; i++) 
+        {
+            for (int j = 0; j < exp_exec_list->sizes[i]; j++) 
+            {
+                set_elem_index = exp_exec_list->list[exp_exec_list->disps[i] + j];
+                memcpy(&mpi_buffer->buf_exec[exp_exec_list->disps[i] * dat->size + j * dat->size],
+                    (void *)&dat->data[dat->size * (set_elem_index)], dat->size);
+            }
+            
+// printf("export exec from %d to %d data %10s, number of elements of size %d | sending:\n ",
+//             OPP_my_rank, exp_exec_list->ranks[i], dat->name,exp_exec_list->sizes[i]);
+// double *b = (double*)&mpi_buffer->buf_exec[exp_exec_list->disps[i] * dat->size];
+// for (int el = 0; el < (dat->size * exp_exec_list->sizes[i])/8; el++)
+//   printf("%g ", b[el]);
+// printf("\n");
+            
+            MPI_Isend(&mpi_buffer->buf_exec[exp_exec_list->disps[i] * dat->size], dat->size * exp_exec_list->sizes[i], 
+                MPI_CHAR, exp_exec_list->ranks[i], dat->index, OP_MPI_WORLD, &mpi_buffer->s_req[mpi_buffer->s_num_req++]);
+        }
+
+        int init = dat->set->size * dat->size;
+        for (int i = 0; i < imp_exec_list->ranks_size; i++) 
+        {
+// printf("import exec on to %d from %d data %10s, number of elements
+// of size %d | recieving:\n ", my_rank, imp_exec_list->ranks[i], dat->name, imp_exec_list->sizes[i]);
+
+            MPI_Irecv(&(dat->data[init + imp_exec_list->disps[i] * dat->size]), dat->size * imp_exec_list->sizes[i], 
+                MPI_CHAR, imp_exec_list->ranks[i], dat->index, OP_MPI_WORLD, &mpi_buffer->r_req[mpi_buffer->r_num_req++]);
+        }
+
+        //-----second exchange nonexec elements related to this data array------
+        
+        // sanity checks
+        if (compare_sets(imp_nonexec_list->set, dat->set) == 0) 
+        {
+            opp_printf("opp_mpi_halo_exchange", "Error: Non-Import list and set mismatch");
+            MPI_Abort(OP_MPI_WORLD, 2);
+        }
+        if (compare_sets(exp_nonexec_list->set, dat->set) == 0) 
+        {
+            opp_printf("opp_mpi_halo_exchange", "Error: Non-Export list and set mismatch");
+            MPI_Abort(OP_MPI_WORLD, 2);
+        }
+
+        for (int i = 0; i < exp_nonexec_list->ranks_size; i++) 
+        {
+            for (int j = 0; j < exp_nonexec_list->sizes[i]; j++) 
+            {
+                set_elem_index = exp_nonexec_list->list[exp_nonexec_list->disps[i] + j];
+                memcpy(&mpi_buffer->buf_nonexec[exp_nonexec_list->disps[i] * dat->size + j * dat->size],
+                    (void *)&dat->data[dat->size * (set_elem_index)], dat->size);
+            }
+
+// printf("export nonexec from %d to %d data %10s, number of elements of size %d | sending:\n ",
+//                 OPP_my_rank, exp_nonexec_list->ranks[i], dat->name,exp_nonexec_list->sizes[i]);
+// double *b = (double*)&mpi_buffer ->buf_nonexec[exp_nonexec_list->disps[i] * dat->size];
+// for (int el = 0; el < (dat->size * exp_nonexec_list->sizes[i])/8; el++)
+//   printf("%g ", b[el]);
+// printf("\n");
+
+            MPI_Isend(&mpi_buffer->buf_nonexec[exp_nonexec_list->disps[i] * dat->size], dat->size * exp_nonexec_list->sizes[i], 
+                MPI_CHAR, exp_nonexec_list->ranks[i], dat->index, OP_MPI_WORLD, &mpi_buffer->s_req[mpi_buffer->s_num_req++]);
+        }
+
+        int nonexec_init = (dat->set->size + imp_exec_list->size) * dat->size;
+        for (int i = 0; i < imp_nonexec_list->ranks_size; i++) 
+        {
+// printf("import on to %d from %d data %10s, number of elements of
+// size %d | recieving:\n ",
+//       my_rank, imp_nonexec_list->ranks[i], dat->name,
+//       imp_nonexec_list->sizes[i]);
+
+        MPI_Irecv(&(dat->data[nonexec_init + imp_nonexec_list->disps[i] * dat->size]), dat->size * imp_nonexec_list->sizes[i], 
+            MPI_CHAR, imp_nonexec_list->ranks[i], dat->index, OP_MPI_WORLD, &mpi_buffer->r_req[mpi_buffer->r_num_req++]);
+        }
+        
+        // clear dirty bit
+        dat->dirtybit = 0;
+        arg->sent = 1;
+    }
+}
+
+//****************************************
+void opp_mpi_halo_wait_all(int nargs, oppic_arg *args)
+{
+    opp_printf("opp_mpi_halo_wait_all", "START");
+
+    for (int n = 0; n < nargs; n++) 
+    {
+        oppic_arg *arg = &args[n];
+
+        if (arg->opt && arg->argtype == OP_ARG_DAT && arg->sent == 1) 
+        {
+            oppic_dat dat = arg->dat;
+
+            op_mpi_buffer mpi_buffer = (op_mpi_buffer)(dat->mpi_buffer);
+
+            MPI_Waitall(mpi_buffer->s_num_req, mpi_buffer->s_req, MPI_STATUSES_IGNORE);
+            MPI_Waitall(mpi_buffer->r_num_req, mpi_buffer->r_req, MPI_STATUSES_IGNORE);
+
+            // The halos are arranged in order, after the set size -- import exec halo -- import non exec halo
+            // hence rearranging is not required
+
+            mpi_buffer->s_num_req = 0;
+            mpi_buffer->r_num_req = 0;
+
+            arg->sent = 2; // set flag to indicate completed comm
+        }
+    }
+
+    opp_printf("opp_mpi_halo_wait_all", "END");
 }

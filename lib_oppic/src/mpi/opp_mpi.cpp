@@ -59,7 +59,7 @@ void oppic_exit()
     {   
         opp_halo_destroy(); // free memory allocated to halos and mpi_buffers 
         opp_partition_destroy(); // free memory used for holding partition information
-        opp_particle_comm_destroy(); // free memory allocated for particle communication
+        opp_part_comm_destroy(); // free memory allocated for particle communication
         
         // free(set_import_buffer_size);
 
@@ -283,7 +283,7 @@ bool oppic_finalize_particle_move(oppic_set set)
 { TRACE_ME;
 
     // send the counts and send the particles  
-    opp_exchange_particles(set);  
+    opp_part_exchange(set);  
 
     // Can fill the holes here, since the communicated particles will be added at the end
     oppic_finalize_particle_move_core(set);
@@ -294,7 +294,7 @@ bool oppic_finalize_particle_move(oppic_set set)
         oppic_particle_sort(set);
     }
 
-    return opp_check_all_done(set); 
+    return opp_part_check_all_done(set); 
 }
 
 //****************************************
@@ -342,30 +342,16 @@ void oppic_mpi_set_dirtybit(int nargs, oppic_arg *args)
 {
     for (int n = 0; n < nargs; n++) 
     {
-        if ((args[n].opt == 1) && (args[n].argtype == OP_ARG_DAT) &&
-            (args[n].acc == OP_INC || args[n].acc == OP_WRITE ||
-            args[n].acc == OP_RW)) 
+        // TODO : Do not include double indirect reductions
+        if ((args[n].opt == 1) && (args[n].argtype == OP_ARG_DAT) && 
+            (args[n].acc == OP_WRITE || args[n].acc == OP_RW || 
+                (args[n].acc == OP_INC && !is_double_indirect_reduction(args[n])))) 
         {
-            args[n].dat->dirty_hd = Dirty::Device;
+            args[n].dat->dirtybit = 0;
+            // args[n].dat->dirty_hd = Dirty::Device;
         }
     }
 }
-
-//****************************************
-int oppic_mpi_halo_exchanges(oppic_set set, int nargs, oppic_arg *args) 
-{
-    printf("IMPLEMENT HALO EXCHANGE!!!\n");
-    // for (int n = 0; n < nargs; n++)
-    // {
-    //     if (args[n].opt && args[n].argtype == OP_ARG_DAT && args[n].dat->dirty_hd == Dirty::Host) 
-    //     {
-    //         op_download_dat(args[n].dat);
-    //     }
-    // }
-    return set->size;
-}
-
-//****************************************
 
 //*******************************************************************************
 void opp_partition(op_set prime_set, op_map prime_map, op_dat data)
@@ -401,7 +387,7 @@ void opp_partition_core(op_set prime_set, op_map prime_map, op_dat data)
     }
     opp_printf("opp_partition()", "%s Orphans in prime map [%s]: %d", (ctr > 0) ? "Error: " : "", prime_map->name, ctr);
 
-    opp_particle_comm_init(); 
+    opp_part_comm_init(); 
 
     std::vector<std::vector<int>> set_sizes(oppic_sets.size());
 
@@ -525,230 +511,159 @@ void opp_desanitize_all_maps()
     }
 }
 
-//*******************************************************************************
-void opp_init_double_indirect_reductions(int nargs, oppic_arg *args)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+/*******************************************************************************
+ * Routine to declare partition information for a given set
+ *******************************************************************************/
+void decl_partition(op_set set, int *g_index, int *partition) 
 {
-    if (OP_DEBUG) opp_printf("opp_init_double_indirect_reductions", "ALL START");
+    part p = (part)malloc(sizeof(part_core));
+    p->set = set;
+    p->g_index = g_index;
+    p->elem_part = partition;
+    p->is_partitioned = 0;
+    OP_part_list[set->index] = p;
+    OP_part_index++;
+}
 
-    for (int n = 0; n < nargs; n++) 
+/*******************************************************************************
+ * Routine to get partition range on all mpi ranks for all sets
+ *******************************************************************************/
+void get_part_range(int **part_range, int my_rank, int comm_size, MPI_Comm Comm) 
+{
+    (void)my_rank;
+    for (int s = 0; s < OP_set_index; s++) 
     {
-        bool already_done = false;
+        op_set set = OP_set_list[s];
 
-        // check if the dat is mapped with double indirect mapping
-        if (args[n].argtype == OP_ARG_DAT && args[n].mesh_mapping == OPP_Map_from_Mesh_Rel && args[n].idx != -1)
+        int *sizes = (int *)malloc(sizeof(int) * comm_size);
+        MPI_Allgather(&set->size, 1, MPI_INT, sizes, 1, MPI_INT, Comm);
+
+        part_range[set->index] = (int *)malloc(2 * comm_size * sizeof(int));
+
+        int disp = 0;
+        for (int i = 0; i < comm_size; i++) 
         {
-            // Check if dat reduction was already done within these args
-            for (int m = 0; m < n; m++) 
-            {
-                if (args[n].dat == args[m].dat)
-                    already_done = true;
-            }
+            part_range[set->index][2 * i] = disp;
+            disp = disp + sizes[i] - 1;
+            part_range[set->index][2 * i + 1] = disp;
+            disp++;
+        #ifdef DEBUG
+            if (my_rank == OPP_MPI_ROOT && OP_diags > 5)
+                printf("range of %10s in rank %d: %d-%d\n", set->name, i,
+                    part_range[set->index][2 * i],
+                    part_range[set->index][2 * i + 1]);
+        #endif
+        }
+        free(sizes);
+    }
+}
 
-            if (!already_done)
-            {
-                char* reset_values = nullptr;
-                switch (args[n].acc)
-                {
-                    case OP_INC:
-                    case OP_MAX:
-                        if (strcmp(args[n].dat->type, "double") == 0)
-                            reset_values = (char*)opp_zero_double16;
-                        else if (strcmp(args[n].dat->type, "int") == 0)
-                            reset_values = (char*)opp_zero_int16;
-                        else
-                            opp_printf("opp_init_double_indirect_reductions", "Error: Datatype [%s] dat [%s] not implemented",
-                                args[n].dat->type, args[n].dat->name);
-                        break;
-                    default:
-                        opp_printf("opp_init_double_indirect_reductions", "Error: Reduction of dat [%s] operator not implemented",
-                            args[n].dat->name);
-                        return;
-                }
-
-                oppic_reset_dat(args[n].dat, reset_values, OPP_Reset_inh);
-            }
+/*******************************************************************************
+ * Routine to get partition (i.e. mpi rank) where global_index is located and
+ * its local index
+ *******************************************************************************/
+int get_partition(int global_index, int *part_range, int *local_index, int comm_size) 
+{
+    for (int i = 0; i < comm_size; i++) 
+    {
+        if (global_index >= part_range[2 * i] && global_index <= part_range[2 * i + 1]) 
+        {
+            *local_index = global_index - part_range[2 * i];
+            return i;
         }
     }
 
-    if (OP_DEBUG) opp_printf("opp_init_double_indirect_reductions", "ALL END");
+    if (OP_DEBUG) 
+    {    
+        std::string log = "";
+        for (int i = 0; i < comm_size; i++) 
+        {
+            log += std::to_string(i) + "|" + std::to_string(part_range[2 * i]) + "|" + std::to_string(part_range[2 * i + 1]) + "\n";
+        }
+
+        opp_printf("get_partition()", OPP_my_rank, "Error: orphan global index %d part_range->\n%s", global_index, log.c_str());
+    }
+
+    MPI_Abort(OP_MPI_WORLD, 2);
+    return 1;
 }
 
-//*******************************************************************************
-void opp_exchange_double_indirect_reductions(int nargs, oppic_arg *args) 
+/*******************************************************************************
+ * Routine to convert a local index in to a global index
+ *******************************************************************************/
+int get_global_index(int local_index, int partition, int *part_range, int comm_size) 
 {
-    if (OP_DEBUG) opp_printf("opp_exchange_double_indirect_reductions", "ALL START");
+    (void)comm_size;
+    int g_index = part_range[2 * partition] + local_index;
+#ifdef DEBUG
+    if (g_index > part_range[2 * (comm_size - 1) + 1] && OP_diags > 2)
+        printf("Global index larger than set size\n");
+#endif
+    return g_index;
+}
 
-    for (int n = 0; n < nargs; n++) 
+/*******************************************************************************
+ * Routine to find the MPI neighbors given a halo list
+ *******************************************************************************/
+void find_neighbors_set(halo_list List, int *neighbors, int *sizes, int *ranks_size, int my_rank, int comm_size, MPI_Comm Comm) 
+{
+    int *temp = (int *)malloc(comm_size * sizeof(int));
+    int *r_temp = (int *)malloc(comm_size * comm_size * sizeof(int));
+
+    for (int r = 0; r < comm_size * comm_size; r++)
+        r_temp[r] = -99;
+    for (int r = 0; r < comm_size; r++)
+        temp[r] = -99;
+
+    int n = 0;
+
+    for (int r = 0; r < comm_size; r++) 
     {
-        bool already_done = false;
+        if (List->ranks[r] >= 0)
+        temp[List->ranks[r]] = List->sizes[r];
+    }
 
-        // check if the dat is mapped with double indirect mapping
-        if (args[n].argtype == OP_ARG_DAT && args[n].mesh_mapping == OPP_Map_from_Mesh_Rel && args[n].idx != -1)
+    MPI_Allgather(temp, comm_size, MPI_INT, r_temp, comm_size, MPI_INT, Comm);
+
+    for (int i = 0; i < comm_size; i++) 
+    {
+        if (i != my_rank)
         {
-            // Check if dat reduction was already done within these args
-            for (int m = 0; m < n; m++) 
+            if (r_temp[i * comm_size + my_rank] > 0) 
             {
-                if (args[n].dat == args[m].dat)
-                    already_done = true;
-            }
-
-            if (!already_done)
-            {
-                opp_reduc_comm reduc_comm = OPP_Reduc_NO_Comm;
-                switch (args[n].acc)
-                {
-                    case OP_INC: reduc_comm = OPP_Reduc_SUM_Comm; break;
-                    case OP_MAX: reduc_comm = OPP_Reduc_MAX_Comm; break;
-                    case OP_MIN: reduc_comm = OPP_Reduc_MIN_Comm; break;
-                }
-
-                opp_exchange_double_indirect_reductions(args[n].dat, reduc_comm);
+                neighbors[n] = i;
+                sizes[n] = r_temp[i * comm_size + my_rank];
+                n++;
             }
         }
     }
-
-    if (OP_DEBUG) opp_printf("opp_exchange_double_indirect_reductions", "ALL END");
+    *ranks_size = n;
+    free(temp);
+    free(r_temp);
 }
 
-//*******************************************************************************
-void opp_exchange_double_indirect_reductions(oppic_dat dat, opp_reduc_comm reduc_comm) 
+bool is_double_indirect_reduction(oppic_arg& arg)
 {
-    if (OP_DEBUG) opp_printf("opp_exchange_double_indirect_reductions", "START dat %s", dat->name);
-
-    halo_list imp_nonexec_list = OP_import_nonexec_list[dat->set->index];
-    halo_list exp_nonexec_list = OP_export_nonexec_list[dat->set->index];
-    op_mpi_buffer reduc_buf    = (op_mpi_buffer)(dat->mpi_reduc_buffer);
-
-    // send reduction contributions related to export non-execute lists
-    int init = (dat->set->size + dat->set->exec_size) * dat->size;
-    for (int i = 0; i < imp_nonexec_list->ranks_size; i++) 
-    { 
-        int send_rank    = imp_nonexec_list->ranks[i];
-        char* send_buf   = &(dat->data[init + imp_nonexec_list->disps[i] * dat->size]);
-        int send_size    = dat->size * imp_nonexec_list->sizes[i];
-        MPI_Request* req = &(reduc_buf->s_req[reduc_buf->s_num_req++]);
-
-opp_printf("opp_exchange_double_indirect_reductions", "SEND SIZE %d", send_size);
-
-        MPI_Isend(send_buf, send_size, MPI_CHAR, send_rank, dat->index, OP_MPI_WORLD, req);
-    }
-
-    // receive reduction contributions related to export non-execute lists
-    for (int i = 0; i < exp_nonexec_list->ranks_size; i++) 
-    {
-        int recv_rank    = exp_nonexec_list->ranks[i];
-        char* recv_buf   = &(reduc_buf->buf_nonexec[exp_nonexec_list->disps[i] * dat->size]);
-        int recv_size    = dat->size * exp_nonexec_list->sizes[i];
-        MPI_Request* req = &(reduc_buf->r_req[reduc_buf->r_num_req++]);
-
-opp_printf("opp_exchange_double_indirect_reductions", "RECEIVE SIZE %d", recv_size);
-
-        MPI_Irecv(recv_buf, recv_size, MPI_CHAR, recv_rank, dat->index, OP_MPI_WORLD, req);
-    }
-
-    dat->reduc_comm = reduc_comm;
-
-    if (OP_DEBUG) opp_printf("opp_exchange_double_indirect_reductions", "END dat %s", dat->name);
+    if (arg.argtype == OP_ARG_DAT && arg.mesh_mapping == OPP_Map_from_Mesh_Rel && 
+            arg.idx != -1 && arg.acc == OP_INC)
+        return true;
+    
+    return false;
 }
-
-//*******************************************************************************
-void opp_complete_double_indirect_reductions(int nargs, oppic_arg *args) 
-{
-    if (OP_DEBUG) opp_printf("opp_complete_double_indirect_reductions", "ALL START");
-
-    for (int n = 0; n < nargs; n++) 
-    {
-        bool already_done = false;
-
-        // check if the dat is mapped with double indirect mapping
-        if (args[n].argtype == OP_ARG_DAT && args[n].mesh_mapping == OPP_Map_from_Mesh_Rel && args[n].idx != -1)
-        {
-            // Check if dat reduction was already done within these args
-            for (int m = 0; m < n; m++) 
-            {
-                if (args[n].dat == args[m].dat)
-                    already_done = true;
-            }
-
-            if (!already_done)
-                opp_complete_double_indirect_reductions(args[n].dat);
-        }
-    }
-
-    if (OP_DEBUG) opp_printf("opp_complete_double_indirect_reductions", "ALL END");
-}
-
-//*******************************************************************************
-void opp_complete_double_indirect_reductions(oppic_dat dat) 
-{
-    if (OP_DEBUG) opp_printf("opp_complete_double_indirect_reductions", "START dat %s", dat->name);
-
-    if (dat->reduc_comm == OPP_Reduc_NO_Comm)
-    {
-        if (OP_DEBUG) opp_printf("opp_complete_double_indirect_reductions", "No reduction communication in flight for  dat %s", 
-            dat->name);
-        return;
-    }
-
-    op_mpi_buffer reduc_buf = (op_mpi_buffer)(dat->mpi_reduc_buffer);
-
-    MPI_Waitall(reduc_buf->s_num_req, reduc_buf->s_req, MPI_STATUSES_IGNORE);
-    MPI_Waitall(reduc_buf->r_num_req, reduc_buf->r_req, MPI_STATUSES_IGNORE);
-
-    reduc_buf->s_num_req = 0;
-    reduc_buf->r_num_req = 0;
-
-    halo_list exp_nonexec_list = OP_export_nonexec_list[dat->set->index];
-
-    opp_reduc_comm reduc_comm = dat->reduc_comm;
-    int dim = dat->dim;
-    double *d_recv_buf = nullptr, *d_dat_buf = nullptr;
-    int *i_recv_buf = nullptr, *i_dat_buf = nullptr;
-
-    for (int i = 0; i < exp_nonexec_list->ranks_size; i++) 
-    {
-        int *set_indices = &(exp_nonexec_list->list[exp_nonexec_list->disps[i]]);
-
-        if (strcmp(dat->type, "double") == 0) 
-        {
-            d_recv_buf = (double*)(&(reduc_buf->buf_nonexec[exp_nonexec_list->disps[i] * dat->size]));         
-            d_dat_buf = (double*)dat->data;
-
-            for (int j = 0; j < exp_nonexec_list->sizes[i]; j++)
-            {
-                opp_printf("XXX", "Index %d", set_indices[j]);
-
-                opp_reduce_dat_element<OPP_REAL>(&(d_dat_buf[dim * set_indices[j]]), &(d_recv_buf[dim * j]), 
-                    dim, reduc_comm);
-            }
-        } 
-        else if (strcmp(dat->type, "int") == 0) 
-        {
-            i_recv_buf = (int*)&(reduc_buf->buf_nonexec[exp_nonexec_list->disps[i] * dat->size]);
-            i_dat_buf = (int*)dat->data;
-
-            for (int j = 0; j < exp_nonexec_list->sizes[i]; j++)
-            {
-                opp_reduce_dat_element<OPP_INT>(&(i_dat_buf[dim * set_indices[j]]), &(i_recv_buf[j * dim]), 
-                    dim, reduc_comm);
-            }
-        } 
-        else
-        {
-            opp_printf("opp_complete_double_indirect_reductions", "Error: Reduction for data type [%s] not implemented", 
-                dat->type);
-            return;
-        } 
-
-        if (OP_DEBUG)
-        {
-            opp_printf("opp_complete_double_indirect_reductions", "Dat %s received %d elements from rank %d", 
-                dat->name, exp_nonexec_list->sizes[i], exp_nonexec_list->ranks[i]);
-        }
-    }
-
-    dat->reduc_comm = OPP_Reduc_NO_Comm;
-
-    if (OP_DEBUG) opp_printf("opp_complete_double_indirect_reductions", "END dat %s", dat->name);
-}
-

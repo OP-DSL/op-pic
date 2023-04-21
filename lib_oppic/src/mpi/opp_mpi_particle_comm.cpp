@@ -8,9 +8,9 @@
 std::map<int, std::map<int, opp_particle_comm_data>> opp_part_comm_neighbour_data; 
 
 //*******************************************************************************
-void opp_pack_particle(oppic_set set, int index, int send_rank)
+void opp_part_pack(oppic_set set, int index, int send_rank)
 {
-    if (OP_DEBUG) opp_printf("opp_pack_particle", " set [%s] | index %d | send_rank %d", set->name, index, send_rank);
+    if (OP_DEBUG) opp_printf("opp_part_pack", "set [%s] | index %d | send_rank %d", set->name, index, send_rank);
 
     opp_all_mpi_part_buffers* send_buffers = (opp_all_mpi_part_buffers*)set->mpi_part_buffers;
 
@@ -19,7 +19,7 @@ void opp_pack_particle(oppic_set set, int index, int send_rank)
     {
         if (std::find(send_buffers->neighbours.begin(), send_buffers->neighbours.end(), send_rank) == send_buffers->neighbours.end())
         {
-            opp_printf("opp_pack_particle", "Error: send_rank %d is not a neighbour, cannot send index %d of set [%s]",
+            opp_printf("opp_part_pack", "Error: send_rank %d is not a neighbour, cannot send index %d of set [%s]",
                 send_rank, index, set->name);
             MPI_Abort(OP_MPI_WORLD, 1);
         }
@@ -45,7 +45,7 @@ void opp_pack_particle(oppic_set set, int index, int send_rank)
             //     0, OPP_mpi_part_alloc_mult * set->particle_size); // not essential, can remove
         }
 
-        // opp_printf("opp_pack_particle", "buf_export capacity %d", send_rank_buffer.buf_export_capacity);
+        // opp_printf("opp_part_pack", "buf_export capacity %d", send_rank_buffer.buf_export_capacity);
     }
 
     std::vector<oppic_dat>& particle_dats = *(set->particle_dats);
@@ -73,7 +73,7 @@ void opp_pack_particle(oppic_set set, int index, int send_rank)
                 for (int l = 0; l < dat->dim; l++) log += " " + std::to_string(d[l]);
             }
 
-            opp_printf("opp_pack_particle", "%s from index %d -%s", dat->name, index, log.c_str());
+            opp_printf("opp_part_pack", "%s from index %d -%s", dat->name, index, log.c_str());
         }
 
         displacement += dat->size;
@@ -82,13 +82,13 @@ void opp_pack_particle(oppic_set set, int index, int send_rank)
     send_rank_buffer.buf_export_index += set->particle_size;
     (send_buffers->export_counts)[send_rank] += 1;
 
-    if (OP_DEBUG) opp_printf("opp_pack_particle", "END send_rank %d exported count %d", send_rank, (send_buffers->export_counts)[send_rank]);
+    if (OP_DEBUG) opp_printf("opp_part_pack", "END send_rank %d exported count %d", send_rank, (send_buffers->export_counts)[send_rank]);
 }
 
 //*******************************************************************************
-void opp_unpack_particles(oppic_set set)
+void opp_part_unpack(oppic_set set)
 {
-    if (OP_DEBUG) opp_printf("opp_unpack_particles", "set [%s]", set->name);
+    if (OP_DEBUG) opp_printf("opp_part_unpack", "set [%s]", set->name);
 
     std::vector<oppic_dat>& particle_dats = *(set->particle_dats);
     int num_particles = 0;
@@ -143,7 +143,7 @@ void opp_unpack_particles(oppic_set set)
                             for (int l = 0; l < dat->dim; l++) log += " " + std::to_string(d[l]);
                         }
 
-                        opp_printf("opp_unpack_particles", "%s to index %d -%s", dat->name, new_part_index, log.c_str());
+                        opp_printf("opp_part_unpack", "%s to index %d -%s", dat->name, new_part_index, log.c_str());
                     }
 
                     displacement += dat->size;     
@@ -154,11 +154,11 @@ void opp_unpack_particles(oppic_set set)
         }
     }
 
-    if (OP_DEBUG) opp_printf("opp_unpack_particles", "END");
+    if (OP_DEBUG) opp_printf("opp_part_unpack", "END");
 }
 
 //*******************************************************************************
-bool opp_check_part_need_comm(int map0idx, oppic_set set, int particle_index, opp_move_var& m) 
+bool opp_part_check_for_comm(int map0idx, oppic_set set, int particle_index, opp_move_var& m) 
 {
 
     if (m.OPP_move_status != OPP_NEED_MOVE)
@@ -174,7 +174,7 @@ bool opp_check_part_need_comm(int map0idx, oppic_set set, int particle_index, op
         auto it = set_part_com_data.find(map0idx);
         if (it == set_part_com_data.end())
         {
-            opp_printf("opp_check_part_need_comm", "Error: cell %d cannot be found in opp_part_comm_neighbour_data map", map0idx);
+            opp_printf("opp_part_check_for_comm", "Error: cell %d cannot be found in opp_part_comm_neighbour_data map", map0idx);
             return false; // unlikely, need exit(-1) to abort instead!
         }
 
@@ -183,7 +183,7 @@ bool opp_check_part_need_comm(int map0idx, oppic_set set, int particle_index, op
         // change the cell_index to reflect the correct neighbour ranks local cell index before packing
         ((int*)set->mesh_relation_dat->data)[particle_index] = comm_data.local_index;
 
-        opp_pack_particle(set, particle_index, comm_data.cell_residing_rank);
+        opp_part_pack(set, particle_index, comm_data.cell_residing_rank);
         
         // This particle is already packed, hence needs to be removed from the current rank
         m.OPP_move_status = OPP_NEED_REMOVE; 
@@ -196,9 +196,9 @@ bool opp_check_part_need_comm(int map0idx, oppic_set set, int particle_index, op
 }
 
 //*******************************************************************************
-void opp_exchange_particles(oppic_set set)
+void opp_part_exchange(oppic_set set)
 {
-    if (OP_DEBUG) opp_printf("opp_exchange_particles", "set [%s] - particle size [%d]", set->name, set->particle_size);
+    if (OP_DEBUG) opp_printf("opp_part_exchange", "set [%s] - particle size [%d]", set->name, set->particle_size);
 
     opp_all_mpi_part_buffers* mpi_buffers = (opp_all_mpi_part_buffers*)set->mpi_part_buffers;
 
@@ -235,18 +235,18 @@ void opp_exchange_particles(oppic_set set)
 
         if (send_size <= 0)
         {
-            if (OP_DEBUG) opp_printf("opp_exchange_particles", "nothing to send to rank %d", neighbour_rank);
+            if (OP_DEBUG) opp_printf("opp_part_exchange", "nothing to send to rank %d", neighbour_rank);
             continue;
         }
         else
         {   
-            if (OP_DEBUG) opp_printf("opp_exchange_particles", "sending %d particle/s (size: %d) to rank %d", 
+            if (OP_DEBUG) opp_printf("opp_part_exchange", "sending %d particle/s (size: %d) to rank %d", 
                 (send_size/ set->particle_size), send_size, neighbour_rank);
         }
 
         char* send_buffer = mpi_buffers->buffers[neighbour_rank].buf_export;
 
-        // opp_printf("opp_exchange_particles", "neighbour_rank: %d, send_size: %d", neighbour_rank, send_size);
+        // opp_printf("opp_part_exchange", "neighbour_rank: %d, send_size: %d", neighbour_rank, send_size);
 
         MPI_Request req;
         MPI_Isend(send_buffer, send_size, MPI_CHAR, neighbour_rank, MPI_TAG_PART_EX, OP_MPI_WORLD, &req);
@@ -265,7 +265,7 @@ void opp_exchange_particles(oppic_set set)
 
         if (recv_size <= 0)
         {
-            if (OP_DEBUG) opp_printf("opp_exchange_particles", "nothing to receive from rank %d", neighbour_rank);
+            if (OP_DEBUG) opp_printf("opp_part_exchange", "nothing to receive from rank %d", neighbour_rank);
             continue;
         }
 
@@ -289,7 +289,7 @@ void opp_exchange_particles(oppic_set set)
             }
         }
 
-        // opp_printf("opp_exchange_particles", "neighbour_rank: %d, recv_size: %d, total_recv: %d, buff_import_capacity: %d", 
+        // opp_printf("opp_part_exchange", "neighbour_rank: %d, recv_size: %d, total_recv: %d, buff_import_capacity: %d", 
         //     neighbour_rank, recv_size, mpi_buffers->total_recv, receive_buffer.buf_import_capacity);
 
         MPI_Request req;
@@ -304,13 +304,13 @@ void opp_exchange_particles(oppic_set set)
         mpi_buffers->buffers[it->first].buf_export_index = 0; // make the export index of that rank to zero for the next iteration
     }
 
-    if (OP_DEBUG) opp_printf("opp_exchange_particles", "END");
+    if (OP_DEBUG) opp_printf("opp_part_exchange", "END");
 }
 
 //*******************************************************************************
-void opp_wait_all_particles(oppic_set set)
+void opp_part_wait_all(oppic_set set)
 {
-    if (OP_DEBUG) opp_printf("opp_wait_all_particles", "START");
+    if (OP_DEBUG) opp_printf("opp_part_wait_all", "START");
 
     opp_all_mpi_part_buffers* mpi_buffers = (opp_all_mpi_part_buffers*)set->mpi_part_buffers;
 
@@ -328,15 +328,15 @@ void opp_wait_all_particles(oppic_set set)
     recv_req.clear();
 
     // increase the particle count if required and unpack the communicated particle buffer in to separate particle dats
-    opp_unpack_particles(set);
+    opp_part_unpack(set);
 
-    if (OP_DEBUG) opp_printf("opp_wait_all_particles", "END");
+    if (OP_DEBUG) opp_printf("opp_part_wait_all", "END");
 }
 
 //*******************************************************************************
-bool opp_check_all_done(oppic_set set)
+bool opp_part_check_all_done(oppic_set set)
 {
-    if (OP_DEBUG) opp_printf("opp_check_all_done", "START");
+    if (OP_DEBUG) opp_printf("opp_part_check_all_done", "START");
 
     opp_all_mpi_part_buffers* mpi_buffers = (opp_all_mpi_part_buffers*)set->mpi_part_buffers;
     bool imported_parts = true;
@@ -363,32 +363,32 @@ bool opp_check_all_done(oppic_set set)
     }
 
     if (OP_DEBUG) 
-        opp_printf("opp_check_all_done", "%s -%s", (bool_ret ? "ITER AGAIN" : "ALL DONE"), log.c_str());
+        opp_printf("opp_part_check_all_done", "%s -%s", (bool_ret ? "ITER AGAIN" : "ALL DONE"), log.c_str());
 
     return !bool_ret;
 }
 
 //*******************************************************************************
-void opp_particle_comm_init()
+void opp_part_comm_init()
 {
-    if (OP_DEBUG) opp_printf("opp_particle_comm_init", "START");
+    if (OP_DEBUG) opp_printf("opp_part_comm_init", "START");
 
     for (oppic_set& set : oppic_sets)
     {
         if (!set->is_particle) continue;
 
-        opp_particle_set_comm_init(set);
+        opp_part_set_comm_init(set);
     }
 
-    if (OP_DEBUG) opp_printf("opp_particle_comm_init", "END");
+    if (OP_DEBUG) opp_printf("opp_part_comm_init", "END");
 }
 
 //*******************************************************************************
-void opp_particle_set_comm_init(oppic_set set)
+void opp_part_set_comm_init(oppic_set set)
 {
     // TODO : can use the same mappings for all particle sets with the same cells set, instead of communicating again
 
-    if (OP_DEBUG) opp_printf("opp_particle_set_comm_init", "set: %s", set->name);
+    if (OP_DEBUG) opp_printf("opp_part_set_comm_init", "set: %s", set->name);
 
     halo_list exp_exec_list = OP_export_exec_list[set->cells_set->index];
     halo_list imp_exec_list = OP_import_exec_list[set->cells_set->index];
@@ -413,7 +413,7 @@ void opp_particle_set_comm_init(oppic_set set)
             std::string log = "";
             for (int k = 0; k < send_size; k++)
                 log += std::to_string(send_buffer[k]) + " ";        
-            opp_printf("opp_particle_set_comm_init", "%s SEND neighbour_rank %d send_size %d -> %s", 
+            opp_printf("opp_part_set_comm_init", "%s SEND neighbour_rank %d send_size %d -> %s", 
                 set->cells_set->name, neighbour_rank, send_size, log.c_str());
         } 
     }
@@ -448,7 +448,7 @@ void opp_particle_set_comm_init(oppic_set set)
             for (int k = 0; k < recv_buffers[i].size(); k++)
                 log += std::to_string((recv_buffers[i])[k]) + "|" + std::to_string(imp_buffer[k]) + " ";  
 
-            opp_printf("opp_particle_set_comm_init", "%s RECEIVE neighbour_rank %d recv_size %d (new|old) -> %s", 
+            opp_printf("opp_part_set_comm_init", "%s RECEIVE neighbour_rank %d recv_size %d (new|old) -> %s", 
                 set->cells_set->name, imp_exec_list->ranks[i], recv_buffers[i].size(), log.c_str());
         }
     }
@@ -463,7 +463,7 @@ void opp_particle_set_comm_init(oppic_set set)
                 imp_buffer[k] = (recv_buffers[i])[k];  
         }
     }
-    
+
     std::map<int, opp_particle_comm_data>& set_part_com_data = opp_part_comm_neighbour_data[set->index];
 
     // create mappings of neighbour ranks cell information for easy access during particle communication
@@ -482,7 +482,7 @@ void opp_particle_set_comm_init(oppic_set set)
 
             set_part_com_data.insert({local_index, comm_data});
 
-            // opp_printf("opp_particle_comm_init", OPP_my_rank, "cset:%s li:%d nr:%d ni:%d", 
+            // opp_printf("opp_part_comm_init", OPP_my_rank, "cset:%s li:%d nr:%d ni:%d", 
             //     set->cells_set->name, local_index, comm_data.cell_residing_rank, comm_data.local_index);
         }
     }  
@@ -513,7 +513,7 @@ void opp_particle_set_comm_init(oppic_set set)
 
         if (std::find(mpi_buffers->neighbours.begin(), mpi_buffers->neighbours.end(), neighbour_rank) == mpi_buffers->neighbours.end())
         {
-            opp_printf("opp_particle_set_comm_init", "UNLIKELY, %d is on export list, but not on import list of set %s", 
+            opp_printf("opp_part_set_comm_init", "UNLIKELY, %d is on export list, but not on import list of set %s", 
                 neighbour_rank, set->name); 
             mpi_buffers->neighbours.push_back(neighbour_rank);
         }
@@ -528,13 +528,13 @@ void opp_particle_set_comm_init(oppic_set set)
 
     set->mpi_part_buffers = (void*)mpi_buffers;
 
-    if (OP_DEBUG) opp_printf("opp_particle_set_comm_init", "set: %s END", set->name); 
+    if (OP_DEBUG) opp_printf("opp_part_set_comm_init", "set: %s END", set->name); 
 }
 
 //*******************************************************************************
-void opp_particle_comm_destroy()
+void opp_part_comm_destroy()
 {
-    if (OP_DEBUG) opp_printf("opp_particle_comm_destroy", "START"); 
+    if (OP_DEBUG) opp_printf("opp_part_comm_destroy", "START"); 
 
     for (int i = 0; i < oppic_sets.size(); i++)
     {
@@ -560,5 +560,5 @@ void opp_particle_comm_destroy()
 
     opp_part_comm_neighbour_data.clear();
 
-    if (OP_DEBUG) opp_printf("opp_particle_comm_destroy", "END"); 
+    if (OP_DEBUG) opp_printf("opp_part_comm_destroy", "END"); 
 }

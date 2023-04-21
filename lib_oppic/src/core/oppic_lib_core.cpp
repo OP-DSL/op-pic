@@ -572,7 +572,8 @@ void oppic_finalize_particle_move_core(oppic_set set)
                 }
                 if (j >= (set->size - removed_count - skip_count - 1)) 
                 {
-                    if (OP_DEBUG) opp_printf("oppic_finalize_particle_move_core", "Current Iteration index [%d] and replacement index %d; hence breaking", j, (set->size - removed_count - skip_count - 1));
+                    if (OP_DEBUG && i == 0) opp_printf("oppic_finalize_particle_move_core", "Current Iteration index [%d] and replacement index %d; hence breaking [%s]", 
+                        j, (set->size - removed_count - skip_count - 1), set->name);
                     break;
                 }
 

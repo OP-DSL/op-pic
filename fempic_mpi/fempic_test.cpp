@@ -63,11 +63,11 @@ int main(int argc, char **argv)
 
     g1_mesh = LoadMesh(params, argc, argv);
 
-opp_printf("XXXXXXXXXX", OPP_my_rank, " 00");  
+// opp_printf("XXXXXXXXXX", OPP_my_rank, " 00");  
     
     g1_mesh->DeleteValues();
 
-opp_printf("XXXXXXXXXX", OPP_my_rank, " 1");
+// opp_printf("XXXXXXXXXX", OPP_my_rank, " 1");
 
     if (OPP_my_rank == OPP_MPI_ROOT)
     {
@@ -78,7 +78,7 @@ opp_printf("XXXXXXXXXX", OPP_my_rank, " 1");
         g_mesh = std::make_shared<FieldPointers>();
     }
 
-opp_printf("XXXXXXXXXX", OPP_my_rank, " 2");
+// opp_printf("XXXXXXXXXX", OPP_my_rank, " 2");
     
     FieldPointers mesh;
 
@@ -86,12 +86,12 @@ opp_printf("XXXXXXXXXX", OPP_my_rank, " 2");
     mesh.n_cells  = opp_get_uniform_local_size(g1_mesh->n_cells);
     mesh.n_ifaces = opp_get_uniform_local_size(g1_mesh->n_ifaces);
 
-opp_printf("opp_get_uniform_local_size", OPP_my_rank, " %d %d %d",mesh.n_nodes,mesh.n_cells,mesh.n_ifaces);
-opp_printf("XXXXXXXXXX", OPP_my_rank, " 3");
+    opp_printf("Main()", OPP_my_rank, "Local Sizes before partitioning - Nodes[%d] Cells[%d] IFaces[%d]", mesh.n_nodes, mesh.n_cells, mesh.n_ifaces);
+// opp_printf("XXXXXXXXXX", OPP_my_rank, " 3");
 
     mesh.CreateMeshArrays();
 
-opp_printf("XXXXXXXXXX", OPP_my_rank, " 4");
+// opp_printf("XXXXXXXXXX", OPP_my_rank, " 4");
 
     opp_uniform_scatter_array(g_mesh->cell_ef            , mesh.cell_ef            , g1_mesh->n_cells , mesh.n_cells , DIMENSIONS);
     opp_uniform_scatter_array(g_mesh->cell_to_nodes      , mesh.cell_to_nodes      , g1_mesh->n_cells , mesh.n_cells , NODES_PER_CELL); 
@@ -113,14 +113,14 @@ opp_printf("XXXXXXXXXX", OPP_my_rank, " 4");
     opp_uniform_scatter_array(g_mesh->iface_inj_part_dist, mesh.iface_inj_part_dist, g1_mesh->n_ifaces, mesh.n_ifaces, 1); 
     opp_uniform_scatter_array(g_mesh->iface_node_pos     , mesh.iface_node_pos     , g1_mesh->n_ifaces, mesh.n_ifaces, DIMENSIONS);        
 
-opp_printf("XXXXXXXXXX", OPP_my_rank, " 5");
+// opp_printf("XXXXXXXXXX", OPP_my_rank, " 5");
 
     if (OPP_my_rank == OPP_MPI_ROOT)
     {
         g_mesh->DeleteValues();
     }
 
-opp_printf("XXXXXXXXXX", OPP_my_rank, " 6");
+// opp_printf("XXXXXXXXXX", OPP_my_rank, " 6");
 
     double plasma_den = params.get<OPP_REAL>("plasma_den");
     double dt = params.get<OPP_REAL>("dt");
@@ -132,7 +132,7 @@ opp_printf("XXXXXXXXXX", OPP_my_rank, " 6");
     double remainder = 0.0;
     int ts = 0;
 
-opp_printf("main()", OPP_my_rank, " starting to decl opp structs: nodes:%d cells:%d, ifaces:%d", mesh.n_nodes, mesh.n_cells, mesh.n_ifaces);
+// opp_printf("main()", OPP_my_rank, " starting to decl opp structs: nodes:%d cells:%d, ifaces:%d", mesh.n_nodes, mesh.n_cells, mesh.n_ifaces);
 //     { // Start Scope for oppic
 
         int pcount = 20;
@@ -246,11 +246,11 @@ delete[] arr_part_mesh_relation;
     }
 
     // Testing particle communications
-    if (false)
+    if (true)
     {
         oppic_set set = particles_set;
         int comm_iteration = 0;
-        int start1 = 0;
+        int start = 0;
         int end = set->size;
 
         do
@@ -261,7 +261,7 @@ delete[] arr_part_mesh_relation;
 
             int *mesh_relation_data = ((int *)set->mesh_relation_dat->data); 
 
-            for (int i = start1; i < end; i++)
+            for (int i = start; i < end; i++)
             {        
                 opp_move_var m;
 
@@ -304,7 +304,7 @@ delete[] arr_part_mesh_relation;
                     // End of the kernel **************************************************************
 
                     // should check whether map0idx is in halo list, if yes, pack the particle data into MPI buffer
-                    opp_check_part_need_comm(map0idx, set, i, m);
+                    opp_part_check_for_comm(map0idx, set, i, m);
 
                 } while (m.OPP_move_status == OPP_NEED_MOVE);
 
@@ -323,8 +323,8 @@ delete[] arr_part_mesh_relation;
             else
             {
                 // wait till all the particles are communicated and added to the dats
-                opp_wait_all_particles(set);
-                start1 = set->size - set->diff;
+                opp_part_wait_all(set);
+                start = set->size - set->diff;
                 end = set->size;
             }
 
@@ -385,7 +385,8 @@ delete[] arr_part_mesh_relation;
             int map3idx = arg8.map_data[map0idx * arg8.map->dim + 2];
             int map4idx = arg8.map_data[map0idx * arg8.map->dim + 3];
 
-            if (OPP_my_rank == 0 && i == start) map4idx = 881; // test works, can see in node_test.dat file 
+            if (OPP_my_rank == 0 && i == 10) map4idx = 881; // test works, can see in node_test0.dat file line 883
+            if (OPP_my_rank == 1 && i == 5) map2idx = 779; // test works, can see in node_test1.dat file line 781
 
             ((double*)node_test->data)[map1idx * arg8.dim + 0] = (OPP_my_rank + 1) * 10000 + 1*1000 + i*10 + 0;
             ((double*)node_test->data)[map1idx * arg8.dim + 1] = (OPP_my_rank + 1) * 10000 + 1*1000 + i*10 + 1;
