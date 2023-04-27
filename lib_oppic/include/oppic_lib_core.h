@@ -325,6 +325,9 @@ extern int OPP_mpi_part_alloc_mult;
 extern int OPP_my_rank;
 extern int OPP_comm_size;
 extern int OPP_comm_iteration;
+extern int OPP_iter_start;
+extern int OPP_iter_end;
+extern int *OPP_mesh_relation_data;
 
 extern std::vector<oppic_set> oppic_sets;
 extern std::vector<oppic_map> oppic_maps;

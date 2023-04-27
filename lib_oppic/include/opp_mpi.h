@@ -302,9 +302,11 @@ inline void opp_uniform_scatter_array(T *g_array, T *l_array, int g_size, int l_
 void opp_partition(op_set prime_set, op_map prime_map, op_dat data = NULL);
 void opp_partition_core(op_set prime_set, op_map prime_map, op_dat data);
 
+opp_move_var opp_get_move_var();
+
 void opp_part_comm_init();
 void opp_part_set_comm_init(oppic_set set);
-bool opp_part_check_for_comm(int map0idx, oppic_set set, int particle_index, opp_move_var& m);
+bool opp_part_check_status(opp_move_var& m, int map0idx, oppic_set set, int particle_index, int& remove_count);
 void opp_part_exchange(oppic_set set);
 bool opp_part_check_all_done(oppic_set set);
 void opp_part_wait_all(oppic_set set);
@@ -320,3 +322,8 @@ void opp_mpi_halo_wait_all(int nargs, oppic_arg *args);
 void opp_mpi_halo_exchange(oppic_arg *arg, int exec_flag);
 
 bool is_double_indirect_reduction(oppic_arg& arg);
+
+
+
+void print_dat_to_txtfile_mpi(op_dat dat, const char *file_name);
+void op_print_dat_to_txtfile(op_dat dat, const char *file_name);

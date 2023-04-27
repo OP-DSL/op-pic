@@ -215,11 +215,13 @@ delete[] arr_part_mesh_relation;
 // opp_printf("XXXXXXXXXX", OPP_my_rank, " 8");
 
         mesh.DeleteValues();
-
+print_dat_to_txtfile_mpi(cell_shape_deriv, "cell_shape_deriv_pre.dat");
 // opp_printf("XXXXXXXXXX", OPP_my_rank, " 10");
 
         opp_partition(cells_set, cell_to_nodes_map);
 
+print_dat_to_txtfile_mpi(cell_shape_deriv, "cell_shape_deriv_post.dat");
+op_print_dat_to_txtfile(cell_shape_deriv, "cell_shape_deriv_proccessed.dat");
 //  opp_printf("XXXXXXXXXX", OPP_my_rank, " 67");
     
     if (false)
@@ -249,88 +251,70 @@ delete[] arr_part_mesh_relation;
     if (true)
     {
         oppic_set set = particles_set;
-        int comm_iteration = 0;
-        int start = 0;
-        int end = set->size;
+
+        int* map0idx = nullptr;
 
         do
         {    
-            opp_printf("Main()", "Starting iteration %d", comm_iteration);
+            opp_printf("Main()", "Starting iteration %d, start[%d] end[%d]", OPP_comm_iteration, OPP_iter_start, OPP_iter_end);
 
             oppic_init_particle_move(set);
 
-            int *mesh_relation_data = ((int *)set->mesh_relation_dat->data); 
-
-            for (int i = start; i < end; i++)
+            for (int i = OPP_iter_start; i < OPP_iter_end; i++)
             {        
-                opp_move_var m;
+                opp_move_var m = opp_get_move_var();
 
-                opp_printf("Main()", "Iter index %d comm_iteration %d *******************************", i, comm_iteration);
+                opp_printf("Main()", "Iter index %d comm_iteration %d *******************************", i, OPP_comm_iteration);
 
                 do
                 { 
-                    int& map0idx      = mesh_relation_data[i];
+                    map0idx = &(OPP_mesh_relation_data[i]);
 
                     // Expect this as the kernel **************************************************************
-                    if (OPP_my_rank == 0 && i == 2 && comm_iteration==0)
-                    {
-                        opp_printf("EXPECT COMM", "3468 cell of INDEX 1 ieh of RANK 0");
-                        ((int*)part_mesh_relation->data)[i] = 3862;
-                        // ((int*)part_mesh_relation->data)[i] = 1800; 2457;
-                        m.OPP_move_status = OPP_NEED_MOVE;
-                    }
-                    else if (OPP_my_rank == 0 && i == 19 && comm_iteration==0)
-                    {
-                        opp_printf("EXPECT COMM", "3649 cell of INDEX 182 ieh of RANK 0");
-                        ((int*)part_mesh_relation->data)[i] = 4043;
-                        m.OPP_move_status = OPP_NEED_MOVE;
-                    }
-                    else if (OPP_my_rank == 1 && i == 3 && comm_iteration==0)
-                    {
-                        opp_printf("EXPECT COMM", "3670 cell of INDEX 3 ieh of RANK 1");
-                        ((int*)part_mesh_relation->data)[i] = 3653;
-                        m.OPP_move_status = OPP_NEED_MOVE;
-                    }
-                    else if (OPP_my_rank == 1 && i == 19 && comm_iteration==1)
-                    {
-                        opp_printf("EXPECT COMM", "3672 cell of INDEX 1 ieh of RANK 0");
-                        ((int*)part_mesh_relation->data)[i] = 3655;
-                        m.OPP_move_status = OPP_NEED_MOVE;
-                    }
-                    else
-                    {
-                        m.OPP_move_status = OPP_MOVE_DONE;
+                    {                    
+                        if (OPP_my_rank == 0 && i == 2 && OPP_comm_iteration==0)
+                        {
+                            opp_printf("EXPECT COMM", "3468 cell of INDEX 1 ieh of RANK 0");
+                            ((int*)part_mesh_relation->data)[i] = 3862;
+                            // ((int*)part_mesh_relation->data)[i] = 1800; 2457;
+                            m.OPP_move_status = OPP_NEED_MOVE;
+                        }
+                        else if (OPP_my_rank == 0 && i == 19 && OPP_comm_iteration==0)
+                        {
+                            opp_printf("EXPECT COMM", "3649 cell of INDEX 182 ieh of RANK 0");
+                            ((int*)part_mesh_relation->data)[i] = 4043;
+                            m.OPP_move_status = OPP_NEED_MOVE;
+                        }
+                        else if (OPP_my_rank == 1 && i == 3 && OPP_comm_iteration==0)
+                        {
+                            opp_printf("EXPECT COMM", "3670 cell of INDEX 3 ieh of RANK 1");
+                            ((int*)part_mesh_relation->data)[i] = 3653;
+                            m.OPP_move_status = OPP_NEED_MOVE;
+                        }
+                        else if (OPP_my_rank == 1 && i == 19 && OPP_comm_iteration==1)
+                        {
+                            opp_printf("EXPECT COMM", "3672 cell of INDEX 1 ieh of RANK 0");
+                            ((int*)part_mesh_relation->data)[i] = 3655;
+                            m.OPP_move_status = OPP_NEED_MOVE;
+
+                            if (m.OPP_iteration_one != false)
+                            {
+                                opp_printf("Main()", "ERROR ERROR ERROR **************************************************************");
+                                exit(-1);
+                            }
+                        }
+                        else
+                        {
+                            m.OPP_move_status = OPP_MOVE_DONE;
+                        }
                     }
                     // End of the kernel **************************************************************
 
                     // should check whether map0idx is in halo list, if yes, pack the particle data into MPI buffer
-                    opp_part_check_for_comm(map0idx, set, i, m);
-
-                } while (m.OPP_move_status == OPP_NEED_MOVE);
-
-                if (m.OPP_move_status == OPP_NEED_REMOVE) 
-                {
-                    set->particle_remove_count += 1;
-                    mesh_relation_data[i] = MAX_CELL_INDEX;
-                }
+                } while (opp_part_check_status(m, *map0idx, set, i, set->particle_remove_count));
             }
 
-            if (oppic_finalize_particle_move(set))
-            {
-                // all mpi ranks do not have anything to communicate to any rank
-                break;
-            }
-            else
-            {
-                // wait till all the particles are communicated and added to the dats
-                opp_part_wait_all(set);
-                start = set->size - set->diff;
-                end = set->size;
-            }
-
-            comm_iteration++;
-
-        } while (true);
+        } while (oppic_finalize_particle_move(set));
     }
 
     if (false)

@@ -52,9 +52,11 @@ int OP_auto_sort            = 1;
 int OPP_mpi_part_alloc_mult = 1;
 int OPP_my_rank             = 0;
 int OPP_comm_size           = 1;
-int OPP_comm_iteration      = 1;
-
-opp::Params* opp_params = nullptr;
+int OPP_comm_iteration      = 0;
+int OPP_iter_start          = 0;
+int OPP_iter_end            = 0;
+int *OPP_mesh_relation_data = nullptr;
+opp::Params* opp_params     = nullptr;
 
 //****************************************
 void oppic_init_core(int argc, char **argv, opp::Params* params) 

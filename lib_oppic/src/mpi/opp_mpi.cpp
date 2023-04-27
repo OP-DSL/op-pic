@@ -35,6 +35,8 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 MPI_Comm OP_MPI_WORLD;
 MPI_Comm OP_MPI_GLOBAL;
 
+op_dat op_mpi_get_data(op_dat dat);
+
 //*******************************************************************************
 void oppic_init(int argc, char **argv, opp::Params* params) 
 {
@@ -267,9 +269,15 @@ void oppic_print_map_to_txtfile(oppic_map map, const char *file_name_prefix, con
 void oppic_init_particle_move(oppic_set set)
 { TRACE_ME;
 
-    OPP_comm_iteration = 1;
-
     oppic_init_particle_move_core(set);
+
+    if (OPP_comm_iteration == 0)
+    {
+        OPP_iter_start = 0;
+        OPP_iter_end   = set->size;          
+    }
+
+    OPP_mesh_relation_data = ((int *)set->mesh_relation_dat->data); 
 }
 
 // //****************************************
@@ -294,7 +302,21 @@ bool oppic_finalize_particle_move(oppic_set set)
         oppic_particle_sort(set);
     }
 
-    return opp_part_check_all_done(set); 
+    if (opp_part_check_all_done(set))
+    {
+        OPP_comm_iteration = 0; // reset for the next par loop
+
+        return false; // all mpi ranks do not have anything to communicate to any rank
+    }
+        
+    opp_part_wait_all(set); // wait till all the particles are communicated and added to the dats
+
+    OPP_iter_start = set->size - set->diff;
+    OPP_iter_end   = set->size;  
+
+    OPP_comm_iteration++;  
+
+    return true;
 }
 
 //****************************************
@@ -512,158 +534,24 @@ void opp_desanitize_all_maps()
 }
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-/*******************************************************************************
- * Routine to declare partition information for a given set
- *******************************************************************************/
-void decl_partition(op_set set, int *g_index, int *partition) 
+void op_print_dat_to_txtfile(op_dat dat, const char *file_name) 
 {
-    part p = (part)malloc(sizeof(part_core));
-    p->set = set;
-    p->g_index = g_index;
-    p->elem_part = partition;
-    p->is_partitioned = 0;
-    OP_part_list[set->index] = p;
-    OP_part_index++;
-}
-
-/*******************************************************************************
- * Routine to get partition range on all mpi ranks for all sets
- *******************************************************************************/
-void get_part_range(int **part_range, int my_rank, int comm_size, MPI_Comm Comm) 
-{
-    (void)my_rank;
-    for (int s = 0; s < OP_set_index; s++) 
-    {
-        op_set set = OP_set_list[s];
-
-        int *sizes = (int *)malloc(sizeof(int) * comm_size);
-        MPI_Allgather(&set->size, 1, MPI_INT, sizes, 1, MPI_INT, Comm);
-
-        part_range[set->index] = (int *)malloc(2 * comm_size * sizeof(int));
-
-        int disp = 0;
-        for (int i = 0; i < comm_size; i++) 
-        {
-            part_range[set->index][2 * i] = disp;
-            disp = disp + sizes[i] - 1;
-            part_range[set->index][2 * i + 1] = disp;
-            disp++;
-        #ifdef DEBUG
-            if (my_rank == OPP_MPI_ROOT && OP_diags > 5)
-                printf("range of %10s in rank %d: %d-%d\n", set->name, i,
-                    part_range[set->index][2 * i],
-                    part_range[set->index][2 * i + 1]);
-        #endif
-        }
-        free(sizes);
-    }
-}
-
-/*******************************************************************************
- * Routine to get partition (i.e. mpi rank) where global_index is located and
- * its local index
- *******************************************************************************/
-int get_partition(int global_index, int *part_range, int *local_index, int comm_size) 
-{
-    for (int i = 0; i < comm_size; i++) 
-    {
-        if (global_index >= part_range[2 * i] && global_index <= part_range[2 * i + 1]) 
-        {
-            *local_index = global_index - part_range[2 * i];
-            return i;
-        }
-    }
-
-    if (OP_DEBUG) 
-    {    
-        std::string log = "";
-        for (int i = 0; i < comm_size; i++) 
-        {
-            log += std::to_string(i) + "|" + std::to_string(part_range[2 * i]) + "|" + std::to_string(part_range[2 * i + 1]) + "\n";
-        }
-
-        opp_printf("get_partition()", OPP_my_rank, "Error: orphan global index %d part_range->\n%s", global_index, log.c_str());
-    }
-
-    MPI_Abort(OP_MPI_WORLD, 2);
-    return 1;
-}
-
-/*******************************************************************************
- * Routine to convert a local index in to a global index
- *******************************************************************************/
-int get_global_index(int local_index, int partition, int *part_range, int comm_size) 
-{
-    (void)comm_size;
-    int g_index = part_range[2 * partition] + local_index;
-#ifdef DEBUG
-    if (g_index > part_range[2 * (comm_size - 1) + 1] && OP_diags > 2)
-        printf("Global index larger than set size\n");
-#endif
-    return g_index;
-}
-
-/*******************************************************************************
- * Routine to find the MPI neighbors given a halo list
- *******************************************************************************/
-void find_neighbors_set(halo_list List, int *neighbors, int *sizes, int *ranks_size, int my_rank, int comm_size, MPI_Comm Comm) 
-{
-    int *temp = (int *)malloc(comm_size * sizeof(int));
-    int *r_temp = (int *)malloc(comm_size * comm_size * sizeof(int));
-
-    for (int r = 0; r < comm_size * comm_size; r++)
-        r_temp[r] = -99;
-    for (int r = 0; r < comm_size; r++)
-        temp[r] = -99;
-
-    int n = 0;
-
-    for (int r = 0; r < comm_size; r++) 
-    {
-        if (List->ranks[r] >= 0)
-        temp[List->ranks[r]] = List->sizes[r];
-    }
-
-    MPI_Allgather(temp, comm_size, MPI_INT, r_temp, comm_size, MPI_INT, Comm);
-
-    for (int i = 0; i < comm_size; i++) 
-    {
-        if (i != my_rank)
-        {
-            if (r_temp[i * comm_size + my_rank] > 0) 
-            {
-                neighbors[n] = i;
-                sizes[n] = r_temp[i * comm_size + my_rank];
-                n++;
-            }
-        }
-    }
-    *ranks_size = n;
-    free(temp);
-    free(r_temp);
-}
-
-bool is_double_indirect_reduction(oppic_arg& arg)
-{
-    if (arg.argtype == OP_ARG_DAT && arg.mesh_mapping == OPP_Map_from_Mesh_Rel && 
-            arg.idx != -1 && arg.acc == OP_INC)
-        return true;
+    // rearrange data backe to original order in mpi
+    op_dat temp = op_mpi_get_data(dat);
     
-    return false;
+    print_dat_to_txtfile_mpi(temp, file_name);
+
+    free(temp->data);
+    free(temp->set);
+    free(temp);
+}
+
+opp_move_var opp_get_move_var()
+{
+    opp_move_var m;
+
+    if (OPP_comm_iteration != 0) // TRUE means communicated particles, no need to do the iteration one calculations
+        m.OPP_iteration_one = false;
+    
+    return m;
 }
