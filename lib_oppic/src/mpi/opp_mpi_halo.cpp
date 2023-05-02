@@ -1213,7 +1213,7 @@ void opp_halo_destroy()
 //****************************************
 int oppic_mpi_halo_exchanges(oppic_set set, int nargs, oppic_arg *args) 
 {
-    opp_printf("oppic_mpi_halo_exchanges", "START");
+    if (OP_DEBUG) opp_printf("oppic_mpi_halo_exchanges", "START");
 
     int size = set->size;
     bool direct_flag = true;
@@ -1269,8 +1269,6 @@ int oppic_mpi_halo_exchanges(oppic_set set, int nargs, oppic_arg *args)
 void opp_mpi_halo_exchange(oppic_arg *arg, int exec_flag)
 {
     oppic_dat dat = arg->dat;
-
-opp_printf("opp_mpi_halo_exchange", "Dat [%s] exec_flag %d", dat->name, exec_flag);
 
     if (arg->opt == 0)
         return;
@@ -1404,7 +1402,7 @@ opp_printf("opp_mpi_halo_exchange", "Dat [%s] exec_flag %d", dat->name, exec_fla
 //****************************************
 void opp_mpi_halo_wait_all(int nargs, oppic_arg *args)
 {
-    opp_printf("opp_mpi_halo_wait_all", "START");
+    if (OP_DEBUG) opp_printf("opp_mpi_halo_wait_all", "START");
 
     for (int n = 0; n < nargs; n++) 
     {
@@ -1429,5 +1427,5 @@ void opp_mpi_halo_wait_all(int nargs, oppic_arg *args)
         }
     }
 
-    opp_printf("opp_mpi_halo_wait_all", "END");
+    if (OP_DEBUG) opp_printf("opp_mpi_halo_wait_all", "END");
 }

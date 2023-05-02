@@ -220,7 +220,7 @@ void oppic_increase_particle_count(oppic_set particles_set, const int num_partic
 //****************************************
 void opp_inc_part_count_with_distribution(oppic_set particles_set, int num_particles_to_insert, oppic_dat part_dist)
 {
-    opp_printf("opp_inc_part_count_with_distribution", "num_particles_to_insert [%d]", num_particles_to_insert);
+    if (OP_DEBUG) opp_printf("opp_inc_part_count_with_distribution", "num_particles_to_insert [%d]", num_particles_to_insert);
 
     oppic_increase_particle_count(particles_set, num_particles_to_insert);
 
