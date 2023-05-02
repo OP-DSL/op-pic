@@ -252,7 +252,7 @@ void opp_halo_create()
             op_map map = OP_map_list[m];
             halo_list exec_map_list = OP_import_exec_list[map->from->index];
 
-            if (compare_sets(map->to, set) == 1) // need to select  mappings TO this set
+            if (compare_sets(map->to, set) == 1 && compare_sets(map->from, map->to) != 1) // need to select  mappings TO this set
             { 
                 // for each entry in this mapping table: original+execlist
                 int len = map->from->size + exec_map_list->size;
@@ -540,8 +540,17 @@ void opp_halo_create()
                             }
 
                             if (found < 0)
-                                printf("ERROR: Set %10s Element %d needed on rank %d from partition %d\n",
-                                    set->name, local_index, my_rank, part);
+                            {
+                                if (compare_sets(map->from, map->to) == 1 && (e >= map->from->size))
+                                {
+                                    OP_map_list[map->index]->map[e * map->dim + j] = -2;
+                                }
+                                else
+                                {
+                                    printf("ERROR: Set %10s Element %d needed on rank %d from partition %d\n",
+                                        set->name, local_index, my_rank, part);
+                                }
+                            }
                         }
                     }
                 }
@@ -747,7 +756,12 @@ void opp_halo_create()
                         index = binary_search(exp_elems[map->to->index], map->map[e * map->dim + j], 0,
                                             (map->to->size) - (map->to->core_size) - 1);
                         if (index < 0)
-                            printf("Problem in seperating core elements - renumbering map\n");
+                        {
+                            if (compare_sets(map->from, map->to) == 1)
+                                OP_map_list[map->index]->map[e * (size_t)map->dim + j] = -3;
+                            else
+                                printf("Problem in seperating core elements - renumbering map\n");
+                        }
                         else
                             OP_map_list[map->index]->map[e * (size_t)map->dim + j] = map->to->core_size + index;
                     } 
@@ -1226,7 +1240,7 @@ int oppic_mpi_halo_exchanges(oppic_set set, int nargs, oppic_arg *args)
 
     for (int n = 0; n < nargs; n++) 
     {
-        if (args[n].opt && args[n].argtype == OP_ARG_DAT) 
+        if (args[n].opt && args[n].argtype == OP_ARG_DAT && (!args[n].dat->set->is_particle)) 
         {
             bool already_done = false;
 
@@ -1242,10 +1256,10 @@ int oppic_mpi_halo_exchanges(oppic_set set, int nargs, oppic_arg *args)
                 if (OP_DEBUG) opp_printf("oppic_mpi_halo_exchanges", "opp_exchange_halo for dat [%s]", args[n].dat->name);
                 opp_mpi_halo_exchange(&args[n], exec_flag);
             }
-            else
-            {
-                if (OP_DEBUG) opp_printf("oppic_mpi_halo_exchanges", "opp_exchange_halo SKIP for dat [%s]", args[n].dat->name);
-            }
+            // else
+            // {
+            //     if (OP_DEBUG) opp_printf("oppic_mpi_halo_exchanges", "opp_exchange_halo already done for dat [%s]", args[n].dat->name);
+            // }
         }
     }  
 
