@@ -177,6 +177,23 @@ void oppic_increase_particle_count(oppic_set particles_set, const int num_partic
     oppic_increase_particle_count_core(particles_set, num_particles_to_insert);
 }
 
+void opp_inc_part_count_with_distribution(oppic_set particles_set, int num_particles_to_insert, oppic_dat part_dist)
+{
+    oppic_increase_particle_count(particles_set, num_particles_to_insert);
+
+    int* part_mesh_connectivity = (int *)particles_set->mesh_relation_dat->data;
+    int* distribution           = (int *)part_dist->data;
+
+    int start = (particles_set->size - particles_set->diff);
+    int j = 0;
+
+    for (int i = 0; i < particles_set->diff; i++)
+    {
+        if (i >= distribution[j]) j++; // check whether it is j or j-1    
+        part_mesh_connectivity[start + i] = j;
+    } 
+}
+
 //****************************************
 void oppic_reset_num_particles_to_insert(oppic_set set)
 {
@@ -292,3 +309,7 @@ int oppic_mpi_halo_exchanges(oppic_set set, int nargs, oppic_arg *args)
 }
 
 //****************************************
+void opp_mpi_halo_wait_all(int nargs, oppic_arg *args)
+{
+    // Nothing to execute here
+}

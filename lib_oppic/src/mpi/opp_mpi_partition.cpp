@@ -754,7 +754,7 @@ MPI_Comm OP_PART_WORLD;
             } 
             else // partitioning error;
             {
-                printf("On rank %d: Partitioning error\n", my_rank);
+                opp_printf("partition_all", "On rank %d: Partitioning error", my_rank);
                 error = 1;
                 break;
             }
@@ -764,7 +764,7 @@ MPI_Comm OP_PART_WORLD;
     if (my_rank == OPP_MPI_ROOT) 
     {
         int die = 0;
-        printf("Sets partitioned = %d\n", sets_partitioned);
+        opp_printf("partition_all", "Sets partitioned = %d", sets_partitioned);
         
         if (sets_partitioned != OP_set_index) 
         {
@@ -772,17 +772,17 @@ MPI_Comm OP_PART_WORLD;
             { // for each set
                 op_set set = OP_set_list[s];
                 part P = OP_part_list[set->index];
-                if (P->is_partitioned != 1) {
-                printf("Unable to find mapping between primary set and %s \n",
-                        P->set->name);
-                if (P->set->size != 0)
-                    die = 1;
+                if (P->is_partitioned != 1) 
+                {
+                    opp_printf("partition_all", "Unable to find mapping between primary set and %s", P->set->name);
+                    if (P->set->size != 0)
+                        die = 1;
                 }
             }
             
             if (die) 
             {
-                printf("Partitioning aborted !\n");
+                opp_printf("partition_all", "Partitioning aborted !");
                 MPI_Abort(OP_PART_WORLD, 1);
             }
         }

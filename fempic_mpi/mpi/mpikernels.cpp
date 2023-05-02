@@ -65,7 +65,7 @@ void oppic_inject__Increase_particle_count
 )
 { TRACE_ME;
 
-    if (FP_DEBUG) printf("FEMPIC - oppic_inject__Increase_particle_count set_size %d diff %d\n", set->size, set->diff);
+    if (FP_DEBUG) opp_printf("FEMPIC", "oppic_inject__Increase_particle_count set_size %d diff %d", set->size, set->diff);
 
     for (int i = 0; i < set->size; i++)
     {   
@@ -108,7 +108,7 @@ void oppic_par_loop_inject__InjectIons(
 )
 { TRACE_ME;
 
-    if (FP_DEBUG) printf("FEMPIC - oppic_par_loop_inject__InjectIons set_size %d diff %d\n", set->size, set->diff);
+    if (FP_DEBUG) opp_printf("FEMPIC", "oppic_par_loop_inject__InjectIons set_size %d diff %d", set->size, set->diff);
 
     int inj_start = (set->size - set->diff);
 
@@ -178,18 +178,18 @@ void oppic_par_loop_particle_all__MoveToCells(
     int nargs = 12;
     oppic_arg args[nargs];
 
-    args[0] = arg0;
-    args[1] = arg1;
-    args[2] = arg2;
-    args[3] = arg3;
-    args[4] = arg4;
-    args[5] = arg5;
-    args[6] = arg6;
-    args[7] = arg7;
-    args[8] = arg8;
-    args[9] = arg9;
-    args[10] = arg10;
-    args[11] = arg11;
+    args[0]  = std::move(arg0);
+    args[1]  = std::move(arg1);
+    args[2]  = std::move(arg2);
+    args[3]  = std::move(arg3);
+    args[4]  = std::move(arg4);
+    args[5]  = std::move(arg5);
+    args[6]  = std::move(arg6);
+    args[7]  = std::move(arg7);
+    args[8]  = std::move(arg8);
+    args[9]  = std::move(arg9);
+    args[10] = std::move(arg10);
+    args[11] = std::move(arg11);
 
     int *map0idx = nullptr;
 
@@ -205,56 +205,53 @@ void oppic_par_loop_particle_all__MoveToCells(
     // unable to overlap computation and communication, could overlap if particles are sorted according to cell index
     opp_mpi_halo_wait_all(nargs, args); 
 
-    if (set_size > 0) 
+    do // iterate until all mpi ranks say, I am done
     {
-        do // iterate until all mpi ranks say, I am done
-        {
-            oppic_init_particle_move(set);
+        oppic_init_particle_move(set, nargs, args);
+        
+        if (FP_DEBUG) opp_printf("FEMPIC", "oppic_par_loop_particle_all__MoveToCells Starting iteration %d, start[%d] end[%d]", 
+            OPP_comm_iteration, OPP_iter_start, OPP_iter_end);
             
-            if (FP_DEBUG) opp_printf("FEMPIC", "oppic_par_loop_particle_all__MoveToCells Starting iteration %d, start[%d] end[%d]", 
-                OPP_comm_iteration, OPP_iter_start, OPP_iter_end);
-                
-            for (int i = OPP_iter_start; i < OPP_iter_end; i++)
-            {
-                opp_move_var m = opp_get_move_var();
+        for (int i = OPP_iter_start; i < OPP_iter_end; i++)
+        {
+            opp_move_var m = opp_get_move_var();
 
-                do
-                { 
-                    m.OPP_inside_cell = true;
+            do
+            { 
+                m.OPP_inside_cell = true;
 
-                    map0idx = &(OPP_mesh_relation_data[i]);
+                map0idx = &(OPP_mesh_relation_data[i]);
 
-                    const int map1idx = arg8.map_data[*map0idx * arg8.map->dim + 0];
-                    const int map2idx = arg8.map_data[*map0idx * arg8.map->dim + 1];
-                    const int map3idx = arg8.map_data[*map0idx * arg8.map->dim + 2];
-                    const int map4idx = arg8.map_data[*map0idx * arg8.map->dim + 3];
+                const int map1idx = args[8].map_data[*map0idx * args[8].map->dim + 0];
+                const int map2idx = args[8].map_data[*map0idx * args[8].map->dim + 1];
+                const int map3idx = args[8].map_data[*map0idx * args[8].map->dim + 2];
+                const int map4idx = args[8].map_data[*map0idx * args[8].map->dim + 3];
 
-                    move_all_particles_to_cell__kernel(
-                        (m),
-                        &((double *)arg0.data)[*map0idx * arg0.dim], // const double *cell_ef,
-                        &((double *)arg1.data)[i * arg1.dim],       // double *part_pos,
-                        &((double *)arg2.data)[i * arg2.dim],       // double *part_vel,
-                        &((double *)arg3.data)[i * arg3.dim],       // double *part_lc,
-                        &((int *)arg4.data)[i * arg4.dim],          // int* current_cell_index,
-                        &((double*)arg5.data)[*map0idx * arg5.dim],  // const double *current_cell_volume,
-                        &((double*)arg6.data)[*map0idx * arg6.dim],  // const double *current_cell_det,
-                        &((int*)arg7.data)[*map0idx * arg7.dim],     // const int *cell_connectivity,
-                        &((double*)arg8.data)[map1idx],             // double *node_charge_den0,
-                        &((double*)arg8.data)[map2idx],             // double *node_charge_den1,
-                        &((double*)arg8.data)[map3idx],             // double *node_charge_den2,
-                        &((double*)arg8.data)[map4idx]              // double *node_charge_den3,
-                    );
+                move_all_particles_to_cell__kernel(
+                    (m),
+                    &((double*) args[0].data)[*map0idx * args[0].dim],  // const double *cell_ef,
+                    &((double*) args[1].data)[i * args[1].dim],         // double *part_pos,
+                    &((double*) args[2].data)[i * args[2].dim],         // double *part_vel,
+                    &((double*) args[3].data)[i * args[3].dim],         // double *part_lc,
+                    &((int *)   args[4].data)[i * args[4].dim],         // int* current_cell_index,
+                    &((double*) args[5].data)[*map0idx * args[5].dim],  // const double *current_cell_volume,
+                    &((double*) args[6].data)[*map0idx * args[6].dim],  // const double *current_cell_det,
+                    &((int*)    args[7].data)[*map0idx * args[7].dim],  // const int *cell_connectivity,
+                    &((double*) args[8].data)[map1idx],                 // double *node_charge_den0,
+                    &((double*) args[8].data)[map2idx],                 // double *node_charge_den1,
+                    &((double*) args[8].data)[map3idx],                 // double *node_charge_den2,
+                    &((double*) args[8].data)[map4idx]                  // double *node_charge_den3,
+                );
 
-                    // should check whether map0idx is in halo list, if yes, pack the particle into MPI buffer and set status to NEED_REMOVE
-                } while (opp_part_check_status(m, *map0idx, set, i, set->particle_remove_count));
-            }
+                // should check whether map0idx is in halo list, if yes, pack the particle into MPI buffer and set status to NEED_REMOVE
+            } while (opp_part_check_status(m, *map0idx, set, i, set->particle_remove_count));
+        }
 
-        } while (oppic_finalize_particle_move(set)); // iterate until all mpi ranks say, I am done
-
-        // if auto_sort is set, then sort here
-    }
+    } while (oppic_finalize_particle_move(set)); // iterate until all mpi ranks say, I am done
 
     opp_exchange_double_indirect_reductions(nargs, args);
+
+    // if auto_sort is set, then sort here
 
     // TODO : can this be added to oppic_mpi_halo_exchanges, to complete before the next usage?
     opp_complete_double_indirect_reductions(nargs, args);
@@ -271,7 +268,7 @@ void oppic_par_loop_all__ComputeNodeChargeDensity(
 )
 { TRACE_ME;
     
-    if (FP_DEBUG) opp_printf("FEMPIC - oppic_par_loop_all__ComputeNodeChargeDensity", "set_size %d", set->size);
+    if (FP_DEBUG) opp_printf("FEMPIC", "oppic_par_loop_all__ComputeNodeChargeDensity set_size %d", set->size);
 
     int nargs = 2;
     oppic_arg args[nargs];
@@ -311,7 +308,7 @@ void oppic_par_loop_all__ComputeElectricField(
 )
 { TRACE_ME;
 
-    if (FP_DEBUG) printf("FEMPIC - oppic_par_loop_all__ComputeElectricField set_size %d\n", set->size);
+    if (FP_DEBUG) opp_printf("FEMPIC", "oppic_par_loop_all__ComputeElectricField set_size %d", set->size);
 
     int nargs = 6;
     oppic_arg args[nargs];

@@ -459,7 +459,8 @@ void oppic_increase_particle_count_core(oppic_set particles_set, const int num_p
     if (particles_set->set_capacity >= new_particle_set_size)
     {
         if (OP_DEBUG) 
-            opp_printf("oppic_increase_particle_count_core", "set [%s] No need to reallocate, new size[%d] set_capacity[%d]", particles_set->name, new_particle_set_size, particles_set->set_capacity);        
+            opp_printf("oppic_increase_particle_count_core", "set [%s] No need to reallocate, new size[%d] set_capacity[%d]", 
+                particles_set->name, new_particle_set_size, particles_set->set_capacity);        
         
         particles_set->size = new_particle_set_size;
         particles_set->diff = num_particles_to_insert;   
@@ -470,7 +471,8 @@ void oppic_increase_particle_count_core(oppic_set particles_set, const int num_p
     // int new_particle_set_capacity = new_particle_set_size;
 
     if (OP_DEBUG)
-        opp_printf("oppic_increase_particle_count_core", "new_particle_set_capacity %d particles_set->size %d", new_particle_set_capacity, particles_set->size);
+        opp_printf("oppic_increase_particle_count_core", "new_particle_set_capacity %d particles_set->size %d set_dat_count %d", 
+            new_particle_set_capacity, particles_set->size, particles_set->particle_dats->size());
 
     for (auto& current_oppic_dat : *(particles_set->particle_dats))
     {
@@ -478,7 +480,6 @@ void oppic_increase_particle_count_core(oppic_set particles_set, const int num_p
         {
             current_oppic_dat->data = (char *)malloc((size_t)(new_particle_set_capacity * current_oppic_dat->size));
             // opp_printf("oppic_increase_particle_count_core", "malloc name %s %p size %d", current_oppic_dat->name, current_oppic_dat->data, (new_particle_set_capacity * current_oppic_dat->size));
-
         }
         else
         {
@@ -715,13 +716,13 @@ void oppic_print_dat_to_txtfile_core(oppic_dat dat, const char *file_name_prefix
         exit(2);
     }
 
-    if (fprintf(fp, "%d %d\n", dat->set->size, dat->dim) < 0) 
+    if (fprintf(fp, "%d %d -- %d %d\n", dat->set->size, dat->dim, dat->set->exec_size, dat->set->nonexec_size) < 0)
     {
         opp_printf("oppic_print_dat_to_txtfile_core", "error writing to %s\n", file_name.c_str());
         exit(2);
     }
 
-    for (int i = 0; i < dat->set->size; i++) 
+    for (int i = 0; i < dat->set->size + dat->set->exec_size + dat->set->nonexec_size; i++) 
     {
         // fprintf(fp, "%d", i);
 
@@ -737,7 +738,7 @@ void oppic_print_dat_to_txtfile_core(oppic_dat dat, const char *file_name_prefix
                     ((double *)dat->data)[i * dat->dim + j] = +0.0; 
                 }
 
-                if (fprintf(fp, " %+2.25lE", ((double *)dat->data)[i * dat->dim + j]) < 0) 
+                if (fprintf(fp, " %2.25lE", ((double *)dat->data)[i * dat->dim + j]) < 0) 
                 {
                     printf("\toppic_print_dat_to_txtfile_core error writing to %s\n", file_name.c_str());
                     exit(2);
@@ -748,7 +749,7 @@ void oppic_print_dat_to_txtfile_core(oppic_dat dat, const char *file_name_prefix
                     strcmp(dat->type, "real(4)") == 0 ||
                     strcmp(dat->type, "real") == 0) 
             {
-                if (fprintf(fp, " %+f", ((float *)dat->data)[i * dat->dim + j]) < 0) 
+                if (fprintf(fp, " %f", ((float *)dat->data)[i * dat->dim + j]) < 0) 
                 {
                     printf("\toppic_print_dat_to_txtfile_core error writing to %s\n", file_name.c_str());
                     exit(2);
@@ -760,7 +761,7 @@ void oppic_print_dat_to_txtfile_core(oppic_dat dat, const char *file_name_prefix
                         strcmp(dat->type, "integer") == 0 ||
                         strcmp(dat->type, "integer(4)") == 0) 
             {
-                if (fprintf(fp, " %+d", ((int *)dat->data)[i * dat->dim + j]) < 0) 
+                if (fprintf(fp, " %d", ((int *)dat->data)[i * dat->dim + j]) < 0) 
                 {
                     printf("\toppic_print_dat_to_txtfile_core error writing to %s\n", file_name.c_str());
                     exit(2);
@@ -769,7 +770,7 @@ void oppic_print_dat_to_txtfile_core(oppic_dat dat, const char *file_name_prefix
             else if ((strcmp(dat->type, "long") == 0) ||
                         (strcmp(dat->type, "long:soa") == 0)) 
             {
-                if (fprintf(fp, " %+ld", ((long *)dat->data)[i * dat->dim + j]) < 0) 
+                if (fprintf(fp, " %ld", ((long *)dat->data)[i * dat->dim + j]) < 0) 
                 {
                     printf("\toppic_print_dat_to_txtfile_core error writing to %s\n", file_name.c_str());
                     exit(2);
@@ -783,6 +784,9 @@ void oppic_print_dat_to_txtfile_core(oppic_dat dat, const char *file_name_prefix
         }
 
         fprintf(fp, "\n");
+
+        if (i+1 == dat->set->size) fprintf(fp, "\nexec_below ****************************************\n");
+        if (i+1 == dat->set->size + dat->set->exec_size) fprintf(fp, "\nnon_exec_below ****************************************\n");
     }
     
     fclose(fp);
@@ -840,13 +844,13 @@ void oppic_print_map_to_txtfile_core(oppic_map map, const char *file_name_prefix
         exit(2);
     }
 
-    if (fprintf(fp, "%d %d\n", map->from->size, map->dim) < 0) 
+    if (fprintf(fp, "%d %d -- %d %d\n", map->from->size, map->dim, map->from->exec_size, map->from->nonexec_size) < 0) 
     {
         printf("\toppic_print_map_to_txtfile_core error writing to %s\n", file_name.c_str());
         exit(2);
     }
 
-    for (int i = 0; i < map->from->size; i++) 
+    for (int i = 0; i < map->from->size + map->from->exec_size + map->from->nonexec_size; i++) 
     {
         // fprintf(fp, "%d", i);
 
@@ -860,6 +864,9 @@ void oppic_print_map_to_txtfile_core(oppic_map map, const char *file_name_prefix
         }
 
         fprintf(fp, "\n");
+
+        if (i+1 == map->from->size) fprintf(fp, "\nexec_below ****************************************\n");
+        if (i+1 == map->from->size + map->from->exec_size) fprintf(fp, "\nnon_exec_below ****************************************\n");
     }
     
     fclose(fp);

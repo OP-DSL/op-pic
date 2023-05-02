@@ -10,7 +10,7 @@ std::map<int, std::map<int, opp_particle_comm_data>> opp_part_comm_neighbour_dat
 //*******************************************************************************
 void opp_part_pack(oppic_set set, int index, int send_rank)
 {
-    if (OP_DEBUG) opp_printf("opp_part_pack", "set [%s] | index %d | send_rank %d", set->name, index, send_rank);
+    // if (OP_DEBUG) opp_printf("opp_part_pack", "set [%s] | index %d | send_rank %d", set->name, index, send_rank);
 
     opp_all_mpi_part_buffers* send_buffers = (opp_all_mpi_part_buffers*)set->mpi_part_buffers;
 
@@ -73,7 +73,7 @@ void opp_part_pack(oppic_set set, int index, int send_rank)
                 for (int l = 0; l < dat->dim; l++) log += " " + std::to_string(d[l]);
             }
 
-            opp_printf("opp_part_pack", "%s from index %d -%s", dat->name, index, log.c_str());
+            // opp_printf("opp_part_pack", "%s from index %d -%s", dat->name, index, log.c_str());
         }
 
         displacement += dat->size;
@@ -82,7 +82,7 @@ void opp_part_pack(oppic_set set, int index, int send_rank)
     send_rank_buffer.buf_export_index += set->particle_size;
     (send_buffers->export_counts)[send_rank] += 1;
 
-    if (OP_DEBUG) opp_printf("opp_part_pack", "END send_rank %d exported count %d", send_rank, (send_buffers->export_counts)[send_rank]);
+    // if (OP_DEBUG) opp_printf("opp_part_pack", "END send_rank %d exported count %d", send_rank, (send_buffers->export_counts)[send_rank]);
 }
 
 //*******************************************************************************
@@ -143,7 +143,7 @@ void opp_part_unpack(oppic_set set)
                             for (int l = 0; l < dat->dim; l++) log += " " + std::to_string(d[l]);
                         }
 
-                        opp_printf("opp_part_unpack", "%s to index %d -%s", dat->name, new_part_index, log.c_str());
+                        // opp_printf("opp_part_unpack", "%s to index %d -%s", dat->name, new_part_index, log.c_str());
                     }
 
                     displacement += dat->size;     
@@ -492,7 +492,7 @@ void opp_part_set_comm_init(oppic_set set)
 
             set_part_com_data.insert({local_index, comm_data});
 
-            // opp_printf("opp_part_comm_init", OPP_my_rank, "cset:%s li:%d nr:%d ni:%d", 
+            // opp_printf("opp_part_comm_init", "set:[%s] li:[%d] nr:[%d] ni:[%d]", 
             //     set->cells_set->name, local_index, comm_data.cell_residing_rank, comm_data.local_index);
         }
     }  

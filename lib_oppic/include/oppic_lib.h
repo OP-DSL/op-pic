@@ -79,11 +79,14 @@ void oppic_decl_const(int dim, T* data, const char* name)
    oppic_decl_const_impl(dim, sizeof(T), (char*)data, name);
 }
 
-void oppic_increase_particle_count(oppic_set particles_set, const int num_particles_to_insert);
+void oppic_increase_particle_count(oppic_set particles_set, int num_particles_to_insert);
+
+void opp_inc_part_count_with_distribution(oppic_set particles_set, int num_particles_to_insert, oppic_dat part_dist);
 
 void oppic_reset_num_particles_to_insert(oppic_set set);
 
 void oppic_init_particle_move(oppic_set set);
+void oppic_init_particle_move(oppic_set set, int nargs, oppic_arg *args);
 
 void oppic_mark_particle_to_move(oppic_set set, int particle_index, int move_status);
 
@@ -104,5 +107,7 @@ void oppic_dump_dat(oppic_dat data);
 void oppic_reset_dat(oppic_dat dat, char* val, opp_reset reset = OPP_Reset_Set);
 
 int oppic_mpi_halo_exchanges(oppic_set set, int nargs, oppic_arg *args);
+
+void opp_mpi_halo_wait_all(int nargs, oppic_arg *args);
 
 void oppic_mpi_set_dirtybit(int nargs, oppic_arg *args);

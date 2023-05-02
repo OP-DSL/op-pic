@@ -218,6 +218,26 @@ void oppic_increase_particle_count(oppic_set particles_set, const int num_partic
 }
 
 //****************************************
+void opp_inc_part_count_with_distribution(oppic_set particles_set, int num_particles_to_insert, oppic_dat part_dist)
+{
+    opp_printf("opp_inc_part_count_with_distribution", "num_particles_to_insert [%d]", num_particles_to_insert);
+
+    oppic_increase_particle_count(particles_set, num_particles_to_insert);
+
+    int* part_mesh_connectivity = (int *)particles_set->mesh_relation_dat->data;
+    int* distribution           = (int *)part_dist->data;
+
+    int start = (particles_set->size - particles_set->diff);
+    int j = 0;
+
+    for (int i = 0; i < particles_set->diff; i++)
+    {
+        if (i >= distribution[j]) j++; // check whether it is j or j-1    
+        part_mesh_connectivity[start + i] = j;
+    } 
+}
+
+//****************************************
 void oppic_reset_num_particles_to_insert(oppic_set set)
 {
     oppic_reset_num_particles_to_insert_core(set);
@@ -266,7 +286,7 @@ void oppic_print_map_to_txtfile(oppic_map map, const char *file_name_prefix, con
 // }
 
 //****************************************
-void oppic_init_particle_move(oppic_set set)
+void oppic_init_particle_move(oppic_set set, int nargs, oppic_arg *args)
 { TRACE_ME;
 
     oppic_init_particle_move_core(set);
@@ -275,6 +295,17 @@ void oppic_init_particle_move(oppic_set set)
     {
         OPP_iter_start = 0;
         OPP_iter_end   = set->size;          
+    }
+    else
+    {
+        // need to change the arg data since particle communication could change the pointer in realloc dat->data
+        for (int i = 0; i < nargs; i++)
+        {
+            if (args[i].argtype == OP_ARG_DAT && args[i].dat->set->is_particle)
+            {
+                args[i].data = args[i].dat->data;
+            }
+        }
     }
 
     OPP_mesh_relation_data = ((int *)set->mesh_relation_dat->data); 
@@ -401,13 +432,16 @@ void opp_partition_core(op_set prime_set, op_map prime_map, op_dat data)
 
     opp_halo_create();
 
-    // sanity check to identify if the partitioning results in ophan elements
-    int ctr = 0;
-    for (int i = 0; i < prime_map->from->size; i++)
-    {
-        if (prime_map->map[2 * i] >= prime_map->to->size && prime_map->map[2 * i + 1] >= prime_map->to->size) ctr++;
-    }
-    opp_printf("opp_partition()", "%s Orphans in prime map [%s]: %d", (ctr > 0) ? "Error: " : "", prime_map->name, ctr);
+    // TODO : I think this sanity check is wrong, in cell->nodes mapping there can be nodes indexed in import non-exec halo,
+    // hence the mapping is obvously greater than to_set->size 
+        // sanity check to identify if the partitioning results in ophan elements
+        int ctr = 0;
+        for (int i = 0; i < prime_map->from->size; i++)
+        {
+            if (prime_map->map[2 * i] >= prime_map->to->size && prime_map->map[2 * i + 1] >= prime_map->to->size) 
+                ctr++;
+        }
+        opp_printf("opp_partition()", "%s Orphans in prime map [%s]: %d", (ctr > 0) ? "Error:" : "", prime_map->name, ctr);
 
     opp_part_comm_init(); 
 
@@ -445,6 +479,8 @@ void opp_partition_core(op_set prime_set, op_map prime_map, op_dat data)
     }
 }
 
+std::map<int, oppic_dat> negative_mapping_indices;
+
 //*******************************************************************************
 void opp_sanitize_all_maps()
 {
@@ -455,6 +491,12 @@ void opp_sanitize_all_maps()
         if (map->dim == 1) continue;
 
         if (OP_DEBUG) opp_printf("opp_sanitize_all_maps", " map: %s | ptr: %p | dim: %d", map->name, map->map, map->dim);
+
+        std::string name = std::string("AUTO_DAT_") + map->name;
+        oppic_dat dat = oppic_decl_dat(map->from, map->dim, OPP_TYPE_INT, (char*)map->map, name.c_str());  
+        negative_mapping_indices[map->index] = dat;
+
+        memset(dat->data, 0, (map->from->size * dat->size));
 
         for (int n = 0; n < map->from->size; n++)
         {
@@ -478,6 +520,7 @@ void opp_sanitize_all_maps()
                 for (int i : index)
                 {
                     map->map[i] = positive_mapping;
+                    ((int*)dat->data)[i] = 1;
                 }
             }
             else
@@ -518,19 +561,26 @@ void opp_desanitize_all_maps()
 
         if (map->dim == 1) continue;
 
-        //if (OP_DEBUG) opp_printf("opp_desanitize_all_maps", OPP_my_rank, " map: %s | ptr: %p | dim: %d", map->name, map->map, map->dim);
+        if (OP_DEBUG) opp_printf("opp_desanitize_all_maps", " map: %s | ptr: %p | dim: %d", map->name, map->map, map->dim);
 
-        for (int n = 0; n < map->from->size; n++)
+        auto it = negative_mapping_indices.find(map->index);
+        if (it == negative_mapping_indices.end())
         {
-            for (int d = 1; d < map->dim; d++)
-            {
-                if (map->map[n * map->dim + d] == map->map[n * map->dim])
-                {
-                    map->map[n * map->dim + d] = -1;
-                }
-            }
+            opp_printf("opp_desanitize_all_maps", "Error: Negative mappings not found for map: %s", map->name);
+            continue;
+        }
+            
+        oppic_dat dat = it->second;
+
+        for (int x = 0; x < (map->from->size + map->from->exec_size) * map->dim; x++)
+        {
+            if (((int*)dat->data)[x] == 1)
+                map->map[x] = -1;
         }
     }
+
+    // could realloc the dat to a lower size, if required
+    negative_mapping_indices.clear();
 }
 
 
