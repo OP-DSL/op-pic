@@ -19,6 +19,7 @@ double det4(double (*M)[4]);
 double det3(double (*M)[3]);
 void matVecMultiply(double *y, double**A, double *x, int nu);
 void vecVecSubtract(double *, double *v1, double *v2, int nu);
+void inverse(double M[3][3], double V[3][3]);
 
 const double PI = acos(-1.0);
 double rnd();

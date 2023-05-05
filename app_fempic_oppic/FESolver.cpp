@@ -8,24 +8,32 @@
 #include "fempic.h"
 
 //*************************************************************************************************
-FESolver::FESolver(opp::Params& params, std::shared_ptr<Volume> volume, int argc, char **argv):volume(volume) { //TRACE_ME;
-
+FESolver::FESolver(
+    opp::Params* params, 
+    oppic_set cells_set, 
+    oppic_map cell_to_nodes_map, 
+    oppic_dat node_type_dat, 
+    oppic_dat node_pos_dat,
+    oppic_dat node_bnd_pot_dat,
+    int argc, char **argv) 
+{
     phi0 = 0;
-    n0 = params.get<OPP_REAL>("plasma_den");
-    kTe = Kb * params.get<OPP_REAL>("electron_temperature");
-    wall_potential = -(params.get<OPP_REAL>("wall_potential"));
+    n0 = params->get<OPP_REAL>("plasma_den");
+    kTe = Kb * params->get<OPP_REAL>("electron_temperature");
+    wall_potential = -(params->get<OPP_REAL>("wall_potential"));
 
-    neq = 0; /*count number of unknowns*/
-
+    n_nodes    = node_type_dat->set->size + node_type_dat->set->exec_size + node_type_dat->set->nonexec_size; // DO NOT CALCULATE SOLUTION FOR IMPORT NON EXEC 
+    n_elements = cells_set->size + node_type_dat->set->exec_size;
+    neq        = 0; /*count number of unknowns*/
+    
     /*OPEN nodes are "h" nodes*/
-    for (std::size_t i=0;i<volume->nodes.size();i++)
-        if (volume->nodes[i].type==NORMAL || volume->nodes[i].type==OPEN) 
+    for (std::size_t i = 0; i < n_nodes; i++) // TODO : DO NOT CALCULATE SOLUTION FOR IMPORT NON EXEC
+        if (((int*)node_type_dat->data)[i] == NORMAL || ((int*)node_type_dat->data)[i] == OPEN) 
             neq++;
 
-    n_nodes = volume->nodes.size();
-    n_elements = volume->elements.size();
- 
-    ID = new int[n_nodes]; /*allocate ID vector*/
+    summarize(std::cout);
+
+    ID = new int[n_nodes];
    
     LM = new int*[n_elements]; /*allocate location matrix, n_elements*4 */
     for (int e=0;e<n_elements;e++) 
@@ -33,7 +41,8 @@ FESolver::FESolver(opp::Params& params, std::shared_ptr<Volume> volume, int argc
 
     /*allocate NX matrix*/
     NX = new double**[n_elements];
-    for (int e=0;e<n_elements;e++) {
+    for (int e=0;e<n_elements;e++) 
+    {
         NX[e] = new double*[4];
         for (int a=0;a<4;a++) 
             NX[e][a] = new double[3];
@@ -43,16 +52,13 @@ FESolver::FESolver(opp::Params& params, std::shared_ptr<Volume> volume, int argc
     for (int n=0;n<neq;n++) 
         d[n]=0;    /*initial guess*/
 
-    /*allocate memory for g arrays*/
-    g = new double[n_nodes];
-
     detJ = new double[n_elements];
 
-    /*set up the ID array note valid values are 0 to neq-1 and -1 indicates "g" node*/
+    /*set up the ID array note valid values are 0 to neq-1 and -1 indicates "g" boundary node*/
     int P=0;
     for (int n=0;n<n_nodes;n++)
     {
-        if (volume->nodes[n].type==NORMAL || volume->nodes[n].type==OPEN) 
+        if (((int*)node_type_dat->data)[n] == NORMAL || ((int*)node_type_dat->data)[n] == OPEN)
         {
             ID[n]=P;
             P++;
@@ -65,7 +71,8 @@ FESolver::FESolver(opp::Params& params, std::shared_ptr<Volume> volume, int argc
     for (int e=0;e<n_elements;e++)
         for (int a=0;a<4;a++)    /*tetrahedra*/ 
         {
-            LM[e][a] = ID[volume->elements[e].con[a]]; 
+            int node_idx = cell_to_nodes_map->map[e * cell_to_nodes_map->dim + a]; // TODO_PET : This can reach the halo region :()
+            LM[e][a] = ID[node_idx]; 
         }
 
     /*set quadrature points*/
@@ -75,7 +82,7 @@ FESolver::FESolver(opp::Params& params, std::shared_ptr<Volume> volume, int argc
     W[1]=1;
     n_int = 2;
 
-    computeNX(); /*compute NX matrix*/
+    computeNX(node_pos_dat, cell_to_nodes_map); /*compute NX matrix*/
 
     /* Petsc */
     PetscInitialize(&argc, &argv, PETSC_NULL, "FESolver::Petsc");
@@ -124,15 +131,17 @@ FESolver::FESolver(opp::Params& params, std::shared_ptr<Volume> volume, int argc
     KSPSetOperators(ksp, Jmat, Jmat);
     // KSPSetTolerances(ksp, 1.e-2 / (neq * neq), 1.e-50, PETSC_DEFAULT, PETSC_DEFAULT); 
     KSPSetTolerances(ksp, 1.e-100 / (neq * neq), 1.e-100, PETSC_DEFAULT, PETSC_DEFAULT); 
-    KSPSetFromOptions(ksp);
+    KSPSetFromOptions(ksp); 
 
-    preAssembly();  
+    preAssembly(cell_to_nodes_map, node_bnd_pot_dat);
 }
 
 //*************************************************************************************************
-FESolver::~FESolver() { //TRACE_ME;
+FESolver::~FESolver() 
+{ //TRACE_ME;
 
-    for (int e=0;e<n_elements;e++) {
+    for (int e=0;e<n_elements;e++) 
+    {
         for (int a=0;a<4;a++) 
             delete[] NX[e][a];
         delete[] NX[e];
@@ -143,7 +152,6 @@ FESolver::~FESolver() { //TRACE_ME;
     delete[] NX;
     delete[] ID;
     delete[] d;
-    delete[] g;
     delete[] detJ;
 
     /* Petsc */
@@ -168,17 +176,8 @@ FESolver::~FESolver() { //TRACE_ME;
 
 //*************************************************************************************************
 /*preassembles the K matrix and "h" and "g" parts of the force vector*/
-void FESolver::preAssembly() { //TRACE_ME;
-
-    for (int n = 0; n < volume->nodes.size(); n++)
-    {
-        switch (volume->nodes[n].type)
-        {
-            case INLET:    g[n] = 0; break;                  /*phi_inlet*/
-            case FIXED:    g[n] = wall_potential; break;     /*fixed phi points*/
-            default:       g[n] = 0;                         /*default*/
-        }
-    }
+void FESolver::preAssembly(oppic_map cell_to_nodes_map, oppic_dat node_bnd_pot) 
+{ //TRACE_ME;
 
     double **K = new double*[neq];
     for (int i=0;i<neq;i++)
@@ -189,18 +188,20 @@ void FESolver::preAssembly() { //TRACE_ME;
             K[i][j] = 0;
     }
         
-    for (int e=0;e<n_elements;e++) {
-        Tetra &tet = volume->elements[e];
+    for (int e=0;e<n_elements;e++) 
+    {
         double ke[4][4];
 
         for (int a=0;a<4;a++)
-            for (int b=0;b<4;b++) {
+            for (int b=0;b<4;b++) 
+            {
                 ke[a][b] = 0;    /*reset*/
 
                 /*perform quadrature*/
                 for (int k=0;k<n_int;k++)
                     for (int j=0;j<n_int;j++)
-                        for (int i=0;i<n_int;i++) {
+                        for (int i=0;i<n_int;i++) 
+                        {
                             double nax[3],nbx[3];
 
                             getNax(nax,e,a);
@@ -217,15 +218,17 @@ void FESolver::preAssembly() { //TRACE_ME;
    
         double fe[4]; /*force vector*/
 
-        for (int a=0;a<4;a++) {
+        for (int a=0;a<4;a++) 
+        {
             /*second term int(na*h), always zero since support only h=0*/
             double fh=0;
 
             /*third term, -sum(kab*qb)*/
             double fg = 0;
-            for (int b=0;b<4;b++) {
-                int n = tet.con[b];
-                double gb = g[n];
+            for (int b=0;b<4;b++) 
+            {
+                int node_idx = cell_to_nodes_map->map[e * cell_to_nodes_map->dim + b]; // TODO_PET : This can reach import halos, g include halos
+                double gb = ((double*)node_bnd_pot->data)[node_idx];
                 fg-=ke[a][b]*gb;
             }
 
@@ -248,27 +251,33 @@ void FESolver::preAssembly() { //TRACE_ME;
 
 //*************************************************************************************************
 /*computes "ff" part of F*/
-void FESolver::buildF1Vector(double *ion_den) { //TRACE_ME;
+void FESolver::buildF1Vector(double *ion_den) 
+{ //TRACE_ME;
+
     double *f = new double[neq];
-    /*start by computing the RHS term on all unknown nodes*/
-    for (int n=0;n<n_nodes;n++) {
+
+    for (int n=0;n<n_nodes;n++) 
+    {
         int A = ID[n];
         if (A<0) continue;    /*skip known nodes*/
         f[A] = (QE/EPS0)*(ion_den[n]+n0*exp((d[A]-phi0)/kTe));
     }
 
-    /*loop over elements*/
-    for (int e=0;e<n_elements;e++) {
+    for (int e=0;e<n_elements;e++) 
+    {
         double fe[4];
-        for (int a=0;a<4;a++) {
+        for (int a=0;a<4;a++) 
+        {
             /*first term is int(na*f), set to zero for now*/
             double ff=0;
             int A = LM[e][a];
-            if (A>=0)    /*if unknown node*/ {
+            if (A>=0)    /*if unknown node*/ 
+            {
                 /*perform quadrature*/
                 for (int k=0;k<n_int;k++)
                     for (int j=0;j<n_int;j++)
-                        for (int i=0;i<n_int;i++) {
+                        for (int i=0;i<n_int;i++) 
+                        {
                             /*change of limits*/
                             double xi = 0.5*(l[i]+1);
                             double eta = 0.5*(l[j]+1);
@@ -277,6 +286,7 @@ void FESolver::buildF1Vector(double *ion_den) { //TRACE_ME;
                             double Na=evalNa(a,xi,eta,zeta);
                             ff += f[A]*Na*detJ[e]*W[i]*W[j]*W[k];
                         }
+
                 ff*=(1.0/8.0);    /*change of limits*/
                 fe[a] = ff;
             }
@@ -292,30 +302,35 @@ void FESolver::buildF1Vector(double *ion_den) { //TRACE_ME;
 
 //*************************************************************************************************
 /*builds J matrix for solver*/
-void FESolver::buildJmatrix() { //TRACE_ME;
-    /*first compute exponential term*/
+void FESolver::buildJmatrix() 
+{ //TRACE_ME;
+
     double *fp_term = new double[neq];
     double *FP = new double[neq];
 
-    for (int n=0;n<neq;n++) FP[n] = 0;
+    for (int n=0;n<neq;n++) 
+        FP[n] = 0;
 
-    for (int n=0;n<neq;n++) {
+    for (int n=0;n<neq;n++) 
         fp_term[n] = -QE/EPS0*n0*exp((d[n]-phi0)/kTe)*(1/kTe);
-    }
 
     MatCopy(Kmat, Jmat, DIFFERENT_NONZERO_PATTERN);
 
     double fe[4];  /*build fprime vector*/
 
-    for (int e=0;e<n_elements;e++) {
-        for (int a=0;a<4;a++) {
+    for (int e=0;e<n_elements;e++) 
+    {
+        for (int a=0;a<4;a++) 
+        {
             double ff=0;
             int A = LM[e][a];
-            if (A>=0)    /*if unknown node*/ {
+            if (A>=0)    /*if unknown node*/ 
+            {
                 /*perform quadrature*/
                 for (int k=0;k<n_int;k++)
                     for (int j=0;j<n_int;j++)
-                        for (int i=0;i<n_int;i++) {
+                        for (int i=0;i<n_int;i++) 
+                        {
                             /*change of limits*/
                             double xi = 0.5*(l[i]+1);
                             double eta = 0.5*(l[j]+1);
@@ -324,8 +339,10 @@ void FESolver::buildJmatrix() { //TRACE_ME;
                             double Na=evalNa(a,xi,eta,zeta);
                             ff += fp_term[A]*Na*detJ[e]*W[i]*W[j]*W[k];
                         }
+
                 ff*=(1.0/8.0);    /*change of limits*/
             }
+
             fe[a] = ff;
         }
 
@@ -354,28 +371,30 @@ void FESolver::buildJmatrix() { //TRACE_ME;
 
 //*************************************************************************************************
 /*wrapper for solving the non-linear Poisson's equation*/
-void FESolver::computePhi(Method method, oppic_arg arg0, oppic_arg arg1) 
+void FESolver::computePhi(oppic_arg arg0, oppic_arg arg1, oppic_arg arg2) 
 { TRACE_ME;
 
-    int nargs = 2;
+    int nargs = 3;
     oppic_arg args[nargs];
     args[0] = arg0;
     args[1] = arg1;
-    
+    args[2] = arg2;
+
     int set_size = oppic_mpi_halo_exchanges(arg1.dat->set, nargs, args);
 
     double *ion_den = (double*)arg1.dat->data;
     double *node_potential = (double*)arg0.dat->data;
+    double *node_bnd_pot = (double*)arg2.dat->data;
 
     solve(ion_den);
 
-    /*combine d (solution from linear solver) and g (boundary potential) to node_potential*/
+    /* combine d (solution from linear solver) and boundary potential to get node_potential */
     for (int n=0;n<n_nodes;n++) 
     {
-        node_potential[n] = g[n]; /*zero on non-g nodes*/
+        node_potential[n] = node_bnd_pot[n]; /*zero on non-g nodes*/
 
         int A=ID[n];
-        if (A>=0) /*is this a non-g node?*/
+        if (A>=0) /*is this a non-boundary node?*/
             node_potential[n] += d[A];
     }
 
@@ -383,7 +402,8 @@ void FESolver::computePhi(Method method, oppic_arg arg0, oppic_arg arg1)
 }
 
 //*************************************************************************************************
-void FESolver::solve(double *ion_den) { TRACE_ME;
+void FESolver::solve(double *ion_den) 
+{ TRACE_ME;
 
     buildF1Vector(ion_den);
 
@@ -412,7 +432,8 @@ void FESolver::solve(double *ion_den) { TRACE_ME;
 }
 
 //*************************************************************************************************
-void FESolver::summarize(std::ostream &out) {
+void FESolver::summarize(std::ostream &out) 
+{
     out << "FE SOLVER INFORMATION" << std::endl
         << "---------------------" << std::endl;
     out << "  Number of unkowns: " << neq << std::endl;
@@ -482,9 +503,12 @@ void FESolver::enrich_cell_shape_deriv(oppic_dat cell_shape_deriv)
 }
 
 /*adds contributions from element stiffness matrix*/
-void FESolver::addKe(double** K, int e, double ke[4][4]) { //TRACE_ME;
+void FESolver::addKe(double** K, int e, double ke[4][4]) 
+{ //TRACE_ME;
+
     for (int a=0;a<4;a++)    /*tetrahedra*/
-        for (int b=0;b<4;b++) {
+        for (int b=0;b<4;b++) 
+        {
             int P = LM[e][a];
             int Q = LM[e][b];
             if (P<0 || Q<0) continue;    /*skip g nodes*/
@@ -494,114 +518,81 @@ void FESolver::addKe(double** K, int e, double ke[4][4]) { //TRACE_ME;
 }
 
 /*adds contributions from element force vector to a global F vector*/
-void FESolver::addFe(Vec *Fvec, int e, double fe[4]) { //TRACE_ME;
-    for (int a=0;a<4;a++)    /*tetrahedra*/ {
+void FESolver::addFe(Vec *Fvec, int e, double fe[4]) 
+{ //TRACE_ME;
+
+    for (int a=0;a<4;a++)    /*tetrahedra*/ 
+    {
         int P = LM[e][a];
         if (P<0) continue;    /*skip g nodes*/
-
-        // F[P] += fe[a];
-        VecSetValue(*Fvec, P, fe[a], ADD_VALUES); // TODO_PET
+        
+        VecSetValue(*Fvec, P, fe[a], ADD_VALUES); // F[P] += fe[a];
     }
 }
 
 /*evaluates shape function a at position (xi,eta,zeta)*/
-double FESolver::evalNa(int a, double xi, double eta, double zeta) {
-    switch(a) {
-    case 0: return xi; break;
-    case 1: return eta; break;
-    case 2: return zeta; break;
-    case 3: return 1-xi-eta-zeta; break;
-    default: return 0;    /*shouldn't happen*/
+double FESolver::evalNa(int a, double xi, double eta, double zeta) 
+{
+    switch(a) 
+    {
+        case 0: return xi;
+        case 1: return eta;
+        case 2: return zeta;
+        case 3: return 1-xi-eta-zeta;       
     }
+
+    return 0;    /*shouldn't happen*/
 }
 
 /*returns derivative of N[a] at some logical point since we are using linear elements, these are constant in each element*/
-void FESolver::getNax(double nx[3], int e, int a) {
+void FESolver::getNax(double nx[3], int e, int a) 
+{
     for (int d=0;d<3;d++)
         nx[d] = NX[e][a][d];
 }
 
 /*computes derivatives of the shape functions for all elements constants since using linear elements*/
-void FESolver::computeNX() { //TRACE_ME;
+void FESolver::computeNX(oppic_dat node_pos, oppic_map cell_to_nodes_map) 
+{ //TRACE_ME;
+
     /*derivatives of the shape functions vs. xi*/
     double na_xi[4][3] = {{1,0,0}, {0,1,0}, {0,0,1}, {-1,-1,-1}};
 
-    for (int e=0;e<n_elements;e++) {
-        /*node positions*/
-        Tetra &tet = volume->elements[e];
+    for (int e=0;e<n_elements;e++) 
+    {       
+        int* map0idx = &((int*)cell_to_nodes_map->map)[e * cell_to_nodes_map->dim]; /*node positions*/
 
         double x[4][3];
-        for (int a=0;a<4;a++) {
-            double *pos = volume->nodes[tet.con[a]].pos;
-            for (int d=0;d<3;d++) x[a][d] = pos[d];    /*copy*/
+        for (int a=0;a<4;a++) 
+        {
+            double *pos = &((double*)node_pos->data)[map0idx[a] * node_pos->dim];
+            for (int d=0;d<3;d++) 
+                x[a][d] = pos[d];
         }
 
-        /*compute x_xi matrix*/
         double x_xi[3][3];
 
         for (int i=0;i<3;i++)    /*x/y/z*/
-            for (int j=0;j<3;j++) /*xi/eta/zeta*/ {
+            for (int j=0;j<3;j++) /*xi/eta/zeta*/ 
+            {
                 x_xi[i][j] = 0;
                 for (int a=0; a<4; a++)    /*tet node*/
                     x_xi[i][j] += na_xi[a][j]*x[a][i];
             }
 
-        /*save det(x_xi)*/
         detJ[e] = det3(x_xi);
 
-        /*compute matrix inverse*/
         double xi_x[3][3];
         inverse(x_xi,xi_x);
-
-        /*evaluate na_x*/
-        for (int a=0;a<4;a++)
-            for (int d=0;d<3;d++) {
+      
+        for (int a=0;a<4;a++) /*evaluate na_x*/
+            for (int d=0;d<3;d++) 
+            {
                 NX[e][a][d]=0;
                 for (int k=0;k<3;k++)
                     NX[e][a][d]+=na_xi[a][k]*xi_x[k][d];
             }
     }
-}
-
-/*compute inverse of a 3x3 matrix using the adjugate method*/
-void FESolver::inverse(double M[3][3], double V[3][3]) { //TRACE_ME;
-    double a=M[0][0];
-    double b=M[0][1];
-    double c=M[0][2];
-    double d=M[1][0];
-    double e=M[1][1];
-    double f=M[1][2];
-    double g=M[2][0];
-    double h=M[2][1];
-    double i=M[2][2];
-
-    V[0][0]=(e*i-f*h);
-    V[1][0]=-(d*i-f*g);
-    V[2][0]=(d*h-e*g);
-    V[0][1]=-(b*i-c*h);
-    V[1][1]=(a*i-c*g);
-    V[2][1]=-(a*h-b*g);
-    V[0][2]=(b*f-c*e);
-    V[1][2]=-(a*f-c*d);
-    V[2][2]=(a*e-b*d);
-    double det = a*V[0][0]+b*V[1][0]+c*V[2][0];
-
-    double Vmax = 0;
-    for (int m=0;  m<3; m++) {
-        for (int n=0;  n<3; n++) {
-            Vmax = fabs(V[m][n]) > Vmax ? fabs(V[m][n]) : Vmax;
-        }
-    }
-
-    double idet=0;
-    if (fabs(Vmax) / fabs(det) > 1e12) {
-        std::cerr<<"Matrix is not invertible, |det M| = " << fabs(det) << "! setting to [0]."<<std::endl;}
-    else idet=1/det;
-
-    /*1/det*/
-    for (int i=0;i<3;i++)
-        for (int j=0;j<3;j++)
-            V[i][j]*=idet;
 }
 
 //*************************************************************************************************
