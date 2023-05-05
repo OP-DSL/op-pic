@@ -110,6 +110,8 @@ int main(int argc, char **argv)
 
         mesh.DeleteValues();
 
+        mesh.solver->enrich_cell_shape_deriv(cell_shape_deriv);
+
         auto start = std::chrono::system_clock::now();
         auto start_iter1 = std::chrono::system_clock::now();
 

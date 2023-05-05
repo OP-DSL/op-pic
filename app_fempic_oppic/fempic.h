@@ -252,20 +252,20 @@ inline FieldPointers LoadMesh(opp::Params& params, int argc, char **argv)
 
     mesh.solver->summarize(std::cout);
 
-    if      (std::regex_match(params.get<OPP_STRING>("fesolver_method"), std::regex("nonlinear", std::regex_constants::icase))) mesh.fesolver_method = FESolver::NonLinear;
-    else if (std::regex_match(params.get<OPP_STRING>("fesolver_method"), std::regex("gaussseidel", std::regex_constants::icase))) mesh.fesolver_method = FESolver::GaussSeidel;
-    else if (std::regex_match(params.get<OPP_STRING>("fesolver_method"), std::regex("lapack", std::regex_constants::icase))) mesh.fesolver_method = FESolver::Lapack;
-    else if (std::regex_match(params.get<OPP_STRING>("fesolver_method"), std::regex("petsc", std::regex_constants::icase))) mesh.fesolver_method = FESolver::Petsc;
+    // if      (std::regex_match(params.get<OPP_STRING>("fesolver_method"), std::regex("nonlinear", std::regex_constants::icase))) mesh.fesolver_method = FESolver::NonLinear;
+    // else if (std::regex_match(params.get<OPP_STRING>("fesolver_method"), std::regex("gaussseidel", std::regex_constants::icase))) mesh.fesolver_method = FESolver::GaussSeidel;
+    // else if (std::regex_match(params.get<OPP_STRING>("fesolver_method"), std::regex("lapack", std::regex_constants::icase))) mesh.fesolver_method = FESolver::Lapack;
+    // else if (std::regex_match(params.get<OPP_STRING>("fesolver_method"), std::regex("petsc", std::regex_constants::icase))) mesh.fesolver_method = FESolver::Petsc;
 
-    for (int cellID=0; cellID<mesh.n_cells; cellID++)
-    {
-        for (int nodeCon=0; nodeCon<NODES_PER_CELL; nodeCon++)
-        {
-            mesh.cell_shape_deriv[cellID * (NODES_PER_CELL*DIMENSIONS) + nodeCon * DIMENSIONS + 0 ] = mesh.solver->NX[cellID][nodeCon][0];
-            mesh.cell_shape_deriv[cellID * (NODES_PER_CELL*DIMENSIONS) + nodeCon * DIMENSIONS + 1 ] = mesh.solver->NX[cellID][nodeCon][1];
-            mesh.cell_shape_deriv[cellID * (NODES_PER_CELL*DIMENSIONS) + nodeCon * DIMENSIONS + 2 ] = mesh.solver->NX[cellID][nodeCon][2];
-        }
-    }
+    // for (int cellID=0; cellID<mesh.n_cells; cellID++)
+    // {
+    //     for (int nodeCon=0; nodeCon<NODES_PER_CELL; nodeCon++)
+    //     {
+    //         mesh.cell_shape_deriv[cellID * (NODES_PER_CELL*DIMENSIONS) + nodeCon * DIMENSIONS + 0 ] = mesh.solver->NX[cellID][nodeCon][0];
+    //         mesh.cell_shape_deriv[cellID * (NODES_PER_CELL*DIMENSIONS) + nodeCon * DIMENSIONS + 1 ] = mesh.solver->NX[cellID][nodeCon][1];
+    //         mesh.cell_shape_deriv[cellID * (NODES_PER_CELL*DIMENSIONS) + nodeCon * DIMENSIONS + 2 ] = mesh.solver->NX[cellID][nodeCon][2];
+    //     }
+    // }
 
     double plasma_den = params.get<OPP_REAL>("plasma_den");
     double dt = params.get<OPP_REAL>("dt");
