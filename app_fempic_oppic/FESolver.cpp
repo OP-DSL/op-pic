@@ -20,31 +20,37 @@
 #include "FESolver.h"
 #include "fempic.h"
 
-extern "C" {
-    void dsysv_( char* uplo,
-                int* n,
-                int* nrhs,
-                double* a,
-                int* lda,
-                int* ipiv,
-                double* b,
-                int* ldb,
-                double* work,
-                int* lwork,
-                int* info );
+// extern "C" {
+//     void dsysv_( char* uplo,
+//                 int* n,
+//                 int* nrhs,
+//                 double* a,
+//                 int* lda,
+//                 int* ipiv,
+//                 double* b,
+//                 int* ldb,
+//                 double* work,
+//                 int* lwork,
+//                 int* info );
 
-    void dgesv_( int* n,
-                int* nrhs,
-                double* a,
-                int* lda,
-                int* ipiv,
-                double* b,
-                int* ldb,
-                int* info );
-}
+//     void dgesv_( int* n,
+//                 int* nrhs,
+//                 double* a,
+//                 int* lda,
+//                 int* ipiv,
+//                 double* b,
+//                 int* ldb,
+//                 int* info );
+// }
 
 /*FESolver*/
-FESolver::FESolver(std::shared_ptr<Volume> volume, int argc, char **argv):volume(volume) { //TRACE_ME;
+FESolver::FESolver(opp::Params& params, std::shared_ptr<Volume> volume, int argc, char **argv):volume(volume) { //TRACE_ME;
+
+    phi0 = 0;
+    n0 = params.get<OPP_REAL>("plasma_den");
+    kTe = Kb * params.get<OPP_REAL>("electron_temperature");
+    wall_potential = -(params.get<OPP_REAL>("wall_potential"));
+
     /*count number of unknowns*/
     neq = 0;
 
@@ -53,24 +59,17 @@ FESolver::FESolver(std::shared_ptr<Volume> volume, int argc, char **argv):volume
         if (volume->nodes[i].type==NORMAL ||
             volume->nodes[i].type==OPEN) neq++;
 
-    /*allocate neq*neq K matrix*/
-    K = new double*[neq];
-    for (int i=0;i<neq;i++) K[i] = new double[neq];
+    // /*allocate neq*neq K matrix*/
+    // K = new double*[neq];
+    // for (int i=0;i<neq;i++) K[i] = new double[neq];
 
-    /*allocate neq*neq J matrix*/
-    J = new double*[neq];
-    for (int i=0;i<neq;i++) J[i] = new double[neq];
+    // /*allocate neq*neq J matrix*/
+    // J = new double*[neq];
+    // for (int i=0;i<neq;i++) J[i] = new double[neq];
 
-    /*allocate neq*neq A matrix for lapack*/
-    Amat = new double[neq*neq];
-
-    /*allocate neq b vector for lapack*/
-    Bvec = new double[neq];
-
-
-    /*allocate F0 and F1 vectors*/
-    F0 = new double[neq];
-    F1 = new double[neq];
+    // /*allocate F0 and F1 vectors*/
+    // F0 = new double[neq];
+    // F1 = new double[neq];
 
     n_nodes = volume->nodes.size();
     n_elements = volume->elements.size();
@@ -93,6 +92,8 @@ FESolver::FESolver(std::shared_ptr<Volume> volume, int argc, char **argv):volume
     d = new double[neq];
     for (int n=0;n<neq;n++) d[n]=0;    /*initial guess*/
 
+    // TODO_PET : Set initial value of Dvec to zero, init Kmat to zero, F0vec, F1vec to zero
+
     /*allocate memory for g and uh arrays*/
     g = new double[n_nodes];
     // uh = new double[n_nodes];
@@ -100,9 +101,9 @@ FESolver::FESolver(std::shared_ptr<Volume> volume, int argc, char **argv):volume
     detJ = new double[n_elements];
 
     /*electric field*/
-    ef = new double*[n_elements];
-    for (int n=0;n<n_elements;n++)
-        ef[n] = new double[3];
+    // ef = new double*[n_elements];
+    // for (int n=0;n<n_elements;n++)
+    //     ef[n] = new double[3];
 
     /*set up the ID array
     note valid values are 0 to neq-1 and -1 indicates "g" node*/
@@ -115,7 +116,7 @@ FESolver::FESolver(std::shared_ptr<Volume> volume, int argc, char **argv):volume
     /*now set up the LM matrix*/
     for (int e=0;e<n_elements;e++)
         for (int a=0;a<4;a++)    /*tetrahedra*/ {
-            LM[e][a] = ID[volume->elements[e].con[a]];
+            LM[e][a] = ID[volume->elements[e].con[a]]; 
         }
 
     /*set quadrature points*/
@@ -141,43 +142,62 @@ FESolver::FESolver(std::shared_ptr<Volume> volume, int argc, char **argv):volume
         matCol[i] = 0;
     }
 
-    MatCreate(PETSC_COMM_WORLD, &A);
-    MatSetSizes(A, PETSC_DECIDE, PETSC_DECIDE, neq, neq);
-    MatSetFromOptions(A);
-    MatSetUp(A);
+    MatCreate(PETSC_COMM_WORLD, &Jmat);
+    MatSetSizes(Jmat, PETSC_DECIDE, PETSC_DECIDE, neq, neq);
+    MatSetFromOptions(Jmat);
+    MatSetUp(Jmat);
 
-    VecCreate(PETSC_COMM_WORLD, &b);
-    VecSetSizes(b, PETSC_DECIDE, neq);
-    VecSetFromOptions(b);
-    VecDuplicate(b, &x);
+    MatCreate(PETSC_COMM_WORLD, &Kmat);
+    MatSetSizes(Kmat, PETSC_DECIDE, PETSC_DECIDE, neq, neq);
+    MatSetFromOptions(Kmat);
+    MatSetUp(Kmat);
+
+    VecCreate(PETSC_COMM_WORLD, &Bvec);
+    VecSetSizes(Bvec, PETSC_DECIDE, neq);
+    VecSetFromOptions(Bvec);
+    
+    VecDuplicate(Bvec, &Xvec);
+    VecDuplicate(Bvec, &F0vec);
+    VecDuplicate(Bvec, &F1vec);
+    VecDuplicate(Bvec, &Dvec);
+    VecDuplicate(Bvec, &Yvec);
+
+    VecSet(F0vec, 0.0);
+    VecSet(F1vec, 0.0);
+    VecSet(Dvec, 0.0);
+    VecSet(Yvec, 0.0);
+    VecAssemblyBegin(Dvec); VecAssemblyEnd(Dvec);
+    VecAssemblyBegin(Yvec); VecAssemblyEnd(Yvec);
 
     KSPCreate(PETSC_COMM_WORLD, &ksp);
     KSPSetType(ksp, KSPCG);
-    KSPSetOperators(ksp, A, A);
+    KSPSetOperators(ksp, Jmat, Jmat);
     // KSPSetTolerances(ksp, 1.e-2 / (neq * neq), 1.e-50, PETSC_DEFAULT, PETSC_DEFAULT); 
     KSPSetTolerances(ksp, 1.e-100 / (neq * neq), 1.e-100, PETSC_DEFAULT, PETSC_DEFAULT); 
     KSPSetFromOptions(ksp);
 #endif
+
+    startAssembly();
+    preAssembly();  
 }
 
 /*~FESolver, frees memory*/
 FESolver::~FESolver() { //TRACE_ME;
-    for (int i=0;i<neq;i++) {delete[] K[i]; delete[] J[i];}
+    // for (int i=0;i<neq;i++) {delete[] K[i]; delete[] J[i];}
     for (int e=0;e<n_elements;e++) delete[] LM[e];
     for (int e=0;e<n_elements;e++) {
         for (int a=0;a<4;a++) delete[] NX[e][a];
         delete[] NX[e];
     }
 
-    for (int e=0;e<n_elements;e++)    delete[] ef[e];
-    delete[] ef;
+    // for (int e=0;e<n_elements;e++)    delete[] ef[e];
+    // delete[] ef;
 
-    delete[] K;
-    delete[] J;
-    delete[] Amat;
+    // delete[] K;
+    // delete[] J;
     delete[] LM;
-    delete[] F0;
-    delete[] F1;
+    // delete[] F0;
+    // delete[] F1;
     delete[] NX;
     delete[] ID;
     // delete[] uh;
@@ -193,9 +213,9 @@ FESolver::~FESolver() { //TRACE_ME;
     delete[] matIndex;
     delete[] matIndexValues;
     KSPDestroy(&ksp);
-    VecDestroy(&x);
-    VecDestroy(&b);
-    MatDestroy(&A);
+    VecDestroy(&Xvec);
+    VecDestroy(&Bvec);
+    MatDestroy(&Jmat);
 
     PetscFinalize();
 #endif
@@ -203,17 +223,27 @@ FESolver::~FESolver() { //TRACE_ME;
 
 /*clears K and F*/
 void FESolver::startAssembly() { //TRACE_ME;
-    for (int i=0;i<neq;i++)
-        for (int j=0;j<neq;j++) K[i][j] = 0;
+    // for (int i=0;i<neq;i++)
+    //     for (int j=0;j<neq;j++) K[i][j] = 0;
 
-    for (int i=0;i<neq;i++) {
-        F0[i]=0;
-        F1[i]=0;
+    // for (int i=0;i<neq;i++) {
+    //     F0[i]=0;
+    //     F1[i]=0;
+    // }
+
+    for (int n = 0; n < volume->nodes.size(); n++)
+    {
+        switch (volume->nodes[n].type)
+        {
+            case INLET:    g[n] = 0; break;                  /*phi_inlet*/
+            case FIXED:    g[n] = wall_potential; break;     /*fixed phi points*/
+            default:       g[n] = 0;                         /*default*/
+        }
     }
 }
 
 /*adds contributions from element stiffness matrix*/
-void FESolver::addKe(int e, double ke[4][4]) { //TRACE_ME;
+void FESolver::addKe(double** K, int e, double ke[4][4]) { //TRACE_ME;
     for (int a=0;a<4;a++)    /*tetrahedra*/
         for (int b=0;b<4;b++) {
             int P = LM[e][a];
@@ -221,16 +251,20 @@ void FESolver::addKe(int e, double ke[4][4]) { //TRACE_ME;
             if (P<0 || Q<0) continue;    /*skip g nodes*/
 
             K[P][Q] += ke[a][b];
+
+            // MatSetValue(Kmat, P, Q, ke[a][b], ADD_VALUES);  // TODO_PET
         }
 }
 
 /*adds contributions from element force vector to a global F vector*/
-void FESolver::addFe(double *F, int e, double fe[4]) { //TRACE_ME;
+// void FESolver::addFe(double *F, int e, double fe[4]) { //TRACE_ME;
+void FESolver::addFe(Vec *Fvec, int e, double fe[4]) { //TRACE_ME;
     for (int a=0;a<4;a++)    /*tetrahedra*/ {
         int P = LM[e][a];
         if (P<0) continue;    /*skip g nodes*/
 
-        F[P] += fe[a];
+        // F[P] += fe[a];
+        VecSetValue(*Fvec, P, fe[a], ADD_VALUES); // TODO_PET
     }
 }
 
@@ -339,80 +373,104 @@ void FESolver::inverse(double M[3][3], double V[3][3]) { //TRACE_ME;
 /*Wrapper for different solve methods*/
 void FESolver::solve(double *ion_den, Method method) { TRACE_ME;
     /*allocate memory for y*/
-    double *y = new double[neq];
-    double *G = new double[neq];
+    // double *y = new double[neq];
+    // double *G = new double[neq];
 
     /*clear y values*/
-    for (int i=0;i<neq;i++) y[i]=0;
+    // for (int i=0;i<neq;i++) y[i]=0; // // TODO_PET no need, will be overridden
 
-    if (method == NonLinear) {
-        solveNonLinear(ion_den, y, G);
+    // if (method == NonLinear) {
+    //     solveNonLinear(ion_den, y, G);
 
-    } else if (method == GaussSeidel or method == Lapack or method == Petsc) {
+    // } else if (method == GaussSeidel or method == Lapack or method == Petsc) {
         /*builds the "ff" part of the force vector*/
         buildF1Vector(ion_den);
 
         /*form G=K*d-F*/
-        matVecMultiply(G,K,d, neq);    //G=K*d
-        vecVecSubtract(G,G,F0, neq); //G=G-F giving us G=K*d-F
-        vecVecSubtract(G,G,F1, neq);
+        // matVecMultiply(G,K,d, neq);    //G=K*d
+        // vecVecSubtract(G,G,F0, neq); //G=G-F giving us G=K*d-F
+        // vecVecSubtract(G,G,F1, neq);
+        
+        MatMult(Kmat, Dvec, Bvec); // B = K * D
+        VecAXPY(Bvec, -1.0, F0vec); // B = B - F0
+        VecAXPY(Bvec, -1.0, F1vec); // B = B - F1
 
-        buildJmatrix(method);
+        buildJmatrix(Petsc);
 
-        if      (method == GaussSeidel) solveLinear(J, y, G);
-        else if (method == Lapack) solveLinearLapack(J, y, G);
-        else if (method == Petsc) solveLinearPetsc(J, y, G);
+        // buildJmatrix(method);
 
+        // if      (method == GaussSeidel) solveLinear(J, y, G);
+        // else if (method == Lapack) solveLinearLapack(J, y, G);
+        // else if (method == Petsc) 
+        
+        // solveLinearPetsc(J, y, G);
+
+        // solveLinearPetsc(Jmat, Yvec, Bvec);
+    
+        KSPSolve(ksp, Bvec, Yvec);
+
+        KSPGetConvergedReason(ksp, &reason);
+        if (reason < 0)
+        {
+            char* str_reason = "\0";
+            KSPGetConvergedReasonString(ksp, (const char**)(&str_reason));
+            std::cerr << "Petsc failed to converge : " << str_reason << "; run with -ksp_converged_reason"<< std::endl;
+        }
+        
         /*now that we have y, update solution */
-        for (int n=0;n<neq;n++) d[n]-=y[n];
-    }
+        // for (int n=0;n<neq;n++) d[n]-=y[n];
 
-    delete[] y;
-    delete[] G;
+        VecAXPY(Dvec, -1.0, Yvec); // D = D - Y
+    // }
+
+    VecGetValues(Dvec, neq, vecCol, d); // For the calculation at computePhi()
+
+    // delete[] y;
+    // delete[] G;
 }
 
 /*Newton Rhapson solver, input is the ion density*/
-void FESolver::solveNonLinear(double *ion_den, double *y, double *G) { TRACE_ME;
+// void FESolver::solveNonLinear(double *ion_den, double *y, double *G) { TRACE_ME;
 
-    bool converged = false;
-    double L2;
-    for (int it=0;it<10;it++) {
-        /*builds the "ff" part of the force vector*/
-        buildF1Vector(ion_den);
+//     bool converged = false;
+//     double L2;
+//     for (int it=0;it<10;it++) {
+//         /*builds the "ff" part of the force vector*/
+//         buildF1Vector(ion_den);
 
-        /*form G=K*d-F*/
-        matVecMultiply(G,K,d, neq);    //G=K*d
-        vecVecSubtract(G,G,F0, neq); //G=G-F giving us G=K*d-F
-        vecVecSubtract(G,G,F1, neq);
+//         /*form G=K*d-F*/
+//         matVecMultiply(G,K,d, neq);    //G=K*d
+//         vecVecSubtract(G,G,F0, neq); //G=G-F giving us G=K*d-F
+//         vecVecSubtract(G,G,F1, neq);
 
-        buildJmatrix(Method::NonLinear);
+//         buildJmatrix(Method::NonLinear);
 
-        solveLinear(J,y,G);
+//         solveLinear(J,y,G);
 
-        /*now that we have y, update solution */
-        for (int n=0;n<neq;n++) d[n]-=y[n];
+//         /*now that we have y, update solution */
+//         for (int n=0;n<neq;n++) d[n]-=y[n];
 
-        /*compute residue*/
-        double sum=0;
-        for (int u=0;u<neq;u++) {
-            sum+=y[u]*y[u];
-        }
-        L2 = sqrt(sum)/neq;
+//         /*compute residue*/
+//         double sum=0;
+//         for (int u=0;u<neq;u++) {
+//             sum+=y[u]*y[u];
+//         }
+//         L2 = sqrt(sum)/neq;
 
-        if (L2<1e-2) {
-            std::cout<<" NR converged in "<<it+1<<" iterations with L2="<<std::setprecision(3)<<L2<<std::endl;
-            converged=true;
-            break;
-        }
+//         if (L2<1e-2) {
+//             std::cout<<" NR converged in "<<it+1<<" iterations with L2="<<std::setprecision(3)<<L2<<std::endl;
+//             converged=true;
+//             break;
+//         }
 
-    }
+//     }
 
-    if (!converged) {
-        std::cerr<<"NR failed to converge, L2 = "<<L2<<std::endl;
-        exit(-1);
-    }
+//     if (!converged) {
+//         std::cerr<<"NR failed to converge, L2 = "<<L2<<std::endl;
+//         exit(-1);
+//     }
 
-}
+// }
 
 /*builds J matrix for NR solver*/
 void FESolver::buildJmatrix(Method method) { //TRACE_ME;
@@ -427,15 +485,18 @@ void FESolver::buildJmatrix(Method method) { //TRACE_ME;
     }
 
     /*now set J=K. If using lapack, only need to set the lower half*/
-    if (method == Lapack) {
-        for (int i=0;i<neq;i++)
-            for (int j=i;j<neq;j++)
-                J[i][j] = K[i][j];
-    } else {
-        for (int i=0;i<neq;i++)
-            for (int j=0;j<neq;j++)
-                J[i][j] = K[i][j];
-    }
+    // if (method == Lapack) {
+    //     for (int i=0;i<neq;i++)
+    //         for (int j=i;j<neq;j++)
+    //             J[i][j] = K[i][j];
+    // } else if (method == Petsc) {
+        MatCopy(Kmat, Jmat, DIFFERENT_NONZERO_PATTERN);
+    // }
+    // else {
+    //     for (int i=0;i<neq;i++)
+    //         for (int j=0;j<neq;j++)
+    //             J[i][j] = K[i][j];
+    // }
 
     /*build fprime vector*/
     double fe[4];
@@ -474,8 +535,11 @@ void FESolver::buildJmatrix(Method method) { //TRACE_ME;
 
     /*subtract diagonal term*/
     for (int u=0;u<neq;u++) {
-        J[u][u]-=FP[u];
+        // J[u][u]-=FP[u];
+        MatSetValue(Jmat, u, u, (-FP[u]), ADD_VALUES);     // TODO_PET
     }
+
+    MatAssemblyBegin(Jmat, MAT_FINAL_ASSEMBLY); MatAssemblyEnd(Jmat, MAT_FINAL_ASSEMBLY);
 
     delete[] fp_term;
     delete[] FP;
@@ -483,6 +547,17 @@ void FESolver::buildJmatrix(Method method) { //TRACE_ME;
 
 /*preassembles the K matrix and "h" and "g" parts of the force vector*/
 void FESolver::preAssembly() { //TRACE_ME;
+
+    double **K = new double*[neq];
+    for (int i=0;i<neq;i++)
+    {
+        K[i] = new double[neq];
+        
+        for (int j=0;j<neq;j++) 
+            K[i][j] = 0;
+    }
+        
+
     /*loop over elements*/
     for (int e=0;e<n_elements;e++) {
         Tetra &tet = volume->elements[e];
@@ -509,7 +584,7 @@ void FESolver::preAssembly() { //TRACE_ME;
             }
 
         /*we now have the ke matrix*/
-        addKe(e,ke);
+        addKe(K, e,ke);
 
         /*force vector*/
         double fe[4];
@@ -529,10 +604,17 @@ void FESolver::preAssembly() { //TRACE_ME;
             /*combine*/
             fe[a] = fh + fg;
         }
-        addFe(F0, e,fe);
+        // addFe(F0, e,fe);
+        addFe(&F0vec, e,fe);
     }  /*end of element*/
 
+    VecAssemblyBegin(F0vec); VecAssemblyEnd(F0vec);
 
+    initialzeMatrix(K);
+
+    for (int i=0;i<neq;i++) 
+        delete[] K[i];
+    delete[] K;
 }
 
 /*computes "ff" part of F*/
@@ -570,86 +652,89 @@ void FESolver::buildF1Vector(double *ion_den) { //TRACE_ME;
             }
         }
 
-        addFe(F1, e,fe);
+        // addFe(F1, e,fe);
+        addFe(&F1vec, e,fe);
     }
+
+    VecAssemblyBegin(F1vec); VecAssemblyEnd(F1vec);
 
     delete[] f;
 }
 
-void FESolver::solveLinearLapack(double **A, double *x, double *b) { TRACE_ME;
+// void FESolver::solveLinearLapack(double **A, double *x, double *b) { TRACE_ME;
 
-    char uplo  = 'L';
-    int n = neq;
-    int nrhs = 1;
-    int lda =  neq;
-    int ldb = neq;
-    int ipiv[neq];
-    double work[n];
-    int lwork = n;
-    int info = 0;
+//     char uplo  = 'L';
+//     int n = neq;
+//     int nrhs = 1;
+//     int lda =  neq;
+//     int ldb = neq;
+//     int ipiv[neq];
+//     double work[n];
+//     int lwork = n;
+//     int info = 0;
 
-    for (int i=0; i<neq; i++) {
-        Bvec[i] = b[i];
-    }
+//     for (int i=0; i<neq; i++) {
+//         Bvec[i] = b[i];
+//     }
 
-    for (int i=0; i<neq; i++) {
-        for (int j=0; j<neq; j++) {
-            Amat[i*neq + j] = A[i][j];
-        }
-    }
+//     for (int i=0; i<neq; i++) {
+//         for (int j=0; j<neq; j++) {
+//             Amat[i*neq + j] = A[i][j];
+//         }
+//     }
 
-    // dsysv_(&uplo, &n, &nrhs, Amat, &lda, ipiv, Bvec, &ldb, work, &lwork, &info );
-            //dgesv_(&n, &nrhs, Amat, &lda, ipiv, Bvec, &ldb, &info );
+//     // dsysv_(&uplo, &n, &nrhs, Amat, &lda, ipiv, Bvec, &ldb, work, &lwork, &info );
+//             //dgesv_(&n, &nrhs, Amat, &lda, ipiv, Bvec, &ldb, &info );
 
-    if (info != 0) std::cerr << "Lapack failed to work, error code: " << info << std::endl;
+//     if (info != 0) std::cerr << "Lapack failed to work, error code: " << info << std::endl;
 
-    for (int i=0; i<neq; i++) {
-        x[i] = Bvec[i];
-    }
-}
+//     for (int i=0; i<neq; i++) {
+//         x[i] = Bvec[i];
+//     }
+// }
 
 /*simple Gauss-Seidel solver for A*x=b*/
-void FESolver::solveLinear(double **A, double *x, double *b) { TRACE_ME;
-    int it;
-    const double tol=1e-4;
-    double L2;
+// void FESolver::solveLinear(double **A, double *x, double *b) { TRACE_ME;
+//     int it;
+//     const double tol=1e-4;
+//     double L2;
 
-    for (int u=0;u<neq;u++)
-        if (fabs(A[u][u])<1e-12)
-            std::cout<<"Zero diagonal on "<<u<<std::endl;
+//     for (int u=0;u<neq;u++)
+//         if (fabs(A[u][u])<1e-12)
+//             std::cout<<"Zero diagonal on "<<u<<std::endl;
 
-    bool converged=false;
+//     bool converged=false;
 
-    for (it=0;it<10000;it++) {
-        for (int u=0;u<neq;u++) {
-            /*skip over unused nodes*/
-            if (fabs(A[u][u])<1e-12) continue;
+//     for (it=0;it<10000;it++) {
+//         for (int u=0;u<neq;u++) {
+//             /*skip over unused nodes*/
+//             if (fabs(A[u][u])<1e-12) continue;
 
-            double sum=0;
-            for (int v=0;v<neq;v++) {
-                if (u==v) continue;
-                sum+=A[u][v]*x[v];
-            }
-            x[u] = (b[u]-sum)/A[u][u];
-        }
+//             double sum=0;
+//             for (int v=0;v<neq;v++) {
+//                 if (u==v) continue;
+//                 sum+=A[u][v]*x[v];
+//             }
+//             x[u] = (b[u]-sum)/A[u][u];
+//         }
 
-        /*periodically compute residue*/
-        if (it%25==0) {
-            double L=0;
-            for (int u=0;u<neq;u++) {
-                double sum=0;
-                for (int v=0;v<neq;v++)
-                    sum+=A[u][v]*x[v];
-                double r=b[u]-sum;
-                L+=r*r;
-            }
-            L2 = sqrt(L)/neq;
-            if (L2<tol) {converged=true; break;}
-        }
-    }
+//         /*periodically compute residue*/
+//         if (it%25==0) {
+//             double L=0;
+//             for (int u=0;u<neq;u++) {
+//                 double sum=0;
+//                 for (int v=0;v<neq;v++)
+//                     sum+=A[u][v]*x[v];
+//                 double r=b[u]-sum;
+//                 L+=r*r;
+//             }
+//             L2 = sqrt(L)/neq;
+//             if (L2<tol) {converged=true; break;}
+//         }
+//     }
 
-    if (!converged) std::cerr<<" GS failed to converge in "<<it<<" iterations, "<<std::setprecision(3)<<": L2="<<L2<<std::endl;
-}
+//     if (!converged) std::cerr<<" GS failed to converge in "<<it<<" iterations, "<<std::setprecision(3)<<": L2="<<L2<<std::endl;
+// }
 
 /*wrapper for solving the non-linear Poisson's equation*/
 void FESolver::computePhi(Method method, oppic_arg arg0, oppic_arg arg1) 
@@ -683,21 +768,21 @@ void FESolver::computePhi(Method method, oppic_arg arg0, oppic_arg arg1)
 }
 
 /*updates electric field*/
-void FESolver::updateEf() { //TRACE_ME;
-    /*interpolate electric field*/
-    for (int e=0;e<n_elements;e++) {
-        Tetra &tet = volume->elements[e];
-        for (int d=0;d<3;d++) ef[e][d]=0;
+// void FESolver::updateEf() { //TRACE_ME;
+//     /*interpolate electric field*/
+//     for (int e=0;e<n_elements;e++) {
+//         Tetra &tet = volume->elements[e];
+//         for (int d=0;d<3;d++) ef[e][d]=0;
 
-        for (int a=0;a<4;a++) {
-            int A = tet.con[a];
-            double nx[3];
-            getNax(nx,e,a);
-            /*minus sign since negative gradient*/
-            for (int d=0;d<3;d++) ef[e][d]-=nx[d]*uh[A];
-        }
-    }
-}
+//         for (int a=0;a<4;a++) {
+//             int A = tet.con[a];
+//             double nx[3];
+//             getNax(nx,e,a);
+//             /*minus sign since negative gradient*/
+//             for (int d=0;d<3;d++) ef[e][d]-=nx[d]*uh[A];
+//         }
+//     }
+// }
 
 void FESolver::summarize(std::ostream &out) {
     out << "FE SOLVER INFORMATION" << std::endl
@@ -711,37 +796,37 @@ void FESolver::summarize(std::ostream &out) {
 
 //*************************************************************************************************
 /*simple Gauss-Seidel solver for A*x=b*/
-void FESolver::solveLinearPetsc(double **p_A, double *p_x, double *p_b)
-{ TRACE_ME; 
-#ifdef USE_PETSC
-    auto t1 = std::chrono::system_clock::now();
+// void FESolver::solveLinearPetsc(double **p_A, double *p_x, double *p_b)
+// { TRACE_ME; 
+// #ifdef USE_PETSC
+//     auto t1 = std::chrono::system_clock::now();
 
-    initialzeMatrix(p_A);
+//     initialzeMatrix(p_A);
 
-    VecSetValues(b, neq, vecCol, p_b, INSERT_VALUES);
-    VecAssemblyBegin(b); VecAssemblyEnd(b);
+//     VecSetValues(b, neq, vecCol, p_b, INSERT_VALUES);
+//     VecAssemblyBegin(b); VecAssemblyEnd(b);
     
-    KSPSolve(ksp, b, x);
+//     KSPSolve(ksp, b, x);
 
-    KSPGetConvergedReason(ksp, &reason);
-    if (reason < 0)
-    {
-        char* str_reason = "\0";
-        KSPGetConvergedReasonString(ksp, (const char**)(&str_reason));
-        std::cerr << "Petsc failed to converge : " << str_reason << "; run with -ksp_converged_reason"<< std::endl;
-    }
+//     KSPGetConvergedReason(ksp, &reason);
+//     if (reason < 0)
+//     {
+//         char* str_reason = "\0";
+//         KSPGetConvergedReasonString(ksp, (const char**)(&str_reason));
+//         std::cerr << "Petsc failed to converge : " << str_reason << "; run with -ksp_converged_reason"<< std::endl;
+//     }
 
-    VecGetValues(x, neq, vecCol, p_x);
+//     VecGetValues(x, neq, vecCol, p_x);
     
-    auto t5 = std::chrono::system_clock::now();
+//     auto t5 = std::chrono::system_clock::now();
 
-    std::chrono::duration<double> dt = t5-t1;
+//     std::chrono::duration<double> dt = t5-t1;
     
-    if (FP_DEBUG) std::cout << "solveLinearPetsc - Time <chrono>: " << dt.count() << " s ... Converged reason: " << reason << std::endl;
-#else
-    std::cerr << "Petsc solver not active... define USE_PETSC in header!" << std::endl;
-#endif
-}
+//     if (FP_DEBUG) std::cout << "solveLinearPetsc - Time <chrono>: " << dt.count() << " s ... Converged reason: " << reason << std::endl;
+// #else
+//     std::cerr << "Petsc solver not active... define USE_PETSC in header!" << std::endl;
+// #endif
+// }
 
 //*************************************************************************************************
 void FESolver::initialzeMatrix(double **p_A)
@@ -768,7 +853,10 @@ void FESolver::initialzeMatrix(double **p_A)
             max_fields = (max_fields > tempVec.size()) ? max_fields : tempVec.size();
         }
 
-        MatSeqAIJSetPreallocation(A, (max_fields + 1), nullptr); // +1 just to be safe
+        MatSeqAIJSetPreallocation(Kmat, (max_fields + 1), nullptr); // +1 just to be safe
+        MatSeqAIJSetPreallocation(Jmat, (max_fields + 1), nullptr); // +1 just to be safe
+
+        printf("FESolver::initialzeMatrix (max_fields + 1)=%d\n\n", (max_fields + 1));
         matIndexCreated = true;
     }
 
@@ -776,10 +864,11 @@ void FESolver::initialzeMatrix(double **p_A)
     {
         for (int j=0; j<matCol[i]; j++) matIndexValues[i][j] = p_A[i][matIndex[i][j]];
 
-        MatSetValues(A, 1, &i, matCol[i], matIndex[i], matIndexValues[i], INSERT_VALUES); 
+        MatSetValues(Kmat, 1, &i, matCol[i], matIndex[i], matIndexValues[i], INSERT_VALUES); 
     }
 
-    MatAssemblyBegin(A, MAT_FINAL_ASSEMBLY); MatAssemblyEnd(A, MAT_FINAL_ASSEMBLY);
+    MatAssemblyBegin(Kmat, MAT_FINAL_ASSEMBLY); MatAssemblyEnd(Kmat, MAT_FINAL_ASSEMBLY);
+    MatAssemblyBegin(Jmat, MAT_FINAL_ASSEMBLY); MatAssemblyEnd(Jmat, MAT_FINAL_ASSEMBLY);
 #endif
 }
 

@@ -785,8 +785,8 @@ void oppic_print_dat_to_txtfile_core(oppic_dat dat, const char *file_name_prefix
 
         fprintf(fp, "\n");
 
-        if (i+1 == dat->set->size) fprintf(fp, "\nexec_below ****************************************\n");
-        if (i+1 == dat->set->size + dat->set->exec_size) fprintf(fp, "\nnon_exec_below ****************************************\n");
+        if (i+1 == dat->set->size) fprintf(fp, "import_exec_below ****************************************\n");
+        if (i+1 == dat->set->size + dat->set->exec_size) fprintf(fp, "import_non_exec_below ****************************************\n");
     }
     
     fclose(fp);
@@ -865,8 +865,8 @@ void oppic_print_map_to_txtfile_core(oppic_map map, const char *file_name_prefix
 
         fprintf(fp, "\n");
 
-        if (i+1 == map->from->size) fprintf(fp, "\nexec_below ****************************************\n");
-        if (i+1 == map->from->size + map->from->exec_size) fprintf(fp, "\nnon_exec_below ****************************************\n");
+        if (i+1 == map->from->size) fprintf(fp, "import_exec_below ****************************************\n");
+        if (i+1 == map->from->size + map->from->exec_size) fprintf(fp, "import_non_exec_below ****************************************\n");
     }
     
     fclose(fp);

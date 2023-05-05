@@ -128,9 +128,9 @@ inline FieldPointers LoadMesh(opp::Params& params, int argc, char **argv)
     FieldPointers mesh;
 
     std::shared_ptr<Volume> volume(new Volume());
-    if (!LoadVolumeMesh(params.get<STRING>("global_mesh"), *(volume.get())) ||
-        !LoadSurfaceMesh(params.get<STRING>("inlet_mesh"), *(volume.get()),INLET, params.get<BOOL>("invert_normals")) ||
-        !LoadSurfaceMesh(params.get<STRING>("wall_mesh"), *(volume.get()), FIXED, params.get<BOOL>("invert_normals"))) return mesh;
+    if (!LoadVolumeMesh(params.get<OPP_STRING>("global_mesh"), *(volume.get())) ||
+        !LoadSurfaceMesh(params.get<OPP_STRING>("inlet_mesh"), *(volume.get()),INLET, params.get<OPP_BOOL>("invert_normals")) ||
+        !LoadSurfaceMesh(params.get<OPP_STRING>("wall_mesh"), *(volume.get()), FIXED, params.get<OPP_BOOL>("invert_normals"))) return mesh;
 
     volume->summarize(std::cout);
 
@@ -165,7 +165,7 @@ inline FieldPointers LoadMesh(opp::Params& params, int argc, char **argv)
         switch (volume->nodes[n].type)
         {
             case INLET:    mesh.node_bnd_pot[n] = 0; break;                                         /*phi_inlet*/
-            case FIXED:    mesh.node_bnd_pot[n] = -(params.get<REAL>("wall_potential")); break;     /*fixed phi points*/
+            case FIXED:    mesh.node_bnd_pot[n] = -(params.get<OPP_REAL>("wall_potential")); break;     /*fixed phi points*/
             default:       mesh.node_bnd_pot[n] = 0;                                                /*default*/
         }
 
@@ -230,31 +230,32 @@ inline FieldPointers LoadMesh(opp::Params& params, int argc, char **argv)
         }
     }
 
-    mesh.solver = std::make_shared<FESolver>(volume, argc, argv);
+    mesh.solver = std::make_shared<FESolver>(params, volume, argc, argv);
 
-    mesh.solver->phi0 = 0;
-    mesh.solver->n0 = params.get<REAL>("plasma_den");
-    mesh.solver->kTe = Kb * params.get<REAL>("electron_temperature");
+    // mesh.solver->phi0 = 0;
+    // mesh.solver->n0 = params.get<OPP_REAL>("plasma_den");
+    // mesh.solver->kTe = Kb * params.get<OPP_REAL>("electron_temperature");
+    // mesh.solver->wall_potential = -(params.get<OPP_REAL>("wall_potential"));
 
-    for (int n = 0; n < mesh.n_nodes; n++) // This g array is a duplicate, can remove and attach node_bnd_pot dat instead
-    {
-        switch (volume->nodes[n].type)
-        {
-            case INLET:    mesh.solver->g[n] = 0; break;                                         /*phi_inlet*/
-            case FIXED:    mesh.solver->g[n] = -(params.get<REAL>("wall_potential")); break;     /*fixed phi points*/
-            default:       mesh.solver->g[n] = 0;                                                /*default*/
-        }
-    }
+    // for (int n = 0; n < mesh.n_nodes; n++) // This g array is a duplicate, can remove and attach node_bnd_pot dat instead
+    // {
+    //     switch (volume->nodes[n].type)
+    //     {
+    //         case INLET:    mesh.solver->g[n] = 0; break;                                         /*phi_inlet*/
+    //         case FIXED:    mesh.solver->g[n] = -(params.get<OPP_REAL>("wall_potential")); break;     /*fixed phi points*/
+    //         default:       mesh.solver->g[n] = 0;                                                /*default*/
+    //     }
+    // }
 
-    mesh.solver->startAssembly();
-    mesh.solver->preAssembly();    /*this will form K and F0*/
+    // mesh.solver->startAssembly();
+    // mesh.solver->preAssembly();    /*this will form K and F0*/
 
     mesh.solver->summarize(std::cout);
 
-    if      (std::regex_match(params.get<STRING>("fesolver_method"), std::regex("nonlinear", std::regex_constants::icase))) mesh.fesolver_method = FESolver::NonLinear;
-    else if (std::regex_match(params.get<STRING>("fesolver_method"), std::regex("gaussseidel", std::regex_constants::icase))) mesh.fesolver_method = FESolver::GaussSeidel;
-    else if (std::regex_match(params.get<STRING>("fesolver_method"), std::regex("lapack", std::regex_constants::icase))) mesh.fesolver_method = FESolver::Lapack;
-    else if (std::regex_match(params.get<STRING>("fesolver_method"), std::regex("petsc", std::regex_constants::icase))) mesh.fesolver_method = FESolver::Petsc;
+    if      (std::regex_match(params.get<OPP_STRING>("fesolver_method"), std::regex("nonlinear", std::regex_constants::icase))) mesh.fesolver_method = FESolver::NonLinear;
+    else if (std::regex_match(params.get<OPP_STRING>("fesolver_method"), std::regex("gaussseidel", std::regex_constants::icase))) mesh.fesolver_method = FESolver::GaussSeidel;
+    else if (std::regex_match(params.get<OPP_STRING>("fesolver_method"), std::regex("lapack", std::regex_constants::icase))) mesh.fesolver_method = FESolver::Lapack;
+    else if (std::regex_match(params.get<OPP_STRING>("fesolver_method"), std::regex("petsc", std::regex_constants::icase))) mesh.fesolver_method = FESolver::Petsc;
 
     for (int cellID=0; cellID<mesh.n_cells; cellID++)
     {
@@ -266,10 +267,10 @@ inline FieldPointers LoadMesh(opp::Params& params, int argc, char **argv)
         }
     }
 
-    double plasma_den = params.get<REAL>("plasma_den");
-    double dt = params.get<REAL>("dt");
-    double ion_velocity = params.get<REAL>("ion_velocity");
-    double spwt = params.get<REAL>("spwt");
+    double plasma_den = params.get<OPP_REAL>("plasma_den");
+    double dt = params.get<OPP_REAL>("dt");
+    double ion_velocity = params.get<OPP_REAL>("ion_velocity");
+    double spwt = params.get<OPP_REAL>("spwt");
 
     mesh.n_approx_injected = 0;
     double remainder = 0.0;

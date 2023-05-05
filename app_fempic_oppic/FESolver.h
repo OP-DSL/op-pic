@@ -32,12 +32,10 @@ const double Kb    = 8.617333262e-5;    /*Boltzmann's  constant*/
 class FESolver {
 public:
     enum Method {NonLinear, GaussSeidel, Lapack, Petsc};
-    double **K;        /*global stiffness matrix, should use a sparse matrix*/
-    double **J;        /*Jacobian matrix*/
-    double *Amat;      /*A matrix for Lapack*/
-    double *Bvec;      /*B vector for Lapack*/
-    double *F0;        /*"fh" and "fg" parts of the global force vector*/
-    double *F1;        /*"ff" part of the force vector*/
+    // double **K;        /*global stiffness matrix, should use a sparse matrix*/
+    // double **J;        /*Jacobian matrix*/
+    // double *F0;        /*"fh" and "fg" parts of the global force vector*/
+    // double *F1;        /*"ff" part of the force vector*/
 
     int *ID;        /*ID[n]=A*/
     int **LM;        /*LM[e][a] location matrix */
@@ -48,23 +46,25 @@ public:
     double n0;
     double phi0;
     double kTe;
+    double wall_potential;
 
     /*solution*/
     double *d;        /*d[neq] is the solution on the uknown nodes*/
     double *g;        /*g[n] essential boundaries*/
     double *uh;        /*uh[n] solution on nodes, union of d and g*/
 
-    double **ef;    /*ef[e][3] is the electric field in cell e*/
+    // double **ef;    /*ef[e][3] is the electric field in cell e*/
 
     double *detJ; /*determinant of the jacobian x_xi*/
 
-    FESolver(std::shared_ptr<Volume> volume, int argc, char **argv);    /*constructor, initialized data structures*/
+    FESolver(opp::Params& params, std::shared_ptr<Volume> volume, int argc, char **argv);    /*constructor, initialized data structures*/
     ~FESolver();    /*destructor, frees memory*/
 
     void startAssembly();    /*clears K and F*/
     void preAssembly();
-    void addKe(int e, double ke[4][4]);    /*adds contributions from element stiffness matrix*/
-    void addFe(double *F, int e, double fe[4]); /*adds contributions from element force vector*/
+    void addKe(double** K, int e, double ke[4][4]);    /*adds contributions from element stiffness matrix*/
+    // void addFe(double *F, int e, double fe[4]); /*adds contributions from element force vector*/
+    void addFe(Vec *Fvec, int e, double fe[4]);
 
     double evalNa(int a, double xi, double eta, double zeta);
     void getNax(double nx[3], int e, int a);
@@ -81,7 +81,7 @@ public:
     void updateEf();
 
     /*evaluates ef in cell e. Since constant field in cell, just copy*/
-    void evalEf(double res[3], int e) {for (int i=0;i<3;i++) res[i]=ef[e][i];}
+    // void evalEf(double res[3], int e) {for (int i=0;i<3;i++) res[i]=ef[e][i];}
 
     void summarize(std::ostream &out);
 
@@ -103,9 +103,9 @@ protected:
 
 #ifdef USE_PETSC
     /* Petsc related variables */
-    Vec         x, b;        /* approx solution, RHS, exact solution */
-    Mat         A;              /* linear system matrix */
-    KSP         ksp;            /* linear solver context */
+    Vec         Xvec, Bvec, F0vec, F1vec, Dvec, Yvec;       
+    Mat         Jmat, Kmat;                                 
+    KSP         ksp;                                        /* linear solver context */
     KSPConvergedReason reason;
 
     int *vecCol, *matCol;
