@@ -51,12 +51,6 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #define cutilSafeCall(err) __cudaSafeCall(err, __FILE__, __LINE__)
 #define cutilCheckMsg(msg) __cutilCheckMsg(msg, __FILE__, __LINE__)
 
-typedef struct cudaDeviceProp cudaDeviceProp_t;
-
-//*************************************************************************************************
-
-
-
 //*************************************************************************************************
 
 void __cudaSafeCall(cudaError_t err, const char *file, const int line);
@@ -68,111 +62,97 @@ void oppic_cuda_exit();
 
 void cutilDeviceInit(int argc, char **argv);
 
-void op_mvHostToDevice(void **map, int size);
+void oppic_upload_dat(oppic_dat dat);
 
-void op_cpHostToDevice(void **data_d, void **data_h, int copy_size, int alloc_size); 
-
-void op_upload_dat(oppic_dat dat);
-
-void op_download_dat(oppic_dat dat);
-
-int op_mpi_halo_exchanges(oppic_set set, int nargs, oppic_arg *args);
-
-int op_mpi_halo_exchanges_grouped(oppic_set set, int nargs, oppic_arg *args, DeviceType device);
-
-void op_mpi_set_dirtybit(int nargs, oppic_arg *args);
-
-int op_mpi_halo_exchanges_cuda(oppic_set set, int nargs, oppic_arg *args);
-
-void op_mpi_set_dirtybit_cuda(int nargs, oppic_arg *args);
-
+void oppic_download_dat(oppic_dat dat);
 
 void oppic_download_particle_set(oppic_set particles_set);
 
 void oppic_upload_particle_set(oppic_set particles_set, bool realloc = false);
 
-void oppic_create_copy_dat_to_device(oppic_dat dat);
+int oppic_mpi_halo_exchanges_grouped(oppic_set set, int nargs, oppic_arg *args, DeviceType device);
 
-void oppic_increase_particle_count_cuda(oppic_set particles_set);
+void oppic_mpi_set_dirtybit_grouped(int nargs, oppic_arg *args, DeviceType device);
 
 void print_last_cuda_error();
 
-template <class T> 
-void sort_dat_according_to_index(oppic_dat dat, const thrust::device_vector<int>& new_idx_dv, int set_size)
-{
-    thrust::device_ptr<T> dat_dp = thrust::device_pointer_cast((T*)dat->data_d);
-    thrust::device_vector<T> dat_dv(dat_dp, (dat_dp + (set_size * dat->dim)));
-    thrust::device_vector<T> sorted_dat_dv(set_size * dat->dim);
+void oppic_cpHostToDevice(void **data_d, void **data_h, int copy_size, int alloc_size = 0, bool create_new = false);
 
-    switch (dat->dim)
+void oppic_create_device_arrays(oppic_dat dat, bool create_new = false);
+
+void oppic_finalize_particle_move_cuda(oppic_set set);
+
+void sort_dat_according_to_index_int(oppic_dat dat, const thrust::device_vector<int>& new_idx_dv, int set_capacity, int size);
+void sort_dat_according_to_index_double(oppic_dat dat, const thrust::device_vector<int>& new_idx_dv, int set_capacity, int size);
+
+template <class T> 
+void copy_according_to_index(thrust::device_vector<T>* dat_dv, thrust::device_vector<T>* sorted_dat_dv, const thrust::device_vector<int>& new_idx_dv, int set_capacity, int size, int dimension)
+{
+    switch (dimension)
     {
         case 1:
             thrust::copy_n(thrust::make_permutation_iterator(
                 thrust::make_zip_iterator(
-                    thrust::make_tuple(dat_dv.begin())
+                    thrust::make_tuple(dat_dv->begin())
                 ), 
                 new_idx_dv.begin()), 
-                set_size, 
+                size, 
                 thrust::make_zip_iterator(
-                    thrust::make_tuple(sorted_dat_dv.begin())));
+                    thrust::make_tuple(sorted_dat_dv->begin())));
             break;
         case 2:
             thrust::copy_n(thrust::make_permutation_iterator(
                 thrust::make_zip_iterator(
                     thrust::make_tuple(
-                        dat_dv.begin(), 
-                        (dat_dv.begin() + set_size)
+                        dat_dv->begin(), 
+                        (dat_dv->begin() + set_capacity)
                     )
                 ), 
                 new_idx_dv.begin()), 
-                set_size, 
+                size, 
                 thrust::make_zip_iterator(
                     thrust::make_tuple(
-                        sorted_dat_dv.begin(), 
-                        (sorted_dat_dv.begin() + set_size))));
+                        sorted_dat_dv->begin(), 
+                        (sorted_dat_dv->begin() + set_capacity))));
             break;
         case 3:
             thrust::copy_n(thrust::make_permutation_iterator(
                 thrust::make_zip_iterator(
                     thrust::make_tuple(
-                        dat_dv.begin(), 
-                        (dat_dv.begin() + set_size), 
-                        (dat_dv.begin() + (2 * set_size))
+                        dat_dv->begin(), 
+                        (dat_dv->begin() + set_capacity), 
+                        (dat_dv->begin() + (2 * set_capacity))
                     )
                 ), 
                 new_idx_dv.begin()), 
-                set_size, 
+                size, 
                 thrust::make_zip_iterator(
                     thrust::make_tuple(
-                        sorted_dat_dv.begin(), 
-                        (sorted_dat_dv.begin() + set_size), 
-                        (sorted_dat_dv.begin() + (2 * set_size)))));
+                        sorted_dat_dv->begin(), 
+                        (sorted_dat_dv->begin() + set_capacity), 
+                        (sorted_dat_dv->begin() + (2 * set_capacity)))));
             break;
         case 4:
             thrust::copy_n(thrust::make_permutation_iterator(
                 thrust::make_zip_iterator(
                     thrust::make_tuple(
-                        dat_dv.begin(), 
-                        (dat_dv.begin() + set_size), 
-                        (dat_dv.begin() + (2 * set_size)), 
-                        (dat_dv.begin() + (3 * set_size))
+                        dat_dv->begin(), 
+                        (dat_dv->begin() + set_capacity), 
+                        (dat_dv->begin() + (2 * set_capacity)), 
+                        (dat_dv->begin() + (3 * set_capacity))
                     )
                 ), 
                 new_idx_dv.begin()), 
-                set_size, 
+                size, 
                 thrust::make_zip_iterator(
                     thrust::make_tuple(
-                        sorted_dat_dv.begin(), 
-                        (sorted_dat_dv.begin() + set_size), 
-                        (sorted_dat_dv.begin() + (2 * set_size)), 
-                        (sorted_dat_dv.begin() + (3 * set_size)))));
+                        sorted_dat_dv->begin(), 
+                        (sorted_dat_dv->begin() + set_capacity), 
+                        (sorted_dat_dv->begin() + (2 * set_capacity)), 
+                        (sorted_dat_dv->begin() + (3 * set_capacity)))));
             break;
         default:
-            std::cerr << "particle_sort_cuda not implemented for dim " << dat->dim << " in dat " << dat->name << std::endl;
+            std::cerr << "particle_sort_cuda not implemented for dim " << dimension << std::endl;
+            exit(-1);
     }
-
-    T* sorted_dat_dp = thrust::raw_pointer_cast(&sorted_dat_dv[0]);
-    cudaMemcpy((void*)dat->data_d, (void*)sorted_dat_dp, (set_size * dat->size), cudaMemcpyDeviceToDevice);
 }
-
-void oppic_finalize_particle_move_cuda(oppic_set set);

@@ -32,18 +32,19 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <oppic_cuda.h>
 
-
+// This assumes all the device data to be valid
 void particle_sort_cuda(oppic_set set)
-{ TRACE_ME;
+{ // TRACE_ME;
 
-    if (OP_DEBUG) printf("particle_sort_cuda set [%s]\n", set->name);
+    int set_capacity = set->set_capacity;
+    int set_size_plus_removed = set->size + set->particle_remove_count;
 
-    int set_size = set->array_capacity;
+    if (OP_DEBUG) printf("\tparticle_sort_cuda set [%s] with set capacity [%d] set size plus removed [%d]\n", set->name, set_capacity, set_size_plus_removed);
 
-    thrust::device_ptr<int> cellIdx_dp = thrust::device_pointer_cast((int*)set->cell_index_dat->data_d);
-    thrust::device_vector<int> cellIdx_dv(cellIdx_dp, cellIdx_dp + set_size);
+    thrust::device_ptr<int> cellIdx_dp = thrust::device_pointer_cast((int*)set->mesh_relation_dat->data_d);
+    thrust::device_vector<int> cellIdx_dv(cellIdx_dp, cellIdx_dp + set_size_plus_removed);
 
-    thrust::device_vector<int> i_dv(set_size);
+    thrust::device_vector<int> i_dv(set_size_plus_removed);
     thrust::sequence(i_dv.begin(), i_dv.end());
 
     thrust::sort_by_key(cellIdx_dv.begin(), cellIdx_dv.end(), i_dv.begin());
@@ -59,11 +60,11 @@ void particle_sort_cuda(oppic_set set)
 
         if (strcmp(dat->type, "int") == 0)
         {
-            sort_dat_according_to_index<int>(dat, i_dv, set_size);
+            sort_dat_according_to_index_int(dat, i_dv, set_capacity, set_size_plus_removed);
         }
         else if (strcmp(dat->type, "double") == 0)
         {
-            sort_dat_according_to_index<double>(dat, i_dv, set_size);
+            sort_dat_according_to_index_double(dat, i_dv, set_capacity, set_size_plus_removed);
         }
         else
         {
@@ -72,4 +73,34 @@ void particle_sort_cuda(oppic_set set)
     }
 
     cutilSafeCall(cudaDeviceSynchronize());
+}
+
+void sort_dat_according_to_index_int(oppic_dat dat, const thrust::device_vector<int>& new_idx_dv, int set_capacity, int size)
+{ TRACE_ME;
+
+    thrust::device_vector<int>* dat_dv = dat->thrust_int;
+    thrust::device_vector<int>* sorted_dat_dv = dat->thrust_int_sort;
+
+    copy_according_to_index<int>(dat_dv, sorted_dat_dv, new_idx_dv, set_capacity, size, dat->dim);
+
+    thrust::device_vector<int>* tmp = dat->thrust_int;
+    dat->thrust_int = dat->thrust_int_sort;
+    dat->thrust_int_sort = tmp;
+
+    dat->data_d = (char*)thrust::raw_pointer_cast(dat->thrust_int->data());
+}
+
+void sort_dat_according_to_index_double(oppic_dat dat, const thrust::device_vector<int>& new_idx_dv, int set_capacity, int size)
+{ TRACE_ME;
+
+    thrust::device_vector<double>* dat_dv = dat->thrust_real;
+    thrust::device_vector<double>* sorted_dat_dv = dat->thrust_real_sort;
+
+    copy_according_to_index<double>(dat_dv, sorted_dat_dv, new_idx_dv, set_capacity, size, dat->dim);
+
+    thrust::device_vector<double>* tmp = dat->thrust_real;
+    dat->thrust_real = dat->thrust_real_sort;
+    dat->thrust_real_sort = tmp;
+
+    dat->data_d = (char*)thrust::raw_pointer_cast(dat->thrust_real->data());
 }

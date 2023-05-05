@@ -1,0 +1,20 @@
+# System parameters
+
+# number of time steps
+INT nt        = 50  
+
+# number of particles per cell
+INT ppc       = 100  
+
+# number of cell per process          
+INT ncpp      = 10  
+
+# defines a fraction of dt vs. time steps from plasma frequency;
+REAL dtfactor = 0.001 
+
+# applied voltage on left-hand side; RHS is grounded; 
+INT lhsv      = 20000          
+
+
+BOOL opp_auto_sort          = false
+INT opp_allocation_multiple = 1

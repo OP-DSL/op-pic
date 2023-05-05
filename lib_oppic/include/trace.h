@@ -15,7 +15,7 @@
 #include <fstream>
 #include <string>
 #include <vector>
-#include <unordered_map>
+#include <map>
 #include <chrono>
 // #include <omp.h>
 
@@ -44,7 +44,7 @@ class Trace {
         double trace_start;
         std::string name;
         std::vector<TraceElement*> callstack;
-        std::unordered_map<std::string, TraceElement> function_list;
+        std::map<std::string, TraceElement> function_list;
 
     public:
         Trace(std::string name_);

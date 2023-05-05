@@ -16,62 +16,115 @@ OBJ = obj
 
 CPP        = mpicxx
 MPICPP	   = mpicxx
+NVCC       = nvcc
+HIPCC      = hipcc
 
-CPPFLAGS   = -std=c++11 -Wall -O3 -fopenmp -fPIC -fp-model strict -fp-model source -prec-div -prec-sqrt
-NVCCFLAGS  = -O3 -m64 -Xptxas -dlcm=ca -Xptxas=-v -arch=compute_70 -code=sm_70 -prec-div=true -prec-sqrt=true -ftz=false
+CPPFLAGS   = -std=c++11 -Wall -fopenmp -fPIC
+NVCCFLAGS  = -m64 -Xptxas -dlcm=ca -Xptxas=-v $(NVCCFLAGS_ADD)
+HIPCCFLAGS = -std=c++11 -isystem -D__HIP_PLATFORM_NVIDIA__ $(NVCCFLAGS_ADD)
 
 DEBUG ?= 0
 ifeq ($(DEBUG), 1)
-	CPPFLAGS   = -std=c++11 -Wall -O0 -g -fopenmp -fPIC -debug all -traceback -fp-model strict -fp-model source -prec-div -prec-sqrt
-	NVCCFLAGS  = -O0 -g -m64 -Xptxas -dlcm=ca -Xptxas=-v -arch=compute_70 -code=sm_70 -prec-div=true -prec-sqrt=true -ftz=false
+	CPPFLAGS   += -O0 -g -debug all
+	NVCCFLAGS  += -O0 -g -lineinfo
+	HIPCCFLAGS += -O0 -g -lineinfo
+	DEBUG_LOG   = 1
+else
+	CPPFLAGS   += -O3 -g
+	NVCCFLAGS  += -O3 -g
+	HIPCCFLAGS += -O3 -g
 endif
 
-CUDA_INSTALL_PATH = /opt/cuda/10.2.89/toolkit
-CUDA_INC   = -I$(CUDA_INSTALL_PATH)/include
-CUDA_LIB   = -L$(CUDA_INSTALL_PATH)/lib64 -lcudart
+IEEE ?= 0
+ifeq ($(IEEE), 1)
+	CPPFLAGS   += -fp-model strict -fp-model source -prec-div -prec-sqrt
+	NVCCFLAGS  += -fmad=false -ftz=false -prec-div=true -prec-sqrt=true
+	HIPCCFLAGS  += -fmad=false -ftz=false -prec-div=true -prec-sqrt=true
+endif
 
-# PETSC_PATH = /ext-home/zl/lib_install/petsc-3.18.2-oneapi-2021.3-release
-PETSC_PATH = /ext-home/zl/lib_install/petsc-3.18.3-oneapi-2021.3-cuda-rel
-PETSC_INC  = -I$(PETSC_PATH)/include
-PETSC_LIB  = -L$(PETSC_PATH)/lib -lpetsc
+DEBUG_LOG ?= 0
+ifeq ($(DEBUG_LOG), 1)
+	CPPFLAGS   += -DDEBUG_LOG
+	NVCCFLAGS  += -DDEBUG_LOG
+	HIPCCFLAGS += -DDEBUG_LOG
+endif
 
-OP2_PATH   = /ext-home/zl/phd/OP2-Common/op2
-OP2_INC    = # -I$(OP2_PATH)/include
-OP2_LIB    = # -L$(OP2_PATH)/lib
+PETSC ?= 0
+ifeq ($(PETSC), 1)
+	CPPFLAGS   += -DUSE_PETSC
+	# HIPCCFLAGS += -DUSE_PETSC
+	PETSC_INC  = -I$(PETSC_INSTALL_PATH)/include
+endif
 
-OPPIC_PATH = /ext-home/zl/phd/OP-PIC/lib_oppic
-ALL_INC        = -I$(OPPIC_PATH)/$(INC) $(PETSC_INC) $(CUDA_INC)
-ALL_LIBS       = $(PETSC_LIB) $(CUDA_LIB)
+CUDA ?= 0
+ifeq ($(CUDA), 1)
+	CUDA_INC   = -I$(CUDA_INSTALL_PATH)/include
+endif
+
+HIP ?= 0
+ifeq ($(HIP), 1)
+	HIP_INC   = -I$(ROCM_INSTALL_DIR)/include -I$(ROCM_THRUST_DIR)/include -I$(ROCM_PRIM_DIR)/include
+endif
+
+OPP_INC    = -I$(OPPIC_PATH)/include -I/ext-home/zl/lib/include
 
 .PHONY: clean mklib
 
-ALL_TARGETS = clean oppic_seq oppic_omp oppic_cuda
+ALL_TARGETS = clean seq omp cuda
 
 all: $(ALL_TARGETS)
 
 mklib:
 	@mkdir -p $(LIB) $(OBJ)
 
-
-oppic_core: mklib
-	     $(CPP) $(CPPFLAGS) -c $(OPPIC_PATH)/$(SRC)/core/oppic_lib_core.cpp -o $(OBJ)/oppic_lib_core.o $(ALL_INC)
-	     $(CPP) $(CPPFLAGS) -c $(OPPIC_PATH)/$(SRC)/core/oppic_util.cpp -o $(OBJ)/oppic_util.o $(ALL_INC)
-	     $(CPP) $(CPPFLAGS) -c $(OPPIC_PATH)/$(SRC)/core/trace.cpp -o $(OBJ)/trace.o $(ALL_INC)
-		 $(CPP) $(CPPFLAGS) -c $(OPPIC_PATH)/$(SRC)/core/opp_params.cpp -o $(OBJ)/opp_params.o $(ALL_INC)
-
-oppic_seq: mklib oppic_core
-	     $(CPP) $(CPPFLAGS) -c $(OPPIC_PATH)/$(SRC)/seq/oppic_seq.cpp -o $(OBJ)/oppic_seq.o $(ALL_INC)
+seq: mklib
+	     $(CPP) $(CPPFLAGS) -c $(SRC)/core/oppic_lib_core.cpp -o $(OBJ)/oppic_lib_core.o $(OPP_INC) $(PETSC_INC)
+	     $(CPP) $(CPPFLAGS) -c $(SRC)/core/oppic_util.cpp -o $(OBJ)/oppic_util.o $(OPP_INC) $(PETSC_INC)
+	     $(CPP) $(CPPFLAGS) -c $(SRC)/core/trace.cpp -o $(OBJ)/trace.o $(OPP_INC) $(PETSC_INC)
+		 $(CPP) $(CPPFLAGS) -c $(SRC)/core/opp_params.cpp -o $(OBJ)/opp_params.o $(OPP_INC) $(PETSC_INC)
+	     $(CPP) $(CPPFLAGS) -c $(SRC)/seq/oppic_seq.cpp -o $(OBJ)/oppic_seq.o $(OPP_INC) $(PETSC_INC)
 	     ar -r $(LIB)/liboppic_seq.a $(OBJ)/oppic_lib_core.o $(OBJ)/oppic_util.o $(OBJ)/trace.o $(OBJ)/opp_params.o $(OBJ)/oppic_seq.o
 
-oppic_omp: mklib oppic_core
-	     $(CPP) $(CPPFLAGS) -c $(OPPIC_PATH)/$(SRC)/omp/oppic_omp.cpp -o $(OBJ)/oppic_omp.o $(ALL_INC)
-	     ar -r $(LIB)/liboppic_omp.a $(OBJ)/oppic_lib_core.o $(OBJ)/oppic_util.o $(OBJ)/trace.o $(OBJ)/oppic_omp.o
+omp: mklib
+	     $(CPP) $(CPPFLAGS) -c $(SRC)/core/oppic_lib_core.cpp -o $(OBJ)/oppic_lib_core.o $(OPP_INC) $(PETSC_INC)
+	     $(CPP) $(CPPFLAGS) -c $(SRC)/core/oppic_util.cpp -o $(OBJ)/oppic_util.o $(OPP_INC) $(PETSC_INC)
+	     $(CPP) $(CPPFLAGS) -c $(SRC)/core/trace.cpp -o $(OBJ)/trace.o $(OPP_INC) $(PETSC_INC)
+		 $(CPP) $(CPPFLAGS) -c $(SRC)/core/opp_params.cpp -o $(OBJ)/opp_params.o $(OPP_INC) $(PETSC_INC)
+	     $(CPP) $(CPPFLAGS) -c $(SRC)/omp/oppic_omp.cpp -o $(OBJ)/oppic_omp.o $(OPP_INC) $(PETSC_INC)
+	     ar -r $(LIB)/liboppic_omp.a $(OBJ)/oppic_lib_core.o $(OBJ)/oppic_util.o $(OBJ)/trace.o $(OBJ)/opp_params.o $(OBJ)/oppic_omp.o
 
-oppic_cuda: mklib oppic_core
-	     $(CPP) $(CPPFLAGS) -c $(OPPIC_PATH)/$(SRC)/cuda/oppic_cuda.cpp -o $(OBJ)/oppic_cuda.o $(ALL_INC)
-		 nvcc $(NVCCFLAGS) -c $(OPPIC_PATH)/$(SRC)/cuda/particle_sorter.cu -o $(OBJ)/particle_sorter.o $(ALL_INC)
-	     ar -r $(LIB)/liboppic_cuda.a $(OBJ)/oppic_lib_core.o $(OBJ)/oppic_util.o $(OBJ)/trace.o $(OBJ)/oppic_cuda.o $(OBJ)/particle_sorter.o
+cuda: mklib
+	     $(CPP) $(CPPFLAGS) -DUSE_THRUST -c $(SRC)/core/oppic_lib_core.cpp -o $(OBJ)/oppic_lib_core.o $(OPP_INC) $(PETSC_INC) $(CUDA_INC)
+	     $(CPP) $(CPPFLAGS) -DUSE_THRUST -c $(SRC)/core/oppic_util.cpp -o $(OBJ)/oppic_util.o $(OPP_INC) $(PETSC_INC) $(CUDA_INC)
+	     $(CPP) $(CPPFLAGS) -DUSE_THRUST -c $(SRC)/core/trace.cpp -o $(OBJ)/trace.o $(OPP_INC) $(PETSC_INC) $(CUDA_INC)
+		 $(CPP) $(CPPFLAGS) -DUSE_THRUST -c $(SRC)/core/opp_params.cpp -o $(OBJ)/opp_params.o $(OPP_INC) $(PETSC_INC) $(CUDA_INC)
+	     $(NVCC) $(NVCCFLAGS) -DUSE_THRUST -c $(SRC)/cuda/oppic_cuda.cu -o $(OBJ)/oppic_cuda.o $(OPP_INC) $(PETSC_INC) $(CUDA_INC)
+		 $(NVCC) $(NVCCFLAGS) -DUSE_THRUST -c $(SRC)/cuda/particle_sorter.cu -o $(OBJ)/particle_sorter_cuda.o $(OPP_INC) $(PETSC_INC) $(CUDA_INC)
+	     ar -r $(LIB)/liboppic_cuda.a $(OBJ)/oppic_lib_core.o $(OBJ)/oppic_util.o $(OBJ)/trace.o $(OBJ)/opp_params.o $(OBJ)/oppic_cuda.o $(OBJ)/particle_sorter_cuda.o
 
+hip: mklib
+	     $(HIPCC) $(HIPCCFLAGS) -DUSE_THRUST -c $(SRC)/hip/oppic_hip.cpp -o $(OBJ)/oppic_hip.o $(CUDA_INC) $(HIP_INC) $(OPP_INC) $(PETSC_INC)
+		 $(HIPCC) $(HIPCCFLAGS) -DUSE_THRUST -c $(SRC)/hip/particle_sorter.cpp -o $(OBJ)/particle_sorter_hip.o $(HIP_INC) $(OPP_INC) $(PETSC_INC) $(CUDA_INC)
+	     $(HIPCC) $(HIPCCFLAGS) -DUSE_THRUST -c $(SRC)/core/oppic_lib_core.cpp -o $(OBJ)/oppic_lib_core.o $(OPP_INC) $(PETSC_INC) $(HIP_INC) $(CUDA_INC)
+	     $(HIPCC) $(HIPCCFLAGS) -DUSE_THRUST -c $(SRC)/core/oppic_util.cpp -o $(OBJ)/oppic_util.o $(OPP_INC) $(PETSC_INC) $(HIP_INC) $(CUDA_INC)
+	     $(HIPCC) $(HIPCCFLAGS) -DUSE_THRUST -c $(SRC)/core/trace.cpp -o $(OBJ)/trace.o $(OPP_INC) $(PETSC_INC) $(HIP_INC) $(CUDA_INC)
+		 $(HIPCC) $(HIPCCFLAGS) -DUSE_THRUST -c $(SRC)/core/opp_params.cpp -o $(OBJ)/opp_params.o $(OPP_INC) $(PETSC_INC) $(HIP_INC) $(CUDA_INC)
+	     ar -r $(LIB)/liboppic_hip.a $(OBJ)/oppic_lib_core.o $(OBJ)/oppic_util.o $(OBJ)/trace.o $(OBJ)/opp_params.o $(OBJ)/oppic_hip.o $(OBJ)/particle_sorter_hip.o
+
+mpi: mklib
+	     $(CPP) $(CPPFLAGS) -c $(SRC)/core/oppic_lib_core.cpp -o $(OBJ)/oppic_lib_core.o $(OPP_INC) $(PETSC_INC)
+	     $(CPP) $(CPPFLAGS) -c $(SRC)/core/oppic_util.cpp -o $(OBJ)/oppic_util.o $(OPP_INC) $(PETSC_INC)
+	     $(CPP) $(CPPFLAGS) -c $(SRC)/core/trace.cpp -o $(OBJ)/trace.o $(OPP_INC) $(PETSC_INC)
+		 $(CPP) $(CPPFLAGS) -c $(SRC)/core/opp_params.cpp -o $(OBJ)/opp_params.o $(OPP_INC) $(PETSC_INC)
+		 $(CPP) $(CPPFLAGS) -c $(SRC)/mpi/opp_mpi_halo.cpp -o $(OBJ)/opp_mpi_halo.o $(OPP_INC) $(PETSC_INC)
+		 $(CPP) $(CPPFLAGS) -c $(SRC)/mpi/opp_mpi_partition.cpp -o $(OBJ)/opp_mpi_partition.o $(OPP_INC) $(PETSC_INC)
+		 $(CPP) $(CPPFLAGS) -c $(SRC)/mpi/opp_mpi.cpp -o $(OBJ)/opp_mpi.o $(OPP_INC) $(PETSC_INC)
+		 $(CPP) $(CPPFLAGS) -c $(SRC)/mpi/opp_mpi_utils.cpp -o $(OBJ)/opp_mpi_utils.o $(OPP_INC) $(PETSC_INC)
+		 $(CPP) $(CPPFLAGS) -c $(SRC)/mpi/opp_mpi_particle_comm.cpp -o $(OBJ)/opp_mpi_particle_comm.o $(OPP_INC) $(PETSC_INC)
+		 $(CPP) $(CPPFLAGS) -c $(SRC)/mpi/opp_mpi_double_ind_reducs.cpp -o $(OBJ)/opp_mpi_double_ind_reducs.o $(OPP_INC) $(PETSC_INC)
+	     ar -r $(LIB)/liboppic_mpi.a $(OBJ)/oppic_lib_core.o $(OBJ)/oppic_util.o $(OBJ)/trace.o $(OBJ)/opp_params.o $(OBJ)/opp_mpi.o $(OBJ)/opp_mpi_utils.o $(OBJ)/opp_mpi_halo.o $(OBJ)/opp_mpi_partition.o $(OBJ)/opp_mpi_particle_comm.o $(OBJ)/opp_mpi_double_ind_reducs.o
+		 
+		 
 clean: 
 	     rm -f *.o *.d *.a
 	     rm -f $(OBJ)/*

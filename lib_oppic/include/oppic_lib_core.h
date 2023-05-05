@@ -40,11 +40,26 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <oppic_util.h>
 #include <cstring>
 #include <limits.h>
+#include <inttypes.h>
+#include <stdio.h>
+#include <stdarg.h>
 
 //*************************************************************************************************
-#define OP_DEBUG       false
+
+#ifdef DEBUG_LOG
+    #define OP_DEBUG true
+#else
+    #define OP_DEBUG false
+#endif
+
+#ifdef OPP_MPI_ROOT
+    #undef OPP_MPI_ROOT
+#endif
+#define OPP_MPI_ROOT 0
 
 #define MAX_CELL_INDEX     INT_MAX
+
+#define UNUSED(expr) do { (void)(expr); } while (0)
 
 #define OP_READ        0
 #define OP_WRITE       1
@@ -65,6 +80,18 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #define ZERO_ull       0
 #define ZERO_bool      0
 
+#ifdef USE_THRUST
+    #include <thrust/device_vector.h>
+    #include <thrust/host_vector.h>
+    #define THRUST_REAL thrust::device_vector<double>
+    #define THRUST_INT thrust::device_vector<int>
+#else
+    #define THRUST_REAL void
+    #define THRUST_INT void
+#endif
+
+#define LOG_STR_LEN 1000
+
 //*************************************************************************************************
 enum oppic_iterate_type
 {
@@ -72,11 +99,17 @@ enum oppic_iterate_type
     OP_ITERATE_INJECTED,
 };
 
-enum move_status 
+enum opp_move_status 
 {
     OPP_MOVE_DONE = 0,
     OPP_NEED_MOVE,
     OPP_NEED_REMOVE,
+};
+
+enum opp_data_type 
+{
+    OPP_TYPE_INT = 0,
+    OPP_TYPE_REAL,
 };
 
 enum DeviceType
@@ -90,6 +123,30 @@ enum Dirty
     NotDirty = 0,
     Device = 1,
     Host = 2,
+};
+
+enum opp_mapping
+{
+    OPP_Map_Default = 0,
+    OPP_Map_from_Mesh_Rel,
+    OPP_Map_from_Inj_part,
+    OPP_Map_to_Mesh_Rel,
+};
+
+enum opp_reset
+{
+    OPP_Reset_Core = 0,
+    OPP_Reset_Set,
+    OPP_Reset_ieh,
+    OPP_Reset_inh,
+};
+
+enum opp_reduc_comm
+{
+    OPP_Reduc_NO_Comm = 0,
+    OPP_Reduc_SUM_Comm,
+    OPP_Reduc_MIN_Comm,
+    OPP_Reduc_MAX_Comm,
 };
 
 struct part_index {
@@ -126,6 +183,7 @@ struct oppic_arg {
     oppic_arg_type argtype;
     int sent;                   /* flag to indicate if this argument has data in flight under non-blocking MPI comms*/
     int opt;                    /* flag to indicate if this argument is in use */
+    opp_mapping mesh_mapping;
 };
 
 struct oppic_set_core {
@@ -137,15 +195,18 @@ struct oppic_set_core {
     int nonexec_size;                       /* number of additional imported elements that are not executed */
 
     bool is_particle;                       /* is it a particle set */
-    int array_capacity;                     /* capacity of the allocated array */
+    int set_capacity;                       /* capacity of the allocated array */
     int diff;                               /* number of particles to change */
+    int particle_size;                      /* size of particle */
     std::vector<int>* indexes_to_remove;
-    oppic_dat cell_index_dat = NULL;
+    oppic_dat mesh_relation_dat = NULL;
     std::vector<oppic_dat>* particle_dats;
     std::map<int, part_index>* cell_index_v_part_index_map;
     int* particle_statuses;
     int* particle_statuses_d;
     int particle_remove_count;
+    int* particle_remove_count_d;
+    void* mpi_part_buffers;
     oppic_set cells_set;
 };
 
@@ -175,10 +236,30 @@ struct oppic_dat_core {
     Dirty dirty_hd;             /* flag to indicate dirty status on host and device */
     int user_managed;           /* indicates whether the user is managing memory */
     void *mpi_buffer;           /* ponter to hold the mpi buffer struct for the op_dat*/    
+    void *mpi_reduc_buffer;     /* ponter to hold the mpi reduction buffer struct for the op_dat*/ 
+    opp_reduc_comm reduc_comm;  /* flag to check whether the dat is in between reduction communication */
 
     std::vector<char*>* thread_data;
     bool is_cell_index;
+
+    THRUST_INT *thrust_int;
+    THRUST_REAL *thrust_real;
+
+    THRUST_INT *thrust_int_sort;
+    THRUST_REAL *thrust_real_sort;
 };
+
+//*************************************************************************************************
+// TODO : Remove these
+#define op_set oppic_set
+#define op_map oppic_map
+#define op_dat oppic_dat
+#define OP_set_index oppic_sets.size()
+#define OP_map_index oppic_maps.size()
+#define OP_dat_index oppic_dats.size()
+#define OP_set_list oppic_sets
+#define OP_map_list oppic_maps
+#define OP_dat_list oppic_dats
 
 //*************************************************************************************************
 // oppic API calls
@@ -194,11 +275,11 @@ oppic_map oppic_decl_map_core(oppic_set from, oppic_set to, int dim, int *imap, 
 
 oppic_dat oppic_decl_dat_core(oppic_set set, int dim, char const *type, int size, char *data, char const *name);
 
-oppic_arg oppic_arg_dat_core(oppic_dat dat, int idx, oppic_map map, int dim, const char *typ, oppic_access acc, bool map_with_cell_index = false);
-oppic_arg oppic_arg_dat_core(oppic_dat dat, int idx, oppic_map map, oppic_access acc, bool map_with_cell_index = false);
-oppic_arg oppic_arg_dat_core(oppic_dat dat, oppic_access acc, bool map_with_cell_index = false);
-oppic_arg oppic_arg_dat_core(oppic_map data_map, oppic_access acc, bool map_with_cell_index = false);
-oppic_arg oppic_arg_dat_core(oppic_map data_map, int idx, oppic_map map, oppic_access acc, bool map_with_cell_index = false);
+oppic_arg oppic_arg_dat_core(oppic_dat dat, int idx, oppic_map map, int dim, const char *typ, oppic_access acc, opp_mapping mapping = OPP_Map_Default);
+oppic_arg oppic_arg_dat_core(oppic_dat dat, int idx, oppic_map map, oppic_access acc, opp_mapping mapping = OPP_Map_Default);
+oppic_arg oppic_arg_dat_core(oppic_dat dat, oppic_access acc, opp_mapping mapping = OPP_Map_Default);
+oppic_arg oppic_arg_dat_core(oppic_map data_map, oppic_access acc, opp_mapping mapping = OPP_Map_Default);
+oppic_arg oppic_arg_dat_core(oppic_map data_map, int idx, oppic_map map, oppic_access acc, opp_mapping mapping = OPP_Map_Default);
 
 // template <class T> oppic_arg oppic_arg_gbl(T *data, int dim, char const *typ, oppic_access acc);
 oppic_arg oppic_arg_gbl_core(double *data, int dim, char const *typ, oppic_access acc);
@@ -209,6 +290,8 @@ oppic_set oppic_decl_particle_set_core(int size, char const *name, oppic_set cel
 oppic_set oppic_decl_particle_set_core(char const *name, oppic_set cells_set);
 
 oppic_dat oppic_decl_particle_dat_core(oppic_set set, int dim, char const *type, int size, char *data, char const *name, bool cell_index = false);
+
+void oppic_decl_const_impl(int dim, int size, char* data, const char* name);
 
 void oppic_increase_particle_count_core(oppic_set particles_set, const int num_particles_to_insert);
 
@@ -238,6 +321,13 @@ extern int OP_maps_base_index;
 extern int OP_auto_soa;
 extern int OP_part_alloc_mult;
 extern int OP_auto_sort;
+extern int OPP_mpi_part_alloc_mult;
+extern int OPP_my_rank;
+extern int OPP_comm_size;
+extern int OPP_comm_iteration;
+extern int OPP_iter_start;
+extern int OPP_iter_end;
+extern int *OPP_mesh_relation_data;
 
 extern std::vector<oppic_set> oppic_sets;
 extern std::vector<oppic_map> oppic_maps;
@@ -246,3 +336,65 @@ extern std::vector<oppic_dat> oppic_dats;
 extern opp::Params* opp_params;
 
 void* oppic_load_from_file_core(const char* file_name, int set_size, int dim, char const *type, int size);
+
+inline void getDatTypeSize(opp_data_type dtype, std::string& type, int& size)
+{
+    if (dtype == OPP_TYPE_REAL)
+    {
+        type = "double";
+        size = sizeof(OPP_REAL);
+    }
+    else if (dtype == OPP_TYPE_INT)
+    {
+        type = "int";
+        size = sizeof(OPP_INT);       
+    }
+    else
+    {
+        std::cerr << "Data type in Dat not supported" << std::endl;
+    }
+}
+
+inline void opp_printf(char* function, int rank, char *format, ...)
+{
+    char buf[LOG_STR_LEN];
+    va_list args;
+    va_start(args, format);
+    vsnprintf(buf, LOG_STR_LEN, format, args);
+    va_end(args);
+
+    printf("%s[%d] - %s\n", function, rank, buf);
+}
+
+inline void opp_printf(char* function, char *format, ...)
+{
+    char buf[LOG_STR_LEN];
+    va_list args;
+    va_start(args, format);
+    vsnprintf(buf, LOG_STR_LEN, format, args);
+    va_end(args);
+
+    printf("%s[%d] - %s\n", function, OPP_my_rank, buf);
+}
+
+template <typename T> 
+inline void opp_reduce_dat_element(T* out_dat, const T* in_dat, int dim, opp_reduc_comm reduc_comm)
+{
+    for (int d = 0; d < dim; d++)
+    {
+// opp_printf("SS", "%lf %lf", in, out);
+
+        switch (reduc_comm)
+        {
+            case OPP_Reduc_SUM_Comm: 
+                out_dat[d] += in_dat[d];           
+                break;
+            case OPP_Reduc_MAX_Comm: 
+                out_dat[d] = MAX(out_dat[d], in_dat[d]);
+                break;
+            case OPP_Reduc_MIN_Comm: 
+                out_dat[d] = MIN(out_dat[d], in_dat[d]);
+                break;
+        }  
+    }   
+}

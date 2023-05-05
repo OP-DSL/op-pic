@@ -20,3 +20,6 @@ lib/
 fempic_meshes/
 init/
 Log*/
+save_*
+*_backup
+outputFolder

@@ -36,6 +36,16 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <algorithm>
 #include <string>
 #include <cstring>
+#include <sys/time.h>
+
+typedef struct oppic_set_core *oppic_set;
+
+#ifndef MIN
+#define MIN(a, b) ((a < b) ? (a) : (b))
+#endif
+#ifndef MAX
+#define MAX(a, b) ((a > b) ? (a) : (b))
+#endif
 
 //********************************************************************************
 std::string getTimeStr();
@@ -51,3 +61,24 @@ inline char *copy_str(char const *src)
 std::vector<size_t> sort_indexes(const int* cell_indices, int size);
 
 //********************************************************************************
+
+int min(int array[], int size);
+
+int binary_search(int a[], int value, int low, int high);
+
+int linear_search(int a[], int value, int low, int high);
+
+void quickSort(int arr[], int left, int right);
+
+void quickSort_2(int arr1[], int arr2[], int left, int right);
+
+void quickSort_dat(int arr[], char dat[], int left, int right, int elem_size);
+
+void quickSort_map(int arr[], int map[], int left, int right, int dim);
+
+int removeDups(int a[], int array_size);
+
+int compare_sets(oppic_set set1, oppic_set set2);
+
+void op_timers(double *cpu, double *et); 
+

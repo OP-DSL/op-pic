@@ -58,9 +58,13 @@ oppic_map oppic_decl_map(oppic_set from, oppic_set to, int dim, int *imap, char 
 }
 
 //****************************************
-oppic_dat oppic_decl_dat(oppic_set set, int dim, char const *type, int size, char *data, char const *name)
+oppic_dat oppic_decl_dat(oppic_set set, int dim, opp_data_type dtype, char *data, char const *name)
 {
-    return oppic_decl_dat_core(set, dim, type, size, data, name);
+    std::string type = "";
+    int size = -1;
+    getDatTypeSize(dtype, type, size);
+
+    return oppic_decl_dat_core(set, dim, type.c_str(), size, data, name);
 }
 
 //****************************************
@@ -76,11 +80,15 @@ oppic_map oppic_decl_map_txt(oppic_set from, oppic_set to, int dim, const char* 
 }
 
 //****************************************
-oppic_dat oppic_decl_dat_txt(oppic_set set, int dim, char const *type, int size, const char* file_name, char const *name)
+oppic_dat oppic_decl_dat_txt(oppic_set set, int dim, opp_data_type dtype, const char* file_name, char const *name)
 {
-    char* dat_data = (char*)oppic_load_from_file_core(file_name, set->size, dim, type, size);
+    std::string type = "";
+    int size = -1;
+    getDatTypeSize(dtype, type, size);
 
-    oppic_dat dat = oppic_decl_dat(set, dim, type, size, dat_data, name);
+    char* dat_data = (char*)oppic_load_from_file_core(file_name, set->size, dim, type.c_str(), size);
+
+    oppic_dat dat = oppic_decl_dat_core(set, dim, type.c_str(), size, dat_data, name);
 
     free(dat_data);
 
@@ -88,27 +96,27 @@ oppic_dat oppic_decl_dat_txt(oppic_set set, int dim, char const *type, int size,
 }
 
 //****************************************
-oppic_arg oppic_arg_dat(oppic_dat dat, int idx, oppic_map map, int dim, const char *typ, oppic_access acc, bool map_with_cell_index)
+oppic_arg oppic_arg_dat(oppic_dat dat, int idx, oppic_map map, int dim, const char *typ, oppic_access acc, opp_mapping mapping)
 {
-    return oppic_arg_dat_core(dat, idx, map, dim, typ, acc, map_with_cell_index);
+    return oppic_arg_dat_core(dat, idx, map, dim, typ, acc, mapping);
 }
 
 //****************************************
-oppic_arg oppic_arg_dat(oppic_dat dat, int idx, oppic_map map, oppic_access acc, bool map_with_cell_index)
+oppic_arg oppic_arg_dat(oppic_dat dat, int idx, oppic_map map, oppic_access acc, opp_mapping mapping)
 {
-    return oppic_arg_dat_core(dat, idx, map, acc, map_with_cell_index);
+    return oppic_arg_dat_core(dat, idx, map, acc, mapping);
 }
-oppic_arg oppic_arg_dat(oppic_dat dat, oppic_access acc, bool map_with_cell_index)
+oppic_arg oppic_arg_dat(oppic_dat dat, oppic_access acc, opp_mapping mapping)
 {
-    return oppic_arg_dat_core(dat, acc, map_with_cell_index);
+    return oppic_arg_dat_core(dat, acc, mapping);
 }
-oppic_arg oppic_arg_dat(oppic_map data_map, oppic_access acc, bool map_with_cell_index)
+oppic_arg oppic_arg_dat(oppic_map data_map, oppic_access acc, opp_mapping mapping)
 {
-    return oppic_arg_dat_core(data_map, acc, map_with_cell_index);
+    return oppic_arg_dat_core(data_map, acc, mapping);
 }
-oppic_arg oppic_arg_dat(oppic_map data_map, int idx, oppic_map map, oppic_access acc, bool map_with_cell_index)
+oppic_arg oppic_arg_dat(oppic_map data_map, int idx, oppic_map map, oppic_access acc, opp_mapping mapping)
 {
-    return oppic_arg_dat_core(data_map, idx, map, acc, map_with_cell_index);
+    return oppic_arg_dat_core(data_map, idx, map, acc, mapping);
 }
 
 
@@ -138,17 +146,25 @@ oppic_set oppic_decl_particle_set(char const *name, oppic_set cells_set)
 }
 
 //****************************************
-oppic_dat oppic_decl_particle_dat(oppic_set set, int dim, char const *type, int size, char *data, char const *name, bool cell_index)
+oppic_dat oppic_decl_particle_dat(oppic_set set, int dim, opp_data_type dtype, char *data, char const *name, bool cell_index)
 {
-    return oppic_decl_particle_dat_core(set, dim, type, size, data, name, cell_index);
+    std::string type = "";
+    int size = -1;
+    getDatTypeSize(dtype, type, size);
+
+    return oppic_decl_particle_dat_core(set, dim, type.c_str(), size, data, name, cell_index);
 }
 
 //****************************************
-oppic_dat oppic_decl_particle_dat_txt(oppic_set set, int dim, char const *type, int size, const char* file_name, char const *name, bool cell_index)
+oppic_dat oppic_decl_particle_dat_txt(oppic_set set, int dim, opp_data_type dtype, const char* file_name, char const *name, bool cell_index)
 {
-    char* dat_data = (char*)oppic_load_from_file_core(file_name, set->size, dim, type, size);
+    std::string type = "";
+    int size = -1;
+    getDatTypeSize(dtype, type, size);
 
-    oppic_dat dat = oppic_decl_particle_dat_core(set, dim, type, size, dat_data, name, cell_index);
+    char* dat_data = (char*)oppic_load_from_file_core(file_name, set->size, dim, type.c_str(), size);
+
+    oppic_dat dat = oppic_decl_particle_dat_core(set, dim, type.c_str(), size, dat_data, name, cell_index);
 
     free(dat_data);
 
@@ -159,6 +175,23 @@ oppic_dat oppic_decl_particle_dat_txt(oppic_set set, int dim, char const *type, 
 void oppic_increase_particle_count(oppic_set particles_set, const int num_particles_to_insert)
 {
     oppic_increase_particle_count_core(particles_set, num_particles_to_insert);
+}
+
+void opp_inc_part_count_with_distribution(oppic_set particles_set, int num_particles_to_insert, oppic_dat part_dist)
+{
+    oppic_increase_particle_count(particles_set, num_particles_to_insert);
+
+    int* part_mesh_connectivity = (int *)particles_set->mesh_relation_dat->data;
+    int* distribution           = (int *)part_dist->data;
+
+    int start = (particles_set->size - particles_set->diff);
+    int j = 0;
+
+    for (int i = 0; i < particles_set->diff; i++)
+    {
+        if (i >= distribution[j]) j++; // check whether it is j or j-1    
+        part_mesh_connectivity[start + i] = j;
+    } 
 }
 
 //****************************************
@@ -193,7 +226,8 @@ void oppic_particle_sort(oppic_set set)
 //****************************************
 void oppic_print_dat_to_txtfile(oppic_dat dat, const char *file_name_prefix, const char *file_name_suffix)
 {
-    oppic_print_dat_to_txtfile_core(dat, file_name_prefix, file_name_suffix);
+    std::string prefix = std::string(file_name_prefix) + "_s";
+    oppic_print_dat_to_txtfile_core(dat, prefix.c_str(), file_name_suffix);
 }
 
 //****************************************
@@ -222,20 +256,22 @@ void oppic_mark_particle_to_move(oppic_set set, int particle_index, int move_sta
 }
 
 //****************************************
-void oppic_finalize_particle_move(oppic_set set)
+bool oppic_finalize_particle_move(oppic_set set)
 { TRACE_ME;
 
     oppic_finalize_particle_move_core(set);
 
     if (OP_auto_sort == 1)
     {
-        if (OP_DEBUG) printf("oppic_finalize_particle_move auto sorting particle set [%s]\n", set->name);
+        if (OP_DEBUG) printf("\toppic_finalize_particle_move auto sorting particle set [%s]\n", set->name);
         oppic_particle_sort(set);
     }
+
+    return true;
 }
 
 //****************************************
-void oppic_reset_dat(oppic_dat dat, char* val)
+void oppic_reset_dat(oppic_dat dat, char* val, opp_reset reset)
 {
     int set_size = dat->set->size;
 
@@ -243,4 +279,37 @@ void oppic_reset_dat(oppic_dat dat, char* val)
     {
         memcpy(dat->data + i * dat->size, val, dat->size);
     }
+}
+
+//****************************************
+void oppic_mpi_set_dirtybit(int nargs, oppic_arg *args) 
+{
+    for (int n = 0; n < nargs; n++) 
+    {
+        if ((args[n].opt == 1) && (args[n].argtype == OP_ARG_DAT) &&
+            (args[n].acc == OP_INC || args[n].acc == OP_WRITE ||
+            args[n].acc == OP_RW)) 
+        {
+            args[n].dat->dirty_hd = Dirty::Device;
+        }
+    }
+}
+
+//****************************************
+int oppic_mpi_halo_exchanges(oppic_set set, int nargs, oppic_arg *args) 
+{
+    // for (int n = 0; n < nargs; n++)
+    // {
+    //     if (args[n].opt && args[n].argtype == OP_ARG_DAT && args[n].dat->dirty_hd == Dirty::Host) 
+    //     {
+    //         op_download_dat(args[n].dat);
+    //     }
+    // }
+    return set->size;
+}
+
+//****************************************
+void opp_mpi_halo_wait_all(int nargs, oppic_arg *args)
+{
+    // Nothing to execute here
 }

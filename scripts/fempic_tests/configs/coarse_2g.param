@@ -1,0 +1,26 @@
+# System parameters
+REAL plasma_den     = 1e17
+# REAL plasma_den     = 7e17
+REAL ion_velocity   = 1e8
+REAL electron_temperature = 2e8
+REAL wall_potential = 100000
+STRING plasma_species = Duterium
+REAL spwt = 2e2
+
+# Simulation parameters
+INT max_iter = 250
+REAL dt       = 1e-12
+# fesolver_method {nonlinear, gaussseidel, lapack, petsc}
+STRING fesolver_method = gaussseidel
+BOOL check_max_values = true
+
+# Input files
+STRING global_mesh = /ext-home/zl/phd/mini-pic/examples/one_stream/coarse/mesh.dat
+STRING inlet_mesh  = /ext-home/zl/phd/mini-pic/examples/one_stream/coarse/inlet.dat
+STRING wall_mesh   = /ext-home/zl/phd/mini-pic/examples/one_stream/coarse/wall.dat
+
+BOOL invert_normals = false
+
+BOOL opp_auto_sort          = false
+INT opp_allocation_multiple = 1
+INT opp_threads_per_block   = 64

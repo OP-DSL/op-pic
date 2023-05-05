@@ -43,11 +43,19 @@ void oppic_create_thread_level_data(oppic_arg arg, T init_value)
     oppic_dat dat = arg.dat;
     int nthreads = omp_get_max_threads();
 
+    if (dat->set->is_particle)
+    {
+        std::cerr << "Cannot create thread level data for particle dat [" << dat->name << "] (dat in a dynamic set)" << std::endl;
+        exit(-1);
+    }
+
     if (OP_DEBUG) printf("oppic_create_thread_level_data template[%d]\n", nthreads);
 
     if (dat->thread_data->size() <= 0)
     {
-        for (int thr = 0; thr < nthreads; thr++)
+        dat->thread_data->push_back(dat->data);
+
+        for (int thr = 1; thr < nthreads; thr++)
         {
             char* thr_data = (char *)malloc((size_t)dat->size * (size_t)(dat->set->size) * sizeof(char));;
             dat->thread_data->push_back(thr_data);
@@ -60,7 +68,7 @@ void oppic_create_thread_level_data(oppic_arg arg, T init_value)
         return;
     }
 
-    for (int thr = 0; thr < nthreads; thr++)
+    for (int thr = 1; thr < nthreads; thr++)
     {
         std::fill_n((T*)(dat->thread_data->at(thr)), (dat->dim * dat->set->size), init_value);
     }
@@ -72,6 +80,8 @@ void oppic_reduce_thread_level_data(oppic_arg arg)
 {
     oppic_dat dat = arg.dat;
     oppic_set set = dat->set;
+    std::vector<char *>& thread_data = *(dat->thread_data);
+
     int nthreads = omp_get_max_threads();
 
     if (OP_DEBUG) printf("oppic_reduce_thread_level_data dat [%s] nthreads [%d]\n", dat->name, nthreads);
@@ -86,12 +96,14 @@ void oppic_reduce_thread_level_data(oppic_arg arg)
             
             for (int n = start; n < finish; n++)
             {
-                for (int array_num = 0; array_num < nthreads; array_num++)
+                for (int array_num = 1; array_num < nthreads; array_num++)
                 {
+                    T* td = (T*)thread_data[array_num];
+
                     switch (arg.acc)
                     {
                         case OP_INC:
-                            ((T*)dat->data)[n] += ((T*)dat->thread_data->at(array_num))[n];
+                            ((T*)dat->data)[n] += td[n];
                             break;
                         default:
                             std::cerr << "oppic_reduce_thread_level_data dat [" << dat->name << "] acc [" << (int)arg.acc << "] not implemented" << std::endl;

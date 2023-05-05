@@ -31,9 +31,13 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
 #include <oppic_util.h>
+#include <oppic_lib_core.h>
 #include <chrono>
 #include <numeric>
 #include "trace.h"
+#include <sys/stat.h>
+#include <sys/types.h>
+#include <unistd.h>
 
 //********************************************************************************
 std::string getTimeStr()
@@ -61,8 +65,291 @@ std::vector<size_t> sort_indexes(const int* cell_indices, int size)
     return idx;
 }
 
-//********************************************************************************
+/*******************************************************************************
+* Return the index of the min value in an array
+*******************************************************************************/
 
+int min(int array[], int size) 
+{
+    int min = 99; // initialized to 99 .. should check op_mpi_part_core and fix
+    int index = -1;
+    for (int i = 0; i < size; i++) 
+    {
+        if (array[i] < min) 
+        {
+            index = i;
+            min = array[i];
+        }
+    }
+    return index;
+}
+
+/*******************************************************************************
+* Binary search an array for a given value
+*******************************************************************************/
+
+int binary_search(int a[], int value, int low, int high) 
+{
+    if (high < low)
+        return -1; // not found
+    else if (high == low) 
+    {
+        if (a[low] == value)
+            return low;
+        else
+            return -1;
+    } 
+    else if (high == (low + 1)) 
+    {
+        if (a[low] == value)
+            return low;
+        else if (a[high] == value)
+            return high;
+        else
+            return -1;
+    }
+
+    int mid = low + (high - low) / 2;
+    if (a[mid] > value)
+        return binary_search(a, value, low, mid - 1);
+    else if (a[mid] < value)
+        return binary_search(a, value, mid + 1, high);
+    else
+        return mid; // found
+}
+
+/*******************************************************************************
+* Linear search an array for a given value
+*******************************************************************************/
+
+int linear_search(int a[], int value, int low, int high) 
+{
+    for (int i = low; i <= high; i++) {
+        if (a[i] == value)
+        return i;
+    }
+    return -1;
+}
+
+/*******************************************************************************
+* Quicksort an array
+*******************************************************************************/
+
+void quickSort(int arr[], int left, int right) 
+{
+    int i = left;
+    int j = right;
+    int tmp;
+    if (left==right) return;
+    int pivot = arr[(left + right) / 2];
+
+    // partition
+    while (i <= j) 
+    {
+        while (arr[i] < pivot)
+            i++;
+        while (arr[j] > pivot)
+            j--;
+        if (i <= j) 
+        {
+            tmp = arr[i];
+            arr[i] = arr[j];
+            arr[j] = tmp;
+            i++;
+            j--;
+        }
+    };
+    // recursion
+    if (left < j)
+        quickSort(arr, left, j);
+    if (i < right)
+        quickSort(arr, i, right);
+}
+
+/*******************************************************************************
+* Quick sort arr1 and organise arr2 elements according to the sorted arr1 order
+*******************************************************************************/
+
+void quickSort_2(int arr1[], int arr2[], int left, int right) 
+{
+    int i = left;
+    int j = right;
+    int tmp1, tmp2;
+    if (left==right) 
+        return;
+    int pivot = arr1[(left + right) / 2];
+
+    // partition
+    while (i <= j) 
+    {
+        while (arr1[i] < pivot)
+            i++;
+        while (arr1[j] > pivot)
+            j--;
+        if (i <= j) 
+        {
+            tmp1 = arr1[i];
+            arr1[i] = arr1[j];
+            arr1[j] = tmp1;
+
+            tmp2 = arr2[i];
+            arr2[i] = arr2[j];
+            arr2[j] = tmp2;
+            i++;
+            j--;
+        }
+    };
+    // recursion
+    if (left < j)
+        quickSort_2(arr1, arr2, left, j);
+    if (i < right)
+        quickSort_2(arr1, arr2, i, right);
+}
+
+/*******************************************************************************
+* Quick sort arr and organise dat[] elements according to the sorted arr order
+*******************************************************************************/
+
+void quickSort_dat(int arr[], char dat[], int left, int right, int elem_size2) 
+{
+    if (left < 0 || right <= 0)
+        return;
+    if (left==right) return;
+    size_t elem_size = elem_size2;
+    int i = left, j = right;
+    int tmp;
+    char *tmp_dat = (char *)malloc(sizeof(char) * elem_size);
+    int pivot = arr[(left + right) / 2];
+
+    // partition
+    while (i <= j) 
+    {
+        while (arr[i] < pivot)
+            i++;
+        while (arr[j] > pivot)
+            j--;
+
+        if (i < j) 
+        {
+            tmp = arr[i];
+            arr[i] = arr[j];
+            arr[j] = tmp;
+
+            // tmp_dat = dat[i];
+            memcpy(tmp_dat, (void *)&dat[i * elem_size], elem_size);
+            // dat[i] = dat[j];
+            memcpy(&dat[i * elem_size], (void *)&dat[j * elem_size], elem_size);
+            // dat[j] = tmp_dat;
+            memcpy(&dat[j * elem_size], (void *)tmp_dat, elem_size);
+            i++;
+            j--;
+        } 
+        else if (i == j) 
+        {
+            i++;
+            j--;
+        }
+    };
+
+    // recursion
+    if (left < j)
+        quickSort_dat(arr, dat, left, j, elem_size);
+    if (i < right)
+        quickSort_dat(arr, dat, i, right, elem_size);
+    
+    free(tmp_dat);
+}
+
+/*******************************************************************************
+* Quick sort arr and organise map[] elements according to the sorted arr order
+*******************************************************************************/
+
+void quickSort_map(int arr[], int map[], int left, int right, int dim) 
+{
+    if (left==right) 
+        return;
+
+    int i = left, j = right;
+    int tmp;
+    int *tmp_map = (int *)malloc(sizeof(int) * dim);
+    int pivot = arr[(left + right) / 2];
+
+    // partition
+    while (i <= j) 
+    {
+        while (arr[i] < pivot)
+            i++;
+        while (arr[j] > pivot)
+            j--;
+
+        if (i < j) 
+        {
+            tmp = arr[i];
+            arr[i] = arr[j];
+            arr[j] = tmp;
+
+            // tmp_dat = dat[i];
+            memcpy(tmp_map, (void *)&map[i * dim], dim * sizeof(int));
+            // dat[i] = dat[j];
+            memcpy(&map[i * dim], (void *)&map[j * dim], dim * sizeof(int));
+            // dat[j] = tmp_dat;
+            memcpy(&map[j * dim], (void *)tmp_map, dim * sizeof(int));
+            i++;
+            j--;
+        } else if (i == j) 
+        {
+            i++;
+            j--;
+        }
+    };
+
+    // recursion
+    if (left < j)
+        quickSort_map(arr, map, left, j, dim);
+    if (i < right)
+        quickSort_map(arr, map, i, right, dim);
+    
+    free(tmp_map);
+}
+
+/*******************************************************************************
+* Remove duplicates in an array
+*******************************************************************************/
+
+int removeDups(int a[], int array_size) 
+{
+    int i, j;
+    j = 0;
+    // Remove the duplicates ...
+    for (i = 1; i < array_size; i++) 
+    {
+        if (a[i] != a[j]) 
+        {
+            j++;
+            a[j] = a[i]; // Move it to the front
+        }
+    }
+    // The new array size..
+    array_size = (j + 1);
+    return array_size;
+}
+
+//********************************************************************************
+int compare_sets(oppic_set set1, oppic_set set2) 
+{
+    if (set1->size == set2->size && strcmp(set1->name, set2->name) == 0)
+        return 1;
+    else
+        return 0;
+}
+
+void op_timers(double *cpu, double *et) 
+{
+    (void)cpu;
+    struct timeval t;
+    gettimeofday(&t, (struct timezone *)0);
+    *et = t.tv_sec + t.tv_usec * 1.0e-6;
+}
 
 
 //********************************************************************************

@@ -31,47 +31,50 @@ void Trace::write_callstack() {
 };
 
 void Trace::write_profile(std::string filename) {
+    return;
     auto calculation_time = _walltime() - trace_start;
-    std::ofstream trace_file;
-    trace_file.open(filename);
-    trace_file << "function_name"<< ","
-               << "total_time" << ","
-               << "exclusive_time" << ","
-               << "exclusive_proportion" << ","
-               << "number_of_calls"
-               << std::endl;
 
-    for(const auto& func: function_list) {
-        if (!func.second.start_time) {
-            trace_file << func.first << ","
-                       << func.second.total_time << ","
-                       << func.second.total_time - func.second.child_time << ","
-                       << (func.second.total_time - func.second.child_time) / calculation_time << ","
-                       << func.second.num_calls
-                       << std::endl;
-        }
-    }
-    trace_file << "traceEnter" << ","
-               << entry_time << ","
-               << entry_time << ","
-               << (entry_time) / calculation_time << ","
-               << 1
-               << std::endl;
+    // TODO: Should not write to the same file name by all mpi ranks
+    // std::ofstream trace_file;
+    // trace_file.open(filename);
+    // trace_file << "function_name"<< ","
+    //            << "total_time" << ","
+    //            << "exclusive_time" << ","
+    //            << "exclusive_proportion" << ","
+    //            << "number_of_calls"
+    //            << std::endl;
 
-    trace_file << "traceExit" << ","
-               << exit_time << ","
-               << exit_time << ","
-               << (entry_time) / calculation_time << ","
-               << 1
-               << std::endl;
+    // for(const auto& func: function_list) {
+    //     if (!func.second.start_time) {
+    //         trace_file << func.first << ","
+    //                    << func.second.total_time << ","
+    //                    << func.second.total_time - func.second.child_time << ","
+    //                    << (func.second.total_time - func.second.child_time) / calculation_time << ","
+    //                    << func.second.num_calls
+    //                    << std::endl;
+    //     }
+    // }
+    // trace_file << "traceEnter" << ","
+    //            << entry_time << ","
+    //            << entry_time << ","
+    //            << (entry_time) / calculation_time << ","
+    //            << 1
+    //            << std::endl;
 
-    trace_file << "traceTotalTime" << ","
-               << calculation_time << ","
-               << 0 << ","
-               << 0 << ","
-               << 1
-               << std::endl;
-    trace_file.close();
+    // trace_file << "traceExit" << ","
+    //            << exit_time << ","
+    //            << exit_time << ","
+    //            << (entry_time) / calculation_time << ","
+    //            << 1
+    //            << std::endl;
+
+    // trace_file << "traceTotalTime" << ","
+    //            << calculation_time << ","
+    //            << 0 << ","
+    //            << 0 << ","
+    //            << 1
+    //            << std::endl;
+    // trace_file.close();
 
     std::cout << "function_name"<< ","
                << "total_time" << ","
