@@ -130,7 +130,7 @@ inline void move_all_particles_to_cell__kernel(
     }
 
     bool inside = true;
-    double coefficient2 = ONE_OVER_SIX / (*current_cell_volume) ;
+    double coefficient2 = ONE_OVER_SIX / (*current_cell_volume * SCALE2) ;
     for (int i=0; i<NODES_PER_CELL; i++) /*loop over vertices*/
     {
         part_lc[i] = coefficient2 * (
@@ -140,7 +140,7 @@ inline void move_all_particles_to_cell__kernel(
             current_cell_det[i * DET_FIELDS + 3] * part_pos[2]);
         
         if (part_lc[i] < 0.0 || 
-            part_lc[i] > 1.0)  
+            part_lc[i] > (1.0 * DET_SCALE))  
                 inside = false;
                 // m.OPP_inside_cell = false;
     }    
@@ -188,7 +188,7 @@ inline void compute_node_charge_density__kernel(
     const double *node_volume
 )
 {
-    (*node_charge_den) *= (CONST_spwt / (*node_volume));
+    (*node_charge_den) *= (CONST_spwt / (*node_volume * DET_SCALE));
 }
 
 //*************************************************************************************************

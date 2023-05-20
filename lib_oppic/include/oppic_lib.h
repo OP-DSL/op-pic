@@ -104,7 +104,7 @@ void oppic_print_map_to_txtfile(oppic_map map, const char *file_name_prefix, con
 
 void oppic_dump_dat(oppic_dat data);
 
-void oppic_reset_dat(oppic_dat dat, char* val, opp_reset reset = OPP_Reset_Set);
+void oppic_reset_dat(oppic_dat dat, char* val, opp_reset reset = OPP_Reset_All);
 
 int oppic_mpi_halo_exchanges(oppic_set set, int nargs, oppic_arg *args);
 

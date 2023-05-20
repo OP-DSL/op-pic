@@ -1253,7 +1253,7 @@ int oppic_mpi_halo_exchanges(oppic_set set, int nargs, oppic_arg *args)
 
             if (!already_done)
             {
-                if (OP_DEBUG) opp_printf("oppic_mpi_halo_exchanges", "opp_exchange_halo for dat [%s]", args[n].dat->name);
+                if (OP_DEBUG) opp_printf("oppic_mpi_halo_exchanges", "opp_exchange_halo for dat [%s] exec_flag %d", args[n].dat->name, exec_flag);
                 opp_mpi_halo_exchange(&args[n], exec_flag);
             }
             // else

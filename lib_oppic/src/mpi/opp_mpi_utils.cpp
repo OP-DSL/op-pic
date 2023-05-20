@@ -34,9 +34,9 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 MPI_Comm OP_MPI_IO_WORLD;
 
-extern const char fmt_double[] = "%+2.25lE ";
-extern const char fmt_float[] = "%f ";
-extern const char fmt_int[] = "%d ";
+extern const char fmt_double[] = " %2.25lE";
+extern const char fmt_float[] = " %f";
+extern const char fmt_int[] = " %d";
 
 void _mpi_allgather(int *l, int *g, int size, int *recevcnts, int *displs, MPI_Comm comm) 
 {

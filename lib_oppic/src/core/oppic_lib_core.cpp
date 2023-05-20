@@ -982,3 +982,21 @@ void* oppic_load_from_file_core(const char* file_name, int set_size, int dim, ch
 
     return data;
 }
+
+//****************************************
+void opp_inc_part_count_with_distribution_core(oppic_set particles_set, int num_particles_to_insert, oppic_dat part_dist)
+{
+    oppic_increase_particle_count_core(particles_set, num_particles_to_insert);
+
+    int* part_mesh_connectivity = (int *)particles_set->mesh_relation_dat->data;
+    int* distribution           = (int *)part_dist->data;
+
+    int start = (particles_set->size - particles_set->diff);
+    int j = 0;
+
+    for (int i = 0; i < particles_set->diff; i++)
+    {
+        if (i >= distribution[j]) j++; // check whether it is j or j-1    
+        part_mesh_connectivity[start + i] = j;
+    } 
+}

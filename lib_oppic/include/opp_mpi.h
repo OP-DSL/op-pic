@@ -326,4 +326,4 @@ bool is_double_indirect_reduction(oppic_arg& arg);
 
 
 void print_dat_to_txtfile_mpi(op_dat dat, const char *file_name);
-void op_print_dat_to_txtfile(op_dat dat, const char *file_name);
+void opp_mpi_print_dat_to_txtfile(op_dat dat, const char *file_name);

@@ -73,4 +73,50 @@ void vecVecSubtract(double *y, double *v1, double *v2, int nu) {
             y[i] = v1[i]-v2[i];
 }
 
+/*compute inverse of a 3x3 matrix using the adjugate method*/
+void inverse(double M[3][3], double V[3][3]) 
+{
 
+    double a=M[0][0];
+    double b=M[0][1];
+    double c=M[0][2];
+    double d=M[1][0];
+    double e=M[1][1];
+    double f=M[1][2];
+    double g=M[2][0];
+    double h=M[2][1];
+    double i=M[2][2];
+
+    V[0][0]=(e*i-f*h);
+    V[1][0]=-(d*i-f*g);
+    V[2][0]=(d*h-e*g);
+    V[0][1]=-(b*i-c*h);
+    V[1][1]=(a*i-c*g);
+    V[2][1]=-(a*h-b*g);
+    V[0][2]=(b*f-c*e);
+    V[1][2]=-(a*f-c*d);
+    V[2][2]=(a*e-b*d);
+    double det = a*V[0][0]+b*V[1][0]+c*V[2][0];
+
+    double Vmax = 0;
+    for (int m=0;  m<3; m++) 
+    {
+        for (int n=0;  n<3; n++) 
+        {
+            Vmax = fabs(V[m][n]) > Vmax ? fabs(V[m][n]) : Vmax;
+        }
+    }
+
+    double idet=0;
+    if (fabs(Vmax) / fabs(det) > 1e12) 
+    {
+        std::cerr<<"Matrix is not invertible, |det M| = " << fabs(det) << "! setting to [0]."<<std::endl;
+    }
+    else 
+        idet=1/det;
+
+    /*1/det*/
+    for (int i=0;i<3;i++)
+        for (int j=0;j<3;j++)
+            V[i][j]*=idet;
+}

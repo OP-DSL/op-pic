@@ -32,6 +32,11 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <opp_mpi.h>
 
+#ifdef USE_PETSC
+    #include <petscksp.h>
+#endif
+
+
 MPI_Comm OP_MPI_WORLD;
 MPI_Comm OP_MPI_GLOBAL;
 
@@ -40,9 +45,12 @@ op_dat op_mpi_get_data(op_dat dat);
 //*******************************************************************************
 void oppic_init(int argc, char **argv, opp::Params* params) 
 {
+
+#ifdef USE_PETSC
+    PetscInitialize(&argc, &argv, PETSC_NULL, "opp::Petsc");
+#else
     MPI_Init(&argc, &argv);
-    
-    if (OP_DEBUG) opp_printf("oppic_init", "");
+#endif
 
     OP_MPI_WORLD = MPI_COMM_WORLD;
     OP_MPI_GLOBAL = MPI_COMM_WORLD;
@@ -50,7 +58,10 @@ void oppic_init(int argc, char **argv, opp::Params* params)
     MPI_Comm_rank(OP_MPI_WORLD, &OPP_my_rank);
     MPI_Comm_size(OP_MPI_WORLD, &OPP_comm_size);
 
+    if (OP_DEBUG) opp_printf("oppic_init", "");
+    
     oppic_init_core(argc, argv, params);
+
 }
 
 //*******************************************************************************
@@ -78,7 +89,12 @@ void oppic_exit()
 
     oppic_exit_core();
 
+#ifdef USE_PETSC
+    PetscFinalize();
+#else
     MPI_Finalize();
+#endif
+    
 }
 
 //****************************************
@@ -222,19 +238,7 @@ void opp_inc_part_count_with_distribution(oppic_set particles_set, int num_parti
 {
     if (OP_DEBUG) opp_printf("opp_inc_part_count_with_distribution", "num_particles_to_insert [%d]", num_particles_to_insert);
 
-    oppic_increase_particle_count(particles_set, num_particles_to_insert);
-
-    int* part_mesh_connectivity = (int *)particles_set->mesh_relation_dat->data;
-    int* distribution           = (int *)part_dist->data;
-
-    int start = (particles_set->size - particles_set->diff);
-    int j = 0;
-
-    for (int i = 0; i < particles_set->diff; i++)
-    {
-        if (i >= distribution[j]) j++; // check whether it is j or j-1    
-        part_mesh_connectivity[start + i] = j;
-    } 
+    opp_inc_part_count_with_distribution_core(particles_set, num_particles_to_insert, part_dist); 
 }
 
 //****************************************
@@ -269,7 +273,7 @@ void oppic_particle_sort(oppic_set set)
 //****************************************
 void oppic_print_dat_to_txtfile(oppic_dat dat, const char *file_name_prefix, const char *file_name_suffix)
 {
-    std::string prefix = std::string(file_name_prefix) + "_s";
+    std::string prefix = std::string(file_name_prefix) + "_m" + std::to_string(OPP_comm_size);
     oppic_print_dat_to_txtfile_core(dat, prefix.c_str(), file_name_suffix);
 }
 
@@ -372,6 +376,10 @@ void oppic_reset_dat(oppic_dat dat, char* val, opp_reset reset)
             start = 0;
             end = dat->set->size;
             break;
+        case OPP_Reset_All:
+            start = 0;
+            end = dat->set->size + dat->set->exec_size + dat->set->nonexec_size;
+            break;
         case OPP_Reset_ieh:
             start = dat->set->size;
             end = dat->set->size + dat->set->exec_size;
@@ -398,9 +406,9 @@ void oppic_mpi_set_dirtybit(int nargs, oppic_arg *args)
         // TODO : Do not include double indirect reductions
         if ((args[n].opt == 1) && (args[n].argtype == OP_ARG_DAT) && 
             (args[n].acc == OP_WRITE || args[n].acc == OP_RW || 
-                (args[n].acc == OP_INC && !is_double_indirect_reduction(args[n])))) 
+                (args[n].acc == OP_INC)))  //  && !is_double_indirect_reduction(args[n])
         {
-            args[n].dat->dirtybit = 0;
+            args[n].dat->dirtybit = 1;
             // args[n].dat->dirty_hd = Dirty::Device;
         }
     }
@@ -584,12 +592,13 @@ void opp_desanitize_all_maps()
 }
 
 
-void op_print_dat_to_txtfile(op_dat dat, const char *file_name) 
+void opp_mpi_print_dat_to_txtfile(op_dat dat, const char *file_name) 
 {
-    // rearrange data backe to original order in mpi
+    const std::string prefixed_file_name = std::string("mpi_files/MPI_") + std::to_string(OPP_comm_size) + std::string("_") + file_name;
+    // rearrange data back to original order in mpi
     op_dat temp = op_mpi_get_data(dat);
     
-    print_dat_to_txtfile_mpi(temp, file_name);
+    print_dat_to_txtfile_mpi(temp, prefixed_file_name.c_str());
 
     free(temp->data);
     free(temp->set);

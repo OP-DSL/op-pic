@@ -35,7 +35,7 @@ else
 	HIPCCFLAGS += -O3 -g
 endif
 
-IEEE ?= 0
+IEEE ?= 1
 ifeq ($(IEEE), 1)
 	CPPFLAGS   += -fp-model strict -fp-model source -prec-div -prec-sqrt
 	NVCCFLAGS  += -fmad=false -ftz=false -prec-div=true -prec-sqrt=true
@@ -49,7 +49,7 @@ ifeq ($(DEBUG_LOG), 1)
 	HIPCCFLAGS += -DDEBUG_LOG
 endif
 
-PETSC ?= 0
+PETSC ?= 1
 ifeq ($(PETSC), 1)
 	CPPFLAGS   += -DUSE_PETSC
 	# HIPCCFLAGS += -DUSE_PETSC

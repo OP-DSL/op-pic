@@ -6,6 +6,7 @@
 
 
 #include <oppic_lib.h>
+#include <opp_mpi.h>
 #include <memory>
 #include <regex>
 
@@ -15,6 +16,8 @@
 #include "FESolver.h"
 
 using namespace std;
+
+#define USE_RAND_FILE
 
 #ifdef DEBUG_LOG
     #define FP_DEBUG true
@@ -29,10 +32,14 @@ using namespace std;
 #define PRINT_PRECISION    15
 
 #define MAX_CELL_INDEX     INT_MAX
-#define INJ_EXCESS 100
+#define INJ_EXCESS 0 // 100
+
+#define DET_SCALE 1.0
+#define SCALE2 1.0
 
 extern int ts;
 
+//*************************************************************************************************
 class FieldPointers
 {
     public:
@@ -54,6 +61,7 @@ class FieldPointers
             if (node_ion_den) delete[] node_ion_den;
             if (node_pos) delete[] node_pos;
             if (node_volume) delete[] node_volume;
+            if (node_type) delete[] node_type;
             if (iface_to_cell) delete[] iface_to_cell;
             if (iface_to_nodes) delete[] iface_to_nodes;
             if (iface_v_normal) delete[] iface_v_normal;
@@ -77,6 +85,7 @@ class FieldPointers
             node_ion_den = nullptr;
             node_pos = nullptr;
             node_volume = nullptr; 
+            node_type = nullptr;
 
             iface_to_cell = nullptr;    
             iface_to_nodes = nullptr;   
@@ -103,6 +112,7 @@ class FieldPointers
             node_ion_den     = new double[n_nodes];
             node_pos         = new double[n_nodes * DIMENSIONS];
             node_volume      = new double[n_nodes];
+            node_type        = new int[n_nodes];
 
             iface_to_cell    = new int[n_ifaces];
             iface_to_nodes   = new int[n_ifaces * DIMENSIONS]; 
@@ -131,6 +141,7 @@ class FieldPointers
         double *node_ion_den = nullptr;
         double *node_pos = nullptr;
         double *node_volume = nullptr; 
+        int *node_type = nullptr; 
 
         int *iface_to_cell = nullptr;         // cell_con
         int *iface_to_nodes = nullptr;        // con[3]; 
@@ -143,23 +154,25 @@ class FieldPointers
 
         double * dummy_part_random = nullptr;
 
-        std::shared_ptr<FESolver> solver;
-
-        FESolver::Method fesolver_method = FESolver::Method::GaussSeidel;
 };
 
+//*************************************************************************************************
 inline int InitializeInjectDistributions(opp::Params& params, oppic_dat iface_inj_part_dist_dat, oppic_dat iface_area_dat, oppic_dat dummy_random)
 {
+    opp_printf("InitializeInjectDistributions", "START");
+
     double plasma_den = params.get<OPP_REAL>("plasma_den");
     double dt = params.get<OPP_REAL>("dt");
     double ion_velocity = params.get<OPP_REAL>("ion_velocity");
     double spwt = params.get<OPP_REAL>("spwt");
 
-    int n_inject_count = 0;
+    int n_inject_count = 0, max_inject_count_per_face = 0;
     double remainder = 0.0;
 
     for (int faceID=0; faceID<iface_area_dat->set->size; faceID++)
     {   
+        remainder = 0.0; // always make remainder to zero, and if not the MPI results will change
+
         {   // DUPLICATE: This calculation is in kernels
             double num_per_sec = plasma_den * ion_velocity * ((double*)iface_area_dat->data)[faceID];
             double num_real = num_per_sec * dt;
@@ -170,23 +183,85 @@ inline int InitializeInjectDistributions(opp::Params& params, oppic_dat iface_in
             n_inject_count += num_mp;
 
             ((int*)iface_inj_part_dist_dat->data)[faceID] = n_inject_count;
+
+            if (max_inject_count_per_face < num_mp)
+                max_inject_count_per_face = num_mp;
         }
     }
 
-    oppic_increase_particle_count(dummy_random->set, (n_inject_count + INJ_EXCESS));
+    oppic_increase_particle_count(dummy_random->set, (max_inject_count_per_face + INJ_EXCESS));
 
+// TODO : Number of random num = Max injections out of all ifaces, no need all
+
+#ifdef USE_RAND_FILE
+    opp_printf("InitializeInjectDistributions", "n_inject_count %d max_inject_count_per_face %d", n_inject_count, max_inject_count_per_face);    
+
+    int total_size = -1, fsize = -1, fdim = -1;
+    FILE *fp = NULL;
+    std::string rand_file_path = params.get<OPP_STRING>("rand_file");
+
+    // read from MPI ROOT and broadcast // alternatively use HDF5 files
+    if (OPP_my_rank == OPP_MPI_ROOT)
+    {       
+        if ((fp = fopen(rand_file_path.c_str(), "r")) == NULL)
+        {
+            opp_printf("InitializeInjectDistributions", "Unable to open file %s\n", rand_file_path.c_str());
+            MPI_Abort(OP_MPI_WORLD, 2);
+        }
+
+        if (fscanf(fp, "%d %d\n", &fsize, &fdim) != 2)
+        {
+            opp_printf("InitializeInjectDistributions", "Error reading file data from %s\n", rand_file_path.c_str());
+            MPI_Abort(OP_MPI_WORLD, 2);
+        }
+
+        total_size = fsize * fdim;
+
+        if (dummy_random->set->size * dummy_random->dim > total_size)
+        {
+            opp_printf("InitializeInjectDistributions", "dim and/or set_size issue in file %s\n", rand_file_path.c_str());
+            MPI_Abort(OP_MPI_WORLD, 2);       
+        }
+    }
+
+    MPI_Bcast(&total_size, 1, MPI_INT, OPP_MPI_ROOT, MPI_COMM_WORLD);
+
+    double* dist = new double[total_size];
+
+    if (OPP_my_rank == OPP_MPI_ROOT)
+    {
+        for (int n = 0; n < fsize; n++)
+        {
+            if (fscanf(fp, " %lf %lf\n", &dist[n * 2 + 0], &dist[n * 2 + 1]) != 2) 
+            {
+                opp_printf("InitializeInjectDistributions", "Error reading from %s at index %d\n", rand_file_path.c_str(), n);
+                MPI_Abort(OP_MPI_WORLD, 2);
+            }
+        }
+
+        fclose(fp);
+    }
+
+    MPI_Bcast(dist, total_size, MPI_DOUBLE, OPP_MPI_ROOT, MPI_COMM_WORLD);
+
+    memcpy(dummy_random->data, dist, dummy_random->set->size * dummy_random->size);
+
+    delete[] dist;
+#else
     double *dist = (double*)dummy_random->data;
 
     for (int i = 0; i < dummy_random->set->size * dummy_random->dim; i++)
     {   
         dist[i] = rnd();
     }    
+#endif
 
     opp_printf("InitializeInjectDistributions", "n_inject_count %d", n_inject_count);
 
     return n_inject_count;
 }
 
+//*************************************************************************************************
 inline double* GetRandomDistriution(int count, int dim)
 {
     double *dist = new double[count * dim];
@@ -199,6 +274,7 @@ inline double* GetRandomDistriution(int count, int dim)
     return dist;
 }
 
+//*************************************************************************************************
 inline std::shared_ptr<FieldPointers> LoadMesh(opp::Params& params, int argc, char **argv)
 { TRACE_ME;
 
@@ -236,6 +312,7 @@ inline std::shared_ptr<FieldPointers> LoadMesh(opp::Params& params, int argc, ch
             mesh->node_pos[n * DIMENSIONS + dim] = node.pos[dim];
     
         mesh->node_volume[n]     = node.volume;
+        mesh->node_type[n]       = (int)node.type;
     }
 
     for (int cellID=0; cellID<mesh->n_cells; cellID++)
@@ -256,10 +333,10 @@ inline std::shared_ptr<FieldPointers> LoadMesh(opp::Params& params, int argc, ch
         {
             mesh->cell_to_cell[cellID * NEIGHBOUR_CELLS + cellCon]     = tet.cell_con[cellCon];
 
-            mesh->cell_det[(cellID * NEIGHBOUR_CELLS + cellCon) * DET_FIELDS + 0] = tet.alpha[cellCon];
-            mesh->cell_det[(cellID * NEIGHBOUR_CELLS + cellCon) * DET_FIELDS + 1] = tet.beta[cellCon];
-            mesh->cell_det[(cellID * NEIGHBOUR_CELLS + cellCon) * DET_FIELDS + 2] = tet.gamma[cellCon];
-            mesh->cell_det[(cellID * NEIGHBOUR_CELLS + cellCon) * DET_FIELDS + 3] = tet.delta[cellCon];
+            mesh->cell_det[(cellID * NEIGHBOUR_CELLS + cellCon) * DET_FIELDS + 0] = (tet.alpha[cellCon] * DET_SCALE);
+            mesh->cell_det[(cellID * NEIGHBOUR_CELLS + cellCon) * DET_FIELDS + 1] = (tet.beta[cellCon]  * DET_SCALE);
+            mesh->cell_det[(cellID * NEIGHBOUR_CELLS + cellCon) * DET_FIELDS + 2] = (tet.gamma[cellCon] * DET_SCALE);
+            mesh->cell_det[(cellID * NEIGHBOUR_CELLS + cellCon) * DET_FIELDS + 3] = (tet.delta[cellCon] * DET_SCALE);
         }
 
         mesh->cell_volume[cellID] = tet.volume;
@@ -289,42 +366,7 @@ inline std::shared_ptr<FieldPointers> LoadMesh(opp::Params& params, int argc, ch
         }
     }
 
-    mesh->solver = std::make_shared<FESolver>(volume, argc, argv);
 
-    mesh->solver->phi0 = 0;
-    mesh->solver->n0 = params.get<OPP_REAL>("plasma_den");
-    mesh->solver->kTe = Kb * params.get<OPP_REAL>("electron_temperature");
-
-    for (int n = 0; n < mesh->n_nodes; n++) // This g array is a duplicate, can remove and attach node_bnd_pot dat instead
-    {
-        switch (volume->nodes[n].type)
-        {
-            case INLET:    mesh->solver->g[n] = 0; break;                                         /*phi_inlet*/
-            case FIXED:    mesh->solver->g[n] = -(params.get<OPP_REAL>("wall_potential")); break;     /*fixed phi points*/
-            default:       mesh->solver->g[n] = 0;                                                /*default*/
-        }
-    }
-
-    mesh->solver->startAssembly();
-    mesh->solver->preAssembly();    /*this will form K and F0*/
-
-    if (OPP_my_rank == OPP_MPI_ROOT)
-        mesh->solver->summarize(std::cout);
-
-    if      (std::regex_match(params.get<OPP_STRING>("fesolver_method"), std::regex("nonlinear", std::regex_constants::icase))) mesh->fesolver_method = FESolver::NonLinear;
-    else if (std::regex_match(params.get<OPP_STRING>("fesolver_method"), std::regex("gaussseidel", std::regex_constants::icase))) mesh->fesolver_method = FESolver::GaussSeidel;
-    else if (std::regex_match(params.get<OPP_STRING>("fesolver_method"), std::regex("lapack", std::regex_constants::icase))) mesh->fesolver_method = FESolver::Lapack;
-    else if (std::regex_match(params.get<OPP_STRING>("fesolver_method"), std::regex("petsc", std::regex_constants::icase))) mesh->fesolver_method = FESolver::Petsc;
-
-    for (int cellID=0; cellID<mesh->n_cells; cellID++)
-    {
-        for (int nodeCon=0; nodeCon<NODES_PER_CELL; nodeCon++)
-        {
-            mesh->cell_shape_deriv[cellID * (NODES_PER_CELL*DIMENSIONS) + nodeCon * DIMENSIONS + 0 ] = mesh->solver->NX[cellID][nodeCon][0];
-            mesh->cell_shape_deriv[cellID * (NODES_PER_CELL*DIMENSIONS) + nodeCon * DIMENSIONS + 1 ] = mesh->solver->NX[cellID][nodeCon][1];
-            mesh->cell_shape_deriv[cellID * (NODES_PER_CELL*DIMENSIONS) + nodeCon * DIMENSIONS + 2 ] = mesh->solver->NX[cellID][nodeCon][2];
-        }
-    }
 
     double plasma_den = params.get<OPP_REAL>("plasma_den");
     double dt = params.get<OPP_REAL>("dt");
@@ -358,3 +400,5 @@ inline std::shared_ptr<FieldPointers> LoadMesh(opp::Params& params, int argc, ch
 
     return mesh;
 }
+
+//*************************************************************************************************
