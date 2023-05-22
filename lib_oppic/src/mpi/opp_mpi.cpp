@@ -108,7 +108,7 @@ oppic_map oppic_decl_map(oppic_set from, oppic_set to, int dim, int *imap, char 
 {
     oppic_map map = oppic_decl_map_core(from, to, dim, imap, name);
 
-    opp_printf("oppic_decl_map", OPP_my_rank, " map: %s | ptr: %p | dim: %d", map->name, map->map, map->dim);
+    if (OP_DEBUG) opp_printf("oppic_decl_map", OPP_my_rank, " map: %s | ptr: %p | dim: %d", map->name, map->map, map->dim);
 
     return map;
 }
@@ -230,7 +230,11 @@ oppic_dat oppic_decl_particle_dat_txt(oppic_set set, int dim, opp_data_type dtyp
 //****************************************
 void oppic_increase_particle_count(oppic_set particles_set, const int num_particles_to_insert)
 {
-    oppic_increase_particle_count_core(particles_set, num_particles_to_insert);
+    if (!oppic_increase_particle_count_core(particles_set, num_particles_to_insert))
+    {
+        opp_printf("oppic_increase_particle_count", "Error: oppic_increase_particle_count_core failed for particle set [%s]", particles_set->name);
+        MPI_Abort(OP_MPI_WORLD, 1);        
+    }
 }
 
 //****************************************
@@ -238,7 +242,11 @@ void opp_inc_part_count_with_distribution(oppic_set particles_set, int num_parti
 {
     if (OP_DEBUG) opp_printf("opp_inc_part_count_with_distribution", "num_particles_to_insert [%d]", num_particles_to_insert);
 
-    opp_inc_part_count_with_distribution_core(particles_set, num_particles_to_insert, part_dist); 
+    if (!opp_inc_part_count_with_distribution_core(particles_set, num_particles_to_insert, part_dist))
+    {
+        opp_printf("opp_inc_part_count_with_distribution", "Error: opp_inc_part_count_with_distribution_core failed for particle set [%s]", particles_set->name);
+        MPI_Abort(OP_MPI_WORLD, 1);        
+    }
 }
 
 //****************************************
@@ -325,6 +333,8 @@ void oppic_init_particle_move(oppic_set set, int nargs, oppic_arg *args)
 bool oppic_finalize_particle_move(oppic_set set)
 { TRACE_ME;
 
+    if (OP_DEBUG) opp_printf("oppic_finalize_particle_move", "Start particle set [%s]", set->name);
+
     // send the counts and send the particles  
     opp_part_exchange(set);  
 
@@ -333,7 +343,7 @@ bool oppic_finalize_particle_move(oppic_set set)
 
     if (OP_auto_sort == 1)
     {
-        if (OP_DEBUG) printf("\toppic_finalize_particle_move auto sorting particle set [%s]\n", set->name);
+        if (OP_DEBUG) opp_printf("oppic_finalize_particle_move", "auto sorting particle set [%s]", set->name);
         oppic_particle_sort(set);
     }
 
@@ -479,7 +489,7 @@ void opp_partition_core(op_set prime_set, op_map prime_map, op_dat data)
             log = "RANK [" + std::to_string(i) + "]";
             
             for (int j = 0; j < oppic_sets.size(); j++)
-                log += "\t\t - " + std::to_string(set_sizes[j][i * 3]) + "|" + 
+                log += "\t- " + std::to_string(set_sizes[j][i * 3]) + "|" + 
                     std::to_string(set_sizes[j][i * 3 + 1]) + "|" + std::to_string(set_sizes[j][i * 3 + 2]);
 
             opp_printf("opp_partition()", "%s", log.c_str());

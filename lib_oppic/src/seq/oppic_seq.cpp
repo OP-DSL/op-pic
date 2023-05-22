@@ -174,24 +174,23 @@ oppic_dat oppic_decl_particle_dat_txt(oppic_set set, int dim, opp_data_type dtyp
 //****************************************
 void oppic_increase_particle_count(oppic_set particles_set, const int num_particles_to_insert)
 {
-    oppic_increase_particle_count_core(particles_set, num_particles_to_insert);
+    if (!oppic_increase_particle_count_core(particles_set, num_particles_to_insert))
+    {
+        opp_printf("oppic_increase_particle_count", "Error: oppic_increase_particle_count_core failed for particle set [%s]", particles_set->name);
+        exit(-1);        
+    }
 }
 
+//****************************************
 void opp_inc_part_count_with_distribution(oppic_set particles_set, int num_particles_to_insert, oppic_dat part_dist)
 {
-    oppic_increase_particle_count(particles_set, num_particles_to_insert);
+    if (OP_DEBUG) opp_printf("opp_inc_part_count_with_distribution", "num_particles_to_insert [%d]", num_particles_to_insert);
 
-    int* part_mesh_connectivity = (int *)particles_set->mesh_relation_dat->data;
-    int* distribution           = (int *)part_dist->data;
-
-    int start = (particles_set->size - particles_set->diff);
-    int j = 0;
-
-    for (int i = 0; i < particles_set->diff; i++)
+    if (!opp_inc_part_count_with_distribution_core(particles_set, num_particles_to_insert, part_dist))
     {
-        if (i >= distribution[j]) j++; // check whether it is j or j-1    
-        part_mesh_connectivity[start + i] = j;
-    } 
+        opp_printf("opp_inc_part_count_with_distribution", "Error: opp_inc_part_count_with_distribution_core failed for particle set [%s]", particles_set->name);
+        exit(-1);        
+    }
 }
 
 //****************************************

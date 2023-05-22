@@ -446,10 +446,10 @@ oppic_dat oppic_decl_particle_dat_core(oppic_set set, int dim, char const *type,
 }
 
 //****************************************
-void oppic_increase_particle_count_core(oppic_set particles_set, const int num_particles_to_insert)
+bool oppic_increase_particle_count_core(oppic_set particles_set, const int num_particles_to_insert)
 { TRACE_ME;
 
-    if (num_particles_to_insert <= 0) return;
+    if (num_particles_to_insert <= 0) return true;
 
     if (OP_DEBUG) 
         opp_printf("oppic_increase_particle_count_core", "set [%s] with size [%d]", particles_set->name, num_particles_to_insert);
@@ -464,14 +464,15 @@ void oppic_increase_particle_count_core(oppic_set particles_set, const int num_p
         
         particles_set->size = new_particle_set_size;
         particles_set->diff = num_particles_to_insert;   
-        return;
+        return true;
     }
 
-    int new_particle_set_capacity = particles_set->size + num_particles_to_insert * OP_part_alloc_mult;
+    size_t new_particle_set_capacity = particles_set->size + num_particles_to_insert * OP_part_alloc_mult;
     // int new_particle_set_capacity = new_particle_set_size;
+    bool return_flag = true;
 
     if (OP_DEBUG)
-        opp_printf("oppic_increase_particle_count_core", "new_particle_set_capacity %d particles_set->size %d set_dat_count %d", 
+        opp_printf("oppic_increase_particle_count_core", "new_particle_set_capacity %zu particles_set->size %d set_dat_count %d", 
             new_particle_set_capacity, particles_set->size, particles_set->particle_dats->size());
 
     for (auto& current_oppic_dat : *(particles_set->particle_dats))
@@ -480,15 +481,27 @@ void oppic_increase_particle_count_core(oppic_set particles_set, const int num_p
         {
             current_oppic_dat->data = (char *)malloc((size_t)(new_particle_set_capacity * current_oppic_dat->size));
             // opp_printf("oppic_increase_particle_count_core", "malloc name %s %p size %d", current_oppic_dat->name, current_oppic_dat->data, (new_particle_set_capacity * current_oppic_dat->size));
+
+            if (current_oppic_dat->data == nullptr)
+            {
+                opp_printf("oppic_increase_particle_count_core", "Error... alloc of dat name %s failed (size %zu)", current_oppic_dat->name, (size_t)(new_particle_set_capacity * current_oppic_dat->size));
+                return_flag = false;
+            }
         }
         else
         {
             char* old = current_oppic_dat->data;
             current_oppic_dat->data = (char *)realloc(current_oppic_dat->data, (size_t)(new_particle_set_capacity * current_oppic_dat->size));
             // opp_printf("oppic_increase_particle_count_core", "realloc %p name %s %p size %d", old, current_oppic_dat->name, current_oppic_dat->data, (new_particle_set_capacity * current_oppic_dat->size));
+
+            if (current_oppic_dat->data == nullptr)
+            {
+                opp_printf("oppic_increase_particle_count_core", "Error... realloc of dat name %s failed (size %zu)", current_oppic_dat->name, (size_t)(new_particle_set_capacity * current_oppic_dat->size));
+                return_flag = false;
+            }
         }
 
-        if (current_oppic_dat->is_cell_index)
+        if (current_oppic_dat->is_cell_index && (current_oppic_dat->data != nullptr))
         {
             int* mesh_rel_array = (int *)current_oppic_dat->data;
             for (int i = particles_set->size; i < new_particle_set_capacity; i++)
@@ -503,6 +516,8 @@ void oppic_increase_particle_count_core(oppic_set particles_set, const int num_p
     particles_set->size         = new_particle_set_size;
     particles_set->set_capacity = new_particle_set_capacity;
     particles_set->diff         = num_particles_to_insert;
+
+    return return_flag;
 }
 
 //****************************************
@@ -561,11 +576,11 @@ void oppic_finalize_particle_move_core(oppic_set set)
             int removed_count = 0;
             int skip_count = 0;
 
-            for (int j = 0; j < set->size; j++)
+            for (size_t j = 0; j < set->size; j++)
             {
                 if (mesh_relation_data[j] != MAX_CELL_INDEX) continue;
 
-                char* dat_removed_ptr = (char *)(current_oppic_dat->data + (j * current_oppic_dat->size));
+                char* dat_removed_ptr = (char *)(current_oppic_dat->data + (size_t)(j * current_oppic_dat->size));
 
                 // BUG_FIX: (set->size - removed_count - 1) This index could marked to be removed, and if marked, 
                 // then there could be an array index out of bounds access error in the future
@@ -580,7 +595,8 @@ void oppic_finalize_particle_move_core(oppic_set set)
                     break;
                 }
 
-                char* dat_to_replace_ptr = (char *)(current_oppic_dat->data + ((set->size - removed_count - skip_count - 1) * current_oppic_dat->size));
+                size_t offset_byte = (size_t)(set->size - removed_count - skip_count - 1) * current_oppic_dat->size;
+                char* dat_to_replace_ptr = (char *)(current_oppic_dat->data + offset_byte);
                 
                 // Get the last element and replace the hole // Not the Optimum!!!
                 // TODO : Can we make NULL data and handle it in sort?
@@ -984,9 +1000,10 @@ void* oppic_load_from_file_core(const char* file_name, int set_size, int dim, ch
 }
 
 //****************************************
-void opp_inc_part_count_with_distribution_core(oppic_set particles_set, int num_particles_to_insert, oppic_dat part_dist)
+bool opp_inc_part_count_with_distribution_core(oppic_set particles_set, int num_particles_to_insert, oppic_dat part_dist)
 {
-    oppic_increase_particle_count_core(particles_set, num_particles_to_insert);
+    if (!oppic_increase_particle_count_core(particles_set, num_particles_to_insert))
+        return false;
 
     int* part_mesh_connectivity = (int *)particles_set->mesh_relation_dat->data;
     int* distribution           = (int *)part_dist->data;
@@ -999,4 +1016,6 @@ void opp_inc_part_count_with_distribution_core(oppic_set particles_set, int num_
         if (i >= distribution[j]) j++; // check whether it is j or j-1    
         part_mesh_connectivity[start + i] = j;
     } 
+
+    return true;
 }

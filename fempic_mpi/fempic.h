@@ -159,7 +159,7 @@ class FieldPointers
 //*************************************************************************************************
 inline int InitializeInjectDistributions(opp::Params& params, oppic_dat iface_inj_part_dist_dat, oppic_dat iface_area_dat, oppic_dat dummy_random)
 {
-    opp_printf("InitializeInjectDistributions", "START");
+    if (OP_DEBUG) opp_printf("InitializeInjectDistributions", "START");
 
     double plasma_den = params.get<OPP_REAL>("plasma_den");
     double dt = params.get<OPP_REAL>("dt");

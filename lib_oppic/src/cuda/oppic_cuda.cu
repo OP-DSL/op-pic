@@ -245,7 +245,8 @@ void oppic_increase_particle_count(oppic_set particles_set, const int num_partic
     if (need_resizing)
         oppic_download_particle_set(particles_set); // TODO : We should be able to do a device to device copy instead of getting to host
 
-    oppic_increase_particle_count_core(particles_set, num_particles_to_insert);
+    if (!oppic_increase_particle_count_core(particles_set, num_particles_to_insert))
+        exit(-1);
 
     if (need_resizing)
     {
@@ -262,7 +263,6 @@ void oppic_increase_particle_count(oppic_set particles_set, const int num_partic
             current_dat->dirty_hd = Dirty::NotDirty;
         }        
     }
-
 }
 
 //****************************************

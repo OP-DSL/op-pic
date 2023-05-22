@@ -1434,7 +1434,7 @@ void opp_partition_kway(op_map primary_map)
         return;
     }
 
-    opp_printf("opp_partition_kway", "START");
+    if (OP_DEBUG) opp_printf("opp_partition_kway", "START");
 
     // declare timers
     double cpu_t1, cpu_t2, wall_t1, wall_t2, time, max_time;
@@ -1814,7 +1814,7 @@ void opp_partition_kway(op_map primary_map)
 
     free(request_send);
 
-    opp_printf("opp_partition_kway", "end");
+    if (OP_DEBUG) opp_printf("opp_partition_kway", "end");
 }
 
 

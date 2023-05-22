@@ -90,7 +90,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
     #define THRUST_INT void
 #endif
 
-#define LOG_STR_LEN 10000
+#define LOG_STR_LEN 100000
 
 //*************************************************************************************************
 enum oppic_iterate_type
@@ -294,9 +294,9 @@ oppic_dat oppic_decl_particle_dat_core(oppic_set set, int dim, char const *type,
 
 void oppic_decl_const_impl(int dim, int size, char* data, const char* name);
 
-void oppic_increase_particle_count_core(oppic_set particles_set, const int num_particles_to_insert);
+bool oppic_increase_particle_count_core(oppic_set particles_set, const int num_particles_to_insert);
 
-void opp_inc_part_count_with_distribution_core(oppic_set particles_set, int num_particles_to_insert, oppic_dat part_dist);
+bool opp_inc_part_count_with_distribution_core(oppic_set particles_set, int num_particles_to_insert, oppic_dat part_dist);
 
 void oppic_reset_num_particles_to_insert_core(oppic_set set);
 

@@ -30,7 +30,7 @@ double t1, t2, c1, c2;
  *******************************************************************************/
 void opp_halo_create() 
 {
-    opp_printf("opp_halo_create", OPP_my_rank, "start");
+    if (OP_DEBUG) opp_printf("opp_halo_create", "start");
 
     // declare timers
     double cpu_t1, cpu_t2, wall_t1, wall_t2;
@@ -1021,7 +1021,7 @@ void opp_halo_create()
         opp_printf("opp_halo_create", "Average (worst case) Halo size = %d Bytes", avg_halo_size / comm_size);
     }
 
-    opp_printf("opp_halo_create", OPP_my_rank, "end");
+    if (OP_DEBUG) opp_printf("opp_halo_create", "end");
 }
 
 /*******************************************************************************

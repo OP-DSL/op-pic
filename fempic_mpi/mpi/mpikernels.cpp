@@ -258,8 +258,6 @@ int comm_iteration = 0;
 
             do
             { 
-                m.OPP_inside_cell = true;
-
                 map0idx = &(OPP_mesh_relation_data[i]);
 
                 const int map1idx = args[8].map_data[*map0idx * args[8].map->dim + 0];
