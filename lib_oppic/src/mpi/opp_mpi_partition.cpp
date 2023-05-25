@@ -1817,6 +1817,234 @@ void opp_partition_kway(op_map primary_map)
     if (OP_DEBUG) opp_printf("opp_partition_kway", "end");
 }
 
+/*****************************************************************************************************************************************
+ * This routine partitions based on information contained in an op_dat called
+ *partvecXXXX (number of total partitions, padded with 0s)
+ *****************************************************************************************************************************************/
+void opp_partition_external(op_set primary_set, op_dat partvec) 
+{
+    if (OP_DEBUG) opp_printf("opp_partition_external", "start");
+
+    // declare timers
+    double cpu_t1, cpu_t2, wall_t1, wall_t2;
+    double time;
+    double max_time;
+
+    op_timers(&cpu_t1, &wall_t1); // timer start for partitioning
+
+    // create new communicator for partitioning
+    int my_rank, comm_size;
+    MPI_Comm_dup(OP_MPI_WORLD, &OP_PART_WORLD);
+    MPI_Comm_rank(OP_PART_WORLD, &my_rank);
+    MPI_Comm_size(OP_PART_WORLD, &comm_size);
+
+    /*--STEP 0 - initialise partitioning data stauctures with the current (block) partitioning information */
+
+    // Compute global partition range information for each set
+    int **part_range = (int **)malloc(OP_set_index * sizeof(int *));
+    get_part_range(part_range, my_rank, comm_size, OP_PART_WORLD);
+
+    // save the original part_range for future partition reversing
+    orig_part_range = (int **)malloc(OP_set_index * sizeof(int *));
+    for (int s = 0; s < OP_set_index; s++) 
+    {
+        op_set set = OP_set_list[s];
+        orig_part_range[set->index] = (int *)malloc(2 * comm_size * sizeof(int));
+        
+        for (int j = 0; j < comm_size; j++) 
+        {
+            orig_part_range[set->index][2 * j] = part_range[set->index][2 * j];
+            orig_part_range[set->index][2 * j + 1] = part_range[set->index][2 * j + 1];
+        }
+    }
+
+    // allocate memory for list
+    OP_part_list = (part *)malloc(OP_set_index * sizeof(part));
+
+    for (int s = 0; s < OP_set_index; s++) { // for each set
+        op_set set = OP_set_list[s];
+        int *g_index = (int *)malloc(sizeof(int) * set->size);
+        for (int i = 0; i < set->size; i++)
+        g_index[i] =
+            get_global_index(i, my_rank, part_range[set->index], comm_size);
+        decl_partition(set, g_index, NULL);
+    }
+
+    int *partition = (int *)malloc(sizeof(int) * primary_set->size);
+    memcpy(partition, partvec->data, sizeof(int) * primary_set->size);
+
+    // initialise primary set as partitioned
+    OP_part_list[primary_set->index]->elem_part = partition;
+    OP_part_list[primary_set->index]->is_partitioned = 1;
+
+    // free part range
+    for (int i = 0; i < OP_set_index; i++)
+        free(part_range[i]);
+    free(part_range);
+
+    /*-STEP 2 - Partition all other sets,migrate data and renumber mapping tables-*/
+
+    // partition all other sets
+    partition_all(primary_set, my_rank, comm_size);
+
+    // migrate data, sort elements
+    migrate_all(my_rank, comm_size);
+
+    // renumber mapping tables
+    renumber_maps(my_rank, comm_size);
+
+    op_timers(&cpu_t2, &wall_t2); // timer stop for partitioning
+
+    // print time for partitioning
+    time = wall_t2 - wall_t1;
+    MPI_Reduce(&time, &max_time, 1, MPI_DOUBLE, MPI_MAX, MPI_ROOT, OP_PART_WORLD);
+    MPI_Comm_free(&OP_PART_WORLD);
+    if (my_rank == MPI_ROOT)
+       opp_printf("opp_partition_external", "Max total random partitioning time = %lf", max_time);
+
+    if (OP_DEBUG) opp_printf("opp_partition_external", "end");
+}
+
+
+/*******************************************************************************
+ * Wrapper routine to use ParMETIS_V3_PartGeom() which partitions a set
+ * Using its XYZ Geometry Data
+ *******************************************************************************/
+void opp_partition_geom(op_dat coords) 
+{
+    opp_printf("opp_partition_geom", "start");
+
+    // declare timers
+    double cpu_t1, cpu_t2, wall_t1, wall_t2;
+    double time;
+    double max_time;
+
+    op_timers(&cpu_t1, &wall_t1); // timer start for partitioning
+
+    // create new communicator for partitioning
+    int my_rank, comm_size;
+    MPI_Comm_dup(OP_MPI_WORLD, &OP_PART_WORLD);
+    MPI_Comm_rank(OP_PART_WORLD, &my_rank);
+    MPI_Comm_size(OP_PART_WORLD, &comm_size);
+
+    /*--STEP 0 - initialise partitioning data stauctures with the current (block)
+        partitioning information */
+
+    // Compute global partition range information for each set
+    int **part_range = (int **)malloc(OP_set_index * sizeof(int *));
+    get_part_range(part_range, my_rank, comm_size, OP_PART_WORLD);
+
+    // save the original part_range for future partition reversing
+    orig_part_range = (int **)malloc(OP_set_index * sizeof(int *));
+    for (int s = 0; s < OP_set_index; s++) 
+    {
+        op_set set = OP_set_list[s];
+        orig_part_range[set->index] = (int *)malloc(2 * comm_size * sizeof(int));
+        for (int j = 0; j < comm_size; j++) 
+        {
+            orig_part_range[set->index][2 * j] = part_range[set->index][2 * j];
+            orig_part_range[set->index][2 * j + 1] = part_range[set->index][2 * j + 1];
+        }
+    }
+
+    // allocate memory for list
+    OP_part_list = (part *)malloc(OP_set_index * sizeof(part));
+
+    for (int s = 0; s < OP_set_index; s++)  // for each set
+    { 
+        op_set set = OP_set_list[s];
+        // printf("set %s size = %d\n", set.name, set.size);
+        int *g_index = (int *)malloc(sizeof(int) * set->size);
+        for (int i = 0; i < set->size; i++)
+            g_index[i] = get_global_index(i, my_rank, part_range[set->index], comm_size);
+        decl_partition(set, g_index, NULL);
+    }
+
+    /*--- STEP 1 - Partition primary set using its coordinates (1D,2D or 3D) -----*/
+
+    // Setup data structures for ParMetis PartGeom
+    idx_t *vtxdist = (idx_t *)malloc(sizeof(idx_t) * (comm_size + 1));
+    idx_t *partition = (idx_t *)malloc(sizeof(idx_t) * coords->set->size);
+
+    idx_t ndims = coords->dim;
+    real_t *xyz = 0;
+
+    // Create ParMetis compatible coordinates array
+    //- i.e. coordinates should be floats
+    if (ndims == 3 || ndims == 2 || ndims == 1) 
+    {
+        xyz = (real_t *)malloc(coords->set->size * coords->dim * sizeof(real_t));
+        size_t mult = coords->size / coords->dim;
+        for (int i = 0; i < coords->set->size; i++) 
+        {
+            double temp;
+            for (int e = 0; e < coords->dim; e++) 
+            {
+                memcpy(&temp, (void *)&(coords->data[(i * coords->dim + e) * mult]), mult);
+                xyz[i * coords->dim + e] = (real_t)temp;
+            }
+        }
+    } 
+    else 
+    {
+        printf("Dimensions of Coordinate array not one of 3D,2D or 1D\n");
+        printf("Not supported by ParMetis - Indicate correct coordinates array\n");
+        MPI_Abort(OP_PART_WORLD, 1);
+    }
+
+    for (int i = 0; i < comm_size; i++) {
+        vtxdist[i] = part_range[coords->set->index][2 * i];
+    }
+    vtxdist[comm_size] =
+        part_range[coords->set->index][2 * (comm_size - 1) + 1] + 1;
+
+    // use xyz coordinates to feed into ParMETIS_V3_PartGeom
+    ParMETIS_V3_PartGeom(vtxdist, &ndims, xyz, partition, &OP_PART_WORLD);
+    free(xyz);
+    free(vtxdist);
+
+    // free part range
+    for (int i = 0; i < OP_set_index; i++)
+        free(part_range[i]);
+    free(part_range);
+
+    // saniti check to see if all elements were partitioned
+    for (int i = 0; i < coords->size; i++) 
+    {
+        if (partition[i] < 0) 
+        {
+            printf("Partitioning problem: on rank %d, set %s element %d not assigned a partition\n",
+                    my_rank, coords->name, i);
+            MPI_Abort(OP_PART_WORLD, 2);
+        }
+    }
+
+    // initialise primary set as partitioned
+    OP_part_list[coords->set->index]->elem_part = (int *)partition;
+    OP_part_list[coords->set->index]->is_partitioned = 1;
+
+    /*-STEP 2 - Partition all other sets,migrate data and renumber mapping tables-*/
+
+    // partition all other sets
+    partition_all(coords->set, my_rank, comm_size);
+
+    // migrate data, sort elements
+    migrate_all(my_rank, comm_size);
+
+    // renumber mapping tables
+    renumber_maps(my_rank, comm_size);
+
+    op_timers(&cpu_t2, &wall_t2); // timer stop for partitioning
+
+    // printf time for partitioning
+    time = wall_t2 - wall_t1;
+    MPI_Reduce(&time, &max_time, 1, MPI_DOUBLE, MPI_MAX, MPI_ROOT, OP_PART_WORLD);
+    MPI_Comm_free(&OP_PART_WORLD);
+    if (my_rank == MPI_ROOT)
+        printf("Max total geometric partitioning time = %lf\n", max_time);
+    
+    opp_printf("opp_partition_geom", "end");
+}
 
 #ifdef __cplusplus
 }

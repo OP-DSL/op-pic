@@ -61,7 +61,7 @@ int main(int argc, char **argv)
     double dt = params.get<OPP_REAL>("dt");
     double ion_velocity = params.get<OPP_REAL>("ion_velocity");
     double spwt = params.get<OPP_REAL>("spwt");
-    double mass = 2 * AMU;
+    double mass = 20 * AMU;
     double charge = 1 * QE;
     int max_iter = params.get<OPP_INT>("max_iter");
     int ts = 0;
@@ -85,8 +85,8 @@ int main(int argc, char **argv)
     mesh->n_cells  = opp_get_uniform_local_size(gn_cells);
     mesh->n_ifaces = opp_get_uniform_local_size(gn_ifaces);
     
-    opp_printf("Main()", OPP_my_rank, "Global counts - Nodes[%d] Cells[%d] IFaces[%d]", gn_nodes, gn_cells, gn_ifaces);
-    opp_printf("Main()", OPP_my_rank, "Before partitioning - Nodes[%d] Cells[%d] IFaces[%d]", mesh->n_nodes, mesh->n_cells, mesh->n_ifaces);
+    if (OPP_my_rank == OPP_MPI_ROOT) opp_printf("Main()", "Global counts - Nodes[%d] Cells[%d] IFaces[%d]", gn_nodes, gn_cells, gn_ifaces);
+    // opp_printf("Main()", "Before partitioning - Nodes[%d] Cells[%d] IFaces[%d]", mesh->n_nodes, mesh->n_cells, mesh->n_ifaces);
 
     mesh->CreateMeshArrays();
 
@@ -111,12 +111,14 @@ opp_uniform_scatter_array(xxx, l_ifaces, gn_ifaces, mesh->n_ifaces, 1);
     opp_uniform_scatter_array(g_mesh->cell_det           , mesh->cell_det           , gn_cells , mesh->n_cells , DET_FIELDS * NEIGHBOUR_CELLS); 
     opp_uniform_scatter_array(g_mesh->cell_volume        , mesh->cell_volume        , gn_cells , mesh->n_cells , 1); 
     opp_uniform_scatter_array(g_mesh->cell_shape_deriv   , mesh->cell_shape_deriv   , gn_cells , mesh->n_cells , NODES_PER_CELL*DIMENSIONS); 
+    opp_uniform_scatter_array(g_mesh->cell_color         , mesh->cell_color         , gn_cells , mesh->n_cells , 1);
     opp_uniform_scatter_array(g_mesh->node_bnd_pot       , mesh->node_bnd_pot       , gn_nodes , mesh->n_nodes , 1); 
     opp_uniform_scatter_array(g_mesh->node_pot           , mesh->node_pot           , gn_nodes , mesh->n_nodes , 1); 
     opp_uniform_scatter_array(g_mesh->node_ion_den       , mesh->node_ion_den       , gn_nodes , mesh->n_nodes , 1); 
     opp_uniform_scatter_array(g_mesh->node_pos           , mesh->node_pos           , gn_nodes , mesh->n_nodes , DIMENSIONS); 
     opp_uniform_scatter_array(g_mesh->node_volume        , mesh->node_volume        , gn_nodes , mesh->n_nodes , 1);
     opp_uniform_scatter_array(g_mesh->node_type          , mesh->node_type          , gn_nodes , mesh->n_nodes , 1);
+    opp_uniform_scatter_array(g_mesh->node_color         , mesh->node_color         , gn_nodes , mesh->n_nodes , 1);
     opp_uniform_scatter_array(g_mesh->node_bnd_pot       , mesh->node_bnd_pot       , gn_nodes , mesh->n_nodes , 1);
     opp_uniform_scatter_array(g_mesh->iface_to_cell      , mesh->iface_to_cell      , gn_ifaces, mesh->n_ifaces, 1); 
     opp_uniform_scatter_array(g_mesh->iface_to_nodes     , mesh->iface_to_nodes     , gn_ifaces, mesh->n_ifaces, DIMENSIONS); 
@@ -153,6 +155,7 @@ opp_uniform_scatter_array(xxx, l_ifaces, gn_ifaces, mesh->n_ifaces, 1);
     oppic_dat cell_shape_deriv     = oppic_decl_dat(cells_set, (NODES_PER_CELL*DIMENSIONS),  OPP_TYPE_REAL, (char*)mesh->cell_shape_deriv, "cell_shape_deriv"); 
 oppic_dat cell_global_idx         = oppic_decl_dat(cells_set, 1,                            OPP_TYPE_INT, (char*)l_cells,      "cell_global_idx"); 
 oppic_dat cell_part_count         = oppic_decl_dat(cells_set, 1,                            OPP_TYPE_INT, (char*)l_cells,      "cell_part_count"); // we just need to create a dat, reset before use
+oppic_dat cell_colors              = oppic_decl_dat(cells_set, 1,          OPP_TYPE_INT, (char*)mesh->cell_color,      "cell_colors"); // POPULATE CELL_COLOURS
 
     oppic_dat node_volume          = oppic_decl_dat(nodes_set, 1,          OPP_TYPE_REAL, (char*)mesh->node_volume,  "node_volume");        
     oppic_dat node_potential       = oppic_decl_dat(nodes_set, 1,          OPP_TYPE_REAL, (char*)mesh->node_pot,     "node_potential");     
@@ -160,7 +163,8 @@ oppic_dat cell_part_count         = oppic_decl_dat(cells_set, 1,                
     oppic_dat node_pos             = oppic_decl_dat(nodes_set, DIMENSIONS, OPP_TYPE_REAL, (char*)mesh->node_pos,     "node_pos");     
     oppic_dat node_type            = oppic_decl_dat(nodes_set, 1,          OPP_TYPE_INT,  (char*)mesh->node_type,    "node_type");
     oppic_dat node_bnd_pot         = oppic_decl_dat(nodes_set, 1,          OPP_TYPE_REAL, (char*)mesh->node_bnd_pot, "node_bnd_pot");
-oppic_dat node_global_idx         = oppic_decl_dat(nodes_set, 1,                            OPP_TYPE_INT, (char*)l_nodes,      "node_global_idx"); 
+oppic_dat node_global_idx          = oppic_decl_dat(nodes_set, 1,          OPP_TYPE_INT, (char*)l_nodes,      "node_global_idx"); 
+oppic_dat node_colors              = oppic_decl_dat(nodes_set, 1,          OPP_TYPE_INT, (char*)mesh->node_color,      "node_colors"); // POPULATE NODE_COLOURS
 
     oppic_dat iface_v_normal       = oppic_decl_dat(ifaces_set, DIMENSIONS, OPP_TYPE_REAL, (char*)mesh->iface_v_normal,      "iface_v_normal");        
     oppic_dat iface_u_normal       = oppic_decl_dat(ifaces_set, DIMENSIONS, OPP_TYPE_REAL, (char*)mesh->iface_u_normal,      "iface_u_normal"); 
@@ -188,7 +192,7 @@ oppic_dat iface_global_idx         = oppic_decl_dat(ifaces_set, 1,              
 if (false)
 {
     std::string f = std::string("Init_") + std::to_string(OPP_my_rank);
-    oppic_print_map_to_txtfile(cell_to_nodes_map  , f.c_str(), "cell_to_nodes_map.dat");
+    // oppic_print_map_to_txtfile(cell_to_nodes_map  , f.c_str(), "cell_to_nodes_map.dat");
     // oppic_print_map_to_txtfile(cell_to_nodes_map  , f.c_str(), "cell_to_nodes_map.dat");
     // oppic_print_map_to_txtfile(cell_to_cell_map  , f.c_str(), "cell_to_cell_map.dat");
     // oppic_print_dat_to_txtfile(cell_volume  , f.c_str(), "cell_volume.dat");
@@ -200,18 +204,21 @@ if (false)
     // oppic_print_dat_to_txtfile(iface_global_idx  , f.c_str(), "iface_global_idx.dat");
     // oppic_print_dat_to_txtfile(node_global_idx  , f.c_str(), "node_global_idx.dat");
     // oppic_print_dat_to_txtfile(cell_global_idx  , f.c_str(), "cell_global_idx.dat");
+    oppic_print_dat_to_txtfile(node_colors  , f.c_str(), "node_colors.dat");
 }
 
     mesh->DeleteValues();
 
-    opp_partition(cells_set, cell_to_nodes_map);
-
-    opp_printf("Main()", "After partitioning - Nodes[%d] Cells[%d] IFaces[%d]", mesh->n_nodes, mesh->n_cells, mesh->n_ifaces);
+    // opp_partition(std::string("PARMETIS_KWAY"), cells_set, cell_to_nodes_map);
+    // opp_partition(std::string("PARMETIS_GEOM"), ifaces_set, nullptr, iface_node_pos);
+    // opp_partition(std::string("EXTERNAL"), nodes_set, nullptr, node_colors);
+    opp_partition(std::string("EXTERNAL"), cells_set, nullptr, cell_colors);
+    // opp_partition(std::string(""), nullptr, nullptr, nullptr);
 
     int n_parts_to_inject = InitializeInjectDistributions(params, iface_inj_part_dist, iface_area, dummy_part_random);
 
-    opp_printf("Main()", "After partitioning - Nodes[%d] Cells[%d] IFaces[%d] n_parts_to_inject[%d]", 
-        nodes_set->size, cells_set->size, ifaces_set->size, n_parts_to_inject);
+    // opp_printf("Main()", "After partitioning - Nodes[%d] Cells[%d] IFaces[%d] n_parts_to_inject[%d]", 
+    //     nodes_set->size, cells_set->size, ifaces_set->size, n_parts_to_inject);
 
     std::shared_ptr<FESolver> solver = std::make_shared<FESolver>(&params, cell_to_nodes_map, node_type, node_pos, node_bnd_pot, argc, argv);
     solver->enrich_cell_shape_deriv(cell_shape_deriv);
@@ -231,6 +238,8 @@ if (false)
     oppic_print_dat_to_txtfile(node_global_idx  , f.c_str(), "node_global_idx.dat");
     oppic_print_dat_to_txtfile(cell_global_idx  , f.c_str(), "cell_global_idx.dat");
     // oppic_print_dat_to_txtfile(cell_part_count  , f.c_str(), "cell_part_count.dat");
+    oppic_print_dat_to_txtfile(cell_shape_deriv  , "AAA", "cell_shape_deriv.dat");
+    opp_mpi_print_dat_to_txtfile(cell_determinants, "cell_determinants.dat");
 }
 
     auto start = std::chrono::system_clock::now();

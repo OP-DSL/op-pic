@@ -203,6 +203,8 @@ typedef op_import_core *op_import_handle;
 extern "C" {
 #endif
 void opp_partition_kway(op_map primary_map);
+void opp_partition_external(op_set primary_set, op_dat partvec);
+void opp_partition_geom(op_dat coords);
 void opp_partition_destroy();
 
 /* static */ void partition_all(op_set primary_set, int my_rank, int comm_size);
@@ -299,8 +301,8 @@ inline void opp_uniform_scatter_array(T *g_array, T *l_array, int g_size, int l_
 
 /*******************************************************************************/
 
-void opp_partition(op_set prime_set, op_map prime_map, op_dat data = NULL);
-void opp_partition_core(op_set prime_set, op_map prime_map, op_dat data);
+void opp_partition(std::string lib_name, op_set prime_set, op_map prime_map = nullptr, op_dat data = nullptr);
+void opp_partition_core(std::string lib_name, op_set prime_set, op_map prime_map, op_dat data);
 
 opp_move_var opp_get_move_var();
 

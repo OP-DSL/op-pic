@@ -47,6 +47,8 @@ FESolver::FESolver(
     n_elements_set      = cell_to_nodes_map->from->size;
     n_elements_inc_halo = cell_to_nodes_map->from->size + cell_to_nodes_map->from->exec_size; // we need to use only the execute halos and not non exec halos
 
+    // opp_printf("FESolver", "n_nodes_set %d | n_nodes_inc_halo %d | n_elements_set %d | n_elements_inc_halo %d", n_nodes_set, n_nodes_inc_halo, n_elements_set, n_elements_inc_halo);
+
     for (std::size_t i = 0; i < n_nodes_set; i++) // TODO : DO NOT CALCULATE SOLUTION FOR IMPORT NON EXEC, the owning rank will do that
         if (((int*)node_type_dat->data)[i] == NORMAL || ((int*)node_type_dat->data)[i] == OPEN) 
             neq++;
@@ -271,7 +273,7 @@ void FESolver::initPetscStructures()
     KSPSetTolerances(ksp, 1.e-100, 1.e-100, PETSC_DEFAULT , PETSC_DEFAULT); 
     KSPSetFromOptions(ksp); 
 
-    PetscViewerSetFormat(PETSC_VIEWER_STDOUT_WORLD, PETSC_VIEWER_ASCII_MATLAB);
+    //PetscViewerSetFormat(PETSC_VIEWER_STDOUT_WORLD, PETSC_VIEWER_ASCII_MATLAB);
 
     vecCol           = new int[neq];
     matCol           = new int[neq];
@@ -735,6 +737,8 @@ void FESolver::enrich_cell_shape_deriv(oppic_dat cell_shape_deriv)
 void FESolver::addKe(double** K, int e, double ke[4][4]) // BUG : K is not created correctly
 { //TRACE_ME;
 
+    if (neq <= 0) return;
+
     for (int a=0;a<4;a++)         /*tetrahedra*/
     {
         for (int b=0;b<4;b++) 
@@ -760,6 +764,8 @@ void FESolver::addKe(double** K, int e, double ke[4][4]) // BUG : K is not creat
 void FESolver::addFe(Vec *Fvec, int e, double fe[4]) 
 { //TRACE_ME;
 
+    if (neq <= 0) return;
+    
     for (int a=0;a<4;a++)    /*tetrahedra*/ 
     {
         int P = LM[e][a];

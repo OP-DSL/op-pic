@@ -425,27 +425,59 @@ void oppic_mpi_set_dirtybit(int nargs, oppic_arg *args)
 }
 
 //*******************************************************************************
-void opp_partition(op_set prime_set, op_map prime_map, op_dat data)
+void opp_partition(std::string lib_name, op_set prime_set, op_map prime_map, op_dat data)
 {
     // remove all negative mappings and copy the first mapping of the current element for all negative mappings
     opp_sanitize_all_maps();
 
-    opp_partition_core(prime_set, prime_map, data);
+    opp_partition_core(lib_name, prime_set, prime_map, data);
 
     opp_desanitize_all_maps();
 }
 
 //*******************************************************************************
-void opp_partition_core(op_set prime_set, op_map prime_map, op_dat data)
+void opp_partition_core(std::string lib_name, op_set prime_set, op_map prime_map, op_dat data)
 {
-    if (prime_map != NULL)
+    if (lib_name == "PARMETIS_KWAY")
     {
-        opp_partition_kway(prime_map); // use parmetis kaway partitioning
+        if (prime_map != NULL)
+        {
+            opp_partition_kway(prime_map); // use parmetis kway partitioning
+        }
+        else
+        {
+            opp_printf("opp_partition", "Error: Partitioning prime_map : NULL - UNSUPPORTED Partitioner Specification");
+            MPI_Abort(OP_MPI_WORLD, 1);
+        }
     }
-    else
+    else if (lib_name == "PARMETIS_GEOM")
     {
-        std::cerr << "Partitioning prime_map : NULL - UNSUPPORTED Partitioner Specification" << std::endl;
-        exit(-1);
+        if (data != NULL)
+        {
+            opp_partition_geom(data); // use parmetis geometric partitioning
+        }
+        else
+        {
+            opp_printf("opp_partition", "Error: Partitioning geom dat : NULL - UNSUPPORTED Partitioner Specification");
+            MPI_Abort(OP_MPI_WORLD, 1);
+        }
+    }
+    else if (lib_name == "EXTERNAL")
+    {
+        if (data != NULL)
+        {
+            opp_partition_external(prime_set, data); // use external partitioning dat
+        }
+        else
+        {
+            opp_printf("opp_partition", "Error: Partitioning color dat : NULL - UNSUPPORTED Partitioner Specification");
+            MPI_Abort(OP_MPI_WORLD, 1);
+        }
+    }
+    else if (lib_name != "")
+    {
+        opp_printf("opp_partition", "Error: Unsupported lib_name [%s] - UNSUPPORTED Partitioner Specification", lib_name.c_str());
+        MPI_Abort(OP_MPI_WORLD, 1);
     }
 
     opp_halo_create();
@@ -453,13 +485,13 @@ void opp_partition_core(op_set prime_set, op_map prime_map, op_dat data)
     // TODO : I think this sanity check is wrong, in cell->nodes mapping there can be nodes indexed in import non-exec halo,
     // hence the mapping is obvously greater than to_set->size 
         // sanity check to identify if the partitioning results in ophan elements
-        int ctr = 0;
-        for (int i = 0; i < prime_map->from->size; i++)
-        {
-            if (prime_map->map[2 * i] >= prime_map->to->size && prime_map->map[2 * i + 1] >= prime_map->to->size) 
-                ctr++;
-        }
-        opp_printf("opp_partition()", "%s Orphans in prime map [%s]: %d", (ctr > 0) ? "Error:" : "", prime_map->name, ctr);
+        // int ctr = 0;
+        // for (int i = 0; i < prime_map->from->size; i++)
+        // {
+        //     if (prime_map->map[2 * i] >= prime_map->to->size && prime_map->map[2 * i + 1] >= prime_map->to->size) 
+        //         ctr++;
+        // }
+        // opp_printf("opp_partition()", "%s Orphans in prime map [%s]: %d", (ctr > 0) ? "Error:" : "", prime_map->name, ctr);
 
     opp_part_comm_init(); 
 

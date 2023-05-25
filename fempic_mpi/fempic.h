@@ -15,6 +15,8 @@
 #include "fempic_ori/maths.h"
 #include "FESolver.h"
 
+#include "cluster.h"
+
 using namespace std;
 
 #define USE_RAND_FILE
@@ -56,12 +58,14 @@ class FieldPointers
             if (cell_ef) delete[] cell_ef;
             if (cell_det) delete[] cell_det;
             if (cell_volume) delete[] cell_volume;
+            if (cell_color) delete[] cell_color;
             if (node_bnd_pot) delete[] node_bnd_pot;
             if (node_pot) delete[] node_pot;
             if (node_ion_den) delete[] node_ion_den;
             if (node_pos) delete[] node_pos;
             if (node_volume) delete[] node_volume;
             if (node_type) delete[] node_type;
+            if (node_color) delete[] node_color;
             if (iface_to_cell) delete[] iface_to_cell;
             if (iface_to_nodes) delete[] iface_to_nodes;
             if (iface_v_normal) delete[] iface_v_normal;
@@ -79,6 +83,7 @@ class FieldPointers
             cell_det = nullptr;
             cell_volume = nullptr; 
             cell_shape_deriv = nullptr;
+            cell_color = nullptr;
 
             node_bnd_pot = nullptr;
             node_pot = nullptr;
@@ -86,6 +91,7 @@ class FieldPointers
             node_pos = nullptr;
             node_volume = nullptr; 
             node_type = nullptr;
+            node_color = nullptr;
 
             iface_to_cell = nullptr;    
             iface_to_nodes = nullptr;   
@@ -106,6 +112,7 @@ class FieldPointers
             cell_det         = new double[n_cells * DET_FIELDS * NEIGHBOUR_CELLS]; // arranged as [alpha,beta,gamma,delta] * 4 neighbours
             cell_volume      = new double[n_cells];
             cell_shape_deriv = new double[n_cells * NODES_PER_CELL*DIMENSIONS]; // arranged as [x,y,z] * 4 neighbours
+            cell_color       = new int[n_cells];
 
             node_bnd_pot     = new double[n_nodes];
             node_pot         = new double[n_nodes];
@@ -113,6 +120,7 @@ class FieldPointers
             node_pos         = new double[n_nodes * DIMENSIONS];
             node_volume      = new double[n_nodes];
             node_type        = new int[n_nodes];
+            node_color       = new int[n_nodes];
 
             iface_to_cell    = new int[n_ifaces];
             iface_to_nodes   = new int[n_ifaces * DIMENSIONS]; 
@@ -135,6 +143,7 @@ class FieldPointers
         double *cell_det = nullptr;
         double *cell_volume = nullptr; 
         double *cell_shape_deriv = nullptr;
+        int *cell_color = nullptr; 
 
         double *node_bnd_pot = nullptr;
         double *node_pot = nullptr;
@@ -142,6 +151,7 @@ class FieldPointers
         double *node_pos = nullptr;
         double *node_volume = nullptr; 
         int *node_type = nullptr; 
+        int *node_color = nullptr; 
 
         int *iface_to_cell = nullptr;         // cell_con
         int *iface_to_nodes = nullptr;        // con[3]; 
@@ -190,8 +200,6 @@ inline int InitializeInjectDistributions(opp::Params& params, oppic_dat iface_in
     }
 
     oppic_increase_particle_count(dummy_random->set, (max_inject_count_per_face + INJ_EXCESS));
-
-// TODO : Number of random num = Max injections out of all ifaces, no need all
 
 #ifdef USE_RAND_FILE
     opp_printf("InitializeInjectDistributions", "n_inject_count %d max_inject_count_per_face %d", n_inject_count, max_inject_count_per_face);    
@@ -327,8 +335,7 @@ inline std::shared_ptr<FieldPointers> LoadMesh(opp::Params& params, int argc, ch
             mesh->cell_shape_deriv[cellID * (NODES_PER_CELL*DIMENSIONS) + nodeCon * DIMENSIONS + 1 ] = 0.0;
             mesh->cell_shape_deriv[cellID * (NODES_PER_CELL*DIMENSIONS) + nodeCon * DIMENSIONS + 2 ] = 0.0;
         }
-// printf("X %d %d %d %d\n", mesh->cell_to_nodes[cellID * NODES_PER_CELL],mesh->cell_to_nodes[cellID * NODES_PER_CELL + 1],
-// mesh->cell_to_nodes[cellID * NODES_PER_CELL + 2],mesh->cell_to_nodes[cellID * NODES_PER_CELL + 3]);        
+
         for (int cellCon=0; cellCon<NEIGHBOUR_CELLS; cellCon++)
         {
             mesh->cell_to_cell[cellID * NEIGHBOUR_CELLS + cellCon]     = tet.cell_con[cellCon];
@@ -366,37 +373,189 @@ inline std::shared_ptr<FieldPointers> LoadMesh(opp::Params& params, int argc, ch
         }
     }
 
+    // Cluster iface centroids and assign nodes to the rank on the major particle movement axis z
+    // std::vector<Point3D> face_points;
+    
+    // for (int faceID=0; faceID<mesh->n_ifaces; faceID++)
+    // {
+    //     Face &face = volume->inlet_faces[faceID];
+        
+    //     const Point3D *node0_pos = reinterpret_cast<Point3D*>(volume->nodes[face.con[0]].pos);
+    //     const Point3D *node1_pos = reinterpret_cast<Point3D*>(volume->nodes[face.con[1]].pos);
+    //     const Point3D *node2_pos = reinterpret_cast<Point3D*>(volume->nodes[face.con[2]].pos);
 
+    //     face_points.push_back(getTriangleCentroid3D(*node0_pos, *node1_pos, *node2_pos));
+    // }
 
-    double plasma_den = params.get<OPP_REAL>("plasma_den");
-    double dt = params.get<OPP_REAL>("dt");
-    double ion_velocity = params.get<OPP_REAL>("ion_velocity");
-    double spwt = params.get<OPP_REAL>("spwt");
+    // std::vector<int> cluster_assignments = kMeansClustering3D(face_points, OPP_comm_size);
 
-    mesh->n_approx_injected = 0;
-    double remainder = 0.0;
+    // std::vector<Point3D> cluster_centroids = calculateCentroids3D(face_points, cluster_assignments);
 
+    // // Print cluster assignments
+    // if (OP_DEBUG)
+    // {
+    //     for (int i = 0; i < face_points.size(); ++i) {
+    //         std::cout << "[" << face_points[i].x << "," << face_points[i].y << "," << face_points[i].z << "], ";
+    //     }
+    
+    //     std::cout << std::endl << std::endl;
+
+    //     for (int i = 0; i < cluster_assignments.size(); ++i) {
+    //         std::cout << cluster_assignments[i] << ",";
+    //     }
+
+    //     std::cout << std::endl << std::endl;
+
+    //     for (int i = 0; i < cluster_centroids.size(); ++i) {
+    //         std::cout << "[" << cluster_centroids[i].x << ","<< cluster_centroids[i].y << ","<< cluster_centroids[i].z << "], ";
+    //     }
+    // }
+
+    // std::cout << std::endl << std::endl;
+    // bool color_found = false;
+
+    // for (int n=0; n<mesh->n_nodes; n++) {
+    //     Node &node = volume->nodes[n];
+    //     const Point3D *node_pos = reinterpret_cast<Point3D*>(node.pos);
+    //     color_found = false;
+
+    //     for (int faceID=0; faceID<mesh->n_ifaces; faceID++) {
+    //         Face &face = volume->inlet_faces[faceID];
+            
+    //         const Point3D *node0_pos = reinterpret_cast<Point3D*>(volume->nodes[face.con[0]].pos);
+    //         const Point3D *node1_pos = reinterpret_cast<Point3D*>(volume->nodes[face.con[1]].pos);
+    //         const Point3D *node2_pos = reinterpret_cast<Point3D*>(volume->nodes[face.con[2]].pos);
+
+    //         bool isInTriangle = isPointInTriangle(*node_pos, *node0_pos, *node1_pos, *node2_pos);
+    
+    //         if (isInTriangle) {
+    //             mesh->node_color[n] = cluster_assignments[faceID];
+    //             color_found = true;
+    //             break;
+    //         }
+    //     }
+
+    //     if (!color_found) {
+    //         // if not found, then assign to the closest cluster centroid
+
+    //         double min_idx = std::numeric_limits<double>::max();
+    //         for (int i = 0; i < cluster_centroids.size(); ++i) {
+    //             double d = euclideanDistancePlaneXY(cluster_centroids[i], *node_pos);
+    //             if (d < min_idx) {
+    //                 min_idx = d;
+    //                 mesh->node_color[n] = cluster_assignments[i];
+    //             }
+    //         }
+
+    //         // opp_printf("Setup", "Error... Couldnt find colour for node ,[%lf,%lf]", node_pos->x, node_pos->y);
+    //     }
+    // }
+
+    // int* counts = new int[OPP_comm_size];
+    // for (int n=0; n<OPP_comm_size; n++) 
+    //     counts[n] = 0;
+
+    // for (int n=0; n<mesh->n_nodes; n++) {
+    //     counts[mesh->node_color[n]]++;
+    // }
+
+    // if (OP_DEBUG)
+    // {
+    //     for (int n=0; n<OPP_comm_size; n++) {
+    //         opp_printf("Setup", "Rank|nodes %d %d", n, counts[n]);
+    //     }
+    // }   
+
+    // Cluster iface centroids and assign cells to the rank on the major particle movement axis z
+
+    std::vector<Point3D> face_points;
+    
     for (int faceID=0; faceID<mesh->n_ifaces; faceID++)
-    {   
-        {   // DUPLICATE: This calculation is in kernels
-            double num_per_sec = plasma_den * ion_velocity * mesh->iface_area[faceID];
-            double num_real = num_per_sec * dt;
-            double fnum_mp = num_real / spwt + remainder;
-            int num_mp = (int)fnum_mp;
-            remainder = fnum_mp - num_mp;
-            mesh->n_approx_injected += num_mp;
+    {
+        Face &face = volume->inlet_faces[faceID];
+        
+        const Point3D *node0_pos = reinterpret_cast<Point3D*>(volume->nodes[face.con[0]].pos);
+        const Point3D *node1_pos = reinterpret_cast<Point3D*>(volume->nodes[face.con[1]].pos);
+        const Point3D *node2_pos = reinterpret_cast<Point3D*>(volume->nodes[face.con[2]].pos);
+
+        face_points.push_back(getTriangleCentroid3D(*node0_pos, *node1_pos, *node2_pos));
+    }
+
+    std::vector<int> cluster_assignments = kMeansClustering3D(face_points, OPP_comm_size);
+
+    std::vector<Point3D> cluster_centroids = calculateCentroids3D(face_points, cluster_assignments);
+
+    // Print cluster assignments
+    if (OP_DEBUG)
+    {
+        for (int i = 0; i < face_points.size(); ++i) {
+            std::cout << "[" << face_points[i].x << "," << face_points[i].y << "," << face_points[i].z << "], ";
+        }
+    
+        std::cout << std::endl << std::endl;
+
+        for (int i = 0; i < cluster_assignments.size(); ++i) {
+            std::cout << cluster_assignments[i] << ",";
+        }
+
+        std::cout << std::endl << std::endl;
+
+        for (int i = 0; i < cluster_centroids.size(); ++i) {
+            std::cout << "[" << cluster_centroids[i].x << ","<< cluster_centroids[i].y << ","<< cluster_centroids[i].z << "], ";
         }
     }
 
-    mesh->n_approx_injected += 100; // Add a few (100) for safety
-    
-    mesh->dummy_part_random  = new double[mesh->n_approx_injected * 2]; 
+    std::cout << std::endl << std::endl;
+    bool color_found = false;
 
-    for (int i=0; i<mesh->n_approx_injected; i++)
-    {   
-        mesh->dummy_part_random[i * 2 + 0] = rnd();
-        mesh->dummy_part_random[i * 2 + 1] = rnd();
+    for (int cellID=0; cellID<mesh->n_cells; cellID++)
+    {
+        Tetra &tet = volume->elements[cellID];
+        
+        const Point3D *node0_pos = reinterpret_cast<Point3D*>(volume->nodes[tet.con[0]].pos);
+        const Point3D *node1_pos = reinterpret_cast<Point3D*>(volume->nodes[tet.con[1]].pos);
+        const Point3D *node2_pos = reinterpret_cast<Point3D*>(volume->nodes[tet.con[2]].pos);
+        const Point3D *node3_pos = reinterpret_cast<Point3D*>(volume->nodes[tet.con[3]].pos);
+
+        const Point3D cell_pos = getTetraCentroid3D(*node0_pos, *node1_pos, *node2_pos, *node3_pos);
+
+        color_found = false;
+
+        for (int faceID=0; faceID<mesh->n_ifaces; faceID++) {
+            Face &face = volume->inlet_faces[faceID];
+            
+            const Point3D *face_node0_pos = reinterpret_cast<Point3D*>(volume->nodes[face.con[0]].pos);
+            const Point3D *face_node1_pos = reinterpret_cast<Point3D*>(volume->nodes[face.con[1]].pos);
+            const Point3D *face_node2_pos = reinterpret_cast<Point3D*>(volume->nodes[face.con[2]].pos);
+
+            bool isInTriangle = isPointInTriangle(cell_pos, *face_node0_pos, *face_node1_pos, *face_node2_pos);
+    
+            if (isInTriangle) {
+                mesh->cell_color[cellID] = cluster_assignments[faceID];
+                color_found = true;
+                break;
+            }
+        }
+
+        if (!color_found) {
+            opp_printf("Setup", "Error... Couldnt find colour for cell ,[%lf,%lf]", cell_pos.x, cell_pos.y);
+        }   
     }
+
+    //if (OP_DEBUG)
+    {
+        std::vector<int> counts(OPP_comm_size, 0);
+
+        for (int n=0; n<cluster_assignments.size(); n++)
+            counts[cluster_assignments[n]]++;
+
+        std::string log = "";
+        for (int n=0; n<OPP_comm_size; n++)
+            log += std::to_string(n) + "|" + std::to_string(counts[n]) + " ";
+
+        opp_printf("Setup", "Rank|cells %s", log.c_str());
+    }   
+
 
     return mesh;
 }
