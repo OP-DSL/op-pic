@@ -40,6 +40,16 @@ namespace opp {
         ~Profiler() {} 
 
         /**
+        *  If it is unsure whether routine will be called on all MPI ranks, 
+        *  register the profName prior to avoid deadlocks
+        *  @param 
+        */ 
+        inline void reg(std::string profName) {
+            ProfilerData& profData = m_elapsedTimeMap[profName];  
+            // Do nothing
+        }
+
+        /**
         *  
         *  @param 
         */        

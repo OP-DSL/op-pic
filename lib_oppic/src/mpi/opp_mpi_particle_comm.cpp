@@ -572,6 +572,10 @@ void opp_part_set_comm_init(oppic_set set)
 
     set->mpi_part_buffers = (void*)mpi_buffers;
 
+    opp_profiler->reg("Pack");
+    opp_profiler->reg("Exchange");
+    opp_profiler->reg("Unpack");
+
     if (OP_DEBUG) opp_printf("opp_part_set_comm_init", "set: %s END", set->name); 
 }
 
