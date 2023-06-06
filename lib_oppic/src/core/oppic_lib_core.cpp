@@ -55,8 +55,10 @@ int OPP_comm_size           = 1;
 int OPP_comm_iteration      = 0;
 int OPP_iter_start          = 0;
 int OPP_iter_end            = 0;
+int OPP_main_loop_iter      = 0;
 int *OPP_mesh_relation_data = nullptr;
 opp::Params* opp_params     = nullptr;
+std::unique_ptr<opp::Profiler> opp_profiler = nullptr;
 
 //****************************************
 void oppic_init_core(int argc, char **argv, opp::Params* params) 
@@ -111,6 +113,13 @@ void oppic_exit_core()
         std::string trace_file_name = std::string("trace/trace_") + getTimeStr() + ".csv";
         trace::current.write_profile(trace_file_name);
     #endif
+
+    if (opp_profiler.get())
+    {    
+        if (opp_params->get<OPP_BOOL>("opp_profile_all"))
+            opp_profiler->printProfile(true);
+        opp_profiler->printProfile();
+    }
 }
 
 //****************************************
@@ -447,7 +456,7 @@ oppic_dat oppic_decl_particle_dat_core(oppic_set set, int dim, char const *type,
 
 //****************************************
 bool oppic_increase_particle_count_core(oppic_set particles_set, const int num_particles_to_insert)
-{ TRACE_ME;
+{ 
 
     if (num_particles_to_insert <= 0) return true;
 
@@ -673,10 +682,12 @@ void oppic_remove_marked_particles_from_set_core(oppic_set set, std::vector<int>
 
 //****************************************
 void oppic_particle_sort_core(oppic_set set)
-{ TRACE_ME;
+{ 
     
     if (OP_DEBUG) printf("\toppic_particle_sort set [%s]\n", set->name);
     
+    opp_profiler->start("PartSort");
+
     int* mesh_relation_data = (int*)set->mesh_relation_dat->data;
 
     std::vector<size_t> idx_before_sort = sort_indexes(mesh_relation_data, set->set_capacity);
@@ -717,11 +728,14 @@ void oppic_particle_sort_core(oppic_set set)
     //     }
     //     map[previous_cell_index].end = (set->size - 1);
     // }
+
+    opp_profiler->end("PartSort");
 }
 
 //****************************************
 void oppic_print_dat_to_txtfile_core(oppic_dat dat, const char *file_name_prefix, const char *file_name_suffix)
-{ TRACE_ME;
+{ 
+    opp_profiler->start("PrintFile");
 
     const std::string file_name = std::string("files/") + file_name_prefix + "_" + file_name_suffix; 
 
@@ -806,6 +820,8 @@ void oppic_print_dat_to_txtfile_core(oppic_dat dat, const char *file_name_prefix
     }
     
     fclose(fp);
+
+    opp_profiler->end("PrintFile");
 }
 
 //****************************************
@@ -849,7 +865,8 @@ void oppic_dump_dat_core(oppic_dat data)
 
 //****************************************
 void oppic_print_map_to_txtfile_core(oppic_map map, const char *file_name_prefix, const char *file_name_suffix)
-{ TRACE_ME;
+{ 
+    opp_profiler->start("PrintFile");
 
     const std::string file_name = std::string("files/") + file_name_prefix + "_" + file_name_suffix; 
 
@@ -886,6 +903,8 @@ void oppic_print_map_to_txtfile_core(oppic_map map, const char *file_name_prefix
     }
     
     fclose(fp);
+
+    opp_profiler->end("PrintFile");
 }
  
 //****************************************
@@ -1002,8 +1021,13 @@ void* oppic_load_from_file_core(const char* file_name, int set_size, int dim, ch
 //****************************************
 bool opp_inc_part_count_with_distribution_core(oppic_set particles_set, int num_particles_to_insert, oppic_dat part_dist)
 {
+    opp_profiler->start("IncPartCountWithDistribution");
+
     if (!oppic_increase_particle_count_core(particles_set, num_particles_to_insert))
+    {
+        opp_profiler->end("IncPartCountWithDistribution");
         return false;
+    }
 
     int* part_mesh_connectivity = (int *)particles_set->mesh_relation_dat->data;
     int* distribution           = (int *)part_dist->data;
@@ -1016,6 +1040,8 @@ bool opp_inc_part_count_with_distribution_core(oppic_set particles_set, int num_
         if (i >= distribution[j]) j++; // check whether it is j or j-1    
         part_mesh_connectivity[start + i] = j;
     } 
+
+    opp_profiler->end("IncPartCountWithDistribution");
 
     return true;
 }

@@ -23,3 +23,8 @@ Log*/
 save_*
 *_backup
 outputFolder
+mpi_files*
+vtune*
+scalling*
+build/
+scorep*

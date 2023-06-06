@@ -389,7 +389,7 @@ inline std::shared_ptr<FieldPointers> LoadMesh(opp::Params& params, int argc, ch
 
     // std::vector<int> cluster_assignments = kMeansClustering3D(face_points, OPP_comm_size);
 
-    // std::vector<Point3D> cluster_centroids = calculateCentroids3D(face_points, cluster_assignments);
+    // std::vector<Point3D> cluster_centroids = calculateTriangleCentroids3D(face_points, cluster_assignments);
 
     // // Print cluster assignments
     // if (OP_DEBUG)
@@ -483,30 +483,10 @@ inline std::shared_ptr<FieldPointers> LoadMesh(opp::Params& params, int argc, ch
 
     std::vector<int> cluster_assignments = kMeansClustering3D(face_points, OPP_comm_size);
 
-    std::vector<Point3D> cluster_centroids = calculateCentroids3D(face_points, cluster_assignments);
+    std::vector<Point3D> cluster_centroids = calculateTriangleCentroids3D(face_points, cluster_assignments);
 
-    // Print cluster assignments
-    if (OP_DEBUG)
-    {
-        for (int i = 0; i < face_points.size(); ++i) {
-            std::cout << "[" << face_points[i].x << "," << face_points[i].y << "," << face_points[i].z << "], ";
-        }
-    
-        std::cout << std::endl << std::endl;
-
-        for (int i = 0; i < cluster_assignments.size(); ++i) {
-            std::cout << cluster_assignments[i] << ",";
-        }
-
-        std::cout << std::endl << std::endl;
-
-        for (int i = 0; i < cluster_centroids.size(); ++i) {
-            std::cout << "[" << cluster_centroids[i].x << ","<< cluster_centroids[i].y << ","<< cluster_centroids[i].z << "], ";
-        }
-    }
-
-    std::cout << std::endl << std::endl;
     bool color_found = false;
+    std::vector<double> rank_volume(OPP_comm_size, 0.0);
 
     for (int cellID=0; cellID<mesh->n_cells; cellID++)
     {
@@ -529,10 +509,11 @@ inline std::shared_ptr<FieldPointers> LoadMesh(opp::Params& params, int argc, ch
             const Point3D *face_node2_pos = reinterpret_cast<Point3D*>(volume->nodes[face.con[2]].pos);
 
             bool isInTriangle = isPointInTriangle(cell_pos, *face_node0_pos, *face_node1_pos, *face_node2_pos);
-    
+
             if (isInTriangle) {
-                mesh->cell_color[cellID] = cluster_assignments[faceID];
+                mesh->cell_color[cellID] = cluster_assignments[faceID];    
                 color_found = true;
+                rank_volume[cluster_assignments[faceID]] += (calculateTetraVolume(*node0_pos, *node1_pos, *node2_pos, *node3_pos) * 1000000000);
                 break;
             }
         }
@@ -542,18 +523,62 @@ inline std::shared_ptr<FieldPointers> LoadMesh(opp::Params& params, int argc, ch
         }   
     }
 
-    //if (OP_DEBUG)
+    // Print cluster assignments
+    if (OP_DEBUG)
     {
-        std::vector<int> counts(OPP_comm_size, 0);
+        for (int i = 0; i < face_points.size(); ++i) {
+            std::cout << "[" << face_points[i].x << "," << face_points[i].y << "," << face_points[i].z << "], ";
+        }
+    
+        std::cout << std::endl << std::endl;
+
+        for (int i = 0; i < cluster_assignments.size(); ++i) {
+            std::cout << cluster_assignments[i] << ",";
+        }
+
+        std::cout << std::endl << std::endl;
+
+        for (int i = 0; i < cluster_centroids.size(); ++i) {
+            std::cout << "[" << cluster_centroids[i].x << ","<< cluster_centroids[i].y << ","<< cluster_centroids[i].z << "], ";
+        }
+
+        std::cout << std::endl << std::endl;
+
+        // DEBUG ONLY - to be removed start
+            std::vector<double> face_areas_per_rank(OPP_comm_size, 0.0);
+            for (int faceID=0; faceID<mesh->n_ifaces; faceID++)
+            {
+                Face &face = volume->inlet_faces[faceID];
+                
+                const Point3D *node0_pos = reinterpret_cast<Point3D*>(volume->nodes[face.con[0]].pos);
+                const Point3D *node1_pos = reinterpret_cast<Point3D*>(volume->nodes[face.con[1]].pos);
+                const Point3D *node2_pos = reinterpret_cast<Point3D*>(volume->nodes[face.con[2]].pos);
+
+                face_areas_per_rank[cluster_assignments[faceID]] += std::abs(calculateTriangleArea(*node0_pos, *node1_pos, *node2_pos) * 1000000);
+            }
+            double total = 0.0;
+            std::cout << "face_areas_per_rank (um^2) -> ";
+            for (int i = 0; i < OPP_comm_size; ++i) {
+                total += face_areas_per_rank[i];
+                std::cout << i << "|" << face_areas_per_rank[i] << "|" << rank_volume[i] << " ";
+            }
+            std::cout << " = all|" << total << std::endl << std::endl;
+        // DEBUG ONLY - to be removed end
+
+        std::vector<int> cell_counts(OPP_comm_size, 0);
+        std::vector<int> face_counts(OPP_comm_size, 0);
+
+        for (int n=0; n<mesh->n_cells; n++)
+            cell_counts[mesh->cell_color[n]]++;
 
         for (int n=0; n<cluster_assignments.size(); n++)
-            counts[cluster_assignments[n]]++;
+            face_counts[cluster_assignments[n]]++;
 
         std::string log = "";
         for (int n=0; n<OPP_comm_size; n++)
-            log += std::to_string(n) + "|" + std::to_string(counts[n]) + " ";
+            log += std::to_string(n) + "|" + std::to_string(face_counts[n]) + "|" + std::to_string(cell_counts[n]) + " ";
 
-        opp_printf("Setup", "Rank|cells %s", log.c_str());
+        opp_printf("Setup", "Rank|faces|cells %s", log.c_str());
     }   
 
 

@@ -6,13 +6,13 @@ INC = .
 LIB = lib
 OBJ = obj
 BIN = bin
-
+# scorep-mpiicpc
 CPP        = mpicxx
 MPICPP	   = mpicxx
 NVCC       = nvcc
 HIPCC      = hipcc
 
-CPPFLAGS   = -std=c++11 -Wall -fopenmp -fPIC
+CPPFLAGS   = -std=c++14 -Wall -fopenmp -fPIC
 NVCCFLAGS  = -m64 -Xptxas -dlcm=ca -Xptxas=-v $(NVCCFLAGS_ADD)
 HIPCCFLAGS = -std=c++17 -Wall -isystem -D__HIP_PLATFORM_AMD__
 

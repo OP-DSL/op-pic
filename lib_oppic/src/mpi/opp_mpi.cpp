@@ -62,6 +62,7 @@ void oppic_init(int argc, char **argv, opp::Params* params)
     
     oppic_init_core(argc, argv, params);
 
+    opp_profiler = std::make_unique<opp::Profiler>();
 }
 
 //*******************************************************************************
@@ -649,6 +650,8 @@ void opp_mpi_print_dat_to_txtfile(op_dat dat, const char *file_name)
 
 opp_move_var opp_get_move_var()
 {
+// TODO_IMM : use a buffered opp_move_var instead, could use a global variable and reset
+
     opp_move_var m;
 
     if (OPP_comm_iteration != 0) // TRUE means communicated particles, no need to do the iteration one calculations

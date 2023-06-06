@@ -53,18 +53,23 @@ int main(int argc, char **argv)
     opp::Params params("/ext-home/zl/phd/OP-PIC/scripts/fempic_tests/configs/coarse_1.param"); //argv[1]);
 
     oppic_init(argc, argv, &params);
-
+// oppic_init(argc, argv, nullptr);
+// OP_auto_sort = 0;
+// OP_part_alloc_mult = 100;
+// opp::Params params("/ext-home/zl/phd/OP-PIC/scripts/fempic_tests/configs/coarse_1.param");
     params.write(std::cout);
 
 {
+    opp_profiler->start("Setup");
+
     double plasma_den = params.get<OPP_REAL>("plasma_den");
     double dt = params.get<OPP_REAL>("dt");
     double ion_velocity = params.get<OPP_REAL>("ion_velocity");
     double spwt = params.get<OPP_REAL>("spwt");
-    double mass = 20 * AMU;
+    double mass = 2 * AMU;
     double charge = 1 * QE;
     int max_iter = params.get<OPP_INT>("max_iter");
-    int ts = 0;
+    // int ts = 0;
     int gn_nodes = 0, gn_cells = 0, gn_ifaces = 0; // global mesh counts
 
     std::shared_ptr<FieldPointers> g_mesh = std::make_shared<FieldPointers>();
@@ -85,9 +90,6 @@ int main(int argc, char **argv)
     mesh->n_cells  = opp_get_uniform_local_size(gn_cells);
     mesh->n_ifaces = opp_get_uniform_local_size(gn_ifaces);
     
-    if (OPP_my_rank == OPP_MPI_ROOT) opp_printf("Main()", "Global counts - Nodes[%d] Cells[%d] IFaces[%d]", gn_nodes, gn_cells, gn_ifaces);
-    // opp_printf("Main()", "Before partitioning - Nodes[%d] Cells[%d] IFaces[%d]", mesh->n_nodes, mesh->n_cells, mesh->n_ifaces);
-
     mesh->CreateMeshArrays();
 
 int* xxx = nullptr;
@@ -189,7 +191,10 @@ oppic_dat iface_global_idx         = oppic_decl_dat(ifaces_set, 1,              
     oppic_decl_const<OPP_REAL>(1, &mass,         "CONST_mass");
     oppic_decl_const<OPP_REAL>(1, &charge,       "CONST_charge");
 
-if (false)
+    if (OPP_my_rank == OPP_MPI_ROOT) opp_printf("Main()", " ParticleSize[%d] Global counts - Nodes[%d] Cells[%d] IFaces[%d]", 
+        particles_set->particle_size, gn_nodes, gn_cells, gn_ifaces);
+
+//if (false)
 {
     std::string f = std::string("Init_") + std::to_string(OPP_my_rank);
     // oppic_print_map_to_txtfile(cell_to_nodes_map  , f.c_str(), "cell_to_nodes_map.dat");
@@ -205,6 +210,7 @@ if (false)
     // oppic_print_dat_to_txtfile(node_global_idx  , f.c_str(), "node_global_idx.dat");
     // oppic_print_dat_to_txtfile(cell_global_idx  , f.c_str(), "cell_global_idx.dat");
     oppic_print_dat_to_txtfile(node_colors  , f.c_str(), "node_colors.dat");
+    oppic_print_dat_to_txtfile(cell_colors  , f.c_str(), "cell_colors.dat");
 }
 
     mesh->DeleteValues();
@@ -223,7 +229,7 @@ if (false)
     std::shared_ptr<FESolver> solver = std::make_shared<FESolver>(&params, cell_to_nodes_map, node_type, node_pos, node_bnd_pot, argc, argv);
     solver->enrich_cell_shape_deriv(cell_shape_deriv);
 
-if (false)
+//if (false)
 {
     std::string f = std::string("AfHalo_") + std::to_string(OPP_my_rank);
     // oppic_print_map_to_txtfile(cell_to_nodes_map  , f.c_str(), "cell_to_nodes_map.dat");
@@ -233,14 +239,17 @@ if (false)
     // // oppic_print_dat_to_txtfile(cell_to_nodes_dat  , f.c_str(), "cell_to_nodes_dat.dat");
     // oppic_print_dat_to_txtfile(node_type  , f.c_str(), "node_type.dat");
     // oppic_print_dat_to_txtfile(node_bnd_pot  , f.c_str(), "node_bnd_pot.dat");
-    oppic_print_dat_to_txtfile(dummy_part_random  , f.c_str(), "dummy_part_random.dat");
-    oppic_print_dat_to_txtfile(iface_global_idx  , f.c_str(), "iface_global_idx.dat");
-    oppic_print_dat_to_txtfile(node_global_idx  , f.c_str(), "node_global_idx.dat");
-    oppic_print_dat_to_txtfile(cell_global_idx  , f.c_str(), "cell_global_idx.dat");
-    // oppic_print_dat_to_txtfile(cell_part_count  , f.c_str(), "cell_part_count.dat");
-    oppic_print_dat_to_txtfile(cell_shape_deriv  , "AAA", "cell_shape_deriv.dat");
+    // oppic_print_dat_to_txtfile(dummy_part_random  , f.c_str(), "dummy_part_random.dat");
+    // oppic_print_dat_to_txtfile(iface_global_idx  , f.c_str(), "iface_global_idx.dat");
+    // oppic_print_dat_to_txtfile(node_global_idx  , f.c_str(), "node_global_idx.dat");
+    // oppic_print_dat_to_txtfile(cell_global_idx  , f.c_str(), "cell_global_idx.dat");
+    // // oppic_print_dat_to_txtfile(cell_part_count  , f.c_str(), "cell_part_count.dat");
+    // oppic_print_dat_to_txtfile(cell_shape_deriv  , "AAA", "cell_shape_deriv.dat");
     opp_mpi_print_dat_to_txtfile(cell_determinants, "cell_determinants.dat");
+    opp_mpi_print_dat_to_txtfile(cell_colors, "cell_colors.dat");
 }
+
+    opp_profiler->end("Setup");
 
     auto start = std::chrono::system_clock::now();
     auto start_iter1 = std::chrono::system_clock::now();
@@ -248,9 +257,11 @@ if (false)
 // opp_mpi_print_dat_to_txtfile(node_pos ,  "A_node_pos.dat");
 // opp_mpi_print_dat_to_txtfile(node_volume ,  "A_node_volume.dat");
 
-    for (ts = 0; ts < 100; ts++)
+    opp_profiler->start("MainLoop");
+
+    for (OPP_main_loop_iter = 0; OPP_main_loop_iter < 250; OPP_main_loop_iter++)
     {
-        if (ts == 1) start_iter1 = std::chrono::system_clock::now();
+        if (OPP_main_loop_iter == 1) start_iter1 = std::chrono::system_clock::now();
 
         // if (OPP_my_rank == OPP_MPI_ROOT) 
             //opp_printf("Main()", "Starting main loop iteration %d XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX", ts);
@@ -395,10 +406,12 @@ if (false)
 
             if (OPP_my_rank == OPP_MPI_ROOT)
                 opp_printf("Main()", "ts: %d\t np: %d (%d added, %d removed)\t max den: %2.25lE\t max |phi|: %2.5lE\t ****", 
-                    ts, global_part_size, global_inj_size, global_removed, global_max_den, global_max_phi);
+                    OPP_main_loop_iter, global_part_size, global_inj_size, global_removed, global_max_den, global_max_phi);
         }
     }
 
+    opp_profiler->end("MainLoop");
+    
     std::chrono::duration<double> diff   = std::chrono::system_clock::now() - start;
     std::chrono::duration<double> diff_1 = std::chrono::system_clock::now() - start_iter1;
     
@@ -415,16 +428,25 @@ if (false)
         opp_printf("Main()", "FEMPIC - Time to iterate ts= %d <sec>: %lf and (ts-1) <sec>: %lf\n",
             max_iter, global_diff, global_diff_1);
 
-    // validate the final particle counts in each cell
-    oppic_reset_dat(cell_part_count, (char*)opp_zero_int16);
-    for (int p = 0; p < particles_set->size; p++)
-    {
-        int cell_index    = ((int *)part_mesh_relation->data)[p];
-        ((int *)cell_part_count->data)[cell_index] += 1;
-    }
+
 
     if (false)
     {
+        // validate the final particle counts in each cell
+        oppic_reset_dat(cell_part_count, (char*)opp_zero_int16);
+        for (int p = 0; p < particles_set->size; p++)
+        {
+            int cell_index    = ((int *)part_mesh_relation->data)[p];
+            ((int *)cell_part_count->data)[cell_index] += 1;
+        }
+
+        for (int p = 0; p < nodes_set->size; p++)
+        {
+            ((int *)node_colors->data)[p] = OPP_my_rank;
+        }
+        opp_mpi_print_dat_to_txtfile(node_colors, "node_colors.dat");
+        opp_mpi_print_dat_to_txtfile(node_pos, "node_pos.dat");
+
         opp_mpi_print_dat_to_txtfile(node_charge_density, "node_charge_density.dat");
         opp_mpi_print_dat_to_txtfile(node_potential, "node_potential.dat");
         opp_mpi_print_dat_to_txtfile(cell_electric_field, "cell_electric_field.dat");

@@ -13,13 +13,13 @@ SRC = src
 INC = include
 LIB = lib
 OBJ = obj
-
+# scorep-mpiicpc
 CPP        = mpicxx
 MPICPP	   = mpicxx
 NVCC       = nvcc
 HIPCC      = hipcc
 
-CPPFLAGS   = -std=c++11 -Wall -fopenmp -fPIC
+CPPFLAGS   = -std=c++14 -Wall -fopenmp -fPIC
 NVCCFLAGS  = -m64 -Xptxas -dlcm=ca -Xptxas=-v $(NVCCFLAGS_ADD)
 HIPCCFLAGS = -std=c++11 -isystem -D__HIP_PLATFORM_NVIDIA__ $(NVCCFLAGS_ADD)
 

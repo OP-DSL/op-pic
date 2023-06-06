@@ -1206,7 +1206,7 @@ void opp_halo_destroy()
         free(((op_mpi_buffer)(dat->mpi_reduc_buffer))->buf_nonexec);
         free(((op_mpi_buffer)(dat->mpi_reduc_buffer))->s_req);
         free(((op_mpi_buffer)(dat->mpi_reduc_buffer))->r_req);
-        ((op_mpi_buffer)(dat->mpi_reduc_buffer));
+        free((op_mpi_buffer)(dat->mpi_reduc_buffer));
     }
 }
 
@@ -1316,6 +1316,10 @@ void opp_mpi_halo_exchange(oppic_arg *arg, int exec_flag)
 
         op_mpi_buffer mpi_buffer = (op_mpi_buffer)(dat->mpi_buffer);
 
+        opp_profiler->startMpiComm("", opp::OPP_Mesh);
+
+        double total_send_size = 0.0;
+
         int set_elem_index = -1;
         for (int i = 0; i < exp_exec_list->ranks_size; i++) 
         {
@@ -1335,6 +1339,8 @@ void opp_mpi_halo_exchange(oppic_arg *arg, int exec_flag)
             
             MPI_Isend(&mpi_buffer->buf_exec[exp_exec_list->disps[i] * dat->size], dat->size * exp_exec_list->sizes[i], 
                 MPI_CHAR, exp_exec_list->ranks[i], dat->index, OP_MPI_WORLD, &mpi_buffer->s_req[mpi_buffer->s_num_req++]);
+            
+            total_send_size += (dat->size * exp_exec_list->sizes[i] * 1.0f);
         }
 
         int init = dat->set->size * dat->size;
@@ -1379,6 +1385,8 @@ void opp_mpi_halo_exchange(oppic_arg *arg, int exec_flag)
 
             MPI_Isend(&mpi_buffer->buf_nonexec[exp_nonexec_list->disps[i] * dat->size], dat->size * exp_nonexec_list->sizes[i], 
                 MPI_CHAR, exp_nonexec_list->ranks[i], dat->index, OP_MPI_WORLD, &mpi_buffer->s_req[mpi_buffer->s_num_req++]);
+            
+            total_send_size += (dat->size * exp_nonexec_list->sizes[i] * 1.0f);
         }
 
         int nonexec_init = (dat->set->size + imp_exec_list->size) * dat->size;
@@ -1393,6 +1401,10 @@ void opp_mpi_halo_exchange(oppic_arg *arg, int exec_flag)
             MPI_CHAR, imp_nonexec_list->ranks[i], dat->index, OP_MPI_WORLD, &mpi_buffer->r_req[mpi_buffer->r_num_req++]);
         }
         
+        opp_profiler->addTransferSize("", opp::OPP_Mesh, total_send_size, 1);
+
+        opp_profiler->endMpiComm("", opp::OPP_Mesh);
+
         // clear dirty bit
         dat->dirtybit = 0;
         arg->sent = 1;
@@ -1403,6 +1415,8 @@ void opp_mpi_halo_exchange(oppic_arg *arg, int exec_flag)
 void opp_mpi_halo_wait_all(int nargs, oppic_arg *args)
 {
     if (OP_DEBUG) opp_printf("opp_mpi_halo_wait_all", "START");
+
+    opp_profiler->startMpiComm("", opp::OPP_Mesh);
 
     for (int n = 0; n < nargs; n++) 
     {
@@ -1426,6 +1440,8 @@ void opp_mpi_halo_wait_all(int nargs, oppic_arg *args)
             arg->sent = 2; // set flag to indicate completed comm
         }
     }
+
+    opp_profiler->endMpiComm("", opp::OPP_Mesh);
 
     if (OP_DEBUG) opp_printf("opp_mpi_halo_wait_all", "END");
 }

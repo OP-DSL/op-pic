@@ -63,7 +63,7 @@ void oppic_inject__Increase_particle_count
     oppic_arg arg2,             // iface_inj_part_dist,
     oppic_arg arg3              // remainder global,
 )
-{ TRACE_ME;
+{ // TRACE_ME;
 
     if (FP_DEBUG) opp_printf("FEMPIC", "oppic_inject__Increase_particle_count set_size %d diff %d", set->size, set->diff);
 
@@ -106,9 +106,11 @@ void oppic_par_loop_inject__InjectIons(
     oppic_arg arg8,     // iface_node_pos
     oppic_arg arg9      // dummy_part_random
 )
-{ TRACE_ME;
+{ // TRACE_ME;
 
     if (FP_DEBUG) opp_printf("FEMPIC", "oppic_par_loop_inject__InjectIons set_size %d diff %d", set->size, set->diff);
+    
+    opp_profiler->start("InjectIons");
 
     int inj_start = (set->size - set->diff);
 
@@ -180,8 +182,12 @@ void oppic_par_loop_inject__InjectIons(
     }
 
     oppic_mpi_set_dirtybit(nargs, args);
+
+    opp_profiler->end("InjectIons");
 }
 
+double kernel_time = 0.0;
+size_t loops = 0;
 //*************************************************************************************************
 void oppic_par_loop_particle_all__MoveToCells(
     oppic_set set,      // particles_set
@@ -198,9 +204,11 @@ void oppic_par_loop_particle_all__MoveToCells(
     oppic_arg arg10,    // node_charge_den2,
     oppic_arg arg11     // node_charge_den3,
 )
-{ TRACE_ME;
+{ // TRACE_ME;
 
     if (FP_DEBUG) opp_printf("FEMPIC", "oppic_par_loop_particle_all__MoveToCells set_size %d diff %d", set->size, set->diff);
+
+    opp_profiler->start("MoveToCells");
 
     int nargs = 12;
     oppic_arg args[nargs];
@@ -241,21 +249,26 @@ void oppic_par_loop_particle_all__MoveToCells(
     // }
 
     int set_size = oppic_mpi_halo_exchanges(set, nargs, args);
-
+auto start = std::chrono::system_clock::now();
     // unable to overlap computation and communication, could overlap if particles are sorted according to cell index
     opp_mpi_halo_wait_all(nargs, args); 
 int comm_iteration = 0;
+int max = 0, l = 0;
+std::vector<size_t> counts(5, 0);
     do // iterate until all mpi ranks say, I am done
     {
         oppic_init_particle_move(set, nargs, args);
         
-        if (FP_DEBUG) opp_printf("FEMPIC", "oppic_par_loop_particle_all__MoveToCells Starting iteration %d, start[%d] end[%d]", 
-            OPP_comm_iteration, OPP_iter_start, OPP_iter_end);
-            
+        if (FP_DEBUG) 
+            opp_printf("FEMPIC", "oppic_par_loop_particle_all__MoveToCells Starting iteration %d, start[%d] end[%d]", 
+                OPP_comm_iteration, OPP_iter_start, OPP_iter_end);
+
+        start = std::chrono::system_clock::now();
+
         for (int i = OPP_iter_start; i < OPP_iter_end; i++)
         {
             opp_move_var m = opp_get_move_var();
-
+l = 0;
             do
             { 
                 map0idx = &(OPP_mesh_relation_data[i]);
@@ -280,15 +293,26 @@ int comm_iteration = 0;
                     &((double*) args[8].data)[map3idx],                 // double *node_charge_den2,
                     &((double*) args[8].data)[map4idx]                  // double *node_charge_den3,
                 );
-
+l++;
                 // should check whether map0idx is in halo list, if yes, pack the particle into MPI buffer and set status to NEED_REMOVE
             } while (opp_part_check_status(m, *map0idx, set, i, set->particle_remove_count));
+
+if (max < l) max = l;
+
         }
+
+        std::chrono::duration<double> diff   = std::chrono::system_clock::now() - start;
+        kernel_time += (double)diff.count();
+        loops += (size_t)(OPP_iter_end - OPP_iter_start);
+        counts[comm_iteration] = (size_t)(OPP_iter_end - OPP_iter_start);
 comm_iteration++;
     } while (oppic_finalize_particle_move(set)); // iterate until all mpi ranks say, I am done
 
-if (OPP_my_rank == OPP_MPI_ROOT) // OPP_comm_iteration > 1 && 
-    opp_printf("FEMPIC", "Multiple communication particle hops %d", comm_iteration);
+opp_printf("Main()", "FEMPIC - Time <sec>: %2.25lE particles %zu iter %d | %zu %zu %zu | %d", 
+    kernel_time, loops, comm_iteration, counts[0], counts[1], counts[2], max);
+
+// if (OPP_my_rank == OPP_MPI_ROOT) // OPP_comm_iteration > 1 && 
+//     opp_printf("FEMPIC", "Multiple communication particle loops %d", comm_iteration);
 
     opp_exchange_double_indirect_reductions(nargs, args);
 
@@ -299,6 +323,8 @@ if (OPP_my_rank == OPP_MPI_ROOT) // OPP_comm_iteration > 1 &&
 
     // TODO : Dirty bit should not be set for double indirect reductions, if opp_complete_double_indirect_reductions is called here
     oppic_mpi_set_dirtybit(nargs, args);
+
+    opp_profiler->end("MoveToCells");
 }
 
 //*************************************************************************************************
@@ -307,9 +333,11 @@ void oppic_par_loop_all__ComputeNodeChargeDensity(
     oppic_arg arg0,    // node_charge_density
     oppic_arg arg1     // node_volume
 )
-{ TRACE_ME;
+{ // TRACE_ME;
     
     if (FP_DEBUG) opp_printf("FEMPIC", "oppic_par_loop_all__ComputeNodeChargeDensity set_size %d", set->size);
+
+    opp_profiler->start("ComputeNodeChargeDensity");
 
     int nargs = 2;
     oppic_arg args[nargs];
@@ -335,6 +363,8 @@ void oppic_par_loop_all__ComputeNodeChargeDensity(
     }  
 
     oppic_mpi_set_dirtybit(nargs, args);
+
+    opp_profiler->end("ComputeNodeChargeDensity");
 }
 
 //*************************************************************************************************
@@ -347,9 +377,11 @@ void oppic_par_loop_all__ComputeElectricField(
     oppic_arg arg4,     // node_potential2,
     oppic_arg arg5      // node_potential3,
 )
-{ TRACE_ME;
+{ // TRACE_ME;
 
     if (FP_DEBUG) opp_printf("FEMPIC", "oppic_par_loop_all__ComputeElectricField set_size %d", set->size);
+
+    opp_profiler->start("ComputeElectricField");
 
     int nargs = 6;
     oppic_arg args[nargs];
@@ -388,4 +420,6 @@ void oppic_par_loop_all__ComputeElectricField(
     }  
 
     oppic_mpi_set_dirtybit(nargs, args);
+
+    opp_profiler->end("ComputeElectricField");
 }

@@ -95,6 +95,10 @@ void opp_exchange_double_indirect_reductions(oppic_dat dat, opp_reduc_comm reduc
     halo_list exp_nonexec_list = OP_export_nonexec_list[dat->set->index];
     op_mpi_buffer reduc_buf    = (op_mpi_buffer)(dat->mpi_reduc_buffer);
 
+    opp_profiler->startMpiComm("", opp::OPP_Mesh);
+
+    double total_send_size = 0.0;
+
     // send reduction contributions related to export non-execute lists
     int init = (dat->set->size + dat->set->exec_size) * dat->size;
     for (int i = 0; i < imp_nonexec_list->ranks_size; i++) 
@@ -107,7 +111,11 @@ void opp_exchange_double_indirect_reductions(oppic_dat dat, opp_reduc_comm reduc
         if (OP_DEBUG) opp_printf("opp_exchange_double_indirect_reductions", "SEND SIZE %d", send_size);
 
         MPI_Isend(send_buf, send_size, MPI_CHAR, send_rank, dat->index, OP_MPI_WORLD, req);
+
+        total_send_size += (send_size * 1.0f);
     }
+
+    opp_profiler->addTransferSize("", opp::OPP_Mesh, total_send_size);
 
     // receive reduction contributions related to export non-execute lists
     for (int i = 0; i < exp_nonexec_list->ranks_size; i++) 
@@ -123,6 +131,8 @@ void opp_exchange_double_indirect_reductions(oppic_dat dat, opp_reduc_comm reduc
     }
 
     dat->reduc_comm = reduc_comm;
+
+    opp_profiler->endMpiComm("", opp::OPP_Mesh);
 
     if (OP_DEBUG) opp_printf("opp_exchange_double_indirect_reductions", "END dat %s", dat->name);
 }
@@ -166,10 +176,14 @@ void opp_complete_double_indirect_reductions(oppic_dat dat)
 
     if (OP_DEBUG) opp_printf("opp_complete_double_indirect_reductions", "START dat %s", dat->name);
 
+    opp_profiler->startMpiComm("", opp::OPP_Mesh);
+
     op_mpi_buffer reduc_buf = (op_mpi_buffer)(dat->mpi_reduc_buffer);
 
     MPI_Waitall(reduc_buf->s_num_req, reduc_buf->s_req, MPI_STATUSES_IGNORE);
     MPI_Waitall(reduc_buf->r_num_req, reduc_buf->r_req, MPI_STATUSES_IGNORE);
+
+    opp_profiler->endMpiComm("", opp::OPP_Mesh);
 
     reduc_buf->s_num_req = 0;
     reduc_buf->r_num_req = 0;

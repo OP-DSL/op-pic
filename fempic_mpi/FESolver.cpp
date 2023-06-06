@@ -492,6 +492,8 @@ void FESolver::computePhi(oppic_arg arg0, oppic_arg arg1, oppic_arg arg2)
 
     if (OP_DEBUG) opp_printf("FESolver", "computePhi START");
 
+    opp_profiler->start("ComputePhi");
+
     int nargs = 3;
     oppic_arg args[nargs];
     args[0] = arg0;
@@ -543,6 +545,8 @@ void FESolver::computePhi(oppic_arg arg0, oppic_arg arg1, oppic_arg arg2)
 
     oppic_mpi_set_dirtybit(nargs, args);
 
+    opp_profiler->end("ComputePhi");
+
     if (OP_DEBUG) opp_printf("FESolver", "computePhi DONE");
 }
 
@@ -589,7 +593,9 @@ bool FESolver::linearSolve(double *ion_den)
     MatMult(Kmat, Dvec, Bvec);  // B = K * D
     
     VecAXPY(Bvec, -1.0, F0vec); // B = B - F0
-    
+
+// TODO_IMM : Can build F1 vec here by waiting for halo exch complete. This will overlap some work
+
     VecAXPY(Bvec, -1.0, F1vec); // B = B - F1
 
     buildJmatrix();             // Build J using K and D
@@ -709,6 +715,8 @@ void FESolver::enrich_cell_shape_deriv(oppic_dat cell_shape_deriv)
 {
     if (OP_DEBUG) opp_printf("FESolver", "enrich_cell_shape_deriv START");
 
+    opp_profiler->start("EnrichCellShapeDeriv");
+
     // copying only up to set size, hence import exec halos will be zero
     for (int cellID = 0; cellID < n_elements_inc_halo; cellID++)
     {
@@ -729,6 +737,8 @@ void FESolver::enrich_cell_shape_deriv(oppic_dat cell_shape_deriv)
     oppic_mpi_halo_exchanges(cell_shape_deriv->set, 1, &arg0);  
     opp_mpi_halo_wait_all(1, &arg0);
 #endif
+
+    opp_profiler->end("EnrichCellShapeDeriv");
 
     if (OP_DEBUG) opp_printf("FESolver", "enrich_cell_shape_deriv END");
 }

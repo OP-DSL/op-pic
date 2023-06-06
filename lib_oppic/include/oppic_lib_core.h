@@ -37,12 +37,14 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <iostream>
 #include <trace.h>
 #include <opp_params.h>
+#include <opp_profiler.h>
 #include <oppic_util.h>
 #include <cstring>
 #include <limits.h>
 #include <inttypes.h>
 #include <stdio.h>
 #include <stdarg.h>
+#include <memory>
 
 //*************************************************************************************************
 
@@ -331,12 +333,14 @@ extern int OPP_comm_iteration;
 extern int OPP_iter_start;
 extern int OPP_iter_end;
 extern int *OPP_mesh_relation_data;
+extern int OPP_main_loop_iter;
 
 extern std::vector<oppic_set> oppic_sets;
 extern std::vector<oppic_map> oppic_maps;
 extern std::vector<oppic_dat> oppic_dats;
 
 extern opp::Params* opp_params;
+extern std::unique_ptr<opp::Profiler> opp_profiler;
 
 void* oppic_load_from_file_core(const char* file_name, int set_size, int dim, char const *type, int size);
 
@@ -358,7 +362,7 @@ inline void getDatTypeSize(opp_data_type dtype, std::string& type, int& size)
     }
 }
 
-inline void opp_printf(char* function, int rank, char *format, ...)
+inline void opp_printf(const char* function, int rank, const char *format, ...)
 {
     char buf[LOG_STR_LEN];
     va_list args;
@@ -369,7 +373,7 @@ inline void opp_printf(char* function, int rank, char *format, ...)
     printf("%s[%d] - %s\n", function, rank, buf);
 }
 
-inline void opp_printf(char* function, char *format, ...)
+inline void opp_printf(const char* function, const char *format, ...)
 {
     char buf[LOG_STR_LEN];
     va_list args;
@@ -385,8 +389,6 @@ inline void opp_reduce_dat_element(T* out_dat, const T* in_dat, int dim, opp_red
 {
     for (int d = 0; d < dim; d++)
     {
-// opp_printf("SS", "%lf %lf", in, out);
-
         switch (reduc_comm)
         {
             case OPP_Reduc_SUM_Comm: 
@@ -398,6 +400,8 @@ inline void opp_reduce_dat_element(T* out_dat, const T* in_dat, int dim, opp_red
             case OPP_Reduc_MIN_Comm: 
                 out_dat[d] = MIN(out_dat[d], in_dat[d]);
                 break;
+            default:
+                opp_printf("opp_reduce_dat_element", "Unhandled reduction type");
         }  
     }   
 }

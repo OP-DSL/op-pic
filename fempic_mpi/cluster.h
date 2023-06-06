@@ -60,8 +60,24 @@ inline Point3D getTetraCentroid3D(const Point3D& p1, const Point3D& p2, const Po
     return centroid;
 }
 
+// Calculate the area of a triangle given its three vertices
+inline double calculateTriangleArea(const Point3D& p1, const Point3D& p2, const Point3D& p3) {
+    return 0.5 * ((p2.x - p1.x) * (p3.y - p1.y) - (p3.x - p1.x) * (p2.y - p1.y));
+}
+
+// Check if a point is within a triangle using barycentric coordinates
+inline bool isPointInTriangle(const Point3D& point, const Point3D& p1, const Point3D& p2, const Point3D& p3) {
+    double totalArea = calculateTriangleArea(p1, p2, p3);
+    
+    double alpha = calculateTriangleArea(point, p2, p3) / totalArea;
+    double beta = calculateTriangleArea(p1, point, p3) / totalArea;
+    double gamma = calculateTriangleArea(p1, p2, point) / totalArea;
+    
+    return (alpha >= 0 && beta >= 0 && gamma >= 0);
+}
+
 // Function to calculate the centroids of 3D points with cluster numbers
-inline std::vector<Point3D> calculateCentroids3D(const std::vector<Point3D>& points, const std::vector<int>& clusterNumbers) {
+inline std::vector<Point3D> calculateTriangleCentroids3D(const std::vector<Point3D>& points, const std::vector<int>& clusterNumbers) {
     std::unordered_map<int, std::vector<double>> centroids;
     std::unordered_map<int, int> clusterCounts;
 
@@ -147,18 +163,26 @@ inline std::vector<int> kMeansClustering3D(const std::vector<Point3D>& points, i
     return assignments;
 }
 
-// Calculate the area of a triangle given its three vertices
-inline double calculateTriangleArea(const Point3D& p1, const Point3D& p2, const Point3D& p3) {
-    return 0.5 * ((p2.x - p1.x) * (p3.y - p1.y) - (p3.x - p1.x) * (p2.y - p1.y));
-}
-
-// Check if a point is within a triangle using barycentric coordinates
-inline bool isPointInTriangle(const Point3D& point, const Point3D& p1, const Point3D& p2, const Point3D& p3) {
-    double totalArea = calculateTriangleArea(p1, p2, p3);
+// Function to calculate the volume of a tetrahedron
+inline double calculateTetraVolume(const Point3D& p1, const Point3D& p2,
+                                  const Point3D& p3, const Point3D& p4) {
+    // Calculate the vectors between the vertices
+    double v1x = p2.x - p1.x;
+    double v1y = p2.y - p1.y;
+    double v1z = p2.z - p1.z;
     
-    double alpha = calculateTriangleArea(point, p2, p3) / totalArea;
-    double beta = calculateTriangleArea(p1, point, p3) / totalArea;
-    double gamma = calculateTriangleArea(p1, p2, point) / totalArea;
+    double v2x = p3.x - p1.x;
+    double v2y = p3.y - p1.y;
+    double v2z = p3.z - p1.z;
     
-    return (alpha >= 0 && beta >= 0 && gamma >= 0);
+    double v3x = p4.x - p1.x;
+    double v3y = p4.y - p1.y;
+    double v3z = p4.z - p1.z;
+    
+    // Calculate the volume using the scalar triple product
+    double volume = std::abs(v1x * (v2y * v3z - v3y * v2z)
+                             - v1y * (v2x * v3z - v3x * v2z)
+                             + v1z * (v2x * v3y - v3x * v2y)) / 6.0;
+    
+    return volume;
 }

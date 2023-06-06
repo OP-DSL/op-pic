@@ -12,6 +12,8 @@ void opp_part_pack(oppic_set set, int index, int send_rank)
 {
     // if (OP_DEBUG) opp_printf("opp_part_pack", "set [%s] | index %d | send_rank %d", set->name, index, send_rank);
 
+    opp_profiler->start("Pack");
+
     opp_all_mpi_part_buffers* send_buffers = (opp_all_mpi_part_buffers*)set->mpi_part_buffers;
 
     // check whether send_rank is a neighbour or not
@@ -82,6 +84,8 @@ void opp_part_pack(oppic_set set, int index, int send_rank)
     send_rank_buffer.buf_export_index += set->particle_size;
     (send_buffers->export_counts)[send_rank] += 1;
 
+    opp_profiler->end("Pack");
+
     // if (OP_DEBUG) opp_printf("opp_part_pack", "END send_rank %d exported count %d", send_rank, (send_buffers->export_counts)[send_rank]);
 }
 
@@ -89,6 +93,8 @@ void opp_part_pack(oppic_set set, int index, int send_rank)
 void opp_part_unpack(oppic_set set)
 {
     if (OP_DEBUG) opp_printf("opp_part_unpack", "set [%s]", set->name);
+
+    opp_profiler->start("Unpack");
 
     std::vector<oppic_dat>& particle_dats = *(set->particle_dats);
     int num_particles = 0;
@@ -159,6 +165,8 @@ void opp_part_unpack(oppic_set set)
         }
     }
 
+    opp_profiler->end("Unpack");
+
     if (OP_DEBUG) opp_printf("opp_part_unpack", "END");
 }
 
@@ -215,6 +223,8 @@ void opp_part_exchange(oppic_set set)
 {
     if (OP_DEBUG) opp_printf("opp_part_exchange", "set [%s] - particle size [%d]", set->name, set->particle_size);
 
+    opp_profiler->start("Exchange");
+
     opp_all_mpi_part_buffers* mpi_buffers = (opp_all_mpi_part_buffers*)set->mpi_part_buffers;
 
     std::vector<int>& neighbours = mpi_buffers->neighbours;
@@ -230,6 +240,8 @@ void opp_part_exchange(oppic_set set)
     std::vector<MPI_Request> send_req_countEx(neighbour_count);
     std::vector<MPI_Request> recv_req_countEx(neighbour_count);
 
+    opp_profiler->startMpiComm("", opp::OPP_Particle);
+
     // send/receive send_counts to/from only to neighbours
     for (int i = 0; i < neighbour_count; i++)
     {
@@ -241,6 +253,8 @@ void opp_part_exchange(oppic_set set)
         int& recv_count = mpi_buffers->import_counts[neighbour_rank];
         MPI_Irecv(&recv_count, 1, MPI_INT, neighbour_rank, MPI_COUNT_EXCHANGE, OP_MPI_WORLD, &(recv_req_countEx[i]));
     }
+
+    double total_send_size = 0.0;
 
     // send the particle data only to neighbours
     for (int i = 0; i < neighbour_count; i++)
@@ -266,7 +280,11 @@ void opp_part_exchange(oppic_set set)
         MPI_Request req;
         MPI_Isend(send_buffer, send_size, MPI_CHAR, neighbour_rank, MPI_TAG_PART_EX, OP_MPI_WORLD, &req);
         mpi_buffers->send_req.push_back(req);
+
+        total_send_size += (send_size * 1.0f);
     }
+
+    opp_profiler->addTransferSize("", opp::OPP_Particle, total_send_size, (size_t)(total_send_size / set->particle_size));
 
     // wait for the counts to receive only from neighbours
     MPI_Waitall(neighbour_count, &recv_req_countEx[0], MPI_STATUSES_IGNORE);
@@ -319,6 +337,10 @@ void opp_part_exchange(oppic_set set)
         mpi_buffers->buffers[it->first].buf_export_index = 0; // make the export index of that rank to zero for the next iteration
     }
 
+    opp_profiler->endMpiComm("", opp::OPP_Particle);
+
+    opp_profiler->end("Exchange");
+
     if (OP_DEBUG) opp_printf("opp_part_exchange", "END");
 }
 
@@ -334,10 +356,13 @@ void opp_part_wait_all(oppic_set set)
 
     // std::vector<MPI_Status> recv_status(recv_req.size());
     // std::vector<MPI_Status> send_status(send_req.size());
+    opp_profiler->startMpiComm("", opp::OPP_Particle);
 
     // wait till all the particles from all the ranks are received
     MPI_Waitall(send_req.size(), &(send_req[0]), MPI_STATUSES_IGNORE); // &(send_status[0])); //
     MPI_Waitall(recv_req.size(), &(recv_req[0]), MPI_STATUSES_IGNORE); // &(recv_status[0])); //
+
+    opp_profiler->endMpiComm("", opp::OPP_Particle); // started at opp_part_exchange()
 
     send_req.clear();
     recv_req.clear();
@@ -365,8 +390,12 @@ bool opp_part_check_all_done(oppic_set set)
     bool bool_ret = false;
     bool* buffer_recv = (bool *)malloc(OPP_comm_size * sizeof(bool));
 
+    opp_profiler->startMpiComm("", opp::OPP_Particle);
+
     // gather from all MPI ranks to see whether atleast one rank needs to communicate to another
     MPI_Allgather(&imported_parts, 1, MPI_C_BOOL, buffer_recv, 1, MPI_C_BOOL, OP_MPI_WORLD);
+
+    opp_profiler->endMpiComm("", opp::OPP_Particle);
 
     std::string log = "";
     for (int i = 0; i < OPP_comm_size; i++)
