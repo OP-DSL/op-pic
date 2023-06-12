@@ -34,37 +34,53 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 
 //****************************************
-void oppic_init(int argc, char **argv, opp::Params* params)
+void opp_init(int argc, char **argv)
 {
-    oppic_init_core(argc, argv, params);
+
+#ifdef USE_PETSC
+    PetscInitialize(&argc, &argv, PETSC_NULL, "opp::PetscSEQ");
+#endif
+
+    oppic_init_core(argc, argv);
 }
 
 //****************************************
-void oppic_exit()
+void opp_exit()
 {
+
+#ifdef USE_PETSC
+    PetscFinalize();
+#endif
+
     oppic_exit_core();
 }
 
 //****************************************
-oppic_set oppic_decl_set(int size, char const *name)
+void opp_abort()
+{
+    exit(-1);
+}
+
+//****************************************
+oppic_set opp_decl_mesh_set(int size, char const *name)
 {
     return oppic_decl_set_core(size, name);
 }
 
 //****************************************
-oppic_map oppic_decl_map(oppic_set from, oppic_set to, int dim, int *imap, char const *name)
+oppic_map opp_decl_mesh_map(oppic_set from, oppic_set to, int dim, int *imap, char const *name)
 {
     return oppic_decl_map_core(from, to, dim, imap, name);
 }
 
 //****************************************
-oppic_dat oppic_decl_dat(oppic_set set, int dim, opp_data_type dtype, char *data, char const *name)
+oppic_dat opp_decl_mesh_dat(oppic_set set, int dim, opp_data_type dtype, void *data, char const *name)
 {
     std::string type = "";
     int size = -1;
     getDatTypeSize(dtype, type, size);
 
-    return oppic_decl_dat_core(set, dim, type.c_str(), size, data, name);
+    return oppic_decl_dat_core(set, dim, type.c_str(), size, (char*)data, name);
 }
 
 //****************************************
@@ -72,7 +88,7 @@ oppic_map oppic_decl_map_txt(oppic_set from, oppic_set to, int dim, const char* 
 {
     int* map_data = (int*)oppic_load_from_file_core(file_name, from->size, dim, "int", sizeof(int));
 
-    oppic_map map = oppic_decl_map(from, to, dim, map_data, name);
+    oppic_map map = opp_decl_mesh_map(from, to, dim, map_data, name);
 
     free(map_data);
 
@@ -96,25 +112,25 @@ oppic_dat oppic_decl_dat_txt(oppic_set set, int dim, opp_data_type dtype, const 
 }
 
 //****************************************
-oppic_arg oppic_arg_dat(oppic_dat dat, int idx, oppic_map map, int dim, const char *typ, oppic_access acc, opp_mapping mapping)
+oppic_arg opp_get_arg(oppic_dat dat, int idx, oppic_map map, int dim, const char *typ, oppic_access acc, opp_mapping mapping)
 {
     return oppic_arg_dat_core(dat, idx, map, dim, typ, acc, mapping);
 }
 
 //****************************************
-oppic_arg oppic_arg_dat(oppic_dat dat, int idx, oppic_map map, oppic_access acc, opp_mapping mapping)
+oppic_arg opp_get_arg(oppic_dat dat, int idx, oppic_map map, oppic_access acc, opp_mapping mapping)
 {
     return oppic_arg_dat_core(dat, idx, map, acc, mapping);
 }
-oppic_arg oppic_arg_dat(oppic_dat dat, oppic_access acc, opp_mapping mapping)
+oppic_arg opp_get_arg(oppic_dat dat, oppic_access acc, opp_mapping mapping)
 {
     return oppic_arg_dat_core(dat, acc, mapping);
 }
-oppic_arg oppic_arg_dat(oppic_map data_map, oppic_access acc, opp_mapping mapping)
+oppic_arg opp_get_arg(oppic_map data_map, oppic_access acc, opp_mapping mapping)
 {
     return oppic_arg_dat_core(data_map, acc, mapping);
 }
-oppic_arg oppic_arg_dat(oppic_map data_map, int idx, oppic_map map, oppic_access acc, opp_mapping mapping)
+oppic_arg opp_get_arg(oppic_map data_map, int idx, oppic_map map, oppic_access acc, opp_mapping mapping)
 {
     return oppic_arg_dat_core(data_map, idx, map, acc, mapping);
 }
@@ -122,37 +138,37 @@ oppic_arg oppic_arg_dat(oppic_map data_map, int idx, oppic_map map, oppic_access
 
 //****************************************
 // template <class T> oppic_arg oppic_arg_gbl(T *data, int dim, char const *typ, oppic_access acc);
-oppic_arg oppic_arg_gbl(double *data, int dim, char const *typ, oppic_access acc)
+oppic_arg opp_get_arg_gbl(double *data, int dim, char const *typ, oppic_access acc)
 {
     return oppic_arg_gbl_core(data, dim, typ, acc);
 }
-oppic_arg oppic_arg_gbl(int *data, int dim, char const *typ, oppic_access acc)
+oppic_arg opp_get_arg_gbl(int *data, int dim, char const *typ, oppic_access acc)
 {
     return oppic_arg_gbl_core(data, dim, typ, acc);
 }
-oppic_arg oppic_arg_gbl(const bool *data, int dim, char const *typ, oppic_access acc)
+oppic_arg opp_get_arg_gbl(const bool *data, int dim, char const *typ, oppic_access acc)
 {
     return oppic_arg_gbl_core(data, dim, typ, acc);
 }
 
 //****************************************
-oppic_set oppic_decl_particle_set(int size, char const *name, oppic_set cells_set)
+oppic_set opp_decl_part_set(int size, char const *name, oppic_set cells_set)
 {
     return oppic_decl_particle_set_core(size, name, cells_set);
 }
-oppic_set oppic_decl_particle_set(char const *name, oppic_set cells_set)
+oppic_set opp_decl_part_set(char const *name, oppic_set cells_set)
 {
     return oppic_decl_particle_set_core(name, cells_set);
 }
 
 //****************************************
-oppic_dat oppic_decl_particle_dat(oppic_set set, int dim, opp_data_type dtype, char *data, char const *name, bool cell_index)
+oppic_dat opp_decl_part_dat(oppic_set set, int dim, opp_data_type dtype, void *data, char const *name, bool cell_index)
 {
     std::string type = "";
     int size = -1;
     getDatTypeSize(dtype, type, size);
 
-    return oppic_decl_particle_dat_core(set, dim, type.c_str(), size, data, name, cell_index);
+    return oppic_decl_particle_dat_core(set, dim, type.c_str(), size, (char*)data, name, cell_index);
 }
 
 //****************************************
@@ -217,20 +233,19 @@ void oppic_remove_marked_particles_from_set(oppic_set set, std::vector<int>& idx
 
 //****************************************
 void oppic_particle_sort(oppic_set set)
-{ TRACE_ME;
-
+{ 
     oppic_particle_sort_core(set);
 }
 
 //****************************************
-void oppic_print_dat_to_txtfile(oppic_dat dat, const char *file_name_prefix, const char *file_name_suffix)
+void opp_print_dat_to_txtfile(oppic_dat dat, const char *file_name_prefix, const char *file_name_suffix)
 {
     std::string prefix = std::string(file_name_prefix) + "_s";
     oppic_print_dat_to_txtfile_core(dat, prefix.c_str(), file_name_suffix);
 }
 
 //****************************************
-void oppic_print_map_to_txtfile(oppic_map map, const char *file_name_prefix, const char *file_name_suffix)
+void opp_print_map_to_txtfile(oppic_map map, const char *file_name_prefix, const char *file_name_suffix)
 {
     oppic_print_map_to_txtfile_core(map, file_name_prefix, file_name_suffix);
 }
@@ -242,22 +257,29 @@ void oppic_dump_dat(oppic_dat dat)
 }
 
 //****************************************
-void oppic_init_particle_move(oppic_set set)
-{ TRACE_ME;
-
+void opp_init_particle_move(oppic_set set, int nargs, oppic_arg *args)
+{ 
     oppic_init_particle_move_core(set);
+
+    if (OPP_comm_iteration == 0)
+    {
+        OPP_iter_start = 0;
+        OPP_iter_end   = set->size;          
+    }
+
+    OPP_mesh_relation_data = ((int *)set->mesh_relation_dat->data); 
 }
 
 //****************************************
 void oppic_mark_particle_to_move(oppic_set set, int particle_index, int move_status)
 {
+    // Can fill the holes here, since there could be removed particles
     oppic_mark_particle_to_move_core(set, particle_index, move_status);
 }
 
 //****************************************
-bool oppic_finalize_particle_move(oppic_set set)
-{ TRACE_ME;
-
+bool opp_finalize_particle_move(oppic_set set)
+{ 
     oppic_finalize_particle_move_core(set);
 
     if (OP_auto_sort == 1)
@@ -266,11 +288,12 @@ bool oppic_finalize_particle_move(oppic_set set)
         oppic_particle_sort(set);
     }
 
-    return true;
+    // in seq, no need to iterate the communication loop
+    return false;
 }
 
 //****************************************
-void oppic_reset_dat(oppic_dat dat, char* val, opp_reset reset)
+void opp_reset_dat(oppic_dat dat, char* val, opp_reset reset)
 {
     int set_size = dat->set->size;
 
@@ -281,7 +304,7 @@ void oppic_reset_dat(oppic_dat dat, char* val, opp_reset reset)
 }
 
 //****************************************
-void oppic_mpi_set_dirtybit(int nargs, oppic_arg *args) 
+void opp_mpi_set_dirtybit(int nargs, oppic_arg *args) 
 {
     for (int n = 0; n < nargs; n++) 
     {
@@ -295,7 +318,7 @@ void oppic_mpi_set_dirtybit(int nargs, oppic_arg *args)
 }
 
 //****************************************
-int oppic_mpi_halo_exchanges(oppic_set set, int nargs, oppic_arg *args) 
+int opp_mpi_halo_exchanges(oppic_set set, int nargs, oppic_arg *args) 
 {
     // for (int n = 0; n < nargs; n++)
     // {
@@ -311,4 +334,54 @@ int oppic_mpi_halo_exchanges(oppic_set set, int nargs, oppic_arg *args)
 void opp_mpi_halo_wait_all(int nargs, oppic_arg *args)
 {
     // Nothing to execute here
+}
+
+//****************************************
+void opp_init_double_indirect_reductions(int nargs, oppic_arg *args)
+{
+    // Nothing to execute here
+}
+
+//****************************************
+void opp_exchange_double_indirect_reductions(int nargs, oppic_arg *args)
+{
+    // Nothing to execute here
+}
+
+
+void opp_complete_double_indirect_reductions(int nargs, oppic_arg *args)
+{
+    // Nothing to execute here
+}
+
+//****************************************
+bool opp_part_check_status(opp_move_var& m, int map0idx, oppic_set set, int particle_index, int& remove_count)
+{
+    m.OPP_iteration_one = false;
+
+    if (m.OPP_move_status == OPP_MOVE_DONE)
+    {
+        return false;
+    }
+    else if (m.OPP_move_status == OPP_NEED_REMOVE)
+    {
+        remove_count += 1;
+        OPP_mesh_relation_data[particle_index] = MAX_CELL_INDEX;
+
+        return false;
+    }
+
+    return true;
+}
+
+opp_move_var opp_get_move_var()
+{
+// TODO_IMM : use a buffered opp_move_var instead, could use a global variable and reset
+
+    opp_move_var m;
+
+    if (OPP_comm_iteration != 0) // TRUE means communicated particles, no need to do the iteration one calculations
+        m.OPP_iteration_one = false;
+    
+    return m;
 }

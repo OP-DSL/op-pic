@@ -35,9 +35,9 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 // USER WRITTEN CODE
 //*********************************************
 
-#ifndef ENABLE_MPI
-    #define ENABLE_MPI
-#endif
+// #ifndef ENABLE_MPI
+//     #define ENABLE_MPI
+// #endif
 
 #include <oppic_lib.h>
 #ifdef ENABLE_MPI
@@ -296,7 +296,7 @@ inline int InitializeInjectDistributions(oppic_dat if_dist_dat, oppic_dat if_are
             {
                 opp_printf("InitializeInjectDistributions", "Error reading from %s at index %d\n", 
                     rand_file_path.c_str(), n);
-                MPI_Abort(OP_MPI_WORLD, 2);
+                opp_abort();
             }
         }
 

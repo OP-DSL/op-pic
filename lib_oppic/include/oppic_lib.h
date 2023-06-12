@@ -113,3 +113,11 @@ void opp_mpi_halo_wait_all(int nargs, oppic_arg *args);
 void opp_mpi_set_dirtybit(int nargs, oppic_arg *args);
 
 void opp_abort();
+
+opp_move_var opp_get_move_var();
+
+bool opp_part_check_status(opp_move_var& m, int map0idx, oppic_set set, int particle_index, int& remove_count);
+
+void opp_init_double_indirect_reductions(int nargs, oppic_arg *args);
+void opp_exchange_double_indirect_reductions(int nargs, oppic_arg *args) ;
+void opp_complete_double_indirect_reductions(int nargs, oppic_arg *args);

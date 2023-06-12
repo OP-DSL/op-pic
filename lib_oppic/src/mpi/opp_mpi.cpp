@@ -47,7 +47,7 @@ void opp_init(int argc, char **argv)
 {
 
 #ifdef USE_PETSC
-    PetscInitialize(&argc, &argv, PETSC_NULL, "opp::Petsc");
+    PetscInitialize(&argc, &argv, PETSC_NULL, "opp::PetscMPI");
 #else
     MPI_Init(&argc, &argv);
 #endif
@@ -279,7 +279,6 @@ void oppic_reset_num_particles_to_insert(oppic_set set)
 //****************************************
 void oppic_particle_sort(oppic_set set)
 { 
-
     oppic_particle_sort_core(set);
 }
 

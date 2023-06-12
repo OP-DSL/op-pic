@@ -336,23 +336,23 @@ inline void opp_uniform_scatter_array(T *g_array, T *l_array, int g_size, int l_
 void opp_partition(std::string lib_name, op_set prime_set, op_map prime_map = nullptr, op_dat data = nullptr);
 void opp_partition_core(std::string lib_name, op_set prime_set, op_map prime_map, op_dat data);
 
-opp_move_var opp_get_move_var();
+// opp_move_var opp_get_move_var();
 
 void opp_part_comm_init();
 void opp_part_set_comm_init(oppic_set set);
-bool opp_part_check_status(opp_move_var& m, int map0idx, oppic_set set, int particle_index, int& remove_count);
+// bool opp_part_check_status(opp_move_var& m, int map0idx, oppic_set set, int particle_index, int& remove_count);
 void opp_part_exchange(oppic_set set);
 bool opp_part_check_all_done(oppic_set set);
 void opp_part_wait_all(oppic_set set);
 void opp_part_comm_destroy();
 
-void opp_init_double_indirect_reductions(int nargs, oppic_arg *args);
-void opp_exchange_double_indirect_reductions(int nargs, oppic_arg *args) ;
+// void opp_init_double_indirect_reductions(int nargs, oppic_arg *args);
+// void opp_exchange_double_indirect_reductions(int nargs, oppic_arg *args) ;
 void opp_exchange_double_indirect_reductions(oppic_dat dat, opp_reduc_comm reduc_comm);
-void opp_complete_double_indirect_reductions(int nargs, oppic_arg *args);
+// void opp_complete_double_indirect_reductions(int nargs, oppic_arg *args);
 void opp_complete_double_indirect_reductions(oppic_dat dat);
 
-void opp_mpi_halo_wait_all(int nargs, oppic_arg *args);
+// void opp_mpi_halo_wait_all(int nargs, oppic_arg *args);
 void opp_mpi_halo_exchange(oppic_arg *arg, int exec_flag);
 
 bool is_double_indirect_reduction(oppic_arg& arg);
