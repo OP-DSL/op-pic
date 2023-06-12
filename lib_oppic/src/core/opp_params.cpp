@@ -70,7 +70,7 @@ Params::Params(std::string file_name)
 
 void Params::write(std::ostream &out) {
 
-    if (OPP_my_rank != OPP_MPI_ROOT) return;
+    if (OPP_rank != OPP_ROOT) return;
     
     out << std::endl << "SIMULATION PARAMETERS"  << std::endl;
     out << "---------------------" << std::endl;

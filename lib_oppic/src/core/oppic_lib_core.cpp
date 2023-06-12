@@ -32,12 +32,10 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <oppic_lib_core.h>
 
-
 #ifdef USE_TRACE
     int trace::enabled = 1;
     Trace trace::current = Trace("__TRACE_BASE__");
 #endif
-
 
 //****************************************
 std::vector<oppic_set> oppic_sets;
@@ -50,28 +48,30 @@ int OP_auto_soa             = 0;
 int OP_part_alloc_mult      = 1;
 int OP_auto_sort            = 1;
 int OPP_mpi_part_alloc_mult = 1;
-int OPP_my_rank             = 0;
+int OPP_rank                = 0;
 int OPP_comm_size           = 1;
 int OPP_comm_iteration      = 0;
+int OPP_max_comm_iteration  = 0;
 int OPP_iter_start          = 0;
 int OPP_iter_end            = 0;
 int OPP_main_loop_iter      = 0;
 int *OPP_mesh_relation_data = nullptr;
-opp::Params* opp_params     = nullptr;
-std::unique_ptr<opp::Profiler> opp_profiler = nullptr;
+std::unique_ptr<opp::Params> opp_params;
+std::unique_ptr<opp::Profiler> opp_profiler;
 
 //****************************************
-void oppic_init_core(int argc, char **argv, opp::Params* params) 
+void oppic_init_core(int argc, char **argv) 
 {
     oppic_sets.clear();
     oppic_maps.clear();
     oppic_dats.clear();
 
-    opp_params = params;
-    
+    opp_params = std::make_unique<opp::Params>(argv[1]);
+    opp_profiler = std::make_unique<opp::Profiler>();
+
     // these will be overidden by args
-    OP_auto_sort = params->get<OPP_BOOL>("opp_auto_sort");
-    OP_part_alloc_mult = params->get<OPP_INT>("opp_allocation_multiple");
+    OP_auto_sort = opp_params->get<OPP_BOOL>("opp_auto_sort");
+    OP_part_alloc_mult = opp_params->get<OPP_INT>("opp_allocation_multiple");
 
     for (int n = 1; n < argc; n++) 
     {

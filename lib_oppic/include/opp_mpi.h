@@ -1,3 +1,35 @@
+
+/* 
+BSD 3-Clause License
+
+Copyright (c) 2022, OP-DSL
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions are met:
+
+1. Redistributions of source code must retain the above copyright notice, this
+   list of conditions and the following disclaimer.
+
+2. Redistributions in binary form must reproduce the above copyright notice,
+   this list of conditions and the following disclaimer in the documentation
+   and/or other materials provided with the distribution.
+
+3. Neither the name of the copyright holder nor the names of its
+   contributors may be used to endorse or promote products derived from
+   this software without specific prior written permission.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+*/
+
 #pragma once
 
 #include <mpi.h>
@@ -270,7 +302,7 @@ inline int opp_get_uniform_local_size(int global_size, int rank)
 
 inline int opp_get_uniform_local_size(int global_size) 
 {
-    return opp_get_uniform_local_size(global_size, OPP_my_rank);
+    return opp_get_uniform_local_size(global_size, OPP_rank);
 }
 
 template <typename T> 
@@ -283,17 +315,17 @@ inline void opp_uniform_scatter_array(T *g_array, T *l_array, int g_size, int l_
     for (int i = 0; i < OPP_comm_size; i++) 
     {
         sendcnts[i] = elem_size * opp_get_uniform_local_size(g_size, i) * sizeof(T);
-        //printf("RANK %d %d\t| sendcount %d | %d\n", OPP_my_rank, g_size, sendcnts[i], opp_get_uniform_local_size(g_size, i));
+        //printf("RANK %d %d\t| sendcount %d | %d\n", OPP_rank, g_size, sendcnts[i], opp_get_uniform_local_size(g_size, i));
     }
     for (int i = 0; i < OPP_comm_size; i++) 
     {
         displs[i] = disp;
         disp = disp + sendcnts[i];
-        //printf("RANK %d %d\t| displs %d\n", OPP_my_rank, g_size, displs[i]);
+        //printf("RANK %d %d\t| displs %d\n", OPP_rank, g_size, displs[i]);
     }
 
     MPI_Scatterv((char*)g_array, sendcnts, displs, MPI_CHAR, 
-        (char*)l_array, (l_size * elem_size * sizeof(T)), MPI_CHAR, OPP_MPI_ROOT, MPI_COMM_WORLD);
+        (char*)l_array, (l_size * elem_size * sizeof(T)), MPI_CHAR, OPP_ROOT, MPI_COMM_WORLD);
 
     free(sendcnts);
     free(displs);

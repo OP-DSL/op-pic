@@ -91,7 +91,7 @@ inline void inject_ions__kernel(
         b = (1 - b);
     }
 
-    for (int i = 0; i < DIMENSIONS; i++) 
+    for (int i = 0; i < DIM; i++) 
     {
         part_pos[i] = a * iface_u[i] + b * iface_v[i] + node_pos[i];
         
@@ -122,16 +122,16 @@ inline void move_all_particles_to_cell__kernel(
     if (m.OPP_iteration_one)
     {
         double coefficient1 = CONST_charge / CONST_mass * (CONST_dt);
-        for (int i = 0; i < DIMENSIONS; i++)
+        for (int i = 0; i < DIM; i++)
             part_vel[i] += (coefficient1 * cell_ef[i]);                  
         
-        for (int i = 0; i < DIMENSIONS; i++)
+        for (int i = 0; i < DIM; i++)
             part_pos[i] += part_vel[i] * (CONST_dt); // v = u + at
     }
 
     bool inside = true;
-    double coefficient2 = ONE_OVER_SIX / (*current_cell_volume * SCALE2) ;
-    for (int i=0; i<NODES_PER_CELL; i++) /*loop over vertices*/
+    double coefficient2 = ONE_OVER_SIX / (*current_cell_volume) ;
+    for (int i=0; i<N_PER_C; i++) /*loop over vertices*/
     {
         part_lc[i] = coefficient2 * (
             current_cell_det[i * DET_FIELDS + 0] - 
@@ -140,7 +140,7 @@ inline void move_all_particles_to_cell__kernel(
             current_cell_det[i * DET_FIELDS + 3] * part_pos[2]);
         
         if (part_lc[i] < 0.0 || 
-            part_lc[i] > (1.0 * DET_SCALE))  
+            part_lc[i] > 1.0)  
                 inside = false;
                 // m.OPP_inside_cell = false;
     }    
@@ -158,11 +158,12 @@ inline void move_all_particles_to_cell__kernel(
         return;
     }
 
-    // outside the last known cell, find most negative weight and use that cell_index to reduce computations
+    // outside the last known cell, find most negative weight and 
+    // use that cell_index to reduce computations
     int min_i = 0;
     double min_lc = part_lc[0];
     
-    for (int i=1; i<NEIGHBOUR_CELLS; i++)
+    for (int i=1; i<NEIGHB_C; i++)
     {
         if (part_lc[i] < min_lc) 
         {
@@ -188,7 +189,7 @@ inline void compute_node_charge_density__kernel(
     const double *node_volume
 )
 {
-    (*node_charge_den) *= (CONST_spwt / (*node_volume * DET_SCALE));
+    (*node_charge_den) *= (CONST_spwt / (*node_volume));
 }
 
 //*************************************************************************************************
@@ -201,12 +202,12 @@ inline void compute_electric_field__kernel(
     const double *node_potential3
 )
 {
-    for (int dim = 0; dim < DIMENSIONS; dim++)
+    for (int dim = 0; dim < DIM; dim++)
     { 
-        double c1 = (cell_shape_deriv[0 * DIMENSIONS + dim] * (*node_potential0));
-        double c2 = (cell_shape_deriv[1 * DIMENSIONS + dim] * (*node_potential1));
-        double c3 = (cell_shape_deriv[2 * DIMENSIONS + dim] * (*node_potential2));
-        double c4 = (cell_shape_deriv[3 * DIMENSIONS + dim] * (*node_potential3));
+        double c1 = (cell_shape_deriv[0 * DIM + dim] * (*node_potential0));
+        double c2 = (cell_shape_deriv[1 * DIM + dim] * (*node_potential1));
+        double c3 = (cell_shape_deriv[2 * DIM + dim] * (*node_potential2));
+        double c4 = (cell_shape_deriv[3 * DIM + dim] * (*node_potential3));
 
         cell_electric_field[dim] -= (c1 + c2 + c3 + c4);
     }    

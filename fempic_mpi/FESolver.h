@@ -1,23 +1,42 @@
-/*==============================================================================*
- * FESOLVER
- *------------------------------------------------------------------------------*
- * Maintainer: Ed Higgins <ed.higgins@york.ac.uk>
- * Based on `fem-pic.cpp` by Lubos Brieda 
- * See https://www.particleincell.com/2015/fem-pic/ for more information
- *------------------------------------------------------------------------------*
- * Version: 0.1.1, 2022-10-05
- *------------------------------------------------------------------------------*
- * This code is distributed under the MIT license.
- *==============================================================================*/
+/* 
+BSD 3-Clause License
 
-#ifndef FESOLVER_H
-#define FESOLVER_H
+Copyright (c) 2022, OP-DSL
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions are met:
+
+1. Redistributions of source code must retain the above copyright notice, this
+   list of conditions and the following disclaimer.
+
+2. Redistributions in binary form must reproduce the above copyright notice,
+   this list of conditions and the following disclaimer in the documentation
+   and/or other materials provided with the distribution.
+
+3. Neither the name of the copyright holder nor the names of its
+   contributors may be used to endorse or promote products derived from
+   this software without specific prior written permission.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+*/
+
+#pragma once
+
+//*********************************************
+// USER WRITTEN CODE
+//*********************************************
 
 #include <oppic_lib.h>
 #include "fempic_ori/meshes.h"
-#include <memory>
-
-#include <petscksp.h>
 
 const double EPS0 = 8.8541878e-12;      /*permittivity of free space*/
 const double QE   = 1.602e-19;          /*elementary charge*/
@@ -30,7 +49,6 @@ public:
     enum Method { NonLinear, GaussSeidel, Lapack, Petsc };
 
     FESolver(
-        opp::Params* params, 
         oppic_map cell_to_nodes_map, 
         oppic_dat node_type, 
         oppic_dat node_pos,  
@@ -67,21 +85,15 @@ protected:
     int **LM;       /*LM[e][a] location matrix */
     double ***NX;   /*NX[e][a] is a dNa/dx [3] vector*/
     int neq;        /*number of unknowns/equations*/
+    double *detJ;     /* determinant of the jacobian x_xi */
 
-    /*reference values for the Boltzmann term*/
     double n0;
     double phi0;
     double kTe;
     double wall_potential;
 
-    /*solution*/
-    double *d;        /* d[neq] is the solution from the linear solver */
+    double *d;        /* d[neq] is the solution from the linear solver */  
 
-    double *detJ;     /* determinant of the jacobian x_xi */
-
-    // int n_nodes = 0;
-    // int n_elements = 0;    /*save this so we can properly deallocate LM*/
-    
     int n_nodes_set = 0;
     int n_nodes_inc_halo = 0; 
     int n_elements_set = 0;
@@ -110,5 +122,3 @@ protected:
     bool matIndexCreated = false;   // Not required
 };
 
-
-#endif /* !FESOLVER_H */

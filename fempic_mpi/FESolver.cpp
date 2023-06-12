@@ -1,13 +1,40 @@
+/* 
+BSD 3-Clause License
 
-#include <iostream>
-#include <iomanip>
-#include <math.h>
-#include <stdio.h>
+Copyright (c) 2022, OP-DSL
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions are met:
+
+1. Redistributions of source code must retain the above copyright notice, this
+   list of conditions and the following disclaimer.
+
+2. Redistributions in binary form must reproduce the above copyright notice,
+   this list of conditions and the following disclaimer in the documentation
+   and/or other materials provided with the distribution.
+
+3. Neither the name of the copyright holder nor the names of its
+   contributors may be used to endorse or promote products derived from
+   this software without specific prior written permission.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+*/
+
+//*********************************************
+// USER WRITTEN CODE
+//*********************************************
 
 #include "FESolver.h"
 #include "fempic.h"
-#include <opp_mpi.h>
-#define USE_PETSC_MPI
 
 #define is_neq(a, b) ((a) != (b))
 
@@ -17,7 +44,6 @@ bool print_petsc = false;
 
 //*************************************************************************************************
 FESolver::FESolver(
-    opp::Params* params, 
     oppic_map cell_to_nodes_map, 
     oppic_dat node_type_dat, 
     oppic_dat node_pos_dat,
@@ -26,30 +52,27 @@ FESolver::FESolver(
 {
     if (OP_DEBUG) opp_printf("FESolver", "FESolver");
 
-#ifndef USE_PETSC_MPI
-    PetscInitialize(&argc, &argv, PETSC_NULL, "FESolver::Petsc"); // TODO : insert this to opp seq, mpim cuda
-#endif
-
     phi0           = 0;
-    n0             = params->get<OPP_REAL>("plasma_den");
-    kTe            = Kb * params->get<OPP_REAL>("electron_temperature");
-    wall_potential = -(params->get<OPP_REAL>("wall_potential"));
+    n0             = opp_params->get<OPP_REAL>("plasma_den");
+    kTe            = Kb * opp_params->get<OPP_REAL>("electron_temperature");
+    wall_potential = -(opp_params->get<OPP_REAL>("wall_potential"));
+    neq            = 0; /*count number of unknowns*/
 
-    if      (std::regex_match(params->get<OPP_STRING>("fesolver_method"), std::regex("nonlinear", std::regex_constants::icase))) fesolver_method = FESolver::NonLinear;
-    else if (std::regex_match(params->get<OPP_STRING>("fesolver_method"), std::regex("gaussseidel", std::regex_constants::icase))) fesolver_method = FESolver::GaussSeidel;
-    else if (std::regex_match(params->get<OPP_STRING>("fesolver_method"), std::regex("lapack", std::regex_constants::icase))) fesolver_method = FESolver::Lapack;
-    else if (std::regex_match(params->get<OPP_STRING>("fesolver_method"), std::regex("petsc", std::regex_constants::icase))) fesolver_method = FESolver::Petsc;
-
-    neq        = 0; /*count number of unknowns*/
+    if      (opp_params->get<OPP_STRING>("fesolver_method") == "nonlinear") fesolver_method = NonLinear;
+    else if (opp_params->get<OPP_STRING>("fesolver_method") == "gaussseidel") fesolver_method = GaussSeidel;
+    else if (opp_params->get<OPP_STRING>("fesolver_method") == "lapack") fesolver_method = Lapack;
+    else if (opp_params->get<OPP_STRING>("fesolver_method") == "petsc") fesolver_method = Petsc;  
     
     n_nodes_set         = node_type_dat->set->size;
     n_nodes_inc_halo    = node_type_dat->set->size + node_type_dat->set->exec_size + node_type_dat->set->nonexec_size;
     n_elements_set      = cell_to_nodes_map->from->size;
-    n_elements_inc_halo = cell_to_nodes_map->from->size + cell_to_nodes_map->from->exec_size; // we need to use only the execute halos and not non exec halos
+    n_elements_inc_halo = cell_to_nodes_map->from->size + cell_to_nodes_map->from->exec_size; 
 
-    // opp_printf("FESolver", "n_nodes_set %d | n_nodes_inc_halo %d | n_elements_set %d | n_elements_inc_halo %d", n_nodes_set, n_nodes_inc_halo, n_elements_set, n_elements_inc_halo);
+    // opp_printf("FESolver", "n_nodes_set %d | n_nodes_inc_halo %d | n_elements_set %d | n_elements_inc_halo %d", 
+    //     n_nodes_set, n_nodes_inc_halo, n_elements_set, n_elements_inc_halo);
 
-    for (std::size_t i = 0; i < n_nodes_set; i++) // TODO : DO NOT CALCULATE SOLUTION FOR IMPORT NON EXEC, the owning rank will do that
+    // TODO : DO NOT CALCULATE SOLUTION FOR IMPORT NON EXEC, the owning rank will do that
+    for (std::size_t i = 0; i < n_nodes_set; i++) 
         if (((int*)node_type_dat->data)[i] == NORMAL || ((int*)node_type_dat->data)[i] == OPEN) 
             neq++;
 
@@ -101,15 +124,15 @@ FESolver::FESolver(
 
     if (print_petsc) 
     {
-        opp_printf("FESolver::FESolver", "This is KMat ***************************************************************************");
+        opp_printf("FESolver::FESolver", "This is KMat ****************************************");
         MatView(Kmat, PETSC_VIEWER_STDOUT_WORLD);
-        opp_printf("FESolver::FESolver", "Above is KMat ***************************************************************************");
+        opp_printf("FESolver::FESolver", "Above is KMat ****************************************");
     }
     if (print_petsc) 
     {
-        opp_printf("FESolver::FESolver", "This is F0vec ***************************************************************************");   
+        opp_printf("FESolver::FESolver", "This is F0vec ****************************************");   
         VecView(F0vec, PETSC_VIEWER_STDOUT_WORLD);
-        opp_printf("FESolver::FESolver", "Above is F0vec ***************************************************************************");
+        opp_printf("FESolver::FESolver", "Above is F0vec ****************************************");
     }
 
     sanityCheck();
@@ -117,8 +140,7 @@ FESolver::FESolver(
 
 //*************************************************************************************************
 FESolver::~FESolver() 
-{ //TRACE_ME;
-
+{
     for (int e = 0; e < n_elements_inc_halo; e++) 
     {
         for (int a=0;a<4;a++) 
@@ -149,10 +171,6 @@ FESolver::~FESolver()
     VecDestroy(&Yvec);
     MatDestroy(&Jmat);
     MatDestroy(&Kmat);
-
-#ifndef USE_PETSC_MPI 
-    PetscFinalize(); // TODO : insert this to opp seq, mpim cuda
-#endif
 }
 
 //*************************************************************************************************
@@ -161,7 +179,8 @@ void FESolver::initID(oppic_dat node_type_dat) // relation from node indices to 
     int P=0;
     for (int n = 0; n < n_nodes_inc_halo; n++)
     {
-        if (n < n_nodes_set && (((int*)node_type_dat->data)[n] == NORMAL || ((int*)node_type_dat->data)[n] == OPEN))
+        if (n < n_nodes_set && 
+            (((int*)node_type_dat->data)[n] == NORMAL || ((int*)node_type_dat->data)[n] == OPEN))
         {
             ID[n]=P;
             P++;
@@ -172,10 +191,11 @@ void FESolver::initID(oppic_dat node_type_dat) // relation from node indices to 
         }
     }
 
-#ifdef USE_PETSC_MPI
+#ifdef ENABLE_MPI
     // send all the ID values of the export non-exec halos
     // (send the values by adding by own_start and making the values negative)
-    // receive all ID values of the import non exec halos and assign the values to the correct indices of ID array
+    // receive all ID values of the import non exec halos and 
+    // assign the values to the correct indices of ID array
 
     halo_list exp_nonexec_list = OP_export_nonexec_list[node_type_dat->set->index];
     halo_list imp_nonexec_list = OP_import_nonexec_list[node_type_dat->set->index];
@@ -193,7 +213,8 @@ void FESolver::initID(oppic_dat node_type_dat) // relation from node indices to 
             if (send_buffer[index] != INT_MIN)
                 send_buffer[index] = -1 * (send_buffer[index] + own_start);
 
-            // opp_printf("SEND", "idx=%d val=%d to rank %d", exp_nonexec_list->list[index], send_buffer[index], exp_nonexec_list->ranks[i]);
+            // opp_printf("SEND", "idx=%d val=%d to rank %d", exp_nonexec_list->list[index], 
+            //     send_buffer[index], exp_nonexec_list->ranks[i]);
         }
 
         MPI_Isend(&send_buffer[exp_nonexec_list->disps[i]], exp_nonexec_list->sizes[i], MPI_INT,
@@ -225,7 +246,7 @@ void FESolver::initPetscStructures()
     MatSetSizes(Jmat, neq, neq, PETSC_DETERMINE, PETSC_DETERMINE);
     MatSetSizes(Kmat, neq, neq, PETSC_DETERMINE, PETSC_DETERMINE);
 
-#ifndef USE_PETSC_MPI
+#ifndef ENABLE_MPI
     MatSetType(Jmat, MATSEQAIJ);
     MatSetType(Kmat, MATSEQAIJ);
 
@@ -275,10 +296,10 @@ void FESolver::initPetscStructures()
 
     //PetscViewerSetFormat(PETSC_VIEWER_STDOUT_WORLD, PETSC_VIEWER_ASCII_MATLAB);
 
-    vecCol           = new int[neq];
-    matCol           = new int[neq];
-    matIndex         = new int*[neq];
-    matIndexValues   = new double*[neq];
+    vecCol         = new int[neq];
+    matCol         = new int[neq];
+    matIndex       = new int*[neq];
+    matIndexValues = new double*[neq];
 
     for (int i = 0; i < neq; i++)
     {
@@ -289,7 +310,7 @@ void FESolver::initPetscStructures()
 //*************************************************************************************************
 /* preassembles the K matrix and "F0 vector */
 void FESolver::preAssembly(oppic_map cell_to_nodes_map, oppic_dat node_bnd_pot) 
-{ //TRACE_ME;
+{
 
     opp_printf("FESolver", "preAssembly");
 
@@ -339,7 +360,8 @@ void FESolver::preAssembly(oppic_map cell_to_nodes_map, oppic_dat node_bnd_pot)
 
             for (int b=0;b<4;b++) 
             {
-                int node_idx = cell_to_nodes_map->map[e * cell_to_nodes_map->dim + b]; // This can reach import halos
+                // This can reach import halos
+                int node_idx = cell_to_nodes_map->map[e * cell_to_nodes_map->dim + b]; 
                 double gb = ((double*)node_bnd_pot->data)[node_idx];
                 fg-=ke[a][b]*gb;
             }
@@ -358,8 +380,8 @@ void FESolver::preAssembly(oppic_map cell_to_nodes_map, oppic_dat node_bnd_pot)
     double scalar1 = 1 / SCALLING;
     double scalar2 = 1 / (SCALLING * SCALLING); 
 
-    VecScale(F0vec, scalar2);                    // downscalling since NX is scalled to avoid precision issues
-    MatScale(Kmat, scalar2);                     // downscalling since NX is scalled to avoid precision issues
+    VecScale(F0vec, scalar2);   // downscalling since NX is scalled to avoid precision issues
+    MatScale(Kmat, scalar2);    // downscalling since NX is scalled to avoid precision issues
 
     for (int i=0;i<neq;i++) 
         delete[] K[i];
@@ -368,15 +390,14 @@ void FESolver::preAssembly(oppic_map cell_to_nodes_map, oppic_dat node_bnd_pot)
 
 //*************************************************************************************************
 void FESolver::buildF1Vector(double *ion_den) 
-{ //TRACE_ME;
-
+{
     double *f = new double[neq];
 
     for (int n = 0; n < n_nodes_inc_halo; n++) 
     {
         int A = ID[n];
         if (A<0) continue;    /*skip known nodes*/
-        f[A] = (QE/EPS0)*((ion_den[n]*SCALE2) + n0*exp((d[A]-phi0)/kTe));
+        f[A] = (QE/EPS0)*((ion_den[n]) + n0*exp((d[A]-phi0)/kTe));
     }
 
     for (int e = 0; e < n_elements_inc_halo; e++) 
@@ -421,7 +442,7 @@ void FESolver::buildF1Vector(double *ion_den)
 
 //*************************************************************************************************
 void FESolver::buildJmatrix() 
-{ //TRACE_ME;
+{ 
 
     double *fp_term = new double[neq];
     double *FP = new double[neq];
@@ -475,7 +496,7 @@ void FESolver::buildJmatrix()
 
     for (int u=0;u<neq;u++) /*subtract diagonal term*/
     {
-        MatSetValue(Jmat, (u + own_start), (u + own_start), (-FP[u]), ADD_VALUES);     // J[u][u]-=FP[u];
+        MatSetValue(Jmat, (u + own_start), (u + own_start), (-FP[u]), ADD_VALUES); // J[u][u]-=FP[u];
     }
 
     MatAssemblyBegin(Jmat, MAT_FINAL_ASSEMBLY); MatAssemblyEnd(Jmat, MAT_FINAL_ASSEMBLY);
@@ -502,13 +523,13 @@ void FESolver::computePhi(oppic_arg arg0, oppic_arg arg1, oppic_arg arg2)
 
     args[1].idx = 2; // HACK to forcefully make halos to download
 
-    int set_size = oppic_mpi_halo_exchanges(arg1.dat->set, nargs, args);
+    int set_size = opp_mpi_halo_exchanges(arg1.dat->set, nargs, args);
     opp_mpi_halo_wait_all(nargs, args);
 
     if (false) // incase if we want to print current ranks node_charge_density including halos
     {
-        std::string f = std::string("FESolverComputePhi_") + std::to_string(OPP_my_rank);
-        oppic_print_dat_to_txtfile(args[1].dat  , f.c_str(), "node_charge_density.dat");
+        std::string f = std::string("FESolverComputePhi_") + std::to_string(OPP_rank);
+        opp_print_dat_to_txtfile(args[1].dat  , f.c_str(), "node_charge_density.dat");
     }
 
     double *ion_den = (double*)arg1.dat->data;
@@ -525,7 +546,8 @@ void FESolver::computePhi(oppic_arg arg0, oppic_arg arg1, oppic_arg arg2)
         {
             char* str_reason = "\0";
             KSPGetConvergedReasonString(ksp, (const char**)(&str_reason));
-            std::cerr << "linearSolve Petsc failed to converge : " << str_reason << "; run with -ksp_converged_reason"<< std::endl;           
+            std::cerr << "linearSolve Petsc failed to converge : " << str_reason <<
+                "; run with -ksp_converged_reason" << std::endl;           
         }
     }
     else
@@ -543,7 +565,7 @@ void FESolver::computePhi(oppic_arg arg0, oppic_arg arg1, oppic_arg arg2)
             node_potential[n] += d[A];
     }
 
-    oppic_mpi_set_dirtybit(nargs, args);
+    opp_mpi_set_dirtybit(nargs, args);
 
     opp_profiler->end("ComputePhi");
 
@@ -569,7 +591,8 @@ void FESolver::nonLinearSolve(double *ion_den)
     {
         char* str_reason = "\0";
         KSPGetConvergedReasonString(ksp, (const char**)(&str_reason));
-        std::cerr << "nonLinearSolve Petsc failed to converge : " << str_reason << "; run with -ksp_converged_reason"<< std::endl;
+        std::cerr << "nonLinearSolve Petsc failed to converge : " << str_reason << 
+            "; run with -ksp_converged_reason"<< std::endl;
     }
 
     if (OP_DEBUG) opp_printf("FESolver", "nonLinearSolve DONE it=%d", it);
@@ -585,9 +608,9 @@ bool FESolver::linearSolve(double *ion_den)
 
     if (print_petsc) 
     {
-        opp_printf("FESolver", "This is F1vec***************************************************************************");
+        opp_printf("FESolver", "This is F1vec ***************************************************");
         VecView(F1vec, PETSC_VIEWER_STDOUT_WORLD);
-        opp_printf("FESolver", "Above is F1vec***************************************************************************");
+        opp_printf("FESolver", "Above is F1vec ***************************************************");
     }
 
     MatMult(Kmat, Dvec, Bvec);  // B = K * D
@@ -602,25 +625,25 @@ bool FESolver::linearSolve(double *ion_den)
 
     if (print_petsc) 
     {
-        opp_printf("FESolver", "This is J***************************************************************************");
+        opp_printf("FESolver", "This is J ***************************************************");
         MatView(Jmat, PETSC_VIEWER_STDOUT_WORLD);
-        opp_printf("FESolver", "Above is J***************************************************************************");
+        opp_printf("FESolver", "Above is J ***************************************************");
     }
 
     if (print_petsc) 
     {
-        opp_printf("FESolver", "This is B***************************************************************************");
+        opp_printf("FESolver", "This is B ***************************************************");
         VecView(Bvec, PETSC_VIEWER_STDOUT_WORLD);
-        opp_printf("FESolver", "Above is B***************************************************************************");
+        opp_printf("FESolver", "Above is B ***************************************************");
     }
 
     KSPSolve(ksp, Bvec, Yvec); // Jmat * Yvec = Bvec (Yvec = solution)
 
     if (print_petsc) 
     {
-        opp_printf("FESolver", "This is Y***************************************************************************");
+        opp_printf("FESolver", "This is Y ***************************************************");
         VecView(Yvec, PETSC_VIEWER_STDOUT_WORLD);
-        opp_printf("FESolver", "Above is Y***************************************************************************");
+        opp_printf("FESolver", "Above is Y ***************************************************");
     }
 
     VecAXPY(Dvec, -1.0, Yvec); // D = D - Y
@@ -649,8 +672,9 @@ void FESolver::initialzeMatrix(double **p_A)
             int local_diag_max_fields = 0, local_off_diag_max_fields = 0;
             
             for (int j=0; j<global_neq; j++) // iterate all columns
-            {            
-                if ((std::abs(p_A[i-own_start][j]) > 1e-12) || (i == j)) // significant ones and all diagonals 
+            {    
+                // significant ones and all diagonals         
+                if ((std::abs(p_A[i-own_start][j]) > 1e-12) || (i == j)) 
                 {
                     tempVec.push_back(j); 
 
@@ -667,11 +691,14 @@ void FESolver::initialzeMatrix(double **p_A)
 
             std::copy(tempVec.begin(), tempVec.end(), matIndex[i-own_start]);
 
-            diag_max_fields = (diag_max_fields > local_diag_max_fields) ? diag_max_fields : local_diag_max_fields;  
-            off_diag_max_fields = (off_diag_max_fields > local_off_diag_max_fields) ? off_diag_max_fields : local_off_diag_max_fields;  
+            diag_max_fields = (diag_max_fields > local_diag_max_fields) ? 
+                                    diag_max_fields : local_diag_max_fields; 
+
+            off_diag_max_fields = (off_diag_max_fields > local_off_diag_max_fields) ? 
+                                    off_diag_max_fields : local_off_diag_max_fields;  
         }
 
-#ifndef USE_PETSC_MPI
+#ifndef ENABLE_MPI
         MatSeqAIJSetPreallocation(Kmat, diag_max_fields, nullptr);
         MatSeqAIJSetPreallocation(Jmat, diag_max_fields, nullptr);
 #else
@@ -679,7 +706,8 @@ void FESolver::initialzeMatrix(double **p_A)
         MatMPIAIJSetPreallocation(Jmat, diag_max_fields, NULL, off_diag_max_fields, NULL);
 #endif
 
-        if (OP_DEBUG) opp_printf("FESolver", "initialzeMatrix diag_max_fields=%d off_diag_max_fields=%d", diag_max_fields, off_diag_max_fields);
+        if (OP_DEBUG) opp_printf("FESolver", "initialzeMatrix diag_max_fields=%d off_diag_max_fields=%d", 
+            diag_max_fields, off_diag_max_fields);
         matIndexCreated = true;
     }
 
@@ -688,7 +716,8 @@ void FESolver::initialzeMatrix(double **p_A)
         for (int j=0; j<matCol[i-own_start]; j++) 
             matIndexValues[i-own_start][j] = p_A[i-own_start][matIndex[i-own_start][j]];
 
-        MatSetValues(Kmat, 1, &i, matCol[i-own_start], matIndex[i-own_start], matIndexValues[i-own_start], INSERT_VALUES); 
+        MatSetValues(Kmat, 1, &i, matCol[i-own_start], matIndex[i-own_start], 
+            matIndexValues[i-own_start], INSERT_VALUES); 
     }
 
     MatAssemblyBegin(Kmat, MAT_FINAL_ASSEMBLY); MatAssemblyEnd(Kmat, MAT_FINAL_ASSEMBLY);
@@ -706,7 +735,7 @@ void FESolver::summarize(std::ostream &out)
 {
     opp_printf("FESolver", "FE SOLVER INFORMATION");
     opp_printf("FESolver", "---------------------");
-    opp_printf("FESolver", "own neq is %d, the global neq is %d, start_eq is %d, end_eq %d ---------------------", 
+    opp_printf("FESolver", "own neq is %d, the global neq is %d, start_eq is %d, end_eq %d -------", 
         neq, global_neq, own_start, own_end);
     opp_printf("FESolver", "---------------------");
 }
@@ -720,21 +749,24 @@ void FESolver::enrich_cell_shape_deriv(oppic_dat cell_shape_deriv)
     // copying only up to set size, hence import exec halos will be zero
     for (int cellID = 0; cellID < n_elements_inc_halo; cellID++)
     {
-        for (int nodeCon = 0; nodeCon < NODES_PER_CELL; nodeCon++)
+        for (int nodeCon = 0; nodeCon < N_PER_C; nodeCon++)
         {
-            ((double*)cell_shape_deriv->data)[cellID * (NODES_PER_CELL*DIMENSIONS) + nodeCon * DIMENSIONS + 0 ] = (NX[cellID][nodeCon][0] / SCALLING);
+            ((double*)cell_shape_deriv->data)[cellID * (N_PER_C*DIM) + nodeCon * DIM + 0 ] = 
+                (NX[cellID][nodeCon][0] / SCALLING);
             
-            ((double*)cell_shape_deriv->data)[cellID * (NODES_PER_CELL*DIMENSIONS) + nodeCon * DIMENSIONS + 1 ] = (NX[cellID][nodeCon][1] / SCALLING);
+            ((double*)cell_shape_deriv->data)[cellID * (N_PER_C*DIM) + nodeCon * DIM + 1 ] = 
+                (NX[cellID][nodeCon][1] / SCALLING);
             
-            ((double*)cell_shape_deriv->data)[cellID * (NODES_PER_CELL*DIMENSIONS) + nodeCon * DIMENSIONS + 2 ] = (NX[cellID][nodeCon][2] / SCALLING);
+            ((double*)cell_shape_deriv->data)[cellID * (N_PER_C*DIM) + nodeCon * DIM + 2 ] = 
+                (NX[cellID][nodeCon][2] / SCALLING);
         }
     }
 
-#ifdef USE_PETSC_MPI
+#ifdef ENABLE_MPI
     cell_shape_deriv->dirtybit = 1;
-    oppic_arg arg0 = oppic_arg_dat(cell_shape_deriv, OP_RW);
+    oppic_arg arg0 = opp_get_arg(cell_shape_deriv, OP_RW);
     arg0.idx = 2; // HACK
-    oppic_mpi_halo_exchanges(cell_shape_deriv->set, 1, &arg0);  
+    opp_mpi_halo_exchanges(cell_shape_deriv->set, 1, &arg0);  
     opp_mpi_halo_wait_all(1, &arg0);
 #endif
 
@@ -745,7 +777,7 @@ void FESolver::enrich_cell_shape_deriv(oppic_dat cell_shape_deriv)
 
 /*adds contributions from element stiffness matrix*/
 void FESolver::addKe(double** K, int e, double ke[4][4]) // BUG : K is not created correctly
-{ //TRACE_ME;
+{ 
 
     if (neq <= 0) return;
 
@@ -772,7 +804,7 @@ void FESolver::addKe(double** K, int e, double ke[4][4]) // BUG : K is not creat
 
 /*adds contributions from element force vector to a global F vector*/
 void FESolver::addFe(Vec *Fvec, int e, double fe[4]) 
-{ //TRACE_ME;
+{ 
 
     if (neq <= 0) return;
     
@@ -799,28 +831,32 @@ double FESolver::evalNa(int a, double xi, double eta, double zeta)
     return 0;    /*shouldn't happen*/
 }
 
-/*returns derivative of N[a] at some logical point since we are using linear elements, these are constant in each element*/
+/*returns derivative of N[a] at some logical point since we are using linear elements, 
+these are constant in each element*/
 void FESolver::getNax(double nx[3], int e, int a) 
 {
     for (int d=0;d<3;d++)
         nx[d] = NX[e][a][d];
 }
 
-/*computes derivatives of the shape functions for all elements constants since using linear elements*/
+/*computes derivatives of the shape functions for all elements constants since 
+using linear elements*/
 void FESolver::computeNX(oppic_dat node_pos, oppic_map cell_to_nodes_map) 
-{ //TRACE_ME;
+{ 
 
     /*derivatives of the shape functions vs. xi*/
     double na_xi[4][3] = {{1,0,0}, {0,1,0}, {0,0,1}, {-1,-1,-1}};
 
     for (int e = 0; e < n_elements_inc_halo; e++) 
     {       
-        int* map0idx = &((int*)cell_to_nodes_map->map)[e * cell_to_nodes_map->dim]; /*node indices*/
+        /*node indices*/
+        int* map0idx = &((int*)cell_to_nodes_map->map)[e * cell_to_nodes_map->dim]; 
 
         double x[4][3];
         for (int a=0;a<4;a++) 
         {
-            double *pos = &((double*)node_pos->data)[map0idx[a] * node_pos->dim]; /*node positions*/
+            /*node positions*/
+            double *pos = &((double*)node_pos->data)[map0idx[a] * node_pos->dim]; 
             for (int d=0;d<3;d++) 
                 x[a][d] = pos[d];
         }
@@ -845,13 +881,14 @@ void FESolver::computeNX(oppic_dat node_pos, oppic_map cell_to_nodes_map)
             {
                 NX[e][a][d]=0;
                 for (int k=0;k<3;k++)
-                    NX[e][a][d] += (na_xi[a][k]*xi_x[k][d] * SCALLING); // scalled to avoid precision issues
+                    // scalled to avoid precision issues
+                    NX[e][a][d] += (na_xi[a][k]*xi_x[k][d] * SCALLING); 
             }
     }
 }
 
 //*************************************************************************************************
-    // Sanity check after assembling matrices
+// Sanity check after assembling matrices
 void FESolver::sanityCheck()
 {
     int j_gm, j_gn, k_gm, k_gn, j_row_start, j_row_end, k_row_start, k_row_end;
@@ -862,13 +899,17 @@ void FESolver::sanityCheck()
     MatGetOwnershipRange(Jmat, &j_row_start, &j_row_end);
     MatGetOwnershipRange(Kmat, &k_row_start, &k_row_end);
 
-    if (is_neq(j_gm, j_gn) || is_neq(k_gm, k_gn) || is_neq(j_row_start, k_row_start) || is_neq(j_row_end, k_row_end) || 
-        is_neq(j_row_start, own_start) || is_neq(j_row_end, own_end) || is_neq(j_gm, global_neq))
+    if (is_neq(j_gm, j_gn) || is_neq(k_gm, k_gn) || is_neq(j_gm, global_neq) ||
+        is_neq(j_row_start, k_row_start) || is_neq(j_row_end, k_row_end) || 
+        is_neq(j_row_start, own_start) || is_neq(j_row_end, own_end))
     {
         opp_printf("FESolver::FESolver", "Error... Matrix vector sizes issue");
     }      
     
     if (OP_DEBUG) 
-        opp_printf("FESolver::FESolver", "j_gm %d, j_gn %d, k_gm %d, k_gn %d, j_row_start %d, j_row_end %d, k_row_start %d, k_row_end %d", 
+        opp_printf("FESolver::FESolver", "j_gm %d, j_gn %d, k_gm %d, k_gn %d, j_row_start %d, \
+            j_row_end %d, k_row_start %d, k_row_end %d", 
             j_gm, j_gn, k_gm, k_gn, j_row_start, j_row_end, k_row_start, k_row_end);
 }
+
+//*************************************************************************************************

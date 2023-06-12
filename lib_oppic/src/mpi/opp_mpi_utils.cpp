@@ -55,17 +55,17 @@ void _mpi_allgather(double *l, double *g, int size, int *recevcnts, int *displs,
 
 void _mpi_gather(int *l, int *g, int size, int *recevcnts, int *displs, MPI_Comm comm) 
 {
-    MPI_Gatherv(l, size, MPI_INT, g, recevcnts, displs, MPI_INT, OPP_MPI_ROOT, comm);
+    MPI_Gatherv(l, size, MPI_INT, g, recevcnts, displs, MPI_INT, OPP_ROOT, comm);
 }
 
 void _mpi_gather(float *l, float *g, int size, int *recevcnts, int *displs, MPI_Comm comm) 
 {
-    MPI_Gatherv(l, size, MPI_FLOAT, g, recevcnts, displs, MPI_FLOAT, OPP_MPI_ROOT, comm);
+    MPI_Gatherv(l, size, MPI_FLOAT, g, recevcnts, displs, MPI_FLOAT, OPP_ROOT, comm);
 }
 
 void _mpi_gather(double *l, double *g, int size, int *recevcnts, int *displs, MPI_Comm comm) 
 {
-    MPI_Gatherv(l, size, MPI_DOUBLE, g, recevcnts, displs, MPI_DOUBLE, OPP_MPI_ROOT, comm);
+    MPI_Gatherv(l, size, MPI_DOUBLE, g, recevcnts, displs, MPI_DOUBLE, OPP_ROOT, comm);
 }
 
 void checked_write(int v, const char *file_name) 
@@ -128,12 +128,12 @@ void write_file(op_dat dat, const char *file_name)
         disp = disp + recevcnts[i];
     }
 
-    if (rank == OPP_MPI_ROOT)
+    if (rank == OPP_ROOT)
         g_array = (T *)malloc(elem_size * g_size * sizeof(T));
 
     _mpi_gather(l_array, g_array, l_size * elem_size, recevcnts, displs, OP_MPI_IO_WORLD);
 
-    if (rank == OPP_MPI_ROOT) 
+    if (rank == OPP_ROOT) 
     {
         FILE *fp;
         if ((fp = fopen(file_name, "w")) == NULL) 
@@ -446,7 +446,7 @@ void get_part_range(int **part_range, int my_rank, int comm_size, MPI_Comm Comm)
             part_range[set->index][2 * i + 1] = disp;
             disp++;
         #ifdef DEBUG
-            if (my_rank == OPP_MPI_ROOT && OP_diags > 5)
+            if (my_rank == OPP_ROOT && OP_diags > 5)
                 printf("range of %10s in rank %d: %d-%d\n", set->name, i,
                     part_range[set->index][2 * i],
                     part_range[set->index][2 * i + 1]);
@@ -479,7 +479,7 @@ int get_partition(int global_index, int *part_range, int *local_index, int comm_
             log += std::to_string(i) + "|" + std::to_string(part_range[2 * i]) + "|" + std::to_string(part_range[2 * i + 1]) + "\n";
         }
 
-        opp_printf("get_partition()", OPP_my_rank, "Error: orphan global index %d part_range->\n%s", global_index, log.c_str());
+        opp_printf("get_partition()", OPP_rank, "Error: orphan global index %d part_range->\n%s", global_index, log.c_str());
     }
 
     MPI_Abort(OP_MPI_WORLD, 2);

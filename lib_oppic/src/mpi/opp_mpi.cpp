@@ -43,7 +43,7 @@ MPI_Comm OP_MPI_GLOBAL;
 op_dat op_mpi_get_data(op_dat dat);
 
 //*******************************************************************************
-void oppic_init(int argc, char **argv, opp::Params* params) 
+void opp_init(int argc, char **argv) 
 {
 
 #ifdef USE_PETSC
@@ -55,18 +55,16 @@ void oppic_init(int argc, char **argv, opp::Params* params)
     OP_MPI_WORLD = MPI_COMM_WORLD;
     OP_MPI_GLOBAL = MPI_COMM_WORLD;
     
-    MPI_Comm_rank(OP_MPI_WORLD, &OPP_my_rank);
+    MPI_Comm_rank(OP_MPI_WORLD, &OPP_rank);
     MPI_Comm_size(OP_MPI_WORLD, &OPP_comm_size);
 
     if (OP_DEBUG) opp_printf("oppic_init", "");
     
-    oppic_init_core(argc, argv, params);
-
-    opp_profiler = std::make_unique<opp::Profiler>();
+    oppic_init_core(argc, argv);
 }
 
 //*******************************************************************************
-void oppic_exit() 
+void opp_exit() 
 {
     if (OP_DEBUG) opp_printf("oppic_exit", "");
 
@@ -99,29 +97,35 @@ void oppic_exit()
 }
 
 //****************************************
-oppic_set oppic_decl_set(int size, char const *name)
+void opp_abort()
+{
+    MPI_Abort(OP_MPI_WORLD, 2);
+}
+
+//****************************************
+oppic_set opp_decl_mesh_set(int size, char const *name)
 {
     return oppic_decl_set_core(size, name);
 }
 
 //****************************************
-oppic_map oppic_decl_map(oppic_set from, oppic_set to, int dim, int *imap, char const *name)
+oppic_map opp_decl_mesh_map(oppic_set from, oppic_set to, int dim, int *imap, char const *name)
 {
     oppic_map map = oppic_decl_map_core(from, to, dim, imap, name);
 
-    if (OP_DEBUG) opp_printf("oppic_decl_map", OPP_my_rank, " map: %s | ptr: %p | dim: %d", map->name, map->map, map->dim);
+    if (OP_DEBUG) opp_printf("oppic_decl_map", OPP_rank, " map: %s | ptr: %p | dim: %d", map->name, map->map, map->dim);
 
     return map;
 }
 
 //****************************************
-oppic_dat oppic_decl_dat(oppic_set set, int dim, opp_data_type dtype, char *data, char const *name)
+oppic_dat opp_decl_mesh_dat(oppic_set set, int dim, opp_data_type dtype, void *data, char const *name)
 {
     std::string type = "";
     int size = -1;
     getDatTypeSize(dtype, type, size);
 
-    return oppic_decl_dat_core(set, dim, type.c_str(), size, data, name);
+    return oppic_decl_dat_core(set, dim, type.c_str(), size, (char*)data, name);
 }
 
 //****************************************
@@ -129,7 +133,7 @@ oppic_map oppic_decl_map_txt(oppic_set from, oppic_set to, int dim, const char* 
 {
     int* map_data = (int*)oppic_load_from_file_core(file_name, from->size, dim, "int", sizeof(int));
 
-    oppic_map map = oppic_decl_map(from, to, dim, map_data, name);
+    oppic_map map = opp_decl_mesh_map(from, to, dim, map_data, name);
 
     free(map_data);
 
@@ -153,25 +157,25 @@ oppic_dat oppic_decl_dat_txt(oppic_set set, int dim, opp_data_type dtype, const 
 }
 
 //****************************************
-oppic_arg oppic_arg_dat(oppic_dat dat, int idx, oppic_map map, int dim, const char *typ, oppic_access acc, opp_mapping mapping)
+oppic_arg opp_get_arg(oppic_dat dat, int idx, oppic_map map, int dim, const char *typ, oppic_access acc, opp_mapping mapping)
 {
     return oppic_arg_dat_core(dat, idx, map, dim, typ, acc, mapping);
 }
 
 //****************************************
-oppic_arg oppic_arg_dat(oppic_dat dat, int idx, oppic_map map, oppic_access acc, opp_mapping mapping)
+oppic_arg opp_get_arg(oppic_dat dat, int idx, oppic_map map, oppic_access acc, opp_mapping mapping)
 {
     return oppic_arg_dat_core(dat, idx, map, acc, mapping);
 }
-oppic_arg oppic_arg_dat(oppic_dat dat, oppic_access acc, opp_mapping mapping)
+oppic_arg opp_get_arg(oppic_dat dat, oppic_access acc, opp_mapping mapping)
 {
     return oppic_arg_dat_core(dat, acc, mapping);
 }
-oppic_arg oppic_arg_dat(oppic_map data_map, oppic_access acc, opp_mapping mapping)
+oppic_arg opp_get_arg(oppic_map data_map, oppic_access acc, opp_mapping mapping)
 {
     return oppic_arg_dat_core(data_map, acc, mapping);
 }
-oppic_arg oppic_arg_dat(oppic_map data_map, int idx, oppic_map map, oppic_access acc, opp_mapping mapping)
+oppic_arg opp_get_arg(oppic_map data_map, int idx, oppic_map map, oppic_access acc, opp_mapping mapping)
 {
     return oppic_arg_dat_core(data_map, idx, map, acc, mapping);
 }
@@ -179,37 +183,37 @@ oppic_arg oppic_arg_dat(oppic_map data_map, int idx, oppic_map map, oppic_access
 
 //****************************************
 // template <class T> oppic_arg oppic_arg_gbl(T *data, int dim, char const *typ, oppic_access acc);
-oppic_arg oppic_arg_gbl(double *data, int dim, char const *typ, oppic_access acc)
+oppic_arg opp_get_arg_gbl(double *data, int dim, char const *typ, oppic_access acc)
 {
     return oppic_arg_gbl_core(data, dim, typ, acc);
 }
-oppic_arg oppic_arg_gbl(int *data, int dim, char const *typ, oppic_access acc)
+oppic_arg opp_get_arg_gbl(int *data, int dim, char const *typ, oppic_access acc)
 {
     return oppic_arg_gbl_core(data, dim, typ, acc);
 }
-oppic_arg oppic_arg_gbl(const bool *data, int dim, char const *typ, oppic_access acc)
+oppic_arg opp_get_arg_gbl(const bool *data, int dim, char const *typ, oppic_access acc)
 {
     return oppic_arg_gbl_core(data, dim, typ, acc);
 }
 
 //****************************************
-oppic_set oppic_decl_particle_set(int size, char const *name, oppic_set cells_set)
+oppic_set opp_decl_part_set(int size, char const *name, oppic_set cells_set)
 {
     return oppic_decl_particle_set_core(size, name, cells_set);
 }
-oppic_set oppic_decl_particle_set(char const *name, oppic_set cells_set)
+oppic_set opp_decl_part_set(char const *name, oppic_set cells_set)
 {
     return oppic_decl_particle_set_core(name, cells_set);
 }
 
 //****************************************
-oppic_dat oppic_decl_particle_dat(oppic_set set, int dim, opp_data_type dtype, char *data, char const *name, bool cell_index)
+oppic_dat opp_decl_part_dat(oppic_set set, int dim, opp_data_type dtype, void *data, char const *name, bool cell_index)
 {
     std::string type = "";
     int size = -1;
     getDatTypeSize(dtype, type, size);
 
-    return oppic_decl_particle_dat_core(set, dim, type.c_str(), size, data, name, cell_index);
+    return oppic_decl_particle_dat_core(set, dim, type.c_str(), size, (char*)data, name, cell_index);
 }
 
 //****************************************
@@ -274,20 +278,20 @@ void oppic_reset_num_particles_to_insert(oppic_set set)
 
 //****************************************
 void oppic_particle_sort(oppic_set set)
-{ TRACE_ME;
+{ 
 
     oppic_particle_sort_core(set);
 }
 
 //****************************************
-void oppic_print_dat_to_txtfile(oppic_dat dat, const char *file_name_prefix, const char *file_name_suffix)
+void opp_print_dat_to_txtfile(oppic_dat dat, const char *file_name_prefix, const char *file_name_suffix)
 {
     std::string prefix = std::string(file_name_prefix) + "_m" + std::to_string(OPP_comm_size);
     oppic_print_dat_to_txtfile_core(dat, prefix.c_str(), file_name_suffix);
 }
 
 //****************************************
-void oppic_print_map_to_txtfile(oppic_map map, const char *file_name_prefix, const char *file_name_suffix)
+void opp_print_map_to_txtfile(oppic_map map, const char *file_name_prefix, const char *file_name_suffix)
 {
     oppic_print_map_to_txtfile_core(map, file_name_prefix, file_name_suffix);
 }
@@ -299,8 +303,8 @@ void oppic_print_map_to_txtfile(oppic_map map, const char *file_name_prefix, con
 // }
 
 //****************************************
-void oppic_init_particle_move(oppic_set set, int nargs, oppic_arg *args)
-{ TRACE_ME;
+void opp_init_particle_move(oppic_set set, int nargs, oppic_arg *args)
+{ 
 
     oppic_init_particle_move_core(set);
 
@@ -331,10 +335,10 @@ void oppic_init_particle_move(oppic_set set, int nargs, oppic_arg *args)
 // }
 
 //****************************************
-bool oppic_finalize_particle_move(oppic_set set)
-{ TRACE_ME;
+bool opp_finalize_particle_move(oppic_set set)
+{ 
 
-    if (OP_DEBUG) opp_printf("oppic_finalize_particle_move", "Start particle set [%s]", set->name);
+    if (OP_DEBUG) opp_printf("opp_finalize_particle_move", "Start particle set [%s]", set->name);
 
     // send the counts and send the particles  
     opp_part_exchange(set);  
@@ -344,12 +348,15 @@ bool oppic_finalize_particle_move(oppic_set set)
 
     if (OP_auto_sort == 1)
     {
-        if (OP_DEBUG) opp_printf("oppic_finalize_particle_move", "auto sorting particle set [%s]", set->name);
+        if (OP_DEBUG) opp_printf("opp_finalize_particle_move", "auto sorting particle set [%s]", set->name);
         oppic_particle_sort(set);
     }
 
     if (opp_part_check_all_done(set))
     {
+        if (OPP_max_comm_iteration < OPP_comm_iteration)
+            OPP_max_comm_iteration = OPP_comm_iteration;
+
         OPP_comm_iteration = 0; // reset for the next par loop
 
         return false; // all mpi ranks do not have anything to communicate to any rank
@@ -366,11 +373,11 @@ bool oppic_finalize_particle_move(oppic_set set)
 }
 
 //****************************************
-void oppic_reset_dat(oppic_dat dat, char* val, opp_reset reset)
+void opp_reset_dat(oppic_dat dat, char* val, opp_reset reset)
 {
     if (!val)
     {
-        opp_printf("oppic_reset_dat", "Error: val is NULL");
+        opp_printf("opp_reset_dat", "Error: val is NULL");
         return;
     }
 
@@ -400,7 +407,7 @@ void oppic_reset_dat(oppic_dat dat, char* val, opp_reset reset)
             end = dat->set->size + dat->set->exec_size + dat->set->nonexec_size;
             break;
         default:
-            opp_printf("oppic_reset_dat", "Error: opp_reset failure");
+            opp_printf("opp_reset_dat", "Error: opp_reset failure");
     }
 
     for (int i = start; i < end; i++)
@@ -410,7 +417,7 @@ void oppic_reset_dat(oppic_dat dat, char* val, opp_reset reset)
 }
 
 //****************************************
-void oppic_mpi_set_dirtybit(int nargs, oppic_arg *args) 
+void opp_mpi_set_dirtybit(int nargs, oppic_arg *args) 
 {
     for (int n = 0; n < nargs; n++) 
     {
@@ -504,11 +511,11 @@ void opp_partition_core(std::string lib_name, op_set prime_set, op_map prime_map
         recv_vec.resize(OPP_comm_size * 3);
 
         std::vector<int> sizes{ set->size, set->exec_size, set->nonexec_size };
-        MPI_Gather(&(sizes[0]), 3, MPI_INT, &(recv_vec[0]), 3, MPI_INT, OPP_MPI_ROOT, OP_MPI_WORLD);
+        MPI_Gather(&(sizes[0]), 3, MPI_INT, &(recv_vec[0]), 3, MPI_INT, OPP_ROOT, OP_MPI_WORLD);
     }
 
     // print the set sizes of all ranks after partitioning
-    if (OPP_my_rank == OPP_MPI_ROOT)
+    if (OPP_rank == OPP_ROOT)
     {
         std::string log = "";
 
@@ -544,7 +551,7 @@ void opp_sanitize_all_maps()
         if (OP_DEBUG) opp_printf("opp_sanitize_all_maps", " map: %s | ptr: %p | dim: %d", map->name, map->map, map->dim);
 
         std::string name = std::string("AUTO_DAT_") + map->name;
-        oppic_dat dat = oppic_decl_dat(map->from, map->dim, OPP_TYPE_INT, (char*)map->map, name.c_str());  
+        oppic_dat dat = opp_decl_mesh_dat(map->from, map->dim, DT_INT, (char*)map->map, name.c_str());  
         negative_mapping_indices[map->index] = dat;
 
         memset(dat->data, 0, (map->from->size * dat->size));
@@ -587,7 +594,7 @@ void opp_sanitize_all_maps()
     //     {
     //         oppic_map map = oppic_maps[i];
             
-    //         opp_printf("opp_sanitize_all_maps", OPP_my_rank, " map: %s | from->size: %d | dim: %d", map->name, map->from->size, map->dim);
+    //         opp_printf("opp_sanitize_all_maps", OPP_rank, " map: %s | from->size: %d | dim: %d", map->name, map->from->size, map->dim);
 
     //         for (int n = 0; n < map->from->size; n++)
     //         {
@@ -595,7 +602,7 @@ void opp_sanitize_all_maps()
     //             {
     //                 if (map->map[n * map->dim + d] < 0)
     //                 {
-    //                     opp_printf("opp_sanitize_all_maps", OPP_my_rank, "Error: map: %s | ptr: %p | negative mapping at index: %d [%d]", map->name, map->map, n, n * map->dim + d);
+    //                     opp_printf("opp_sanitize_all_maps", OPP_rank, "Error: map: %s | ptr: %p | negative mapping at index: %d [%d]", map->name, map->map, n, n * map->dim + d);
     //                 }
     //             }
     //         }

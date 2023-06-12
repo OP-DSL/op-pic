@@ -761,7 +761,7 @@ MPI_Comm OP_PART_WORLD;
         }
     }
 
-    if (my_rank == OPP_MPI_ROOT) 
+    if (my_rank == OPP_ROOT) 
     {
         int die = 0;
         opp_printf("partition_all", "Sets partitioned = %d", sets_partitioned);
@@ -1760,7 +1760,7 @@ void opp_partition_kway(op_map primary_map)
     free(imp_list);
     free(exp_list);
 
-    if (my_rank == OPP_MPI_ROOT) 
+    if (my_rank == OPP_ROOT) 
     {
         opp_printf("opp_partition_kway", "-----------------------------------------------------------");
         opp_printf("opp_partition_kway", "ParMETIS_V3_PartKway Output");
@@ -1770,7 +1770,7 @@ void opp_partition_kway(op_map primary_map)
     ParMETIS_V3_PartKway(vtxdist, xadj, adjncy, NULL, NULL, &wgtflag, &numflag, &ncon, &comm_size_pm, tpwgts, ubvec, 
         options, &edge_cut, partition_pm, &OP_PART_WORLD);
         
-    if (my_rank == OPP_MPI_ROOT)
+    if (my_rank == OPP_ROOT)
         opp_printf("opp_partition_kway", "-----------------------------------------------------------");
     free(vtxdist);
     free(xadj);
@@ -1807,10 +1807,10 @@ void opp_partition_kway(op_map primary_map)
     op_timers(&cpu_t2, &wall_t2); // timer stop for partitioning
 
     time = wall_t2 - wall_t1;
-    MPI_Reduce(&time, &max_time, 1, MPI_DOUBLE, MPI_MAX, OPP_MPI_ROOT, OP_PART_WORLD);
+    MPI_Reduce(&time, &max_time, 1, MPI_DOUBLE, MPI_MAX, OPP_ROOT, OP_PART_WORLD);
     MPI_Comm_free(&OP_PART_WORLD);
   
-    if (my_rank == OPP_MPI_ROOT) opp_printf("opp_partition_kway", "Max total Kway partitioning time = %lf", max_time);
+    if (my_rank == OPP_ROOT) opp_printf("opp_partition_kway", "Max total Kway partitioning time = %lf", max_time);
 
     free(request_send);
 

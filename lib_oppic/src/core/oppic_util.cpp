@@ -38,6 +38,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
+#include <random>
 
 //********************************************************************************
 std::string getTimeStr()
@@ -351,5 +352,31 @@ void op_timers(double *cpu, double *et)
     *et = t.tv_sec + t.tv_usec * 1.0e-6;
 }
 
+//********************************************************************************
+double* get_dandom_distriution(int count, int dim)
+{
+    double *dist = new double[count * dim];
+
+    for (int i = 0; i < count * dim; i++)
+    {   
+        dist[i] = rnd();
+    }
+
+    return dist;
+}
+//********************************************************************************
+std::mt19937 mt_gen(0);        /*seed*/
+std::uniform_real_distribution<double> rnd_dist(0, 1.0);
+
+double rnd() 
+{
+    return rnd_dist(mt_gen);
+}
+
+//********************************************************************************
+void reset_seed() 
+{ 
+    mt_gen.seed(0); 
+}
 
 //********************************************************************************
