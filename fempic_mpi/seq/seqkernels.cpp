@@ -74,7 +74,7 @@ void opp_loop_inject__InjectIons(
 
     opp_profiler->start("InjectIons");
 
-    int inj_start = (set->size - set->diff);
+    const int inj_start = (set->size - set->diff);
     int map0idx = -1, map1idx = 0, map0idxBackup = 0;
     int counter = 0;
 
@@ -183,7 +183,7 @@ void opp_loop_all__ComputeNodeChargeDensity(
 )
 {
     
-    if (FP_DEBUG) printf("FEMPIC - opp_loop_all__ComputeNodeChargeDensity set_size %d\n", set->size);
+    if (FP_DEBUG) opp_printf("FEMPIC", "opp_loop_all__ComputeNodeChargeDensity set_size %d", set->size);
 
     opp_profiler->start("ComputeNodeChargeDensity");
 
@@ -210,7 +210,7 @@ void opp_loop_all__ComputeElectricField(
 )
 {
 
-    if (FP_DEBUG) printf("FEMPIC - opp_loop_all__ComputeElectricField set_size %d\n", set->size);
+    if (FP_DEBUG) opp_printf("FEMPIC", "opp_loop_all__ComputeElectricField set_size %d", set->size);
 
     opp_profiler->start("ComputeElectricField");
 

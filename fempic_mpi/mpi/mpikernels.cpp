@@ -73,9 +73,9 @@ void opp_loop_inject__InjectIons(
     
     opp_profiler->start("InjectIons");
 
-    int inj_start = (set->size - set->diff);
+    const int inj_start = (set->size - set->diff);
 
-    int nargs = 10;
+    const int nargs = 10;
     opp_arg args[nargs];
 
     args[0] = std::move(arg0);
