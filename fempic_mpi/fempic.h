@@ -218,7 +218,7 @@ inline int InitializeInjectDistributions(oppic_dat if_dist_dat, oppic_dat if_are
     double ion_velocity = opp_params->get<OPP_REAL>("ion_velocity");
     double spwt         = opp_params->get<OPP_REAL>("spwt");
 
-    int n_inject_count = 0, max_inject_count_per_face = 0;
+    int total_inject_count = 0, max_inject_count_per_face = 0;
     double remainder = 0.0;
 
     // find the number of particles to be injected through each inlet face and 
@@ -233,22 +233,22 @@ inline int InitializeInjectDistributions(oppic_dat if_dist_dat, oppic_dat if_are
         int num_mp = (int)fnum_mp;
         remainder = fnum_mp - num_mp;
 
-        n_inject_count += num_mp;
+        total_inject_count += num_mp;
 
-        ((int*)if_dist_dat->data)[faceID] = n_inject_count;
+        ((int*)if_dist_dat->data)[faceID] = total_inject_count;
 
         if (max_inject_count_per_face < num_mp)
             max_inject_count_per_face = num_mp;
     }
 
     // increase dummy random particle set size, to load the random numbers for particle injections
-    oppic_increase_particle_count(dummy_random->set, (max_inject_count_per_face + INJ_EXCESS));
+    oppic_increase_particle_count(dummy_random->set, (total_inject_count + INJ_EXCESS));
 
 #ifdef USE_RAND_FILE
     
     if (OP_DEBUG)
         opp_printf("InitializeInjectDistributions", "RAND_FILE inj_count %d max_inj_count_per_face %d", 
-            n_inject_count, max_inject_count_per_face);    
+            total_inject_count, max_inject_count_per_face);    
 
     int total_size = -1, fsize = -1, fdim = -1;
     FILE *fp = NULL;
@@ -309,15 +309,33 @@ inline int InitializeInjectDistributions(oppic_dat if_dist_dat, oppic_dat if_are
     MPI_Bcast(dist, total_size, MPI_DOUBLE, OPP_ROOT, MPI_COMM_WORLD);
 #endif
 
-    memcpy(dummy_random->data, dist, dummy_random->set->size * dummy_random->size);
+    double* random_dat = (double *)dummy_random->data;
+    int* distribution  = (int *)if_dist_dat->data;
+    int iface_index = 0, part_in_face_index = 0;
+
+    // This trouble is only because we need mpi results to match with seq and others
+    for (int i = 0; i < dummy_random->set->size; i++)
+    {
+        if (i >= distribution[iface_index])
+        {
+            iface_index++; // check whether it is j or j-1
+            part_in_face_index = 0; 
+        }
+
+        random_dat[i * 2 + 0] = dist[part_in_face_index * 2 + 0];
+        random_dat[i * 2 + 1] = dist[part_in_face_index * 2 + 1];
+
+        part_in_face_index++;
+    }
 
     delete[] dist;
 
 #else
+    // Might not be able to verify MPI results with seq with this
 
     if (OP_DEBUG)
         opp_printf("InitializeInjectDistributions", "RAND_GENERATE inj_count %d max_inj_count_per_face %d", 
-            n_inject_count, max_inject_count_per_face);    
+            total_inject_count, max_inject_count_per_face);    
     
     double *dist = (double*)dummy_random->data;
 
@@ -328,9 +346,9 @@ inline int InitializeInjectDistributions(oppic_dat if_dist_dat, oppic_dat if_are
 
 #endif
 
-    opp_printf("InitializeInjectDistributions", "n_inject_count %d", n_inject_count);
+    opp_printf("InitializeInjectDistributions", "total_inject_count %d", total_inject_count);
 
-    return n_inject_count;
+    return total_inject_count;
 }
 
 //*************************************************************************************************

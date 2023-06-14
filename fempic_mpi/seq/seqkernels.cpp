@@ -75,20 +75,12 @@ void opp_loop_inject__InjectIons(
     opp_profiler->start("InjectIons");
 
     const int inj_start = (set->size - set->diff);
-    int map0idx = -1, map1idx = 0, map0idxBackup = 0;
-    int counter = 0;
+    int map0idx = -1, map1idx = 0;
 
     for (int i = 0; i < set->diff; i++)
     {    
         map0idx = ((int *)set->mesh_relation_dat->data)[inj_start + i]; // iface index
         map1idx = arg4.map_data[map0idx]; // cell index
-
-        // this is used to get the random numbers from the begining if the iface/cell change
-        if (map0idx != map0idxBackup) 
-        {
-            map0idxBackup = map0idx;
-            counter = 0;
-        }
 
         inject_ions__kernel(
             &((double *)arg0.data)[(inj_start + i) * arg0.dim],    // part_position,
@@ -100,7 +92,7 @@ void opp_loop_inject__InjectIons(
             &((double*)arg6.data)[map0idx * arg6.dim],             // iface_v,
             &((double*)arg7.data)[map0idx * arg7.dim],             // iface_normal,
             &((double*)arg8.data)[map0idx * arg8.dim],             // iface_node_pos
-            &((double*)arg9.data)[(counter++) * arg9.dim]          // dummy_part_random
+            &((double*)arg9.data)[i * arg9.dim]                    // dummy_part_random
         );
     }
 

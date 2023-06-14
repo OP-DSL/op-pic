@@ -92,8 +92,7 @@ void opp_loop_inject__InjectIons(
     int set_size = opp_mpi_halo_exchanges(set, nargs, args);
     opp_mpi_halo_wait_all(nargs, args); // 
 
-    int map0idx = -1, map1idx = 0, map0idxBackup = 0;
-    int counter = 0;
+    int map0idx = -1, map1idx = 0;
 
     if (set_size > 0) 
     {
@@ -102,27 +101,12 @@ void opp_loop_inject__InjectIons(
             map0idx = ((int *)set->mesh_relation_dat->data)[inj_start + i]; // iface index
             map1idx = args[4].map_data[map0idx]; // cell index
 
-            // this is used to get the random numbers from the begining if the iface/cell change
-            if (map0idx != map0idxBackup) 
-            {
-                map0idxBackup = map0idx;
-                counter = 0;
-            }
-
 // {
 //  opp_printf("general", "i=%d mesh mapping=%d part=%d", i, map0idx, (inj_start+i));
 //  opp_printf("dummy_part_random", "%+2.20lE %+2.20lE", 
 //       ((double*) args[9].data)[i * args[9].dim], ((double*) args[9].data)[i * args[9].dim+1]);
 //  opp_printf("iface_node_pos", "%+2.20lE %+2.20lE %+2.20lE", ((double*) args[8].data)[map0idx * args[8].dim], 
 //       ((double*) args[8].data)[map0idx * args[8].dim+1], ((double*) args[8].data)[map0idx * args[8].dim+2]);
-//  opp_printf("iface_u", "%+2.20lE %+2.20lE %+2.20lE", ((double*) args[5].data)[map0idx * args[5].dim], 
-//         ((double*) args[5].data)[map0idx * args[5].dim+1], ((double*) args[5].data)[map0idx * args[5].dim+2]);
-//  opp_printf("iface_v", "%+2.20lE %+2.20lE %+2.20lE", ((double*) args[6].data)[map0idx * args[6].dim], 
-//         ((double*) args[6].data)[map0idx * args[6].dim+1], ((double*) args[6].data)[map0idx * args[6].dim+2]);
-//  opp_printf("iface_normal", "%+2.20lE %+2.20lE %+2.20lE", ((double*) args[7].data)[map0idx * args[7].dim], 
-//         ((double*) args[7].data)[map0idx * args[7].dim+1], ((double*) args[7].data)[map0idx * args[7].dim+2]);
-//  opp_printf("cell_ef", "%+2.20lE %+2.20lE %+2.20lE", ((double*) args[4].data)[map0idx * args[4].dim], 
-//         ((double*) args[4].data)[map0idx * args[4].dim+1], ((double*) args[4].data)[map0idx * args[4].dim+2]);
 // }
             inject_ions__kernel(
                 &((double*) args[0].data)[(inj_start + i) * args[0].dim],     // part_position,
@@ -134,7 +118,7 @@ void opp_loop_inject__InjectIons(
                 &((double*) args[6].data)[map0idx * args[6].dim],             // iface_v,
                 &((double*) args[7].data)[map0idx * args[7].dim],             // iface_normal,
                 &((double*) args[8].data)[map0idx * args[8].dim],             // iface_node_pos
-                &((double*) args[9].data)[(counter++) * args[9].dim]          // dummy_part_random
+                &((double*) args[9].data)[i * args[9].dim]                    // dummy_part_random
             );
         }
     }
@@ -177,7 +161,7 @@ void opp_loop_all_part_move__MoveToCells(
     std::vector<int> particle_loops_per_comm_iter(10, 0);
     auto total_start = std::chrono::system_clock::now();
     auto start = std::chrono::system_clock::now();
-#endif // -------------------------------------------------------------------------------------------
+#endif // DEBUG_INTERNAL ----------------------------------------------------------------------------
 
     int nargs = 12;
     opp_arg args[nargs];
@@ -219,7 +203,7 @@ void opp_loop_all_part_move__MoveToCells(
 
 #ifdef DEBUG_INTERNAL // ----------------------------------------------------------------------------
         start = std::chrono::system_clock::now();
-#endif // -------------------------------------------------------------------------------------------
+#endif // DEBUG_INTERNAL ----------------------------------------------------------------------------
 
         for (int i = OPP_iter_start; i < OPP_iter_end; i++)
         {
@@ -227,7 +211,7 @@ void opp_loop_all_part_move__MoveToCells(
 
 #ifdef DEBUG_INTERNAL // ----------------------------------------------------------------------------
             internal_hops = 0;
-#endif // -------------------------------------------------------------------------------------------
+#endif // DEBUG_INTERNAL ----------------------------------------------------------------------------
 
             do
             { 
@@ -256,7 +240,7 @@ void opp_loop_all_part_move__MoveToCells(
 
 #ifdef DEBUG_INTERNAL // ----------------------------------------------------------------------------
                 internal_hops++; // can remove
-#endif // -------------------------------------------------------------------------------------------
+#endif // DEBUG_INTERNAL ----------------------------------------------------------------------------
 
             // opp_part_check_status checks whether map0idx is in halo list, 
             // if yes, pack the particle into MPI buffer and set status to NEED_REMOVE
@@ -265,7 +249,7 @@ void opp_loop_all_part_move__MoveToCells(
 #ifdef DEBUG_INTERNAL
             if (max_internal_hops < internal_hops) 
                 max_internal_hops = internal_hops; // can remove
-#endif // -------------------------------------------------------------------------------------------
+#endif // DEBUG_INTERNAL ----------------------------------------------------------------------------
         }
 
 #ifdef DEBUG_INTERNAL // ----------------------------------------------------------------------------
@@ -274,7 +258,7 @@ void opp_loop_all_part_move__MoveToCells(
         total_particles += (OPP_iter_end - OPP_iter_start);
         particle_loops_per_comm_iter[OPP_comm_iteration] = (OPP_iter_end - OPP_iter_start);
         comm_iteration++;
-#endif // -------------------------------------------------------------------------------------------
+#endif // DEBUG_INTERNAL ----------------------------------------------------------------------------
 
     } while (opp_finalize_particle_move(set)); // iterate until all mpi ranks say, I am done
 
@@ -294,7 +278,7 @@ void opp_loop_all_part_move__MoveToCells(
         (double)total_diff.count(), kernel_time, total_particles, 
         particle_loops_per_comm_iter[0], particle_loops_per_comm_iter[1], particle_loops_per_comm_iter[2], 
         particle_loops_per_comm_iter[3], comm_iteration, max_internal_hops);
-#endif // -------------------------------------------------------------------------------------------
+#endif // DEBUG_INTERNAL ----------------------------------------------------------------------------
 
     opp_profiler->end("MoveToCells");
 }

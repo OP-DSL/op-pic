@@ -47,7 +47,8 @@ int main(int argc, char **argv)
 {
     if (argc < 2) 
     {
-        std::cerr << "Usage: " << argv[0] << " <config_file> ..." << std::endl;
+        std::cerr << "Usage: " << argv[0] << " <config_file> ..." << 
+        "/ext-home/zl/phd/OP-PIC/scripts/fempic_tests/configs/coarse_1.param" << std::endl;
         exit(-1);
     }
 
