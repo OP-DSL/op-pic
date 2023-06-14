@@ -38,7 +38,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 // TODO : May need to write with array capcity and realloc always if partticle dats are used
 template <class T> 
-void oppic_create_thread_level_data(oppic_arg arg, T init_value)
+void opp_create_thread_level_data(oppic_arg arg, T init_value)
 {
     oppic_dat dat = arg.dat;
     int nthreads = omp_get_max_threads();
@@ -49,7 +49,7 @@ void oppic_create_thread_level_data(oppic_arg arg, T init_value)
         exit(-1);
     }
 
-    if (OP_DEBUG) printf("oppic_create_thread_level_data template[%d]\n", nthreads);
+    if (OP_DEBUG) printf("opp_create_thread_level_data template[%d]\n", nthreads);
 
     if (dat->thread_data->size() <= 0)
     {
@@ -64,7 +64,7 @@ void oppic_create_thread_level_data(oppic_arg arg, T init_value)
 
     if ((int)dat->thread_data->size() != nthreads)
     {
-        std::cerr << "oppic_create_thread_level_data dat [" << dat->name << "] thread_data not properly created [(int)dat->thread_data.size():" << (int)dat->thread_data->size() << " nthreads:" << nthreads << std::endl;
+        std::cerr << "opp_create_thread_level_data dat [" << dat->name << "] thread_data not properly created [(int)dat->thread_data.size():" << (int)dat->thread_data->size() << " nthreads:" << nthreads << std::endl;
         return;
     }
 
@@ -76,7 +76,7 @@ void oppic_create_thread_level_data(oppic_arg arg, T init_value)
 
 // TODO : May need to write with array capcity and realloc always if partticle dats are used
 template <class T> 
-void oppic_reduce_thread_level_data(oppic_arg arg)
+void opp_reduce_thread_level_data(oppic_arg arg)
 {
     oppic_dat dat = arg.dat;
     oppic_set set = dat->set;
@@ -84,7 +84,7 @@ void oppic_reduce_thread_level_data(oppic_arg arg)
 
     int nthreads = omp_get_max_threads();
 
-    if (OP_DEBUG) printf("oppic_reduce_thread_level_data dat [%s] nthreads [%d]\n", dat->name, nthreads);
+    if (OP_DEBUG) printf("opp_reduce_thread_level_data dat [%s] nthreads [%d]\n", dat->name, nthreads);
 
     if (set->size > 0) 
     {
@@ -106,7 +106,7 @@ void oppic_reduce_thread_level_data(oppic_arg arg)
                             ((T*)dat->data)[n] += td[n];
                             break;
                         default:
-                            std::cerr << "oppic_reduce_thread_level_data dat [" << dat->name << "] acc [" << (int)arg.acc << "] not implemented" << std::endl;
+                            std::cerr << "opp_reduce_thread_level_data dat [" << dat->name << "] acc [" << (int)arg.acc << "] not implemented" << std::endl;
                     }
                 }
             }

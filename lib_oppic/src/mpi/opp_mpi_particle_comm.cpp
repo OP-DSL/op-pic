@@ -202,15 +202,16 @@ void opp_part_unpack(oppic_set set)
 }
 
 //*******************************************************************************
-bool opp_part_check_status(opp_move_var& m, int map0idx, oppic_set set, int particle_index, int& remove_count) 
+bool opp_part_check_status(opp_move_var& m, int map0idx, oppic_set set, 
+    int particle_index, int& remove_count, int thread) 
 {
-    m.OPP_iteration_one = false;
+    m.iteration_one = false;
 
-    if (m.OPP_move_status == OPP_MOVE_DONE)
+    if (m.move_status == OPP_MOVE_DONE)
     {
         return false;
     }
-    else if (m.OPP_move_status == OPP_NEED_REMOVE)
+    else if (m.move_status == OPP_NEED_REMOVE)
     {
         remove_count += 1;
         OPP_mesh_relation_data[particle_index] = MAX_CELL_INDEX;
@@ -238,14 +239,14 @@ bool opp_part_check_status(opp_move_var& m, int map0idx, oppic_set set, int part
         opp_part_pack(set, particle_index, comm_data.cell_residing_rank);
         
         // This particle is already packed, hence needs to be removed from the current rank
-        m.OPP_move_status = OPP_NEED_REMOVE; 
+        m.move_status = OPP_NEED_REMOVE; 
         remove_count += 1;
         OPP_mesh_relation_data[particle_index] = MAX_CELL_INDEX;
 
         return false;
     }
 
-    // map0idx is an own cell and m.OPP_move_status == OPP_NEED_MOVE
+    // map0idx is an own cell and m.move_status == OPP_NEED_MOVE
     return true;
 }
 

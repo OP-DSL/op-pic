@@ -40,6 +40,8 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 MPI_Comm OP_MPI_WORLD;
 MPI_Comm OP_MPI_GLOBAL;
 
+opp_move_var move_var;
+
 op_dat op_mpi_get_data(op_dat dat);
 
 //*******************************************************************************
@@ -654,14 +656,16 @@ void opp_mpi_print_dat_to_txtfile(op_dat dat, const char *file_name)
     free(temp);
 }
 
-opp_move_var opp_get_move_var()
+opp_move_var opp_get_move_var(int thread)
 {
-// TODO_IMM : use a buffered opp_move_var instead, could use a global variable and reset
-
-    opp_move_var m;
+    // no perf improvement by using a buffered move var, could create a new here instead
+    
+    move_var.move_status = OPP_MOVE_DONE;
 
     if (OPP_comm_iteration != 0) // TRUE means communicated particles, no need to do the iteration one calculations
-        m.OPP_iteration_one = false;
-    
-    return m;
+        move_var.iteration_one = false;
+    else
+        move_var.iteration_one = true;
+
+    return move_var; // passing the object for now :(
 }

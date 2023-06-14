@@ -312,8 +312,8 @@ void opp_loop_all__ComputeNodeChargeDensity(
             }
 
             compute_node_charge_density__kernel(
-                &((double*)arg0.data)[i * arg0.dim],
-                &((double*)arg1.data)[i * arg1.dim]
+                &((double*)args[0].data)[i * args[0].dim],
+                &((double*)args[1].data)[i * args[1].dim]
             );
         }
     }  
@@ -359,18 +359,18 @@ void opp_loop_all__ComputeElectricField(
                 opp_mpi_halo_wait_all(nargs, args);
             }
 
-            const int map1idx = arg2.map_data[i * arg2.map->dim + 0];
-            const int map2idx = arg2.map_data[i * arg2.map->dim + 1];
-            const int map3idx = arg2.map_data[i * arg2.map->dim + 2];
-            const int map4idx = arg2.map_data[i * arg2.map->dim + 3];
+            const int map1idx = args[2].map_data[i * args[2].map->dim + 0];
+            const int map2idx = args[2].map_data[i * args[2].map->dim + 1];
+            const int map3idx = args[2].map_data[i * args[2].map->dim + 2];
+            const int map4idx = args[2].map_data[i * args[2].map->dim + 3];
 
             compute_electric_field__kernel(
-                &((double*)arg0.data)[i * arg0.dim],    // cell_electric_field
-                &((double*)arg1.data)[i * arg1.dim],    // cell_shape_deriv
-                &((double*)arg2.data)[map1idx],         // node_potential0
-                &((double*)arg2.data)[map2idx],         // node_potential1
-                &((double*)arg2.data)[map3idx],         // node_potential2
-                &((double*)arg2.data)[map4idx]          // node_potential3
+                &((double*)args[0].data)[i * args[0].dim],    // cell_electric_field
+                &((double*)args[1].data)[i * args[1].dim],    // cell_shape_deriv
+                &((double*)args[2].data)[map1idx],         // node_potential0
+                &((double*)args[2].data)[map2idx],         // node_potential1
+                &((double*)args[2].data)[map3idx],         // node_potential2
+                &((double*)args[2].data)[map4idx]          // node_potential3
             );
         } 
     }  

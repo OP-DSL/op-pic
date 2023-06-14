@@ -32,6 +32,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <oppic_seq.h>
 
+opp_move_var move_var;
 
 //****************************************
 void opp_init(int argc, char **argv)
@@ -355,15 +356,16 @@ void opp_complete_double_indirect_reductions(int nargs, oppic_arg *args)
 }
 
 //****************************************
-bool opp_part_check_status(opp_move_var& m, int map0idx, oppic_set set, int particle_index, int& remove_count)
+bool opp_part_check_status(opp_move_var& m, int map0idx, oppic_set set, 
+    int particle_index, int& remove_count, int thread)
 {
-    m.OPP_iteration_one = false;
+    m.iteration_one = false;
 
-    if (m.OPP_move_status == OPP_MOVE_DONE)
+    if (m.move_status == OPP_MOVE_DONE)
     {
         return false;
     }
-    else if (m.OPP_move_status == OPP_NEED_REMOVE)
+    else if (m.move_status == OPP_NEED_REMOVE)
     {
         remove_count += 1;
         OPP_mesh_relation_data[particle_index] = MAX_CELL_INDEX;
@@ -374,14 +376,13 @@ bool opp_part_check_status(opp_move_var& m, int map0idx, oppic_set set, int part
     return true;
 }
 
-opp_move_var opp_get_move_var()
+//****************************************
+opp_move_var opp_get_move_var(int thread)
 {
-// TODO_IMM : use a buffered opp_move_var instead, could use a global variable and reset
+    move_var.move_status = OPP_MOVE_DONE;
+    move_var.iteration_one = true;
 
-    opp_move_var m;
-
-    if (OPP_comm_iteration != 0) // TRUE means communicated particles, no need to do the iteration one calculations
-        m.OPP_iteration_one = false;
+    // no perf improvement by using a buffered move var, could create a new here instead
     
-    return m;
+    return move_var;
 }

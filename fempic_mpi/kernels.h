@@ -119,7 +119,7 @@ inline void move_all_particles_to_cell__kernel(
     double *node_charge_den3
 )
 {
-    if (m.OPP_iteration_one)
+    if (m.iteration_one)
     {
         double coefficient1 = CONST_charge / CONST_mass * (CONST_dt);
         for (int i = 0; i < DIM; i++)
@@ -142,13 +142,13 @@ inline void move_all_particles_to_cell__kernel(
         if (part_lc[i] < 0.0 || 
             part_lc[i] > 1.0)  
                 inside = false;
-                // m.OPP_inside_cell = false;
+                // m.inside_cell = false;
     }    
     
-    // if (m.OPP_inside_cell)
+    // if (m.inside_cell)
     if (inside)
     {
-        m.OPP_move_status = OPP_MOVE_DONE;
+        m.move_status = OPP_MOVE_DONE;
 
         (*node_charge_den0) += part_lc[0];
         (*node_charge_den1) += part_lc[1];
@@ -175,11 +175,11 @@ inline void move_all_particles_to_cell__kernel(
     if (cell_connectivity[min_i] >= 0) // is there a neighbor in this direction?
     {
         (*current_cell_index) = cell_connectivity[min_i];
-        m.OPP_move_status = OPP_NEED_MOVE;
+        m.move_status = OPP_NEED_MOVE;
     }
     else
     {
-        m.OPP_move_status = OPP_NEED_REMOVE;
+        m.move_status = OPP_NEED_REMOVE;
     }
 }
 

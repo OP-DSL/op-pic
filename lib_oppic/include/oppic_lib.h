@@ -39,9 +39,9 @@ const int opp_zero_int16[16] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 
 
 struct opp_move_var
 {
-    bool OPP_inside_cell = true;
-    bool OPP_iteration_one = true;
-    opp_move_status OPP_move_status = OPP_MOVE_DONE;
+    bool inside_cell = true;
+    bool iteration_one = true;
+    opp_move_status move_status = OPP_MOVE_DONE;
 };
 
 void opp_init(int argc, char **argv);
@@ -114,9 +114,9 @@ void opp_mpi_set_dirtybit(int nargs, oppic_arg *args);
 
 void opp_abort();
 
-opp_move_var opp_get_move_var();
+opp_move_var opp_get_move_var(int thread = 0);
 
-bool opp_part_check_status(opp_move_var& m, int map0idx, oppic_set set, int particle_index, int& remove_count);
+bool opp_part_check_status(opp_move_var& m, int map0idx, oppic_set set, int particle_index, int& remove_count, int thread = 0);
 
 void opp_init_double_indirect_reductions(int nargs, oppic_arg *args);
 void opp_exchange_double_indirect_reductions(int nargs, oppic_arg *args) ;

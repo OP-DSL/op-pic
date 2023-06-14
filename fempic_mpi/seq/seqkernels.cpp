@@ -126,14 +126,12 @@ void opp_loop_all_part_move__MoveToCells(
 
     opp_init_particle_move(set, 0, nullptr);
 
-    for (int i = 0; i < set->size; i++)
+    for (int i = OPP_iter_start; i < OPP_iter_end; i++)
     {        
         opp_move_var m = opp_get_move_var();
 
         do
         { 
-            m.OPP_inside_cell = true;
-
             map0idx = &(OPP_mesh_relation_data[i]);
 
             const int map1idx = arg8.map_data[*map0idx * arg8.map->dim + 0];
@@ -156,10 +154,8 @@ void opp_loop_all_part_move__MoveToCells(
                 &((double*) arg8.data)[map3idx],                 // node_charge_den2,
                 &((double*) arg8.data)[map4idx]                  // node_charge_den3,
             );         
-            
-            m.OPP_iteration_one = false;
 
-        } while (opp_part_check_status(m, *map0idx, set, i, set->particle_remove_count));
+        } while (opp_part_check_status(m, *map0idx, set, i, set->particle_remove_count));  
     }
 
     opp_finalize_particle_move(set);
