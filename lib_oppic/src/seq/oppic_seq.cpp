@@ -321,13 +321,6 @@ void opp_mpi_set_dirtybit(int nargs, oppic_arg *args)
 //****************************************
 int opp_mpi_halo_exchanges(oppic_set set, int nargs, oppic_arg *args) 
 {
-    // for (int n = 0; n < nargs; n++)
-    // {
-    //     if (args[n].opt && args[n].argtype == OP_ARG_DAT && args[n].dat->dirty_hd == Dirty::Host) 
-    //     {
-    //         op_download_dat(args[n].dat);
-    //     }
-    // }
     return set->size;
 }
 

@@ -46,12 +46,12 @@ __device__ void compute_node_charge_density__kernel_gpu(
 
 // CUDA kernel function
 //*************************************************************************************************
-__global__ void oppic_cuda_ComputeNodeChargeDensity(
+__global__ void opp_cuda_ComputeNodeChargeDensity(
     double *__restrict dir_arg0,
     const double *__restrict dir_arg1,
     int start,
     int end
-    ) 
+) 
 {
     int tid = threadIdx.x + blockIdx.x * blockDim.x;
 
@@ -67,19 +67,24 @@ __global__ void oppic_cuda_ComputeNodeChargeDensity(
 }
 
 //*************************************************************************************************
-void oppic_par_loop_all__ComputeNodeChargeDensity(
-    oppic_set set,     // nodes_set
-    oppic_arg arg0,    // node_charge_density
-    oppic_arg arg1     // node_volume
+void opp_loop_all__ComputeNodeChargeDensity(
+    opp_set set,     // nodes_set
+    opp_arg arg0,    // node_charge_density
+    opp_arg arg1     // node_volume
 )
-{ TRACE_ME;
+{ 
     
-    if (FP_DEBUG) printf("FEMPIC - oppic_par_loop_all__ComputeNodeChargeDensity set_size %d\n", set->size);
+    if (FP_DEBUG) opp_printf("FEMPIC", "opp_loop_all__ComputeNodeChargeDensity set_size %d", set->size);
 
-    int nargs = 4;
-    oppic_arg args[nargs] = { arg0, arg1 };
+    opp_profiler->start("ComputeNodeChargeDensity");
 
-    int set_size = oppic_mpi_halo_exchanges_grouped(set, nargs, args, Device_GPU);
+    int nargs = 2;
+    opp_arg args[nargs];
+
+    args[0] = std::move(arg0);
+    args[1] = std::move(arg1);
+
+    int set_size = opp_mpi_halo_exchanges_grouped(set, nargs, args, Device_GPU);
     if (set_size > 0) 
     {
         int start = 0;
@@ -90,14 +95,16 @@ void oppic_par_loop_all__ComputeNodeChargeDensity(
             int nthreads = GPU_THREADS_PER_BLOCK;
             int nblocks  = (end - start - 1) / nthreads + 1;
 
-            oppic_cuda_ComputeNodeChargeDensity <<<nblocks, nthreads>>> (
-                (double *)  arg0.data_d,
-                (double *)  arg1.data_d,
+            opp_cuda_ComputeNodeChargeDensity <<<nblocks, nthreads>>> (
+                (double *)  args[0].data_d,
+                (double *)  args[1].data_d,
                 start, 
                 end);
         } 
 
-        oppic_mpi_set_dirtybit_grouped(nargs, args, Device_GPU);
+        opp_mpi_set_dirtybit_grouped(nargs, args, Device_GPU);
         cutilSafeCall(cudaDeviceSynchronize());       
     }
+
+    opp_profiler->end("ComputeNodeChargeDensity");
 }

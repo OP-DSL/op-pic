@@ -33,9 +33,13 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <oppic_cuda.h>
 
 //****************************************
-void oppic_init(int argc, char **argv, opp::Params* params)
+void opp_init(int argc, char **argv)
 {
-    oppic_init_core(argc, argv, params);
+#ifdef USE_PETSC
+    PetscInitialize(&argc, &argv, PETSC_NULL, "opp::PetscSEQ");
+#endif
+
+    oppic_init_core(argc, argv);
     cutilDeviceInit(argc, argv);
 
     cutilSafeCall(cudaDeviceSetCacheConfig(cudaFuncCachePreferShared));
@@ -46,10 +50,20 @@ void oppic_init(int argc, char **argv, opp::Params* params)
 }
 
 //****************************************
-void oppic_exit()
+void opp_exit()
 {
+#ifdef USE_PETSC
+    PetscFinalize();
+#endif
+
     oppic_cuda_exit();
     oppic_exit_core();
+}
+
+//****************************************
+void opp_abort()
+{
+    exit(-1);
 }
 
 //****************************************
@@ -75,13 +89,13 @@ void oppic_cuda_exit()
 }
 
 //****************************************
-oppic_set oppic_decl_set(int size, char const *name)
+oppic_set opp_decl_mesh_set(int size, char const *name)
 {
     return oppic_decl_set_core(size, name);
 }
 
 //****************************************
-oppic_map oppic_decl_map(oppic_set from, oppic_set to, int dim, int *imap, char const *name)
+oppic_map opp_decl_mesh_map(oppic_set from, oppic_set to, int dim, int *imap, char const *name)
 {
     oppic_map map = oppic_decl_map_core(from, to, dim, imap, name);
 
@@ -104,14 +118,14 @@ oppic_map oppic_decl_map(oppic_set from, oppic_set to, int dim, int *imap, char 
 }
 
 //****************************************
-oppic_dat oppic_decl_dat(oppic_set set, int dim, opp_data_type dtype, char *data, char const *name)
+oppic_dat opp_decl_mesh_dat(oppic_set set, int dim, opp_data_type dtype, void *data, char const *name)
 {
     std::string type = "";
     int size = -1;
 
     getDatTypeSize(dtype, type, size);
     
-    oppic_dat dat = oppic_decl_dat_core(set, dim, type.c_str(), size, data, name);
+    oppic_dat dat = oppic_decl_dat_core(set, dim, type.c_str(), size, (char*)data, name);
 
     oppic_create_device_arrays(dat);
 
@@ -125,7 +139,7 @@ oppic_map oppic_decl_map_txt(oppic_set from, oppic_set to, int dim, const char* 
 {
     int* map_data = (int*)oppic_load_from_file_core(file_name, from->size, dim, "int", sizeof(int));
 
-    oppic_map map = oppic_decl_map(from, to, dim, map_data, name);
+    oppic_map map = opp_decl_mesh_map(from, to, dim, map_data, name);
 
     free(map_data);
 
@@ -149,46 +163,46 @@ oppic_dat oppic_decl_dat_txt(oppic_set set, int dim, opp_data_type dtype, const 
 }
 
 //****************************************
-oppic_arg oppic_arg_dat(oppic_dat dat, int idx, oppic_map map, int dim, const char *typ, oppic_access acc, opp_mapping mapping)
+oppic_arg opp_get_arg(oppic_dat dat, int idx, oppic_map map, int dim, const char *typ, oppic_access acc, opp_mapping mapping)
 {
     return oppic_arg_dat_core(dat, idx, map, dim, typ, acc, mapping);
 }
 
 //****************************************
-oppic_arg oppic_arg_dat(oppic_dat dat, int idx, oppic_map map, oppic_access acc, opp_mapping mapping)
+oppic_arg opp_get_arg(oppic_dat dat, int idx, oppic_map map, oppic_access acc, opp_mapping mapping)
 {
     return oppic_arg_dat_core(dat, idx, map, acc, mapping);
 }
-oppic_arg oppic_arg_dat(oppic_dat dat, oppic_access acc, opp_mapping mapping)
+oppic_arg opp_get_arg(oppic_dat dat, oppic_access acc, opp_mapping mapping)
 {
     return oppic_arg_dat_core(dat, acc, mapping);
 }
-oppic_arg oppic_arg_dat(oppic_map data_map, oppic_access acc, opp_mapping mapping)
+oppic_arg opp_get_arg(oppic_map data_map, oppic_access acc, opp_mapping mapping)
 {
     return oppic_arg_dat_core(data_map, acc, mapping);
 }
-oppic_arg oppic_arg_dat(oppic_map data_map, int idx, oppic_map map, oppic_access acc, opp_mapping mapping)
+oppic_arg opp_get_arg(oppic_map data_map, int idx, oppic_map map, oppic_access acc, opp_mapping mapping)
 {
     return oppic_arg_dat_core(data_map, idx, map, acc, mapping);
 }
 
 //****************************************
 // template <class T> oppic_arg oppic_arg_gbl(T *data, int dim, char const *typ, oppic_access acc);
-oppic_arg oppic_arg_gbl(double *data, int dim, char const *typ, oppic_access acc)
+oppic_arg opp_get_arg_gbl(double *data, int dim, char const *typ, oppic_access acc)
 {
     return oppic_arg_gbl_core(data, dim, typ, acc);
 }
-oppic_arg oppic_arg_gbl(int *data, int dim, char const *typ, oppic_access acc)
+oppic_arg opp_get_arg_gbl(int *data, int dim, char const *typ, oppic_access acc)
 {
     return oppic_arg_gbl_core(data, dim, typ, acc);
 }
-oppic_arg oppic_arg_gbl(const bool *data, int dim, char const *typ, oppic_access acc)
+oppic_arg opp_get_arg_gbl(const bool *data, int dim, char const *typ, oppic_access acc)
 {
     return oppic_arg_gbl_core(data, dim, typ, acc);
 }
 
 //****************************************
-oppic_set oppic_decl_particle_set(int size, char const *name, oppic_set cells_set)
+oppic_set opp_decl_part_set(int size, char const *name, oppic_set cells_set)
 {
     oppic_set set = oppic_decl_particle_set_core(size, name, cells_set);
 
@@ -197,19 +211,19 @@ oppic_set oppic_decl_particle_set(int size, char const *name, oppic_set cells_se
   
     return set;
 }
-oppic_set oppic_decl_particle_set(char const *name, oppic_set cells_set)
+oppic_set opp_decl_part_set(char const *name, oppic_set cells_set)
 {
-    return oppic_decl_particle_set(0, name, cells_set);
+    return opp_decl_part_set(0, name, cells_set);
 }
 
 //****************************************
-oppic_dat oppic_decl_particle_dat(oppic_set set, int dim, opp_data_type dtype, char *data, char const *name, bool cell_index)
+oppic_dat opp_decl_part_dat(oppic_set set, int dim, opp_data_type dtype, void *data, char const *name, bool cell_index)
 {
     std::string type = "";
     int size = -1;
     getDatTypeSize(dtype, type, size);
 
-    oppic_dat dat = oppic_decl_particle_dat_core(set, dim, type.c_str(), size, data, name, cell_index);
+    oppic_dat dat = oppic_decl_particle_dat_core(set, dim, type.c_str(), size, (char*)data, name, cell_index);
 
     oppic_create_device_arrays(dat);
 
@@ -236,7 +250,7 @@ oppic_dat oppic_decl_particle_dat_txt(oppic_set set, int dim, opp_data_type dtyp
 
 //****************************************
 void oppic_increase_particle_count(oppic_set particles_set, const int num_particles_to_insert)
-{ TRACE_ME;
+{ 
 
     bool need_resizing = (particles_set->set_capacity < (particles_set->size + num_particles_to_insert)) ? true : false;
 
@@ -246,7 +260,7 @@ void oppic_increase_particle_count(oppic_set particles_set, const int num_partic
         oppic_download_particle_set(particles_set); // TODO : We should be able to do a device to device copy instead of getting to host
 
     if (!oppic_increase_particle_count_core(particles_set, num_particles_to_insert))
-        exit(-1);
+        opp_abort();
 
     if (need_resizing)
     {
@@ -266,17 +280,32 @@ void oppic_increase_particle_count(oppic_set particles_set, const int num_partic
 }
 
 //****************************************
-void oppic_init_particle_move(oppic_set set)
-{ TRACE_ME;
+void opp_inc_part_count_with_distribution(oppic_set particles_set, int num_particles_to_insert, oppic_dat part_dist)
+{
+    if (OP_DEBUG) opp_printf("opp_inc_part_count_with_distribution", "num_particles_to_insert [%d]", num_particles_to_insert);
+
+    printf("REF NEED TO IMPLEMENT...\n");
+    // if (!opp_inc_part_count_with_distribution_core(particles_set, num_particles_to_insert, part_dist))
+    // {
+    //     opp_printf("opp_inc_part_count_with_distribution", "Error: opp_inc_part_count_with_distribution_core failed for particle set [%s]", particles_set->name);
+    //     opp_abort();        
+    // }
+}
+
+//****************************************
+void opp_init_particle_move(oppic_set set, int nargs, oppic_arg *args)
+{ 
 
     oppic_init_particle_move_core(set);
 
     cutilSafeCall(cudaMemcpy(set->particle_remove_count_d, &(set->particle_remove_count), sizeof(int), cudaMemcpyHostToDevice));
+
+    printf("REF NEED TO IMPLEMENT...\n");
 }
 
 //****************************************
-bool oppic_finalize_particle_move(oppic_set set)
-{ TRACE_ME;
+bool opp_finalize_particle_move(oppic_set set)
+{ 
 
     cudaMemcpy(&(set->particle_remove_count), set->particle_remove_count_d, sizeof(int), cudaMemcpyDeviceToHost);
 
@@ -300,7 +329,7 @@ void particle_sort_cuda(oppic_set set);
 
 //****************************************
 void oppic_particle_sort(oppic_set set)
-{ TRACE_ME;
+{ 
 
     particle_sort_cuda(set);
 }
@@ -333,7 +362,7 @@ void oppic_dump_dat(oppic_dat dat)
 //****************************************
 // DEVICE->HOST | this invalidates what is in the HOST
 void oppic_download_dat(oppic_dat dat) 
-{ TRACE_ME;
+{ 
 
     size_t set_size = dat->set->set_capacity;
     if (strstr(dat->type, ":soa") != NULL || (OP_auto_soa && dat->dim > 1)) 
@@ -369,7 +398,7 @@ void oppic_download_dat(oppic_dat dat)
 //****************************************
 // HOST->DEVICE | this invalidates what is in the DEVICE
 void oppic_upload_dat(oppic_dat dat)
-{ TRACE_ME;
+{ 
 
     size_t set_capacity = dat->set->set_capacity;
 
@@ -449,18 +478,18 @@ void oppic_upload_particle_set(oppic_set particles_set, bool realloc)
 }
 
 //****************************************
-int oppic_mpi_halo_exchanges_cuda(oppic_set set, int nargs, oppic_arg *args);
-void oppic_mpi_set_dirtybit_cuda(int nargs, oppic_arg *args);
+int opp_mpi_halo_exchanges_cuda(oppic_set set, int nargs, oppic_arg *args);
+void opp_mpi_set_dirtybit_cuda(int nargs, oppic_arg *args);
 
-int oppic_mpi_halo_exchanges_grouped(oppic_set set, int nargs, oppic_arg *args, DeviceType device)
+int opp_mpi_halo_exchanges_grouped(oppic_set set, int nargs, oppic_arg *args, DeviceType device)
 {
-    return (device == Device_CPU) ? oppic_mpi_halo_exchanges(set, nargs, args) : oppic_mpi_halo_exchanges_cuda(set, nargs, args);
+    return (device == Device_CPU) ? opp_mpi_halo_exchanges(set, nargs, args) : opp_mpi_halo_exchanges_cuda(set, nargs, args);
 }
 
 //****************************************
 // DEVICE->HOST copy of Dirty::Host dats 
-int oppic_mpi_halo_exchanges(oppic_set set, int nargs, oppic_arg *args) 
-{ TRACE_ME;
+int opp_mpi_halo_exchanges(oppic_set set, int nargs, oppic_arg *args) 
+{ 
     for (int n = 0; n < nargs; n++)
     {
         if (args[n].opt && args[n].argtype == OP_ARG_DAT && args[n].dat->dirty_hd == Dirty::Host) 
@@ -474,8 +503,8 @@ int oppic_mpi_halo_exchanges(oppic_set set, int nargs, oppic_arg *args)
 
 //****************************************
 // HOST->DEVICE copy of Dirty::Device dats
-int oppic_mpi_halo_exchanges_cuda(oppic_set set, int nargs, oppic_arg *args) 
-{ TRACE_ME;
+int opp_mpi_halo_exchanges_cuda(oppic_set set, int nargs, oppic_arg *args) 
+{ 
     for (int n = 0; n < nargs; n++)
     { 
         if (args[n].opt && args[n].argtype == OP_ARG_DAT && args[n].dat->dirty_hd == Dirty::Device) 
@@ -488,14 +517,20 @@ int oppic_mpi_halo_exchanges_cuda(oppic_set set, int nargs, oppic_arg *args)
 }
 
 //****************************************
-void oppic_mpi_set_dirtybit_grouped(int nargs, oppic_arg *args, DeviceType device)
+void opp_mpi_halo_wait_all(int nargs, oppic_arg *args)
 {
-    return (device == Device_CPU) ? oppic_mpi_set_dirtybit(nargs, args) : oppic_mpi_set_dirtybit_cuda(nargs, args);
+    // Nothing to execute here
+}
+
+//****************************************
+void opp_mpi_set_dirtybit_grouped(int nargs, oppic_arg *args, DeviceType device)
+{
+    return (device == Device_CPU) ? opp_mpi_set_dirtybit(nargs, args) : opp_mpi_set_dirtybit_cuda(nargs, args);
 }
 
 //****************************************
 // Set Dirty::Device, making HOST data to be clean
-void oppic_mpi_set_dirtybit(int nargs, oppic_arg *args) 
+void opp_mpi_set_dirtybit(int nargs, oppic_arg *args) 
 {
     for (int n = 0; n < nargs; n++) 
     {
@@ -503,7 +538,7 @@ void oppic_mpi_set_dirtybit(int nargs, oppic_arg *args)
             (args[n].acc == OP_INC || args[n].acc == OP_WRITE ||
             args[n].acc == OP_RW)) 
         {
-            if (OP_DEBUG) printf("\toppic_mpi_set_dirtybit Setting Dirty::Device| %s\n", args[n].dat->name);
+            if (OP_DEBUG) opp_printf("opp_mpi_set_dirtybit", "Setting Dirty::Device| %s\n", args[n].dat->name);
             args[n].dat->dirty_hd = Dirty::Device;
         }
     }
@@ -511,7 +546,7 @@ void oppic_mpi_set_dirtybit(int nargs, oppic_arg *args)
 
 //****************************************
 // Set Dirty::Host, making DEVICE data to be clean
-void oppic_mpi_set_dirtybit_cuda(int nargs, oppic_arg *args) 
+void opp_mpi_set_dirtybit_cuda(int nargs, oppic_arg *args) 
 {
     for (int n = 0; n < nargs; n++) 
     {
@@ -519,7 +554,7 @@ void oppic_mpi_set_dirtybit_cuda(int nargs, oppic_arg *args)
             (args[n].acc == OP_INC || args[n].acc == OP_WRITE ||
             args[n].acc == OP_RW)) 
         {
-            if (OP_DEBUG) printf("\top_mpi_set_dirtybit_cuda Setting Dirty::Host| %s\n", args[n].dat->name);
+            if (OP_DEBUG) opp_printf("opp_mpi_set_dirtybit_cuda", "Setting Dirty::Host| %s\n", args[n].dat->name);
             args[n].dat->dirty_hd = Dirty::Host;
         }
     }
@@ -527,7 +562,7 @@ void oppic_mpi_set_dirtybit_cuda(int nargs, oppic_arg *args)
 
 //****************************************
 // Set the complete dat to zero (upto array capacity)
-void oppic_reset_dat(oppic_dat dat, char* val, opp_reset reset)
+void opp_reset_dat(oppic_dat dat, char* val, opp_reset reset)
 {
     if (OP_DEBUG) printf("\toppic_reset_dat dat [%s]\n", dat->name);
 
@@ -551,7 +586,7 @@ void __cudaSafeCall(cudaError_t err, const char *file, const int line)
     if (cudaSuccess != err) 
     {
         fprintf(stderr, "%s(%i) : cutilSafeCall() Runtime API error : %s.\n", file, line, cudaGetErrorString(err));
-        exit(-1);
+        opp_abort();
     }
 }
 
@@ -561,7 +596,7 @@ void __cutilCheckMsg(const char *errorMessage, const char *file, const int line)
     if (cudaSuccess != err) 
     {
         fprintf(stderr, "%s(%i) : cutilCheckMsg() error : %s : %s.\n", file, line, errorMessage, cudaGetErrorString(err));
-        exit(-1);
+        opp_abort();
     }
 }
 
@@ -617,7 +652,7 @@ void oppic_create_device_arrays(oppic_dat dat, bool create_new)
     else
     {
         std::cerr << "oppic_decl_dat CUDA not implemented for type: " << dat->type << " dat name: " << dat->name << std::endl;
-        exit(-1);
+        opp_abort();
     }
 }
 
@@ -631,7 +666,7 @@ void cutilDeviceInit(int argc, char **argv)
     if (deviceCount == 0) 
     {
         printf("cutil error: no devices supporting CUDA\n");
-        exit(-1);
+        opp_abort();
     }
 
     // Test we have access to a device

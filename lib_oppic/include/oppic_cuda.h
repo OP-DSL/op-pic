@@ -70,9 +70,9 @@ void oppic_download_particle_set(oppic_set particles_set);
 
 void oppic_upload_particle_set(oppic_set particles_set, bool realloc = false);
 
-int oppic_mpi_halo_exchanges_grouped(oppic_set set, int nargs, oppic_arg *args, DeviceType device);
+int opp_mpi_halo_exchanges_grouped(oppic_set set, int nargs, oppic_arg *args, DeviceType device);
 
-void oppic_mpi_set_dirtybit_grouped(int nargs, oppic_arg *args, DeviceType device);
+void opp_mpi_set_dirtybit_grouped(int nargs, oppic_arg *args, DeviceType device);
 
 void print_last_cuda_error();
 

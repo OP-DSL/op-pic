@@ -52,7 +52,7 @@ endif
 PETSC ?= 1
 ifeq ($(PETSC), 1)
 	CPPFLAGS   += -DUSE_PETSC
-	# HIPCCFLAGS += -DUSE_PETSC
+	NVCCFLAGS += -DUSE_PETSC
 	PETSC_INC  = -I$(PETSC_INSTALL_PATH)/include
 endif
 

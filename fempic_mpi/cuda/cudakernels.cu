@@ -44,7 +44,7 @@ double CONST_spwt = 0, CONST_ion_velocity = 0, CONST_dt = 0, CONST_plasma_den = 
 
 //****************************************
 __constant__ double CONST_spwt_cuda, CONST_ion_velocity_cuda = 0, CONST_dt_cuda = 0, CONST_plasma_den_cuda = 0, CONST_mass_cuda = 0, CONST_charge_cuda = 0;
-void oppic_decl_const_impl(int dim, int size, char* data, const char* name)
+void opp_decl_const_impl(int dim, int size, char* data, const char* name)
 {
     if (!strcmp(name,"CONST_spwt"))              cutilSafeCall(cudaMemcpyToSymbol(CONST_spwt_cuda, data, dim*size));
     else if (!strcmp(name,"CONST_ion_velocity")) cutilSafeCall(cudaMemcpyToSymbol(CONST_ion_velocity_cuda, data, dim*size));
@@ -55,7 +55,7 @@ void oppic_decl_const_impl(int dim, int size, char* data, const char* name)
     else std::cerr << "error: unknown const name" << std::endl;
 
     // TODO : This block should be removed
-    {    if (!strcmp(name,"CONST_spwt"))              CONST_spwt = *((double*)data);
+    {    if (!strcmp(name,"CONST_spwt"))             CONST_spwt = *((double*)data);
         else if (!strcmp(name,"CONST_ion_velocity")) CONST_ion_velocity = *((double*)data);
         else if (!strcmp(name,"CONST_dt"))           CONST_dt = *((double*)data);
         else if (!strcmp(name,"CONST_plasma_den"))   CONST_plasma_den = *((double*)data);
@@ -65,19 +65,17 @@ void oppic_decl_const_impl(int dim, int size, char* data, const char* name)
 }
 //****************************************
 
-//*************************************************************************************************
-#include "oppic_inject__Increase_particle_count.cu"
 
 //*************************************************************************************************
-#include "oppic_par_loop_inject__InjectIons.cu"
+#include "opp_loop_inject__InjectIons.cu"
 
 //*************************************************************************************************
-#include "oppic_par_loop_particle_all__MoveToCells.cu"
+#include "opp_loop_all_part_move__MoveToCells.cu"
 
 //*************************************************************************************************
-#include "oppic_par_loop_all__ComputeNodeChargeDensity.cu"
+#include "opp_loop_all__ComputeNodeChargeDensity.cu"
 
 //*************************************************************************************************
-#include "oppic_par_loop_all__ComputeElectricField.cu"
+#include "opp_loop_all__ComputeElectricField.cu"
 
 //*************************************************************************************************
