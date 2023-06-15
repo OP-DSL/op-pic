@@ -133,7 +133,7 @@ __device__ void move_all_particles_to_cell__kernel(
     }
     else
     {
-        m.move_status = OPP_NEED_REMOVE; printf("RRR REMOVING...........................................");
+        m.move_status = OPP_NEED_REMOVE;
     }
 }
 
@@ -171,7 +171,8 @@ __global__ void opp_cuda_all_MoveToCells(
             m.inside_cell = true;
 
             int map0idx = dir_arg4[n];
-            // int map0idx = d_cell_index[n]; // TODO : I dont know why this isn't working ??? dir_arg2 and d_cell_index has same pointer values, but this get stuck!
+            // int map0idx = d_cell_index[n]; // TODO : I dont know why this isn't working ??? 
+            // dir_arg2 and d_cell_index has same pointer values, but this get stuck!
 
             const int map1idx = opDat8Map[map0idx + move_stride_OPP_CUDA_8 * 0];
             const int map2idx = opDat8Map[map0idx + move_stride_OPP_CUDA_8 * 1];

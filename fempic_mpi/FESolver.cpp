@@ -770,6 +770,8 @@ void FESolver::enrich_cell_shape_deriv(oppic_dat cell_shape_deriv)
     opp_mpi_halo_wait_all(1, &arg0);
 #endif
 
+    cell_shape_deriv->dirty_hd = Dirty::Device; // To make GPU versions to download updated data!
+
     opp_profiler->end("EnrichCellShapeDeriv");
 
     if (OP_DEBUG) opp_printf("FESolver", "enrich_cell_shape_deriv END");
