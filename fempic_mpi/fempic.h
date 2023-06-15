@@ -346,6 +346,9 @@ inline int InitializeInjectDistributions(oppic_dat if_dist_dat, oppic_dat if_are
 
 #endif
 
+    dummy_random->dirty_hd = Dirty::Device; // To make GPU versions to download updated data!
+    if_dist_dat->dirty_hd = Dirty::Device; // To make GPU versions to download updated data!
+    
     opp_printf("InitializeInjectDistributions", "total_inject_count %d", total_inject_count);
 
     return total_inject_count;

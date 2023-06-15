@@ -197,13 +197,13 @@ int main(int argc, char **argv)
             opp_loop_all__ComputeNodeChargeDensity(
                 node_set,                            
                 opp_get_arg(node_charge_den,  OP_RW), 
-                opp_get_arg(node_volume,          OP_READ)
+                opp_get_arg(node_volume,      OP_READ)
             );
         
             field_solver->computePhi(  // TODO: Change this to kernel calls
-                opp_get_arg(node_potential,      OP_WRITE),
+                opp_get_arg(node_potential,  OP_WRITE),
                 opp_get_arg(node_charge_den, OP_READ),
-                opp_get_arg(node_bnd_pot,        OP_READ)
+                opp_get_arg(node_bnd_pot,    OP_READ)
             );
 
             opp_reset_dat(

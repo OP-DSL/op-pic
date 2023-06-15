@@ -652,7 +652,7 @@ bool FESolver::linearSolve(double *ion_den)
 
     KSPGetConvergedReason(ksp, &reason);
 
-    if (OP_DEBUG) opp_printf("linearSolve", "solve DONE");
+    if (OP_DEBUG) opp_printf("FESolver", "linearSolve DONE");
 
     return (reason >= 0);
 }

@@ -51,6 +51,8 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #define cutilSafeCall(err) __cudaSafeCall(err, __FILE__, __LINE__)
 #define cutilCheckMsg(msg) __cutilCheckMsg(msg, __FILE__, __LINE__)
 
+#define OPP_GPU_THREADS_PER_BLOCK 32
+
 //*************************************************************************************************
 
 void __cudaSafeCall(cudaError_t err, const char *file, const int line);

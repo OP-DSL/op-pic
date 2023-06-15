@@ -130,7 +130,7 @@ inline void move_all_particles_to_cell__kernel(
     }
 
     bool inside = true;
-    double coefficient2 = ONE_OVER_SIX / (*current_cell_volume) ;
+    double coefficient2 = ONE_OVER_SIX / (*current_cell_volume);
     for (int i=0; i<N_PER_C; i++) /*loop over vertices*/
     {
         part_lc[i] = coefficient2 * (

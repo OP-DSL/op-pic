@@ -34,12 +34,13 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 // This assumes all the device data to be valid
 void particle_sort_cuda(oppic_set set)
-{ // TRACE_ME;
+{ 
 
     int set_capacity = set->set_capacity;
     int set_size_plus_removed = set->size + set->particle_remove_count;
 
-    if (OP_DEBUG) printf("\tparticle_sort_cuda set [%s] with set capacity [%d] set size plus removed [%d]\n", set->name, set_capacity, set_size_plus_removed);
+    if (OP_DEBUG) printf("\tparticle_sort_cuda set [%s] with set capacity [%d] set size + removed [%d]\n", 
+        set->name, set_capacity, set_size_plus_removed);
 
     thrust::device_ptr<int> cellIdx_dp = thrust::device_pointer_cast((int*)set->mesh_relation_dat->data_d);
     thrust::device_vector<int> cellIdx_dv(cellIdx_dp, cellIdx_dp + set_size_plus_removed);
@@ -55,7 +56,8 @@ void particle_sort_cuda(oppic_set set)
 
         if (!(strstr(dat->type, ":soa") != NULL || OP_auto_soa || (dat->dim > 1)))
         {
-            std::cerr << "particle_sort_cuda not implemented for non SOA data structures [dat " << dat->name << "]" << std::endl;
+            std::cerr << "particle_sort_cuda not implemented for non SOA data structures [dat " << 
+                dat->name << "]" << std::endl;
         }
 
         if (strcmp(dat->type, "int") == 0)
@@ -68,15 +70,17 @@ void particle_sort_cuda(oppic_set set)
         }
         else
         {
-            std::cerr << "particle_sort_cuda not implemented for data type " << dat->type << " [dat " << dat->name << "]" << std::endl;
+            std::cerr << "particle_sort_cuda not implemented for data type " << dat->type << " [dat " << 
+                dat->name << "]" << std::endl;
         }
     }
 
     cutilSafeCall(cudaDeviceSynchronize());
 }
 
-void sort_dat_according_to_index_int(oppic_dat dat, const thrust::device_vector<int>& new_idx_dv, int set_capacity, int size)
-{ TRACE_ME;
+void sort_dat_according_to_index_int(oppic_dat dat, const thrust::device_vector<int>& new_idx_dv, 
+                                        int set_capacity, int size)
+{ 
 
     thrust::device_vector<int>* dat_dv = dat->thrust_int;
     thrust::device_vector<int>* sorted_dat_dv = dat->thrust_int_sort;
@@ -90,8 +94,9 @@ void sort_dat_according_to_index_int(oppic_dat dat, const thrust::device_vector<
     dat->data_d = (char*)thrust::raw_pointer_cast(dat->thrust_int->data());
 }
 
-void sort_dat_according_to_index_double(oppic_dat dat, const thrust::device_vector<int>& new_idx_dv, int set_capacity, int size)
-{ TRACE_ME;
+void sort_dat_according_to_index_double(oppic_dat dat, const thrust::device_vector<int>& new_idx_dv, 
+                                        int set_capacity, int size)
+{ 
 
     thrust::device_vector<double>* dat_dv = dat->thrust_real;
     thrust::device_vector<double>* sorted_dat_dv = dat->thrust_real_sort;

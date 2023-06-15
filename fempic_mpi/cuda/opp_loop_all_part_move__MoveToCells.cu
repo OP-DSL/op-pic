@@ -34,21 +34,22 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //*********************************************
 
 
-int moveToCells_all_stride_OPP_HOST_0 = -1;
-int moveToCells_all_stride_OPP_HOST_1 = -1;
-int moveToCells_all_stride_OPP_HOST_2 = -1;
-int moveToCells_all_stride_OPP_HOST_3 = -1;
-int moveToCells_all_stride_OPP_HOST_6 = -1;
-int moveToCells_all_stride_OPP_HOST_7 = -1;
-int moveToCells_all_stride_OPP_HOST_8 = -1;
+int move_stride_OPP_HOST_0 = -1;
+int move_stride_OPP_HOST_1 = -1;
+int move_stride_OPP_HOST_2 = -1;
+int move_stride_OPP_HOST_3 = -1;
+int move_stride_OPP_HOST_6 = -1;
+int move_stride_OPP_HOST_7 = -1;
+int move_stride_OPP_HOST_8 = -1;
 
-__constant__ int moveToCells_all_stride_OPP_CUDA_0;
-__constant__ int moveToCells_all_stride_OPP_CUDA_1;
-__constant__ int moveToCells_all_stride_OPP_CUDA_2;
-__constant__ int moveToCells_all_stride_OPP_CUDA_3;
-__constant__ int moveToCells_all_stride_OPP_CUDA_6;
-__constant__ int moveToCells_all_stride_OPP_CUDA_7;
-__constant__ int moveToCells_all_stride_OPP_CUDA_8;
+__constant__ int move_stride_OPP_CUDA_0;
+__constant__ int move_stride_OPP_CUDA_1;
+__constant__ int move_stride_OPP_CUDA_2;
+__constant__ int move_stride_OPP_CUDA_3;
+__constant__ int move_stride_OPP_CUDA_6;
+__constant__ int move_stride_OPP_CUDA_7;
+__constant__ int move_stride_OPP_CUDA_8;
+__constant__ double ONE_OVER_SIX = (1.0 / 6.0);
 
 //user function
 //*************************************************************************************************
@@ -58,9 +59,9 @@ __device__ void move_all_particles_to_cell__kernel(
     double *part_pos,
     double *part_vel,
     double *part_lc,
-    int* current_cell_index,
-    const double *current_cell_volume,
-    const double *current_cell_det,
+    int* cell_index,
+    const double *cell_volume,
+    const double *cell_det,
     const int *cell_connectivity,
     double *node_charge_den0,
     double *node_charge_den1,
@@ -70,26 +71,32 @@ __device__ void move_all_particles_to_cell__kernel(
 {
     if (m.iteration_one)
     {
+        double coefficient1 = CONST_charge_cuda / CONST_mass_cuda * (CONST_dt_cuda);
+
         for (int i = 0; i < DIM; i++)
-            part_vel[i * moveToCells_all_stride_OPP_CUDA_2] += (CONST_charge_cuda / CONST_mass_cuda * cell_ef[i * moveToCells_all_stride_OPP_CUDA_0] * (CONST_dt_cuda));           
+            part_vel[i * move_stride_OPP_CUDA_2] += 
+                (coefficient1 * cell_ef[i * move_stride_OPP_CUDA_0]);           
    
         for (int i = 0; i < DIM; i++)
-            part_pos[i * moveToCells_all_stride_OPP_CUDA_1] += part_vel[i * moveToCells_all_stride_OPP_CUDA_2] * (CONST_dt_cuda); // v = u + at
+            part_pos[i * move_stride_OPP_CUDA_1] += 
+                part_vel[i * move_stride_OPP_CUDA_2] * (CONST_dt_cuda); // v = u + at
     }
 
     bool inside = true;
+    double coefficient2 = ONE_OVER_SIX / (*cell_volume) ;
     for (int i=0; i<N_PER_C; i++) /*loop over vertices*/
     {
-        part_lc[i * moveToCells_all_stride_OPP_CUDA_3] = (1.0/6.0) * (
-            current_cell_det[(i * DET_FIELDS + 0) * moveToCells_all_stride_OPP_CUDA_6] - 
-            current_cell_det[(i * DET_FIELDS + 1) * moveToCells_all_stride_OPP_CUDA_6] * part_pos[0 * moveToCells_all_stride_OPP_CUDA_1] + 
-            current_cell_det[(i * DET_FIELDS + 2) * moveToCells_all_stride_OPP_CUDA_6] * part_pos[1 * moveToCells_all_stride_OPP_CUDA_1] - 
-            current_cell_det[(i * DET_FIELDS + 3) * moveToCells_all_stride_OPP_CUDA_6] * part_pos[2 * moveToCells_all_stride_OPP_CUDA_1]
-                ) / (*current_cell_volume);
+        part_lc[i * move_stride_OPP_CUDA_3] = coefficient2 * (
+            cell_det[(i * DET_FIELDS + 0) * move_stride_OPP_CUDA_6] - 
+            cell_det[(i * DET_FIELDS + 1) * move_stride_OPP_CUDA_6] * part_pos[0 * move_stride_OPP_CUDA_1] + 
+            cell_det[(i * DET_FIELDS + 2) * move_stride_OPP_CUDA_6] * part_pos[1 * move_stride_OPP_CUDA_1] - 
+            cell_det[(i * DET_FIELDS + 3) * move_stride_OPP_CUDA_6] * part_pos[2 * move_stride_OPP_CUDA_1]
+                );
         
-        if (part_lc[i * moveToCells_all_stride_OPP_CUDA_3]<0 || part_lc[i * moveToCells_all_stride_OPP_CUDA_3]>1.0) 
-            inside = false;
-            // m.inside_cell = false;
+        if (part_lc[i * move_stride_OPP_CUDA_3]<0 || 
+            part_lc[i * move_stride_OPP_CUDA_3]>1.0) 
+                inside = false;
+                // m.inside_cell = false;
     }    
 
     // if (m.inside_cell)
@@ -97,35 +104,36 @@ __device__ void move_all_particles_to_cell__kernel(
     {
         m.move_status = OPP_MOVE_DONE;
 
-        atomicAdd(node_charge_den0, (part_lc[0 * moveToCells_all_stride_OPP_CUDA_3]));
-        atomicAdd(node_charge_den1, (part_lc[1 * moveToCells_all_stride_OPP_CUDA_3]));
-        atomicAdd(node_charge_den2, (part_lc[2 * moveToCells_all_stride_OPP_CUDA_3]));
-        atomicAdd(node_charge_den3, (part_lc[3 * moveToCells_all_stride_OPP_CUDA_3]));
+        atomicAdd(node_charge_den0, (part_lc[0 * move_stride_OPP_CUDA_3]));
+        atomicAdd(node_charge_den1, (part_lc[1 * move_stride_OPP_CUDA_3]));
+        atomicAdd(node_charge_den2, (part_lc[2 * move_stride_OPP_CUDA_3]));
+        atomicAdd(node_charge_den3, (part_lc[3 * move_stride_OPP_CUDA_3]));
 
         return;
     }
 
-    // outside the last known cell, find most negative weight and use that cell_index to reduce computations
+    // outside the last known cell, find most negative weight and 
+    // use that cell_index to reduce computations
     int min_i = 0;
-    double min_lc = part_lc[0 * moveToCells_all_stride_OPP_CUDA_3];
+    double min_lc = part_lc[0 * move_stride_OPP_CUDA_3];
     
     for (int i=1; i<NEIGHB_C; i++)
     {
-        if (part_lc[i * moveToCells_all_stride_OPP_CUDA_3] < min_lc) 
+        if (part_lc[i * move_stride_OPP_CUDA_3] < min_lc) 
         {
-            min_lc = part_lc[i * moveToCells_all_stride_OPP_CUDA_3];
+            min_lc = part_lc[i * move_stride_OPP_CUDA_3];
             min_i = i;
         }
     }
 
-    if (cell_connectivity[min_i * moveToCells_all_stride_OPP_CUDA_7] >= 0) // is there a neighbor in this direction?
+    if (cell_connectivity[min_i * move_stride_OPP_CUDA_7] >= 0) // is there a neighbor in this direction?
     {
-        (*current_cell_index) = cell_connectivity[min_i * moveToCells_all_stride_OPP_CUDA_7];
+        (*cell_index) = cell_connectivity[min_i * move_stride_OPP_CUDA_7];
         m.move_status = OPP_NEED_MOVE;
     }
     else
     {
-        m.move_status = OPP_NEED_REMOVE;
+        m.move_status = OPP_NEED_REMOVE; printf("RRR REMOVING...........................................");
     }
 }
 
@@ -165,10 +173,10 @@ __global__ void opp_cuda_all_MoveToCells(
             int map0idx = dir_arg4[n];
             // int map0idx = d_cell_index[n]; // TODO : I dont know why this isn't working ??? dir_arg2 and d_cell_index has same pointer values, but this get stuck!
 
-            const int map1idx = opDat8Map[map0idx + moveToCells_all_stride_OPP_CUDA_8 * 0];
-            const int map2idx = opDat8Map[map0idx + moveToCells_all_stride_OPP_CUDA_8 * 1];
-            const int map3idx = opDat8Map[map0idx + moveToCells_all_stride_OPP_CUDA_8 * 2];
-            const int map4idx = opDat8Map[map0idx + moveToCells_all_stride_OPP_CUDA_8 * 3];
+            const int map1idx = opDat8Map[map0idx + move_stride_OPP_CUDA_8 * 0];
+            const int map2idx = opDat8Map[map0idx + move_stride_OPP_CUDA_8 * 1];
+            const int map3idx = opDat8Map[map0idx + move_stride_OPP_CUDA_8 * 2];
+            const int map4idx = opDat8Map[map0idx + move_stride_OPP_CUDA_8 * 3];
 
             move_all_particles_to_cell__kernel(
                 (m),
@@ -176,9 +184,9 @@ __global__ void opp_cuda_all_MoveToCells(
                 (dir_arg1 + n),         // part_pos,
                 (dir_arg2 + n),         // part_vel,
                 (dir_arg3 + n),         // part_lc,
-                (dir_arg4 + n),         // current_cell_index,
-                (ind_arg5 + map0idx),   // current_cell_volume,
-                (ind_arg6 + map0idx),   // current_cell_det,
+                (dir_arg4 + n),         // cell_index,
+                (ind_arg5 + map0idx),   // cell_volume,
+                (ind_arg6 + map0idx),   // cell_det,
                 (ind_arg7 + map0idx),   // cell_connectivity,
                 (ind_arg8 + map1idx),   // node_charge_den0,
                 (ind_arg9 + map2idx),   // node_charge_den1,
@@ -204,9 +212,9 @@ void opp_loop_all_part_move__MoveToCells(
     opp_arg arg1,     // part_pos,
     opp_arg arg2,     // part_vel,
     opp_arg arg3,     // part_lc,
-    opp_arg arg4,     // current_cell_index,
-    opp_arg arg5,     // current_cell_volume,
-    opp_arg arg6,     // current_cell_det,
+    opp_arg arg4,     // cell_index,
+    opp_arg arg5,     // cell_volume,
+    opp_arg arg6,     // cell_det,
     opp_arg arg7,     // cell_connectivity,
     opp_arg arg8,     // node_charge_den0,
     opp_arg arg9,     // node_charge_den1,
@@ -241,21 +249,21 @@ void opp_loop_all_part_move__MoveToCells(
     int set_size = opp_mpi_halo_exchanges_grouped(set, nargs, args, Device_GPU);
     if (set_size > 0) 
     {
-        moveToCells_all_stride_OPP_HOST_0 = args[0].dat->set->set_capacity;
-        moveToCells_all_stride_OPP_HOST_1 = args[1].dat->set->set_capacity;
-        moveToCells_all_stride_OPP_HOST_2 = args[2].dat->set->set_capacity;
-        moveToCells_all_stride_OPP_HOST_3 = args[3].dat->set->set_capacity;
-        moveToCells_all_stride_OPP_HOST_6 = args[6].dat->set->set_capacity; 
-        moveToCells_all_stride_OPP_HOST_7 = args[7].size;
-        moveToCells_all_stride_OPP_HOST_8 = args[8].map->from->size;
+        move_stride_OPP_HOST_0 = args[0].dat->set->set_capacity;
+        move_stride_OPP_HOST_1 = args[1].dat->set->set_capacity;
+        move_stride_OPP_HOST_2 = args[2].dat->set->set_capacity;
+        move_stride_OPP_HOST_3 = args[3].dat->set->set_capacity;
+        move_stride_OPP_HOST_6 = args[6].dat->set->set_capacity; 
+        move_stride_OPP_HOST_7 = args[7].size;
+        move_stride_OPP_HOST_8 = args[8].map->from->size;
 
-        cudaMemcpyToSymbol(moveToCells_all_stride_OPP_CUDA_0, &moveToCells_all_stride_OPP_HOST_0, sizeof(int));
-        cudaMemcpyToSymbol(moveToCells_all_stride_OPP_CUDA_1, &moveToCells_all_stride_OPP_HOST_1, sizeof(int));
-        cudaMemcpyToSymbol(moveToCells_all_stride_OPP_CUDA_2, &moveToCells_all_stride_OPP_HOST_2, sizeof(int));
-        cudaMemcpyToSymbol(moveToCells_all_stride_OPP_CUDA_3, &moveToCells_all_stride_OPP_HOST_3, sizeof(int));
-        cudaMemcpyToSymbol(moveToCells_all_stride_OPP_CUDA_6, &moveToCells_all_stride_OPP_HOST_6, sizeof(int));
-        cudaMemcpyToSymbol(moveToCells_all_stride_OPP_CUDA_7, &moveToCells_all_stride_OPP_HOST_7, sizeof(int));
-        cudaMemcpyToSymbol(moveToCells_all_stride_OPP_CUDA_8, &moveToCells_all_stride_OPP_HOST_8, sizeof(int));
+        cudaMemcpyToSymbol(move_stride_OPP_CUDA_0, &move_stride_OPP_HOST_0, sizeof(int));
+        cudaMemcpyToSymbol(move_stride_OPP_CUDA_1, &move_stride_OPP_HOST_1, sizeof(int));
+        cudaMemcpyToSymbol(move_stride_OPP_CUDA_2, &move_stride_OPP_HOST_2, sizeof(int));
+        cudaMemcpyToSymbol(move_stride_OPP_CUDA_3, &move_stride_OPP_HOST_3, sizeof(int));
+        cudaMemcpyToSymbol(move_stride_OPP_CUDA_6, &move_stride_OPP_HOST_6, sizeof(int));
+        cudaMemcpyToSymbol(move_stride_OPP_CUDA_7, &move_stride_OPP_HOST_7, sizeof(int));
+        cudaMemcpyToSymbol(move_stride_OPP_CUDA_8, &move_stride_OPP_HOST_8, sizeof(int));
 
         int start   = 0;
         int end     = set->size;
