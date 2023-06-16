@@ -201,9 +201,64 @@ void oppic_increase_particle_count(oppic_set particles_set, const int num_partic
 }
 
 //****************************************
+bool opp_inc_part_count_with_distribution_omp(oppic_set particles_set, int num_particles_to_insert, oppic_dat part_dist)
+{
+    opp_profiler->start("IncPartCountWithDistribution");
+
+    if (!oppic_increase_particle_count_core(particles_set, num_particles_to_insert))
+    {
+        opp_profiler->end("IncPartCountWithDistribution");
+        return false;
+    }
+
+    int* part_mesh_connectivity = (int *)particles_set->mesh_relation_dat->data;
+    int* distribution           = (int *)part_dist->data;
+
+    int startX = (particles_set->size - particles_set->diff);
+    int distribution_set_size = part_dist->set->size;
+
+    int nthreads = omp_get_max_threads();
+
+    int set_size = particles_set->diff;
+
+    #pragma omp parallel for
+    for (int thr = 0; thr < nthreads; thr++)
+    {
+        size_t start  = ((size_t)set_size * thr) / nthreads;
+        size_t finish = ((size_t)set_size * (thr+1)) / nthreads;
+
+        for (size_t i = start; i < finish; i++)
+        { 
+            // iterating for all particles here, makes the performance hit.
+            // can we change here?
+            for (int j = 0; j < distribution_set_size; j++) 
+            {
+                if (i < distribution[j]) 
+                {
+                    part_mesh_connectivity[startX + i] = j;
+                    break;
+                }  
+            }
+        }
+    } 
+
+    opp_profiler->end("IncPartCountWithDistribution");
+
+    return true;
+}
+
+//****************************************
 void opp_inc_part_count_with_distribution(oppic_set particles_set, int num_particles_to_insert, oppic_dat part_dist)
 {
     if (OP_DEBUG) opp_printf("opp_inc_part_count_with_distribution", "num_particles_to_insert [%d]", num_particles_to_insert);
+
+    // if (!opp_inc_part_count_with_distribution_omp(particles_set, num_particles_to_insert, part_dist))
+    // {
+    //     opp_printf("opp_inc_part_count_with_distribution", "Error: opp_inc_part_count_with_distribution_omp failed for particle set [%s]", particles_set->name);
+    //     exit(-1);        
+    // }
+
+    // perf of core is better than omp :(
 
     if (!opp_inc_part_count_with_distribution_core(particles_set, num_particles_to_insert, part_dist))
     {
@@ -281,14 +336,18 @@ bool opp_finalize_particle_move(oppic_set set)
 //****************************************
 void oppic_finalize_particle_move_omp(oppic_set set)
 {
-    if (OP_DEBUG) printf("\toppic_finalize_particle_move_omp set [%s] with particle_remove_count [%d]\n", set->name, set->particle_remove_count);
+    if (OP_DEBUG) opp_printf("oppic_finalize_particle_move_omp", "set [%s] with particle_remove_count [%d]\n", 
+        set->name, set->particle_remove_count);
 
     if (set->particle_remove_count <= 0) return;
 
     if (OP_auto_sort == 0) // if not auto sorting, fill the holes
     {
-        int *mesh_relation_data = (int *)malloc(set->set_capacity * set->mesh_relation_dat->size); // getting a backup of cell index since it will also be rearranged using a random OMP thread
-        memcpy((char*)mesh_relation_data, set->mesh_relation_dat->data, set->set_capacity * set->mesh_relation_dat->size);
+        // getting a backup of cell index since it will also be rearranged using a random OMP thread
+        int *mesh_relation_data = (int *)malloc(set->set_capacity * set->mesh_relation_dat->size); 
+        
+        memcpy((char*)mesh_relation_data, set->mesh_relation_dat->data, 
+            set->set_capacity * set->mesh_relation_dat->size);
 
         #pragma omp parallel for
         for (int i = 0; i < (int)set->particle_dats->size(); i++)
@@ -297,11 +356,11 @@ void oppic_finalize_particle_move_omp(oppic_set set)
             int removed_count = 0;
             int skip_count = 0;
 
-            for (int j = 0; j < set->size; j++)
+            for (size_t j = 0; j < set->size; j++)
             {
                 if (mesh_relation_data[j] != MAX_CELL_INDEX) continue;
 
-                char* dat_removed_ptr = (char *)(current_oppic_dat->data + (j * current_oppic_dat->size));
+                char* dat_removed_ptr = (char *)(current_oppic_dat->data + (size_t)(j * current_oppic_dat->size));
 
                 // BUG_FIX: (set->size - removed_count - 1) This index could marked to be removed, and if marked, 
                 // then there could be an array index out of bounds access error in the future
@@ -311,11 +370,15 @@ void oppic_finalize_particle_move_omp(oppic_set set)
                 }
                 if (j >= (set->size - removed_count - skip_count - 1)) 
                 {
-                    if (OP_DEBUG) printf("\toppic_finalize_particle_move_core Current Iteration index [%d] and replacement index %d; hence breaking\n", j, (set->size - removed_count - skip_count - 1));
+                    if (OP_DEBUG) 
+                        opp_printf("oppic_finalize_particle_move_omp", 
+                            "Current Iteration index [%d] and replacement index %d; hence breaking\n", 
+                            j, (set->size - removed_count - skip_count - 1));
                     break;
                 }
 
-                char* dat_to_replace_ptr = (char *)(current_oppic_dat->data + ((set->size - removed_count - skip_count - 1) * current_oppic_dat->size));
+                size_t offset_byte = (size_t)(set->size - removed_count - skip_count - 1) * current_oppic_dat->size;
+                char* dat_to_replace_ptr = (char *)(current_oppic_dat->data + offset_byte);
                 
                 // Get the last element and replace the hole // Not the Optimum!!!
                 // TODO : Can we make NULL data and handle it in sort?
@@ -324,7 +387,8 @@ void oppic_finalize_particle_move_omp(oppic_set set)
                 removed_count++;
             }
 
-            // current_oppic_dat->data = (char *)realloc(current_oppic_dat->data, (size_t)(set->size - removed_count) * (size_t)current_oppic_dat->size);
+            // current_oppic_dat->data = (char *)realloc(current_oppic_dat->data, 
+            //       (size_t)(set->size - removed_count) * (size_t)current_oppic_dat->size);
         }
 
         free(mesh_relation_data);

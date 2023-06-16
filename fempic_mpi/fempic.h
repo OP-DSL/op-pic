@@ -273,7 +273,7 @@ inline int InitializeInjectDistributions(oppic_dat if_dist_dat, oppic_dat if_are
 
         total_size = fsize * fdim;
 
-        if (dummy_random->set->size * dummy_random->dim > total_size)
+        if (max_inject_count_per_face * dummy_random->dim > total_size)
         {
             opp_printf("InitializeInjectDistributions", "dim and/or set_size issue in file %s\n", 
                 rand_file_path.c_str());

@@ -34,7 +34,7 @@ ifeq ($(CPU_ASSIGN), 1)
 	NVCCFLAGS  += -DUSE_CPU_ASSIGN
 endif
 
-IEEE ?= 1
+IEEE ?= 0
 ifeq ($(IEEE), 1)
 	CPPFLAGS   += -fp-model strict -fp-model source -prec-div -prec-sqrt
 	NVCCFLAGS  += -fmad=false -ftz=false -prec-div=true -prec-sqrt=true

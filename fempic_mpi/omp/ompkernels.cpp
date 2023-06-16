@@ -127,42 +127,50 @@ void opp_loop_all_part_move__MoveToCells(
     
     opp_init_particle_move(set, 0, nullptr);
 
-    int *map0idx = nullptr;
+    int nthreads = omp_get_max_threads();
+
+    int set_size = set->size;
 
     #pragma omp parallel for
-    for (int i = OPP_iter_start; i < OPP_iter_end; i++)
+    for (int thr = 0; thr < nthreads; thr++)
     {
-        int thr = omp_get_thread_num();
+        size_t start  = ((size_t)set_size * thr) / nthreads;
+        size_t finish = ((size_t)set_size * (thr+1)) / nthreads;
+
         char* arg8_dat_thread_data = (*(arg8.dat->thread_data))[thr];
-        
-        opp_move_var m = opp_get_move_var(thr);
+        int *map0idx = nullptr;
 
-        do
-        { 
-            map0idx = &(OPP_mesh_relation_data[i]);
+        for (size_t i = start; i < finish; i++)
+        {          
+            opp_move_var m = opp_get_move_var(thr);
 
-            const int map1idx = arg8.map_data[*map0idx * arg8.map->dim + 0];
-            const int map2idx = arg8.map_data[*map0idx * arg8.map->dim + 1];
-            const int map3idx = arg8.map_data[*map0idx * arg8.map->dim + 2];
-            const int map4idx = arg8.map_data[*map0idx * arg8.map->dim + 3];
+            do
+            { 
+                map0idx = &(OPP_mesh_relation_data[i]);
 
-            move_all_particles_to_cell__kernel(
-                (m),
-                &((double *)arg0.data)[*map0idx * arg0.dim], // cell_ef,
-                &((double *)arg1.data)[i * arg1.dim],        // part_pos,
-                &((double *)arg2.data)[i * arg2.dim],        // part_vel,
-                &((double *)arg3.data)[i * arg3.dim],        // part_lc,
-                &((int *)arg4.data)[i * arg4.dim],           // current_cell_index,
-                &((double*)arg5.data)[*map0idx * arg5.dim],  // current_cell_volume,
-                &((double*)arg6.data)[*map0idx * arg6.dim],  // current_cell_det,
-                &((int*)arg7.data)[*map0idx * arg7.dim],     // cell_connectivity,
-                &((double*)arg8_dat_thread_data)[map1idx],   // node_charge_den0,
-                &((double*)arg8_dat_thread_data)[map2idx],   // node_charge_den1,
-                &((double*)arg8_dat_thread_data)[map3idx],   // node_charge_den2,
-                &((double*)arg8_dat_thread_data)[map4idx]    // node_charge_den3,
-            );  
+                const int map1idx = arg8.map_data[*map0idx * arg8.map->dim + 0];
+                const int map2idx = arg8.map_data[*map0idx * arg8.map->dim + 1];
+                const int map3idx = arg8.map_data[*map0idx * arg8.map->dim + 2];
+                const int map4idx = arg8.map_data[*map0idx * arg8.map->dim + 3];
 
-        } while (opp_part_check_status(m, *map0idx, set, i, thr, thr));  
+                move_all_particles_to_cell__kernel(
+                    (m),
+                    &((double *)arg0.data)[*map0idx * arg0.dim], // cell_ef,
+                    &((double *)arg1.data)[i * arg1.dim],        // part_pos,
+                    &((double *)arg2.data)[i * arg2.dim],        // part_vel,
+                    &((double *)arg3.data)[i * arg3.dim],        // part_lc,
+                    &((int *)arg4.data)[i * arg4.dim],           // current_cell_index,
+                    &((double*)arg5.data)[*map0idx * arg5.dim],  // current_cell_volume,
+                    &((double*)arg6.data)[*map0idx * arg6.dim],  // current_cell_det,
+                    &((int*)arg7.data)[*map0idx * arg7.dim],     // cell_connectivity,
+                    &((double*)arg8_dat_thread_data)[map1idx],   // node_charge_den0,
+                    &((double*)arg8_dat_thread_data)[map2idx],   // node_charge_den1,
+                    &((double*)arg8_dat_thread_data)[map3idx],   // node_charge_den2,
+                    &((double*)arg8_dat_thread_data)[map4idx]    // node_charge_den3,
+                );  
+
+            } while (opp_part_check_status(m, *map0idx, set, i, thr, thr));  
+        }
     }
 
     opp_finalize_particle_move(set);
@@ -189,10 +197,10 @@ void opp_loop_all__ComputeNodeChargeDensity(
     #pragma omp parallel for
     for (int thr = 0; thr < nthreads; thr++)
     {
-        int start  = (set->size* thr)/nthreads;
-        int finish = (set->size*(thr+1))/nthreads;
+        size_t start  = ((size_t)set->size * thr) / nthreads;
+        size_t finish = ((size_t)set->size * (thr+1)) / nthreads;
 
-        for (int i = start; i < finish; i++)
+        for (size_t i = start; i < finish; i++)
         { 
             compute_node_charge_density__kernel(
                 &((double*)arg0.data)[i * arg0.dim],
@@ -227,10 +235,10 @@ void opp_loop_all__ComputeElectricField(
     #pragma omp parallel for
     for (int thr = 0; thr < nthreads; thr++)
     {
-        int start  = (set_size * thr)/nthreads;
-        int finish = (set_size * (thr+1))/nthreads;
+        size_t start  = ((size_t)set_size * thr) / nthreads;
+        size_t finish = ((size_t)set_size * (thr+1)) / nthreads;
 
-        for (int i = start; i < finish; i++)
+        for (size_t i = start; i < finish; i++)
         { 
             const int map1idx = arg2.map_data[i * arg2.map->dim + 0];
             const int map2idx = arg2.map_data[i * arg2.map->dim + 1];
