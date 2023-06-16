@@ -33,15 +33,20 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 // AUTO GENERATED CODE
 //*********************************************
 
+// THIS IS JUST A BACKUP OF AN OLD CODE // Check fempic_op.cpp
 
 #include "fempic.h"
 #include <opp_mpi.h>
 
-void oppic_inject__Increase_particle_count(oppic_set,oppic_set,oppic_arg,oppic_arg,oppic_arg,oppic_arg);
-void oppic_par_loop_inject__InjectIons(oppic_set,oppic_arg,oppic_arg,oppic_arg,oppic_arg,oppic_arg,oppic_arg,oppic_arg,oppic_arg,oppic_arg,oppic_arg);
-void oppic_par_loop_particle_all__MoveToCells(oppic_set,oppic_arg,oppic_arg,oppic_arg,oppic_arg,oppic_arg,oppic_arg,oppic_arg,oppic_arg,oppic_arg,oppic_arg,oppic_arg,oppic_arg);
+void oppic_inject__Increase_particle_count(oppic_set,oppic_set,oppic_arg,oppic_arg,
+    oppic_arg,oppic_arg);
+void oppic_par_loop_inject__InjectIons(oppic_set,oppic_arg,oppic_arg,oppic_arg,oppic_arg,
+    oppic_arg,oppic_arg,oppic_arg,oppic_arg,oppic_arg,oppic_arg);
+void oppic_par_loop_particle_all__MoveToCells(oppic_set,oppic_arg,oppic_arg,oppic_arg,
+    oppic_arg,oppic_arg,oppic_arg,oppic_arg,oppic_arg,oppic_arg,oppic_arg,oppic_arg,oppic_arg);
 void oppic_par_loop_all__ComputeNodeChargeDensity(oppic_set,oppic_arg,oppic_arg);
-void oppic_par_loop_all__ComputeElectricField(oppic_set,oppic_arg,oppic_arg,oppic_arg,oppic_arg,oppic_arg,oppic_arg);
+void oppic_par_loop_all__ComputeElectricField(oppic_set,oppic_arg,oppic_arg,oppic_arg,oppic_arg,
+    oppic_arg,oppic_arg);
 
 //*********************************************MAIN****************************************************
 int main(int argc, char **argv) 
@@ -86,32 +91,52 @@ int main(int argc, char **argv)
     mesh.n_cells  = opp_get_uniform_local_size(g1_mesh->n_cells);
     mesh.n_ifaces = opp_get_uniform_local_size(g1_mesh->n_ifaces);
 
-    opp_printf("Main()", OPP_my_rank, "Local Sizes before partitioning - Nodes[%d] Cells[%d] IFaces[%d]", mesh.n_nodes, mesh.n_cells, mesh.n_ifaces);
+    opp_printf("Main()", OPP_my_rank, "Local Sizes before partitioning - Nodes[%d] Cells[%d] IFaces[%d]", 
+        mesh.n_nodes, mesh.n_cells, mesh.n_ifaces);
 // opp_printf("XXXXXXXXXX", OPP_my_rank, " 3");
 
     mesh.CreateMeshArrays();
 
 // opp_printf("XXXXXXXXXX", OPP_my_rank, " 4");
 
-    opp_uniform_scatter_array(g_mesh->cell_ef            , mesh.cell_ef            , g1_mesh->n_cells , mesh.n_cells , DIMENSIONS);
-    opp_uniform_scatter_array(g_mesh->cell_to_nodes      , mesh.cell_to_nodes      , g1_mesh->n_cells , mesh.n_cells , NODES_PER_CELL); 
-    opp_uniform_scatter_array(g_mesh->cell_to_cell       , mesh.cell_to_cell       , g1_mesh->n_cells , mesh.n_cells , NEIGHBOUR_CELLS); 
-    opp_uniform_scatter_array(g_mesh->cell_det           , mesh.cell_det           , g1_mesh->n_cells , mesh.n_cells , DET_FIELDS * NEIGHBOUR_CELLS); 
-    opp_uniform_scatter_array(g_mesh->cell_volume        , mesh.cell_volume        , g1_mesh->n_cells , mesh.n_cells , 1); 
-    opp_uniform_scatter_array(g_mesh->cell_shape_deriv   , mesh.cell_shape_deriv   , g1_mesh->n_cells , mesh.n_cells , NODES_PER_CELL*DIMENSIONS); 
-    opp_uniform_scatter_array(g_mesh->node_bnd_pot       , mesh.node_bnd_pot       , g1_mesh->n_nodes , mesh.n_nodes , 1); 
-    opp_uniform_scatter_array(g_mesh->node_pot           , mesh.node_pot           , g1_mesh->n_nodes , mesh.n_nodes , 1); 
-    opp_uniform_scatter_array(g_mesh->node_ion_den       , mesh.node_ion_den       , g1_mesh->n_nodes , mesh.n_nodes , 1); 
-    opp_uniform_scatter_array(g_mesh->node_pos           , mesh.node_pos           , g1_mesh->n_nodes , mesh.n_nodes , DIMENSIONS); 
-    opp_uniform_scatter_array(g_mesh->node_volume        , mesh.node_volume        , g1_mesh->n_nodes , mesh.n_nodes , 1);
-    opp_uniform_scatter_array(g_mesh->iface_to_cell      , mesh.iface_to_cell      , g1_mesh->n_ifaces, mesh.n_ifaces, 1); 
-    opp_uniform_scatter_array(g_mesh->iface_to_nodes     , mesh.iface_to_nodes     , g1_mesh->n_ifaces, mesh.n_ifaces, DIMENSIONS); 
-    opp_uniform_scatter_array(g_mesh->iface_v_normal     , mesh.iface_v_normal     , g1_mesh->n_ifaces, mesh.n_ifaces, DIMENSIONS); 
-    opp_uniform_scatter_array(g_mesh->iface_u_normal     , mesh.iface_u_normal     , g1_mesh->n_ifaces, mesh.n_ifaces, DIMENSIONS); 
-    opp_uniform_scatter_array(g_mesh->iface_normal       , mesh.iface_normal       , g1_mesh->n_ifaces, mesh.n_ifaces, DIMENSIONS); 
-    opp_uniform_scatter_array(g_mesh->iface_area         , mesh.iface_area         , g1_mesh->n_ifaces, mesh.n_ifaces, 1); 
-    opp_uniform_scatter_array(g_mesh->iface_inj_part_dist, mesh.iface_inj_part_dist, g1_mesh->n_ifaces, mesh.n_ifaces, 1); 
-    opp_uniform_scatter_array(g_mesh->iface_node_pos     , mesh.iface_node_pos     , g1_mesh->n_ifaces, mesh.n_ifaces, DIMENSIONS);        
+    opp_uniform_scatter_array(g_mesh->cell_ef            , mesh.cell_ef            , g1_mesh->n_cells , 
+        mesh.n_cells , DIMENSIONS);
+    opp_uniform_scatter_array(g_mesh->cell_to_nodes      , mesh.cell_to_nodes      , g1_mesh->n_cells , 
+        mesh.n_cells , NODES_PER_CELL); 
+    opp_uniform_scatter_array(g_mesh->cell_to_cell       , mesh.cell_to_cell       , g1_mesh->n_cells , 
+        mesh.n_cells , NEIGHBOUR_CELLS); 
+    opp_uniform_scatter_array(g_mesh->cell_det           , mesh.cell_det           , g1_mesh->n_cells , 
+        mesh.n_cells , DET_FIELDS * NEIGHBOUR_CELLS); 
+    opp_uniform_scatter_array(g_mesh->cell_volume        , mesh.cell_volume        , g1_mesh->n_cells , 
+        mesh.n_cells , 1); 
+    opp_uniform_scatter_array(g_mesh->cell_shape_deriv   , mesh.cell_shape_deriv   , g1_mesh->n_cells , 
+        mesh.n_cells , NODES_PER_CELL*DIMENSIONS); 
+    opp_uniform_scatter_array(g_mesh->node_bnd_pot       , mesh.node_bnd_pot       , g1_mesh->n_nodes , 
+        mesh.n_nodes , 1); 
+    opp_uniform_scatter_array(g_mesh->node_pot           , mesh.node_pot           , g1_mesh->n_nodes , 
+        mesh.n_nodes , 1); 
+    opp_uniform_scatter_array(g_mesh->node_ion_den       , mesh.node_ion_den       , g1_mesh->n_nodes , 
+        mesh.n_nodes , 1); 
+    opp_uniform_scatter_array(g_mesh->node_pos           , mesh.node_pos           , g1_mesh->n_nodes , 
+        mesh.n_nodes , DIMENSIONS); 
+    opp_uniform_scatter_array(g_mesh->node_volume        , mesh.node_volume        , g1_mesh->n_nodes , 
+        mesh.n_nodes , 1);
+    opp_uniform_scatter_array(g_mesh->iface_to_cell      , mesh.iface_to_cell      , g1_mesh->n_ifaces, 
+        mesh.n_ifaces, 1); 
+    opp_uniform_scatter_array(g_mesh->iface_to_nodes     , mesh.iface_to_nodes     , g1_mesh->n_ifaces, 
+        mesh.n_ifaces, DIMENSIONS); 
+    opp_uniform_scatter_array(g_mesh->iface_v_normal     , mesh.iface_v_normal     , g1_mesh->n_ifaces, 
+        mesh.n_ifaces, DIMENSIONS); 
+    opp_uniform_scatter_array(g_mesh->iface_u_normal     , mesh.iface_u_normal     , g1_mesh->n_ifaces, 
+        mesh.n_ifaces, DIMENSIONS); 
+    opp_uniform_scatter_array(g_mesh->iface_normal       , mesh.iface_normal       , g1_mesh->n_ifaces, 
+        mesh.n_ifaces, DIMENSIONS); 
+    opp_uniform_scatter_array(g_mesh->iface_area         , mesh.iface_area         , g1_mesh->n_ifaces, 
+        mesh.n_ifaces, 1); 
+    opp_uniform_scatter_array(g_mesh->iface_inj_part_dist, mesh.iface_inj_part_dist, g1_mesh->n_ifaces, 
+        mesh.n_ifaces, 1); 
+    opp_uniform_scatter_array(g_mesh->iface_node_pos     , mesh.iface_node_pos     , g1_mesh->n_ifaces, 
+        mesh.n_ifaces, DIMENSIONS);        
 
 // opp_printf("XXXXXXXXXX", OPP_my_rank, " 5");
 
@@ -132,7 +157,8 @@ int main(int argc, char **argv)
     double remainder = 0.0;
     int ts = 0;
 
-// opp_printf("main()", OPP_my_rank, " starting to decl opp structs: nodes:%d cells:%d, ifaces:%d", mesh.n_nodes, mesh.n_cells, mesh.n_ifaces);
+// opp_printf("main()", OPP_my_rank, " starting to decl opp structs: nodes:%d cells:%d, ifaces:%d", 
+//    mesh.n_nodes, mesh.n_cells, mesh.n_ifaces);
 //     { // Start Scope for oppic
 
         int pcount = 20;
@@ -164,44 +190,66 @@ int main(int argc, char **argv)
         oppic_set ifaces_set           = oppic_decl_set(mesh.n_ifaces, "mesh_inlet_faces");
         
 // opp_printf("XXXXXXXXXX", OPP_my_rank, " 62");
-        oppic_map cell_to_nodes_map    = oppic_decl_map(cells_set,  nodes_set, NODES_PER_CELL,  mesh.cell_to_nodes,  "cell_to_nodes_map");
-        oppic_map cell_to_cell_map     = oppic_decl_map(cells_set,  cells_set, NEIGHBOUR_CELLS, mesh.cell_to_cell,   "cell_to_cell_map"); 
-        oppic_map iface_to_cell_map    = oppic_decl_map(ifaces_set, cells_set, 1,               mesh.iface_to_cell,  "iface_to_cell_map"); 
+        oppic_map cell_to_nodes_map    = oppic_decl_map(cells_set,  nodes_set, NODES_PER_CELL,  
+            mesh.cell_to_nodes,  "cell_to_nodes_map");
+        oppic_map cell_to_cell_map     = oppic_decl_map(cells_set,  cells_set, NEIGHBOUR_CELLS, 
+            mesh.cell_to_cell,   "cell_to_cell_map"); 
+        oppic_map iface_to_cell_map    = oppic_decl_map(ifaces_set, cells_set, 1,               
+            mesh.iface_to_cell,  "iface_to_cell_map"); 
 // opp_printf("XXXXXXXXXX", OPP_my_rank, " 63");
-        oppic_dat cell_determinants    = oppic_decl_dat(cells_set, (NEIGHBOUR_CELLS*DET_FIELDS), OPP_TYPE_REAL, (char*)mesh.cell_det,         "cell_determinants");  
-        oppic_dat cell_volume          = oppic_decl_dat(cells_set, 1,                            OPP_TYPE_REAL, (char*)mesh.cell_volume,      "cell_volume");        
-        oppic_dat cell_electric_field  = oppic_decl_dat(cells_set, DIMENSIONS,                   OPP_TYPE_REAL, (char*)mesh.cell_ef,          "cell_electric_field");
-        oppic_dat cell_shape_deriv     = oppic_decl_dat(cells_set, (NODES_PER_CELL*DIMENSIONS),  OPP_TYPE_REAL, (char*)mesh.cell_shape_deriv, "cell_shape_deriv"); 
+        oppic_dat cell_determinants    = oppic_decl_dat(cells_set, (NEIGHBOUR_CELLS*DET_FIELDS),
+            OPP_TYPE_REAL, (char*)mesh.cell_det,         "cell_determinants");  
+        oppic_dat cell_volume          = oppic_decl_dat(cells_set, 1,                           
+            OPP_TYPE_REAL, (char*)mesh.cell_volume,      "cell_volume");        
+        oppic_dat cell_electric_field  = oppic_decl_dat(cells_set, DIMENSIONS,                  
+            OPP_TYPE_REAL, (char*)mesh.cell_ef,          "cell_electric_field");
+        oppic_dat cell_shape_deriv     = oppic_decl_dat(cells_set, (NODES_PER_CELL*DIMENSIONS), 
+            OPP_TYPE_REAL, (char*)mesh.cell_shape_deriv, "cell_shape_deriv"); 
 // opp_printf("XXXXXXXXXX", OPP_my_rank, " 64");   
-        oppic_dat node_volume          = oppic_decl_dat(nodes_set, 1, OPP_TYPE_REAL, (char*)mesh.node_volume,  "node_volume");        
-        oppic_dat node_potential       = oppic_decl_dat(nodes_set, 1, OPP_TYPE_REAL, (char*)mesh.node_pot,     "node_potential");     
-        oppic_dat node_charge_density  = oppic_decl_dat(nodes_set, 1, OPP_TYPE_REAL, (char*)mesh.node_ion_den, "node_charge_density");
+        oppic_dat node_volume          = oppic_decl_dat(nodes_set, 1, OPP_TYPE_REAL, 
+            (char*)mesh.node_volume,  "node_volume");        
+        oppic_dat node_potential       = oppic_decl_dat(nodes_set, 1, OPP_TYPE_REAL, 
+            (char*)mesh.node_pot,     "node_potential");     
+        oppic_dat node_charge_density  = oppic_decl_dat(nodes_set, 1, OPP_TYPE_REAL, 
+            (char*)mesh.node_ion_den, "node_charge_density");
 
 double * test = new double[DIMENSIONS*mesh.n_nodes];
         // This is only for testing, mesh.node_ion_den will be accessed out of counds but will reset
-        oppic_dat node_test            = oppic_decl_dat(nodes_set, DIMENSIONS, OPP_TYPE_REAL, (char*)test, "node_test"); 
+        oppic_dat node_test            = oppic_decl_dat(nodes_set, DIMENSIONS, OPP_TYPE_REAL, 
+            (char*)test, "node_test"); 
 delete[] test;
 // opp_printf("XXXXXXXXXX", OPP_my_rank, " 65");
-        // oppic_dat iface_v_normal       = oppic_decl_dat(ifaces_set, DIMENSIONS, OPP_TYPE_REAL, (char*)mesh.iface_v_normal,      "iface_v_normal");        
-        // oppic_dat iface_u_normal       = oppic_decl_dat(ifaces_set, DIMENSIONS, OPP_TYPE_REAL, (char*)mesh.iface_u_normal,      "iface_u_normal"); 
-        // oppic_dat iface_normal         = oppic_decl_dat(ifaces_set, DIMENSIONS, OPP_TYPE_REAL, (char*)mesh.iface_normal,        "iface_normal");     
-        // oppic_dat iface_area           = oppic_decl_dat(ifaces_set, 1,          OPP_TYPE_REAL, (char*)mesh.iface_area,          "iface_area");
-        // oppic_dat iface_inj_part_dist  = oppic_decl_dat(ifaces_set, 1,          OPP_TYPE_INT,  (char*)mesh.iface_inj_part_dist, "iface_inj_part_dist");
-        // oppic_dat iface_node_pos       = oppic_decl_dat(ifaces_set, DIMENSIONS, OPP_TYPE_REAL, (char*)mesh.iface_node_pos,      "iface_node_pos"); 
+        oppic_dat iface_v_normal       = oppic_decl_dat(ifaces_set, DIMENSIONS, OPP_TYPE_REAL, 
+            (char*)mesh.iface_v_normal,      "iface_v_normal");        
+        oppic_dat iface_u_normal       = oppic_decl_dat(ifaces_set, DIMENSIONS, OPP_TYPE_REAL, 
+            (char*)mesh.iface_u_normal,      "iface_u_normal"); 
+        oppic_dat iface_normal         = oppic_decl_dat(ifaces_set, DIMENSIONS, OPP_TYPE_REAL, 
+            (char*)mesh.iface_normal,        "iface_normal");     
+        oppic_dat iface_area           = oppic_decl_dat(ifaces_set, 1,          OPP_TYPE_REAL, 
+            (char*)mesh.iface_area,          "iface_area");
+        oppic_dat iface_inj_part_dist  = oppic_decl_dat(ifaces_set, 1,          OPP_TYPE_INT,  
+            (char*)mesh.iface_inj_part_dist, "iface_inj_part_dist");
+        oppic_dat iface_node_pos       = oppic_decl_dat(ifaces_set, DIMENSIONS, OPP_TYPE_REAL, 
+            (char*)mesh.iface_node_pos,      "iface_node_pos"); 
 // opp_printf("XXXXXXXXXX", OPP_my_rank, " 66");
         oppic_set particles_set        = oppic_decl_particle_set(pcount, "particles", cells_set); 
-        oppic_dat part_position        = oppic_decl_particle_dat(particles_set, DIMENSIONS,     OPP_TYPE_REAL, (char*)arr_part_position, "part_position");
-        oppic_dat part_velocity        = oppic_decl_particle_dat(particles_set, DIMENSIONS,     OPP_TYPE_REAL, (char*)arr_part_velocity, "part_velocity");    
-        oppic_dat part_lc              = oppic_decl_particle_dat(particles_set, NODES_PER_CELL, OPP_TYPE_INT, (char*)arr_part_lc, "part_lc");
-        oppic_dat part_mesh_relation   = oppic_decl_particle_dat(particles_set, 1,              OPP_TYPE_INT,  (char*)arr_part_mesh_relation, "part_mesh_relation", true); // new cell index field
-
+        oppic_dat part_position        = oppic_decl_particle_dat(particles_set, DIMENSIONS,     
+            OPP_TYPE_REAL, (char*)arr_part_position, "part_position");
+        oppic_dat part_velocity        = oppic_decl_particle_dat(particles_set, DIMENSIONS,     
+            OPP_TYPE_REAL, (char*)arr_part_velocity, "part_velocity");    
+        oppic_dat part_lc              = oppic_decl_particle_dat(particles_set, NODES_PER_CELL, 
+            OPP_TYPE_INT, (char*)arr_part_lc, "part_lc");
+        oppic_dat part_mesh_relation   = oppic_decl_particle_dat(particles_set, 1,              
+            OPP_TYPE_INT,  (char*)arr_part_mesh_relation, "part_mesh_relation", true); // new cell index field
 delete[] arr_part_position;
 delete[] arr_part_velocity;
 delete[] arr_part_lc;
 delete[] arr_part_mesh_relation;
-    // TODO : Need to enrich mesh.dummy_part_random before using dummy_part
-        // oppic_set dummy_part_set       = oppic_decl_particle_set(mesh.n_approx_injected, "dummy particles", cells_set); 
-        // oppic_dat dum_part_random      = oppic_decl_dat(dummy_part_set, 2, OPP_TYPE_REAL, (char*)mesh.dummy_part_random, "dum_part_random");
+
+        oppic_set dummy_part_set       = oppic_decl_particle_set("dummy particles", cells_set); 
+        oppic_dat dummy_part_random    = oppic_decl_particle_dat(dummy_part_set, 2, OPP_TYPE_REAL, 
+            nullptr, "dum_part_random");
+
 
 // opp_printf("XXXXXXXXXX", OPP_my_rank, " 9");
 
@@ -214,14 +262,20 @@ delete[] arr_part_mesh_relation;
 
 // opp_printf("XXXXXXXXXX", OPP_my_rank, " 8");
 
-        mesh.DeleteValues();
-print_dat_to_txtfile_mpi(cell_shape_deriv, "cell_shape_deriv_pre.dat");
+        
+// print_dat_to_txtfile_mpi(cell_shape_deriv, "cell_shape_deriv_pre.dat");
 // opp_printf("XXXXXXXXXX", OPP_my_rank, " 10");
 
         opp_partition(cells_set, cell_to_nodes_map);
 
-print_dat_to_txtfile_mpi(cell_shape_deriv, "cell_shape_deriv_post.dat");
-op_print_dat_to_txtfile(cell_shape_deriv, "cell_shape_deriv_proccessed.dat");
+        mesh.DeleteValues();
+
+        int n_parts_to_inject = InitializeInjectDistributions(params, iface_inj_part_dist, 
+            iface_area, dummy_part_random);
+
+
+// print_dat_to_txtfile_mpi(cell_shape_deriv, "cell_shape_deriv_post.dat");
+// op_print_dat_to_txtfile(cell_shape_deriv, "cell_shape_deriv_proccessed.dat");
 //  opp_printf("XXXXXXXXXX", OPP_my_rank, " 67");
     
     if (false)
@@ -248,7 +302,7 @@ op_print_dat_to_txtfile(cell_shape_deriv, "cell_shape_deriv_proccessed.dat");
     }
 
     // Testing particle communications
-    if (true)
+    if (false)
     {
         oppic_set set = particles_set;
 
@@ -256,7 +310,8 @@ op_print_dat_to_txtfile(cell_shape_deriv, "cell_shape_deriv_proccessed.dat");
 
         do
         {    
-            opp_printf("Main()", "Starting iteration %d, start[%d] end[%d]", OPP_comm_iteration, OPP_iter_start, OPP_iter_end);
+            opp_printf("Main()", "Starting iteration %d, start[%d] end[%d]", 
+                OPP_comm_iteration, OPP_iter_start, OPP_iter_end);
 
             oppic_init_particle_move(set);
 
@@ -264,7 +319,8 @@ op_print_dat_to_txtfile(cell_shape_deriv, "cell_shape_deriv_proccessed.dat");
             {        
                 opp_move_var m = opp_get_move_var();
 
-                opp_printf("Main()", "Iter index %d comm_iteration %d *******************************", i, OPP_comm_iteration);
+                opp_printf("Main()", "Iter index %d comm_iteration %d *******************************", 
+                    i, OPP_comm_iteration);
 
                 do
                 { 
@@ -299,7 +355,7 @@ op_print_dat_to_txtfile(cell_shape_deriv, "cell_shape_deriv_proccessed.dat");
 
                             if (m.OPP_iteration_one != false)
                             {
-                                opp_printf("Main()", "ERROR ERROR ERROR **************************************************************");
+                                opp_printf("Main()", "ERROR ERROR ERROR *************************");
                                 exit(-1);
                             }
                         }
@@ -332,7 +388,7 @@ op_print_dat_to_txtfile(cell_shape_deriv, "cell_shape_deriv_proccessed.dat");
 
 
     // Testing Double indirect reductions
-    if (true)
+    if (false)
     {
         oppic_set set = particles_set;
 
@@ -401,6 +457,19 @@ op_print_dat_to_txtfile(cell_shape_deriv, "cell_shape_deriv_proccessed.dat");
         }  
     }
 
+    opp_inc_part_count_with_distribution(particles_set, n_parts_to_inject, iface_inj_part_dist);
+
+    std::string k = "N_" + std::to_string(OPP_my_rank);
+
+    oppic_print_dat_to_txtfile(part_mesh_relation, k.c_str(), "part_mesh_relation.dat");
+    oppic_print_dat_to_txtfile(iface_inj_part_dist, k.c_str(), "iface_inj_part_dist.dat");
+    oppic_print_dat_to_txtfile(dummy_part_random, k.c_str(), "dummy_part_random.dat");
+
+    opp_inc_part_count_with_distribution(particles_set, n_parts_to_inject, iface_inj_part_dist);
+
+    std::string q = "Q_" + std::to_string(OPP_my_rank);
+
+    oppic_print_dat_to_txtfile(part_mesh_relation, q.c_str(), "part_mesh_relation.dat");
 /*
 
 

@@ -27,4 +27,5 @@ mpi_files*
 vtune*
 scalling*
 build/
-scorep*
+junk/
+*.out

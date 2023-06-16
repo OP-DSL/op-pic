@@ -69,7 +69,7 @@ public:
     void summarize(std::ostream &out);  
 
 protected:
-    void addKe(double** K, int e, double ke[4][4]);    /*adds contributions from element stiffness matrix*/
+    void addKe(double** K, int e, double ke[4][4]);
     void addFe(Vec *Fvec, int e, double fe[4]);
     double evalNa(int a, double xi, double eta, double zeta);
     void getNax(double nx[3], int e, int a);
@@ -111,7 +111,7 @@ protected:
     /* Petsc related variables */
     Vec         Xvec, Bvec, F0vec, F1vec, Dvec, Yvec;       
     Mat         Jmat, Kmat;                                 
-    KSP         ksp;                                        /* linear solver context */
+    KSP         ksp;            /* linear solver context */
     KSPConvergedReason reason;
 
     // TODO : revise -- these can be removed...
