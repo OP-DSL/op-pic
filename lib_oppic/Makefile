@@ -13,13 +13,13 @@ SRC = src
 INC = include
 LIB = lib
 OBJ = obj
-# scorep-mpiicpc  -qopt-report=2 -qopt-report-phase=vec -xHOST
+# scorep-mpiicpc  -qopt-report=2 -qopt-report-phase=vec -xHOST     --generate-line-info
 CPP        = mpicxx
 MPICPP	   = mpicxx
 NVCC       = nvcc
 HIPCC      = hipcc
 
-CPPFLAGS   = -std=c++14 -Wall -fopenmp -fPIC
+CPPFLAGS   = -std=c++14 -Wall -fPIC
 NVCCFLAGS  = -m64 -Xptxas -dlcm=ca -Xptxas=-v $(NVCCFLAGS_ADD)
 HIPCCFLAGS = -std=c++11 -isystem -D__HIP_PLATFORM_NVIDIA__ $(NVCCFLAGS_ADD)
 
@@ -86,11 +86,11 @@ seq: mklib
 	     ar -r $(LIB)/liboppic_seq.a $(OBJ)/oppic_lib_core.o $(OBJ)/oppic_util.o $(OBJ)/trace.o $(OBJ)/opp_params.o $(OBJ)/oppic_seq.o
 
 omp: mklib
-	     $(CPP) $(CPPFLAGS) -c $(SRC)/core/oppic_lib_core.cpp -o $(OBJ)/oppic_lib_core.o $(OPP_INC) $(PETSC_INC)
-	     $(CPP) $(CPPFLAGS) -c $(SRC)/core/oppic_util.cpp -o $(OBJ)/oppic_util.o $(OPP_INC) $(PETSC_INC)
-	     $(CPP) $(CPPFLAGS) -c $(SRC)/core/trace.cpp -o $(OBJ)/trace.o $(OPP_INC) $(PETSC_INC)
-		 $(CPP) $(CPPFLAGS) -c $(SRC)/core/opp_params.cpp -o $(OBJ)/opp_params.o $(OPP_INC) $(PETSC_INC)
-	     $(CPP) $(CPPFLAGS) -c $(SRC)/omp/oppic_omp.cpp -o $(OBJ)/oppic_omp.o $(OPP_INC) $(PETSC_INC)
+	     $(CPP) $(CPPFLAGS) -fopenmp -c $(SRC)/core/oppic_lib_core.cpp -o $(OBJ)/oppic_lib_core.o $(OPP_INC) $(PETSC_INC)
+	     $(CPP) $(CPPFLAGS) -fopenmp -c $(SRC)/core/oppic_util.cpp -o $(OBJ)/oppic_util.o $(OPP_INC) $(PETSC_INC)
+	     $(CPP) $(CPPFLAGS) -fopenmp -c $(SRC)/core/trace.cpp -o $(OBJ)/trace.o $(OPP_INC) $(PETSC_INC)
+		 $(CPP) $(CPPFLAGS) -fopenmp -c $(SRC)/core/opp_params.cpp -o $(OBJ)/opp_params.o $(OPP_INC) $(PETSC_INC)
+	     $(CPP) $(CPPFLAGS) -fopenmp -c $(SRC)/omp/oppic_omp.cpp -o $(OBJ)/oppic_omp.o $(OPP_INC) $(PETSC_INC)
 	     ar -r $(LIB)/liboppic_omp.a $(OBJ)/oppic_lib_core.o $(OBJ)/oppic_util.o $(OBJ)/trace.o $(OBJ)/opp_params.o $(OBJ)/oppic_omp.o
 
 cuda: mklib

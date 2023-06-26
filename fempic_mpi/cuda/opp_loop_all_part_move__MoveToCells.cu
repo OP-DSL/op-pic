@@ -137,6 +137,9 @@ __device__ void move_all_particles_to_cell__kernel(
     }
 }
 
+#define NODE_COUNT  1754
+#define ATOMIC_THREADS 960
+
 // CUDA kernel function
 //*************************************************************************************************
 __global__ void opp_cuda_all_MoveToCells(
@@ -158,7 +161,16 @@ __global__ void opp_cuda_all_MoveToCells(
     int start,
     int end) 
 {
+    __shared__ double shared_arg8[NODE_COUNT];
+
     int tid = threadIdx.x + blockIdx.x * blockDim.x;
+
+    for (int i = threadIdx.x; i < NODE_COUNT; i+=GPU_THREADS_PER_BLOCK) 
+    {
+        shared_arg8[i] = 0;
+    }
+
+    __syncthreads();
 
     if (tid + start < end) 
     {
@@ -189,10 +201,14 @@ __global__ void opp_cuda_all_MoveToCells(
                 (ind_arg5 + map0idx),   // cell_volume,
                 (ind_arg6 + map0idx),   // cell_det,
                 (ind_arg7 + map0idx),   // cell_connectivity,
-                (ind_arg8 + map1idx),   // node_charge_den0,
-                (ind_arg9 + map2idx),   // node_charge_den1,
-                (ind_arg10 + map3idx),  // node_charge_den2,
-                (ind_arg11 + map4idx)   // node_charge_den3,
+                (shared_arg8 + map1idx),
+                (shared_arg8 + map2idx),
+                (shared_arg8 + map3idx),
+                (shared_arg8 + map4idx)
+                // (ind_arg8 + map1idx),   // node_charge_den0,
+                // (ind_arg9 + map2idx),   // node_charge_den1,
+                // (ind_arg10 + map3idx),  // node_charge_den2,
+                // (ind_arg11 + map4idx)   // node_charge_den3,
             );                
             
             m.iteration_one = false;
@@ -205,6 +221,15 @@ __global__ void opp_cuda_all_MoveToCells(
             dir_arg4[n] = MAX_CELL_INDEX;
         }
     }
+
+    __syncthreads();
+
+    for (int i = threadIdx.x; i < NODE_COUNT; i+=GPU_THREADS_PER_BLOCK) 
+    {
+        atomicAdd(&(ind_arg8[i]), shared_arg8[i]);
+    }
+
+    __syncthreads();
 }
 
 void opp_loop_all_part_move__MoveToCells(
@@ -248,6 +273,7 @@ void opp_loop_all_part_move__MoveToCells(
     opp_init_particle_move(set, nargs, args);
 
     int set_size = opp_mpi_halo_exchanges_grouped(set, nargs, args, Device_GPU);
+    opp_profiler->start("MoveToCells1");
     if (set_size > 0) 
     {
         move_stride_OPP_HOST_0 = args[0].dat->set->set_capacity;
@@ -296,8 +322,11 @@ void opp_loop_all_part_move__MoveToCells(
     }
 
     cutilSafeCall(cudaDeviceSynchronize());
+    opp_profiler->end("MoveToCells1");
 
+    opp_profiler->start("finalize_move");
     opp_finalize_particle_move(set);
+    opp_profiler->end("finalize_move");
 
     opp_mpi_set_dirtybit_grouped(nargs, args, Device_GPU);
     cutilSafeCall(cudaDeviceSynchronize());

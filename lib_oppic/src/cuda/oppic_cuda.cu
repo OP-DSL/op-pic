@@ -690,7 +690,7 @@ void cutilDeviceInit(int argc, char **argv)
     {
         cudaFree(test);
 
-        cutilSafeCall(cudaDeviceSetCacheConfig(cudaFuncCachePreferL1));
+        // cutilSafeCall(cudaDeviceSetCacheConfig(cudaFuncCachePreferL1));
 
         int deviceId = -1;
         cudaGetDevice(&deviceId);
