@@ -31,21 +31,69 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
 #include <oppic_cuda.h>
+#include <thrust/generate.h>
+#include <thrust/random.h>
+#include <thrust/copy.h>
+
+unsigned int seed = 123; // Seed for random number generator
+
+struct RandomFunctor
+{
+    mutable thrust::default_random_engine rng;
+
+    RandomFunctor(unsigned int seed) : rng(seed) {}
+
+    __device__ int operator()(int value) const
+    {
+        if (value == MAX_CELL_INDEX)
+        {
+            return value; // Keep the value of MAX_CELL_INDEX unchanged
+        }
+        else
+        {
+            thrust::uniform_int_distribution<int> dist(0, 1000);
+            return dist(rng); // Assign random number < 100
+        }
+    }
+};
+
+thrust::device_vector<int> cellIdx_dv;
+thrust::device_vector<int> i_dv;
 
 // This assumes all the device data to be valid
-void particle_sort_cuda(oppic_set set)
+void particle_sort_cuda(oppic_set set, bool hole_filling)
 { 
-
     int set_capacity = set->set_capacity;
     int set_size_plus_removed = set->size + set->particle_remove_count;
 
-    if (OP_DEBUG) printf("\tparticle_sort_cuda set [%s] with set capacity [%d] set size + removed [%d]\n", 
-        set->name, set_capacity, set_size_plus_removed);
+    if (OP_DEBUG) 
+        opp_printf("particle_sort_cuda", 
+        "set [%s] with set capacity [%d] set size+removed [%d] hole_filling [%s]", 
+        set->name, set_capacity, set_size_plus_removed, (hole_filling ? "TRUE" : "FALSE"));
 
-    thrust::device_ptr<int> cellIdx_dp = thrust::device_pointer_cast((int*)set->mesh_relation_dat->data_d);
-    thrust::device_vector<int> cellIdx_dv(cellIdx_dp, cellIdx_dp + set_size_plus_removed);
+    int* cellIdx_dp = (int*)set->mesh_relation_dat->data_d;
+    
+    cellIdx_dv.reserve(set_size_plus_removed);
+    cellIdx_dv.resize(set_size_plus_removed);
 
-    thrust::device_vector<int> i_dv(set_size_plus_removed);
+    // copy the cell index to the thrust vector
+    thrust::copy(cellIdx_dp, cellIdx_dp + set_size_plus_removed, cellIdx_dv.begin());
+
+    if (hole_filling)
+    {
+        // in hole filling, randomize the cell indices to minimize shared memory issues
+        thrust::transform(cellIdx_dv.begin(), cellIdx_dv.end(), 
+            cellIdx_dv.begin(), RandomFunctor(seed));
+        
+        // thrust::replace_if(
+        //     cellIdx_dv.begin(), cellIdx_dv.end(),
+        //     thrust::placeholders::_1 != MAX_CELL_INDEX,  // Replace all values != MAX_CELL_INDEX
+        //     0                                            // New value to assign (zero in this case)
+        // );
+    }
+
+    i_dv.reserve(set_size_plus_removed);
+    i_dv.resize(set_size_plus_removed);
     thrust::sequence(i_dv.begin(), i_dv.end());
 
     thrust::sort_by_key(cellIdx_dv.begin(), cellIdx_dv.end(), i_dv.begin());

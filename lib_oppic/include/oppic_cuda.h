@@ -55,6 +55,8 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 extern int* opp_saved_mesh_relation_d;
 extern size_t opp_saved_mesh_relation_size;
+extern thrust::device_vector<int> cellIdx_dv;
+extern thrust::device_vector<int> i_dv;
 
 //*************************************************************************************************
 

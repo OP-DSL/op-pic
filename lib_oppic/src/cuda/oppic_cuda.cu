@@ -42,7 +42,7 @@ void opp_init(int argc, char **argv)
     cutilSafeCall(cudaDeviceSetSharedMemConfig(cudaSharedMemBankSizeEightByte));
 
     OP_auto_soa = 1; // TODO : Make this configurable with args
-    OP_auto_sort = 1;
+    //OP_auto_sort = 1;
 
     int threads_per_block = opp_params->get<OPP_INT>("opp_threads_per_block");   
     if (threads_per_block > 0 && threads_per_block < INT_MAX)
@@ -105,6 +105,12 @@ void oppic_cuda_exit()
         cutilSafeCall(cudaFree(opp_saved_mesh_relation_d));
         // free(opp_saved_mesh_relation_d);
     }
+
+    cellIdx_dv.clear();
+    cellIdx_dv.shrink_to_fit();
+
+    i_dv.clear();
+    i_dv.shrink_to_fit();
 }
 
 //****************************************
@@ -321,38 +327,49 @@ void opp_init_particle_move(oppic_set set, int nargs, oppic_arg *args)
 }
 
 //****************************************
+void particle_sort_cuda(oppic_set set, bool hole_filling);
+
+//****************************************
 bool opp_finalize_particle_move(oppic_set set)
 { 
 
-    cutilSafeCall(cudaMemcpy(&(set->particle_remove_count), set->particle_remove_count_d, sizeof(int), 
-                    cudaMemcpyDeviceToHost));
+    cutilSafeCall(cudaMemcpy(&(set->particle_remove_count), set->particle_remove_count_d, 
+                    sizeof(int), cudaMemcpyDeviceToHost));
 
-    if (OP_DEBUG) opp_printf("oppic_finalize_particle_move", "set [%s] with particle_remove_count [%d]\n", 
+    if (OP_DEBUG) 
+        opp_printf("oppic_finalize_particle_move", "set [%s] with particle_remove_count [%d]\n", 
         set->name, set->particle_remove_count);
     
     // This makes device-host-device copies, auto sorting takes less time!
     // oppic_finalize_particle_move_cuda(set); 
     
-    oppic_finalize_particle_move_core(set); // OPP_auto_sorting should be true
+    // oppic_finalize_particle_move_core(set); // OPP_auto_sorting should be true
+
+    if (set->particle_remove_count <= 0) 
+        return false;
+
+    set->size -= set->particle_remove_count;
 
     if (OP_auto_sort == 1)
     {
-        if (OP_DEBUG) opp_printf("oppic_finalize_particle_move", "auto sorting particle set [%s]\n", 
+        if (OP_DEBUG) 
+            opp_printf("oppic_finalize_particle_move", "auto sorting particle set [%s]\n", 
             set->name);
         oppic_particle_sort(set);
+    }
+    else
+    {
+        particle_sort_cuda(set, true);
     }
 
     return true;
 }
 
 //****************************************
-void particle_sort_cuda(oppic_set set);
-
-//****************************************
 void oppic_particle_sort(oppic_set set)
 { 
 
-    particle_sort_cuda(set);
+    particle_sort_cuda(set, false);
 }
 
 //****************************************
