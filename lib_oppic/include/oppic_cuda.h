@@ -53,6 +53,9 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #define OPP_GPU_THREADS_PER_BLOCK 32
 
+extern int* opp_saved_mesh_relation_d;
+extern size_t opp_saved_mesh_relation_size;
+
 //*************************************************************************************************
 
 void __cudaSafeCall(cudaError_t err, const char *file, const int line);

@@ -55,6 +55,8 @@ int OPP_max_comm_iteration  = 0;
 int OPP_iter_start          = 0;
 int OPP_iter_end            = 0;
 int OPP_main_loop_iter      = 0;
+int OPP_gpu_threads_per_block       = OPP_DEFAULT_GPU_THREADS_PER_BLOCK;
+size_t OPP_gpu_shared_mem_per_block = -1;
 int *OPP_mesh_relation_data = nullptr;
 std::unique_ptr<opp::Params> opp_params;
 std::unique_ptr<opp::Profiler> opp_profiler;

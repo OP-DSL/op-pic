@@ -44,9 +44,23 @@ void opp_init(int argc, char **argv)
     OP_auto_soa = 1; // TODO : Make this configurable with args
     OP_auto_sort = 1;
 
+    int threads_per_block = opp_params->get<OPP_INT>("opp_threads_per_block");   
+    if (threads_per_block > 0 && threads_per_block < INT_MAX)
+        OPP_gpu_threads_per_block = threads_per_block;
+
+    int deviceId = -1;
+    cudaGetDevice(&deviceId);
+    cudaDeviceProp deviceProp;
+    cutilSafeCall(cudaGetDeviceProperties(&deviceProp, deviceId));
+
+    OPP_gpu_shared_mem_per_block = deviceProp.sharedMemPerBlock;
+    
 #ifdef USE_PETSC
     PetscInitialize(&argc, &argv, PETSC_NULL, "opp::PetscCUDA");
 #endif
+
+    printf("Using CUDA device: %d %s witb Shared memory size %lu bytes\n\n", deviceId, deviceProp.name, deviceProp.sharedMemPerBlock);
+    opp_printf("opp_init", "OPP_gpu_threads_per_block=%d", OPP_gpu_threads_per_block);
 }
 
 //****************************************
@@ -86,6 +100,11 @@ void oppic_cuda_exit()
         if (a->thrust_real_sort) delete a->thrust_real_sort;
     }
 
+    if (opp_saved_mesh_relation_d != nullptr)
+    {
+        cutilSafeCall(cudaFree(opp_saved_mesh_relation_d));
+        // free(opp_saved_mesh_relation_d);
+    }
 }
 
 //****************************************

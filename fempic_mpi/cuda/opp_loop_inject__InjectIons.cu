@@ -77,10 +77,16 @@ __device__ void inject_ions__kernel_gpu(
 
     for (int i = 0; i < DIM; i++) 
     {
-        part_pos[i * injectIons_stride_OPP_CUDA_0] = a * iface_u[i * injectIons_stride_OPP_CUDA_5] + b * iface_v[i * injectIons_stride_OPP_CUDA_6] + node_pos[i * injectIons_stride_OPP_CUDA_8];
+        part_pos[i * injectIons_stride_OPP_CUDA_0] = 
+            a * iface_u[i * injectIons_stride_OPP_CUDA_5] + 
+            b * iface_v[i * injectIons_stride_OPP_CUDA_6] + 
+            node_pos[i * injectIons_stride_OPP_CUDA_8];
 
-        part_vel[i * injectIons_stride_OPP_CUDA_1] = (iface_normal[i * injectIons_stride_OPP_CUDA_7] * CONST_ion_velocity_cuda);
-        part_vel[i * injectIons_stride_OPP_CUDA_1] -= CONST_charge_cuda / CONST_mass_cuda * cell_ef[i * injectIons_stride_OPP_CUDA_4] * (0.5 * CONST_dt_cuda);
+        part_vel[i * injectIons_stride_OPP_CUDA_1] = 
+            (iface_normal[i * injectIons_stride_OPP_CUDA_7] * CONST_ion_velocity_cuda);
+        
+        part_vel[i * injectIons_stride_OPP_CUDA_1] -= CONST_charge_cuda / CONST_mass_cuda * 
+            cell_ef[i * injectIons_stride_OPP_CUDA_4] * (0.5 * CONST_dt_cuda);
     }
 
     (*part_cell_connectivity) = (*cell_id);
@@ -191,7 +197,7 @@ void opp_loop_inject__InjectIons(
 
         if (end - start > 0) 
         {
-            int nthread = GPU_THREADS_PER_BLOCK;
+            int nthread = OPP_gpu_threads_per_block;
             int nblocks = (end - start - 1) / nthread + 1;
 
             opp_cuda_InjectIons<<<nblocks, nthread>>>(

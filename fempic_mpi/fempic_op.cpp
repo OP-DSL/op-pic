@@ -157,7 +157,7 @@ int main(int argc, char **argv)
             if (OP_DEBUG && OPP_rank == OPP_ROOT) 
                 opp_printf("Main", "Starting main loop iteration %d *************", OPP_main_loop_iter);
 
-            opp_inc_part_count_with_distribution(particle_set, n_parts_to_inject, iface_dist);
+            opp_inc_part_count_with_distribution(particle_set, n_parts_to_inject, iface_dist, false);
 
             int old_nparts = particle_set->size;
             opp_loop_inject__InjectIons(

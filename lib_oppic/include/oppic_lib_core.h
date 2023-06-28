@@ -91,6 +91,8 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #define ZERO_ull       0
 #define ZERO_bool      0
 
+#define OPP_DEFAULT_GPU_THREADS_PER_BLOCK 32
+
 #ifdef USE_THRUST
     #include <thrust/device_vector.h>
     #include <thrust/host_vector.h>
@@ -344,6 +346,8 @@ extern int OPP_iter_start;
 extern int OPP_iter_end;
 extern int *OPP_mesh_relation_data;
 extern int OPP_main_loop_iter;
+extern int OPP_gpu_threads_per_block;
+extern size_t OPP_gpu_shared_mem_per_block;
 
 extern std::vector<oppic_set> oppic_sets;
 extern std::vector<oppic_map> oppic_maps;

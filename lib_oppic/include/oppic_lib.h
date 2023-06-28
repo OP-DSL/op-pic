@@ -81,7 +81,7 @@ void opp_decl_const(int dim, T* data, const char* name)
 
 void oppic_increase_particle_count(oppic_set particles_set, int num_particles_to_insert);
 
-void opp_inc_part_count_with_distribution(oppic_set particles_set, int num_particles_to_insert, oppic_dat part_dist);
+void opp_inc_part_count_with_distribution(oppic_set particles_set, int num_particles_to_insert, oppic_dat part_dist, bool calc_new = true);
 
 void oppic_reset_num_particles_to_insert(oppic_set set);
 

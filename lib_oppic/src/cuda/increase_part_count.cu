@@ -32,6 +32,9 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <oppic_cuda.h>
 
+int* opp_saved_mesh_relation_d = nullptr;
+size_t opp_saved_mesh_relation_size = 0;
+
 //*************************************************************************************************
 __global__ void opp_cuda_AssignMeshRelation(
     int *__restrict mesh_relation,
@@ -63,10 +66,10 @@ __global__ void opp_cuda_AssignMeshRelation(
 
 //****************************************
 void opp_inc_part_count_with_distribution(opp_set particles_set, 
-    int num_particles_to_insert, opp_dat iface_dist)
+    int num_particles_to_insert, opp_dat iface_dist, bool calc_new)
 {
-    if (OP_DEBUG) opp_printf("opp_inc_part_count_with_distribution", "num_particles_to_insert [%d]", 
-        num_particles_to_insert);
+    if (OP_DEBUG) opp_printf("opp_inc_part_count_with_distribution", "num_particles_to_insert [%d] %s", 
+        num_particles_to_insert, (calc_new ? "NEW" : "COPY"));
 
     opp_profiler->start("IncPartCountWithDistribution");
 
@@ -98,16 +101,73 @@ void opp_inc_part_count_with_distribution(opp_set particles_set,
 
         if (end - start > 0) 
         {
-            int nthread = OPP_GPU_THREADS_PER_BLOCK;
-            int nblocks = (end - start - 1) / nthread + 1;
+            if (calc_new) 
+            {
+                if (OP_DEBUG) 
+                    opp_printf("opp_inc_part_count_with_distribution", 
+                        "Calculating all from new");
 
-            opp_cuda_AssignMeshRelation<<<nblocks, nthread>>>(
-                (int *) mesh_rel_dat->data_d,
-                (int *) iface_dist->data_d,
-                start, 
-                end, 
-                inj_start,
-                iface_dist->set->size);
+                int nthread = OPP_gpu_threads_per_block;
+                int nblocks = (end - start - 1) / nthread + 1;
+
+                opp_cuda_AssignMeshRelation<<<nblocks, nthread>>>(
+                    (int *) mesh_rel_dat->data_d,
+                    (int *) iface_dist->data_d,
+                    start, 
+                    end, 
+                    inj_start,
+                    iface_dist->set->size);                
+            }
+            else
+            {
+                size_t copy_size = (end - start) * sizeof(int);
+                int* inj_mesh_relations = (int *)mesh_rel_dat->data_d + inj_start;
+
+                if (opp_saved_mesh_relation_d == nullptr) 
+                {
+                    if (OP_DEBUG) 
+                        opp_printf("opp_inc_part_count_with_distribution", 
+                            "Allocating saved_mesh_relation_d with size [%zu]", copy_size);
+
+                    opp_saved_mesh_relation_size = copy_size;                
+                    cutilSafeCall(cudaMalloc(&(opp_saved_mesh_relation_d), copy_size));
+                    // opp_saved_mesh_relation_d = (int*)malloc(copy_size);
+
+                    // duplicate code below
+                    int nthread = OPP_gpu_threads_per_block;
+                    int nblocks = (end - start - 1) / nthread + 1;
+
+                    opp_cuda_AssignMeshRelation<<<nblocks, nthread>>>(
+                        (int *) mesh_rel_dat->data_d,
+                        (int *) iface_dist->data_d,
+                        start, 
+                        end, 
+                        inj_start,
+                        iface_dist->set->size);
+                    // duplicate code above
+
+                    cutilSafeCall(cudaDeviceSynchronize());
+
+                    cutilSafeCall(cudaMemcpy(opp_saved_mesh_relation_d, inj_mesh_relations, 
+                        copy_size, cudaMemcpyDeviceToDevice));
+                }
+                else
+                {
+                    if (OP_DEBUG) 
+                        opp_printf("opp_inc_part_count_with_distribution", 
+                            "Copying saved_mesh_relation_d with size [%zu]", copy_size);
+
+                    if (opp_saved_mesh_relation_size != copy_size)
+                    {
+                        opp_printf("opp_inc_part_count_with_distribution", 
+                            "ERROR... saved_mesh_relation_size [%d] does not match with new copy size [%d]", 
+                            opp_saved_mesh_relation_size, copy_size);
+                    }
+
+                    cutilSafeCall(cudaMemcpy(inj_mesh_relations, opp_saved_mesh_relation_d, 
+                        copy_size, cudaMemcpyDeviceToDevice));
+                }
+            }
         }
     }
 
