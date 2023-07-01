@@ -52,6 +52,7 @@
 
 #include <opp_mpi.h>
 
+#ifdef HAVE_PARMETIS
 #include <parmetis.h>
 
 // #ifdef PARMETIS_VER_4
@@ -59,6 +60,7 @@
 // #else
 //     typedef int idx_t;
 // #endif
+#endif
 
 //**********************************
 // TODO : Remove these
@@ -1436,6 +1438,8 @@ void opp_partition_kway(op_map primary_map)
 
     if (OP_DEBUG) opp_printf("opp_partition_kway", "START");
 
+#ifdef HAVE_PARMETIS
+
     // declare timers
     double cpu_t1, cpu_t2, wall_t1, wall_t2, time, max_time;
 
@@ -1813,6 +1817,7 @@ void opp_partition_kway(op_map primary_map)
     if (my_rank == OPP_ROOT) opp_printf("opp_partition_kway", "Max total Kway partitioning time = %lf", max_time);
 
     free(request_send);
+#endif
 
     if (OP_DEBUG) opp_printf("opp_partition_kway", "end");
 }
@@ -1913,6 +1918,8 @@ void opp_partition_external(op_set primary_set, op_dat partvec)
 void opp_partition_geom(op_dat coords) 
 {
     opp_printf("opp_partition_geom", "start");
+
+#ifdef HAVE_PARMETIS
 
     // declare timers
     double cpu_t1, cpu_t2, wall_t1, wall_t2;
@@ -2042,6 +2049,8 @@ void opp_partition_geom(op_dat coords)
     MPI_Comm_free(&OP_PART_WORLD);
     if (my_rank == MPI_ROOT)
         printf("Max total geometric partitioning time = %lf\n", max_time);
+
+#endif
     
     opp_printf("opp_partition_geom", "end");
 }

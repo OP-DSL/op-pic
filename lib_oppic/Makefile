@@ -35,7 +35,7 @@ else
 	HIPCCFLAGS += -O3 -g
 endif
 
-IEEE ?= 1
+IEEE ?= 0
 ifeq ($(IEEE), 1)
 	CPPFLAGS   += -fp-model strict -fp-model source -prec-div -prec-sqrt
 	NVCCFLAGS  += -fmad=false -ftz=false -prec-div=true -prec-sqrt=true
@@ -67,6 +67,11 @@ ifeq ($(HIP), 1)
 endif
 
 OPP_INC    = -I$(OPPIC_PATH)/include -I/ext-home/zl/lib/include
+
+PARMETIS ?= 0
+ifeq ($(PARMETIS), 1)
+	OPP_INC  += -DHAVE_PARMETIS
+endif
 
 .PHONY: clean mklib
 

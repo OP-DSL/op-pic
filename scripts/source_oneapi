@@ -76,3 +76,17 @@ export SLOPE_INSTALL_PATH=/ext-home/zl/slope/SLOPE/
 export METIS_INSTALL_PATH=/ext-home/zl/libs/metis/5.1.0/
 
 # export LD_LIBRARY_PATH=/ext-home/zl/lib_install/petsc-3.18.3-oneapi-2021.3-cuda-rel/lib:$LD_LIBRARY_PATH
+
+
+# AT AVON
+
+# module load GCC/10.3.0  OpenMPI/4.1.1
+# module load PETSc/3.15.1
+
+# export PETSC_INSTALL_PATH=/scrtp/avon/eb/software/PETSc/3.15.1-foss-2021a
+# export OPPIC_PATH=/home/dcs/csrcnj/phd/OP-PIC/lib_oppic
+
+# For MPI
+# salloc -p hmem --nodes=1 --ntasks-per-node=48 --cpus-per-task=1 --mem-per-cpu=3700 --time=03:00:00 
+
+# mpirun -np 8 bin/mpi /home/dcs/csrcnj/phd/OP-PIC/scripts/fempic_tests/configs/coarse_5.param

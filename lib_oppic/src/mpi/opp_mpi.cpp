@@ -445,6 +445,7 @@ void opp_partition_core(std::string lib_name, op_set prime_set, op_map prime_map
 {
     if (lib_name == "PARMETIS_KWAY")
     {
+#ifdef HAVE_PARMETIS
         if (prime_map != NULL)
         {
             opp_partition_kway(prime_map); // use parmetis kway partitioning
@@ -454,9 +455,14 @@ void opp_partition_core(std::string lib_name, op_set prime_set, op_map prime_map
             opp_printf("opp_partition", "Error: Partitioning prime_map : NULL - UNSUPPORTED Partitioner Specification");
             MPI_Abort(OP_MPI_WORLD, 1);
         }
+#else
+        opp_printf("opp_partition PARMETIS_KWAY", "Error: Parmetis not installed or not defined");
+        opp_abort();
+#endif
     }
     else if (lib_name == "PARMETIS_GEOM")
     {
+#ifdef HAVE_PARMETIS
         if (data != NULL)
         {
             opp_partition_geom(data); // use parmetis geometric partitioning
@@ -466,6 +472,10 @@ void opp_partition_core(std::string lib_name, op_set prime_set, op_map prime_map
             opp_printf("opp_partition", "Error: Partitioning geom dat : NULL - UNSUPPORTED Partitioner Specification");
             MPI_Abort(OP_MPI_WORLD, 1);
         }
+#else
+        opp_printf("opp_partition PARMETIS_GEOM", "Error: Parmetis not installed or not defined");
+        opp_abort();
+#endif
     }
     else if (lib_name == "EXTERNAL")
     {

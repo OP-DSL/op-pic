@@ -67,8 +67,16 @@ ifeq ($(HIP), 1)
 	HIP_INC   = -I$(ROCM_INSTALL_DIR)/include -I$(ROCM_THRUST_DIR)/include -I$(ROCM_PRIM_DIR)/include
 endif
 
-ALL_INC    = -I$(OPPIC_PATH)/include $(PETSC_INC) -I/ext-home/zl/lib/inclide
-ALL_LIBS   = -L$(OPPIC_PATH)/lib -L/ext-home/zl/lib/lib -lparmetis -lmetis $(PETSC_LIB) 
+PARMETIS ?= 0
+ifeq ($(PARMETIS), 1)
+	ALL_LIBS = -lparmetis -lmetis
+	ALL_INC  += -DHAVE_PARMETIS
+endif
+
+ALL_INC    += -I$(OPPIC_PATH)/include $(PETSC_INC) -I/ext-home/zl/lib/inclide
+ALL_LIBS   += -L$(OPPIC_PATH)/lib -L/ext-home/zl/lib/lib $(PETSC_LIB) 
+
+
 
 .PHONY: clean mklib
 
