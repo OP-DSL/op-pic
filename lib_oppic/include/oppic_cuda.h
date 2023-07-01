@@ -79,23 +79,28 @@ void oppic_download_particle_set(oppic_set particles_set);
 
 void oppic_upload_particle_set(oppic_set particles_set, bool realloc = false);
 
-int opp_mpi_halo_exchanges_grouped(oppic_set set, int nargs, oppic_arg *args, DeviceType device);
+int opp_mpi_halo_exchanges_grouped(oppic_set set, int nargs, oppic_arg *args, 
+    DeviceType device);
 
 void opp_mpi_set_dirtybit_grouped(int nargs, oppic_arg *args, DeviceType device);
 
 void print_last_cuda_error();
 
-void oppic_cpHostToDevice(void **data_d, void **data_h, int copy_size, int alloc_size = 0, bool create_new = false);
+void oppic_cpHostToDevice(void **data_d, void **data_h, int copy_size, int alloc_size = 0, 
+    bool create_new = false);
 
 void oppic_create_device_arrays(oppic_dat dat, bool create_new = false);
 
 void oppic_finalize_particle_move_cuda(oppic_set set);
 
-void sort_dat_according_to_index_int(oppic_dat dat, const thrust::device_vector<int>& new_idx_dv, int set_capacity, int size);
-void sort_dat_according_to_index_double(oppic_dat dat, const thrust::device_vector<int>& new_idx_dv, int set_capacity, int size);
+void sort_dat_according_to_index_int(oppic_dat dat, const thrust::device_vector<int>& new_idx_dv, 
+    int set_capacity, int size);
+void sort_dat_according_to_index_double(oppic_dat dat, const thrust::device_vector<int>& new_idx_dv, 
+    int set_capacity, int size);
 
 template <class T> 
-void copy_according_to_index(thrust::device_vector<T>* dat_dv, thrust::device_vector<T>* sorted_dat_dv, const thrust::device_vector<int>& new_idx_dv, int set_capacity, int size, int dimension)
+void copy_according_to_index(thrust::device_vector<T>* dat_dv, thrust::device_vector<T>* sorted_dat_dv, 
+    const thrust::device_vector<int>& new_idx_dv, int set_capacity, int size, int dimension)
 {
     switch (dimension)
     {

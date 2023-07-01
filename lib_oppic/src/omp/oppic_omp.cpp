@@ -248,7 +248,7 @@ bool opp_inc_part_count_with_distribution_omp(oppic_set particles_set, int num_p
 }
 
 //****************************************
-void opp_inc_part_count_with_distribution(oppic_set particles_set, int num_particles_to_insert, oppic_dat part_dist)
+void opp_inc_part_count_with_distribution(oppic_set particles_set, int num_particles_to_insert, oppic_dat part_dist, bool calc_new)
 {
     if (OP_DEBUG) opp_printf("opp_inc_part_count_with_distribution", "num_particles_to_insert [%d]", num_particles_to_insert);
 

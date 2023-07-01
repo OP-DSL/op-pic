@@ -59,8 +59,9 @@ void opp_init(int argc, char **argv)
     PetscInitialize(&argc, &argv, PETSC_NULL, "opp::PetscCUDA");
 #endif
 
-    printf("Using CUDA device: %d %s witb Shared memory size %lu bytes\n\n", deviceId, deviceProp.name, deviceProp.sharedMemPerBlock);
-    opp_printf("opp_init", "OPP_gpu_threads_per_block=%d", OPP_gpu_threads_per_block);
+    opp_printf("opp_init", 
+        "CUDA device: %d %s OPP_gpu_threads_per_block=%d Shared memory per block=%lu bytes", 
+        deviceId, deviceProp.name, OPP_gpu_threads_per_block, deviceProp.sharedMemPerBlock);
 }
 
 //****************************************
@@ -527,7 +528,8 @@ void opp_mpi_set_dirtybit_cuda(int nargs, oppic_arg *args);
 
 int opp_mpi_halo_exchanges_grouped(oppic_set set, int nargs, oppic_arg *args, DeviceType device)
 {
-    return (device == Device_CPU) ? opp_mpi_halo_exchanges(set, nargs, args) : opp_mpi_halo_exchanges_cuda(set, nargs, args);
+    return (device == Device_CPU) ? 
+        opp_mpi_halo_exchanges(set, nargs, args) : opp_mpi_halo_exchanges_cuda(set, nargs, args);
 }
 
 //****************************************
@@ -728,15 +730,16 @@ void cutilDeviceInit(int argc, char **argv)
 
         // cutilSafeCall(cudaDeviceSetCacheConfig(cudaFuncCachePreferL1));
 
-        int deviceId = -1;
-        cudaGetDevice(&deviceId);
-        cudaDeviceProp deviceProp;
-        cutilSafeCall(cudaGetDeviceProperties(&deviceProp, deviceId));
-        printf("\n Using CUDA device: %d %s\n\n", deviceId, deviceProp.name);
+        // int deviceId = -1;
+        // cudaGetDevice(&deviceId);
+        // cudaDeviceProp deviceProp;
+        // cutilSafeCall(cudaGetDeviceProperties(&deviceProp, deviceId));
+        // printf("\n Using CUDA device: %d %s\n\n", deviceId, deviceProp.name);
     } 
     else 
     {
-        printf("\n Using CPU\n");
+        opp_printf("cutilDeviceInit", "Error... Init Cuda Device Failed");
+        opp_abort();
     }
 }
 

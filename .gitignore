@@ -29,3 +29,8 @@ scalling*
 build/
 junk/
 *.out
+*.nvvp
+*nsight*
+*.qdrep
+*.sqlite
+advisor*

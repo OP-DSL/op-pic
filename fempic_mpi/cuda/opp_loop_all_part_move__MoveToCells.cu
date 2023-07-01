@@ -674,6 +674,16 @@ void opp_loop_all_part_move__MoveToCells(
                 bool use_shared = false;
                 cudaMemcpyToSymbol(use_shared_OPP_CUDA, &use_shared, sizeof(bool));
                 shared_mem = 1;
+                
+                if (FP_DEBUG) 
+                    opp_printf("FEMPIC", "MoveToCells Not using shared mem [avail: %zu, need: %zu]", 
+                        OPP_gpu_shared_mem_per_block, shared_mem);
+            }
+            else
+            {
+                if (FP_DEBUG) 
+                    opp_printf("FEMPIC", "MoveToCells Using shared mem [avail: %zu, need: %zu]", 
+                        OPP_gpu_shared_mem_per_block, shared_mem);
             }
 
             opp_cuda_all_MoveToCells<<<nblocks, nthread, shared_mem>>>(
