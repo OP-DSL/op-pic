@@ -47,6 +47,8 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <iostream>
 #include <thrust/iterator/permutation_iterator.h>
 #include <thrust/iterator/zip_iterator.h>
+#include <thrust/generate.h>
+#include <thrust/random.h>
 
 #define cutilSafeCall(err) __cudaSafeCall(err, __FILE__, __LINE__)
 #define cutilCheckMsg(msg) __cutilCheckMsg(msg, __FILE__, __LINE__)

@@ -31,9 +31,6 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
 #include <oppic_cuda.h>
-#include <thrust/generate.h>
-#include <thrust/random.h>
-#include <thrust/copy.h>
 
 unsigned int seed = 123; // Seed for random number generator
 
