@@ -73,7 +73,7 @@ void checked_write(int v, const char *file_name)
     if (v) 
     {
         opp_printf("checked_write", "Error: error writing to %s\n", file_name);
-        MPI_Abort(OP_MPI_IO_WORLD, -1);
+        opp_abort("checked_write");
     }
 }
 
@@ -139,7 +139,7 @@ void write_file(op_dat dat, const char *file_name)
         if ((fp = fopen(file_name, "w")) == NULL) 
         {
             printf("can't open file %s\n", file_name);
-            MPI_Abort(OP_MPI_IO_WORLD, -1);
+            opp_abort("write_file can't open file");
         }
 
         // Write binary or text as requested by the caller
@@ -482,7 +482,7 @@ int get_partition(int global_index, int *part_range, int *local_index, int comm_
         opp_printf("get_partition()", OPP_rank, "Error: orphan global index %d part_range->\n%s", global_index, log.c_str());
     }
 
-    MPI_Abort(OP_MPI_WORLD, 2);
+    opp_abort("get_partition");
     return 1;
 }
 

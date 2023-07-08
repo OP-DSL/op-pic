@@ -348,13 +348,13 @@ MPI_Comm OP_PART_WORLD;
                     else 
                     {
                         printf("Element %d not found in partition import list\n", local_index);
-                        MPI_Abort(OP_PART_WORLD, 2);
+                        opp_abort("Element not found in partition import list");
                     }
                 } 
                 else 
                 {
                     printf("Rank %d not found in partition import list\n", part);
-                    MPI_Abort(OP_PART_WORLD, 2);
+                    opp_abort("Rank not found in partition import list");
                 }
             }
         }
@@ -785,7 +785,7 @@ MPI_Comm OP_PART_WORLD;
             if (die) 
             {
                 opp_printf("partition_all", "Partitioning aborted !");
-                MPI_Abort(OP_PART_WORLD, 1);
+                opp_abort("partition_all Partitioning aborted !");
             }
         }
     }
@@ -1456,7 +1456,7 @@ void opp_partition_kway(op_map primary_map)
     if (is_onto_map(primary_map) != 1) {
         opp_printf("opp_partition_kway", "Map %s is not an onto map from set %s to set %s",
             primary_map->name, primary_map->from->name, primary_map->to->name);
-        MPI_Abort(OP_PART_WORLD, 2);
+        opp_abort("opp_partition_kway Map is not an onto map");
     }
 #endif
 
@@ -1689,7 +1689,7 @@ void opp_partition_kway(op_map primary_map)
             opp_printf("opp_partition_kway", "The from set: %s of primary map: %s is not an on to set of to-set: %s",
                     primary_map->from->name, primary_map->name, primary_map->to->name);
             opp_printf("opp_partition_kway", "Need to select a different primary map");
-            MPI_Abort(OP_PART_WORLD, 2);
+            opp_abort("opp_partition_kway Need to select a different primary map");
         }
 
         adj[i] = (int *)realloc(adj[i], adj_i[i] * sizeof(int));
@@ -1790,7 +1790,7 @@ void opp_partition_kway(op_map primary_map)
         {
             opp_printf("opp_partition_kway", "Partitioning problem: on rank %d, set %s element %d not assigned a partition",
                     my_rank, primary_map->to->name, i);
-            MPI_Abort(OP_PART_WORLD, 2);
+            opp_abort("opp_partition_kway Partitioning problem");
         }
         partition[i] = partition_pm[i];
     }
@@ -1996,7 +1996,7 @@ void opp_partition_geom(op_dat coords)
     {
         printf("Dimensions of Coordinate array not one of 3D,2D or 1D\n");
         printf("Not supported by ParMetis - Indicate correct coordinates array\n");
-        MPI_Abort(OP_PART_WORLD, 1);
+        opp_abort("opp_partition_geom Not supported by ParMetis");
     }
 
     for (int i = 0; i < comm_size; i++) {
@@ -2022,7 +2022,7 @@ void opp_partition_geom(op_dat coords)
         {
             printf("Partitioning problem: on rank %d, set %s element %d not assigned a partition\n",
                     my_rank, coords->name, i);
-            MPI_Abort(OP_PART_WORLD, 2);
+            opp_abort("opp_partition_geom Partitioning problem");
         }
     }
 

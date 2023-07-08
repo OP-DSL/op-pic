@@ -882,9 +882,10 @@ void opp_halo_create()
 
     for (int i = 0; i < OP_set_index; i++) 
     {
-        if (OP_set_list[i]->is_particle) continue;
-
         free(part_range[i]);
+
+        if (OP_set_list[i]->is_particle) continue;
+        
         free(core_elems[i]);
         free(exp_elems[i]);
     }
@@ -1309,7 +1310,7 @@ void opp_mpi_halo_exchange(oppic_arg *arg, int exec_flag)
     {
         opp_printf("opp_mpi_halo_exchange", "Error: Halo exchange already in flight for dat %s", dat->name);
         fflush(stdout);
-        MPI_Abort(OP_MPI_WORLD, 2);
+        opp_abort("opp_mpi_halo_exchange");
     }
 
     if (exec_flag == 0 && arg->idx == -1)
@@ -1338,12 +1339,12 @@ void opp_mpi_halo_exchange(oppic_arg *arg, int exec_flag)
         if (compare_sets(imp_exec_list->set, dat->set) == 0) 
         {
             opp_printf("opp_mpi_halo_exchange", "Error: Import list and set mismatch\n");
-            MPI_Abort(OP_MPI_WORLD, 2);
+            opp_abort("opp_mpi_halo_exchange Error: Import list and set mismatch");
         }
         if (compare_sets(exp_exec_list->set, dat->set) == 0) 
         {
             opp_printf("opp_mpi_halo_exchange", "Error: Export list and set mismatch\n");
-            MPI_Abort(OP_MPI_WORLD, 2);
+            opp_abort("opp_mpi_halo_exchange Error: Export list and set mismatch");
         }
 
         op_mpi_buffer mpi_buffer = (op_mpi_buffer)(dat->mpi_buffer);
@@ -1391,12 +1392,12 @@ void opp_mpi_halo_exchange(oppic_arg *arg, int exec_flag)
         if (compare_sets(imp_nonexec_list->set, dat->set) == 0) 
         {
             opp_printf("opp_mpi_halo_exchange", "Error: Non-Import list and set mismatch");
-            MPI_Abort(OP_MPI_WORLD, 2);
+            opp_abort("opp_mpi_halo_exchange Error: Non-Import list and set mismatch");
         }
         if (compare_sets(exp_nonexec_list->set, dat->set) == 0) 
         {
             opp_printf("opp_mpi_halo_exchange", "Error: Non-Export list and set mismatch");
-            MPI_Abort(OP_MPI_WORLD, 2);
+            opp_abort("opp_mpi_halo_exchange Error: Non-Export list and set mismatch");
         }
 
         for (int i = 0; i < exp_nonexec_list->ranks_size; i++) 

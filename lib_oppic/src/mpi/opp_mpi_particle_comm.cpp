@@ -54,7 +54,7 @@ void opp_part_pack(oppic_set set, int index, int send_rank)
         {
             opp_printf("opp_part_pack", "Error: send_rank %d is not a neighbour, cannot send index %d of set [%s]",
                 send_rank, index, set->name);
-            MPI_Abort(OP_MPI_WORLD, 1);
+            opp_abort("opp_part_pack");
         }
     }
 
@@ -147,7 +147,7 @@ void opp_part_unpack(oppic_set set)
         if (!oppic_increase_particle_count_core(set, num_particles))
         {
             opp_printf("opp_part_unpack", "Error: Failed to increase particle count of particle set [%s]", set->name);
-            MPI_Abort(OP_MPI_WORLD, 1);
+            opp_abort("opp_part_unpack");
         }
 
         int new_part_index = (set->size - set->diff);
@@ -441,6 +441,8 @@ bool opp_part_check_all_done(oppic_set set)
     if (OP_DEBUG) 
         opp_printf("opp_part_check_all_done", "%s -%s", (bool_ret ? "ITER AGAIN" : "ALL DONE"), log.c_str());
 
+    free(buffer_recv);
+    
     return !bool_ret;
 }
 

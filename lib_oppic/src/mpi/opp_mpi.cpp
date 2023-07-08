@@ -95,8 +95,9 @@ void opp_exit()
 }
 
 //****************************************
-void opp_abort()
+void opp_abort(std::string s)
 {
+    opp_printf("opp_abort", "%s", s.c_str());
     MPI_Abort(OP_MPI_WORLD, 2);
 }
 
@@ -236,7 +237,7 @@ void oppic_increase_particle_count(oppic_set particles_set, const int num_partic
     if (!oppic_increase_particle_count_core(particles_set, num_particles_to_insert))
     {
         opp_printf("oppic_increase_particle_count", "Error: oppic_increase_particle_count_core failed for particle set [%s]", particles_set->name);
-        MPI_Abort(OP_MPI_WORLD, 1);        
+        opp_abort("oppic_increase_particle_count");        
     }
 }
 
@@ -248,7 +249,7 @@ void opp_inc_part_count_with_distribution(oppic_set particles_set, int num_parti
     if (!opp_inc_part_count_with_distribution_core(particles_set, num_particles_to_insert, part_dist))
     {
         opp_printf("opp_inc_part_count_with_distribution", "Error: opp_inc_part_count_with_distribution_core failed for particle set [%s]", particles_set->name);
-        MPI_Abort(OP_MPI_WORLD, 1);        
+        opp_abort("opp_inc_part_count_with_distribution_core");        
     }
 }
 
@@ -452,12 +453,10 @@ void opp_partition_core(std::string lib_name, op_set prime_set, op_map prime_map
         }
         else
         {
-            opp_printf("opp_partition", "Error: Partitioning prime_map : NULL - UNSUPPORTED Partitioner Specification");
-            MPI_Abort(OP_MPI_WORLD, 1);
+            opp_abort("opp_partition PARMETIS_KWAY Error: Partitioning prime_map : NULL - UNSUPPORTED Partitioner Specification");  
         }
 #else
-        opp_printf("opp_partition PARMETIS_KWAY", "Error: Parmetis not installed or not defined");
-        opp_abort();
+        opp_abort("opp_partition_core PARMETIS_KWAY Error: Parmetis not installed or not defined");
 #endif
     }
     else if (lib_name == "PARMETIS_GEOM")
@@ -469,12 +468,10 @@ void opp_partition_core(std::string lib_name, op_set prime_set, op_map prime_map
         }
         else
         {
-            opp_printf("opp_partition", "Error: Partitioning geom dat : NULL - UNSUPPORTED Partitioner Specification");
-            MPI_Abort(OP_MPI_WORLD, 1);
+            opp_abort("opp_partition PARMETIS_GEOM Error: Partitioning geom dat : NULL - UNSUPPORTED Partitioner Specification"); 
         }
 #else
-        opp_printf("opp_partition PARMETIS_GEOM", "Error: Parmetis not installed or not defined");
-        opp_abort();
+        opp_abort("opp_partition_core PARMETIS_GEOM Error: Parmetis not installed or not defined");
 #endif
     }
     else if (lib_name == "EXTERNAL")
@@ -485,14 +482,12 @@ void opp_partition_core(std::string lib_name, op_set prime_set, op_map prime_map
         }
         else
         {
-            opp_printf("opp_partition", "Error: Partitioning color dat : NULL - UNSUPPORTED Partitioner Specification");
-            MPI_Abort(OP_MPI_WORLD, 1);
+            opp_abort("opp_partition EXTERNAL Error: Partitioning color dat : NULL - UNSUPPORTED Partitioner Specification"); 
         }
     }
     else if (lib_name != "")
     {
-        opp_printf("opp_partition", "Error: Unsupported lib_name [%s] - UNSUPPORTED Partitioner Specification", lib_name.c_str());
-        MPI_Abort(OP_MPI_WORLD, 1);
+        opp_abort("opp_partition Error: Unsupported lib_name - UNSUPPORTED Partitioner Specification");
     }
 
     opp_halo_create();
