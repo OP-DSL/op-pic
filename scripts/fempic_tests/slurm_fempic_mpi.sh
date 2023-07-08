@@ -1,15 +1,18 @@
 #!/bin/bash --login
 #SBATCH --job-name=PIC_MPI
-#SBATCH --partition=hmem
 #SBATCH --nodes=1
 #SBATCH --ntasks-per-node=48
 #SBATCH --time=10:00:00
 #SBATCH --cpus-per-task=1
+#SBATCH --partition=hmem
+
+# ulimit -c unlimited
 
 # binFolder="/ext-home/zl/phd/OP-PIC/fempic_mpi/bin"
-binFolder="/home/dcs/csrcnj/phd/OP-PIC/fempic_mpi/bin"
-runFolder=$PWD"/LogMPI_"$(date +"D_%Y_%m_%d_T_%I_%M_%S")
+binFolder="/home/dcs/csrcnj/phd/OP-PIC/fempic_mpi/bin_dbg"
+runFolder=$PWD"/LogMPI_DBG_"$(date +"D_%Y_%m_%d_T_%I_%M_%S")
 echo "creating running folder" $runFolder
+echo "bin folder" $binFolder
 
 # source /ext-home/zl/phd/OP-PIC/scripts/source_oneapi
 
@@ -44,15 +47,18 @@ for i in ${!configs[@]}; do
     mkdir -p $folder
     cp $file $folder
 
-    for thr in 48 36 24 12 6 4 2 1; do mpirun -np $thr
-        echo "MPI " $thr " TEST START"
+    thr=48
+    srun -n $thr $binFolder/mpi $file > $folder/log_thr${thr}.log;
 
-        # srun -n $thr $binFolder/mpi $file | tee $folder/log_thr${thr}.log;
-        srun -n $thr $binFolder/mpi $file > $folder/log_thr${thr}.log;
-        # mpirun -np $thr $binFolder/mpi $file > $folder/log_thr${thr}.log;
+    # for thr in 48 36 24 12 6 4 2 1; do mpirun -np $thr
+    #     echo "MPI " $thr " TEST START"
+
+    #     # srun -n $thr $binFolder/mpi $file | tee $folder/log_thr${thr}.log;
+    #     srun -n $thr $binFolder/mpi $file > $folder/log_thr${thr}.log;
+    #     # mpirun -np $thr $binFolder/mpi $file > $folder/log_thr${thr}.log;
         
-        echo "MPI ALL TESTS END"
-    done
+    #     echo "MPI ALL TESTS END"
+    # done
     # ****************************************
 done
 

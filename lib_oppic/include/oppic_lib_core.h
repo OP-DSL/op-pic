@@ -268,9 +268,9 @@ struct oppic_dat_core {
 #define op_set oppic_set
 #define op_map oppic_map
 #define op_dat oppic_dat
-#define OP_set_index oppic_sets.size()
-#define OP_map_index oppic_maps.size()
-#define OP_dat_index oppic_dats.size()
+#define OP_set_index (int)oppic_sets.size()
+#define OP_map_index (int)oppic_maps.size()
+#define OP_dat_index (int)oppic_dats.size()
 #define OP_set_list oppic_sets
 #define OP_map_list oppic_maps
 #define OP_dat_list oppic_dats
@@ -384,7 +384,7 @@ inline void opp_printf(const char* function, int rank, const char *format, ...)
     vsnprintf(buf, LOG_STR_LEN, format, args);
     va_end(args);
 
-    printf("%s[%d] - %s\n", function, rank, buf);
+    printf("%s[%d][%d] - %s\n", function, rank, OPP_main_loop_iter, buf);
 }
 
 inline void opp_printf(const char* function, const char *format, ...)
@@ -395,7 +395,7 @@ inline void opp_printf(const char* function, const char *format, ...)
     vsnprintf(buf, LOG_STR_LEN, format, args);
     va_end(args);
 
-    printf("%s[%d] - %s\n", function, OPP_rank, buf);
+    printf("%s[%d][%d] - %s\n", function, OPP_rank, OPP_main_loop_iter, buf);
 }
 
 template <typename T> 

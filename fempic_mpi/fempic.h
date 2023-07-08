@@ -613,20 +613,20 @@ inline std::shared_ptr<FieldPointers> LoadMesh()
     // Print cluster assignments
     if (OP_DEBUG)
     {
-        for (int i = 0; i < face_points.size(); ++i) {
+        for (int i = 0; i < (int)face_points.size(); ++i) {
             std::cout << "[" << face_points[i].x << "," << face_points[i].y << "," << 
                 face_points[i].z << "], ";
         }
     
         std::cout << std::endl << std::endl;
 
-        for (int i = 0; i < cluster_assignments.size(); ++i) {
+        for (int i = 0; i < (int)cluster_assignments.size(); ++i) {
             std::cout << cluster_assignments[i] << ",";
         }
 
         std::cout << std::endl << std::endl;
 
-        for (int i = 0; i < cluster_centroids.size(); ++i) {
+        for (int i = 0; i < (int)cluster_centroids.size(); ++i) {
             std::cout << "[" << cluster_centroids[i].x << ","<< cluster_centroids[i].y << "," << 
                 cluster_centroids[i].z << "], ";
         }
@@ -661,7 +661,7 @@ inline std::shared_ptr<FieldPointers> LoadMesh()
         for (int n=0; n<mesh->n_cells; n++)
             c_counts[mesh->c_col[n]]++;
 
-        for (int n=0; n<cluster_assignments.size(); n++)
+        for (int n=0; n<(int)cluster_assignments.size(); n++)
             face_counts[cluster_assignments[n]]++;
 
         std::string log = "";

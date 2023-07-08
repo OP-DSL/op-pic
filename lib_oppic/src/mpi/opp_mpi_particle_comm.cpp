@@ -85,7 +85,7 @@ void opp_part_pack(oppic_set set, int index, int send_rank)
     int displacement = 0;
 
     // pack the particle data from dats into the export buffer 
-    for (int i = 0; i < particle_dats.size(); i++)
+    for (int i = 0; i < (int)particle_dats.size(); i++)
     {
         oppic_dat& dat = particle_dats[i];
 
@@ -134,7 +134,7 @@ void opp_part_unpack(oppic_set set)
     std::vector<int>& neighbours = receive_buffers->neighbours;
 
     // count the number of particles to be received from all ranks
-    for (int i = 0; i < neighbours.size(); i++)
+    for (int i = 0; i < (int)neighbours.size(); i++)
     {
         int neighbour_rank = neighbours[i];
         num_particles += (receive_buffers->import_counts)[neighbour_rank];
@@ -152,7 +152,7 @@ void opp_part_unpack(oppic_set set)
 
         int new_part_index = (set->size - set->diff);
 
-        for (int i = 0; i < neighbours.size(); i++)
+        for (int i = 0; i < (int)neighbours.size(); i++)
         {
             int neighbour_rank = neighbours[i];
 
@@ -165,7 +165,7 @@ void opp_part_unpack(oppic_set set)
                 char* part_buffer = &(receive_rank_buffer.buf_import[particle_size * part]);
                 int displacement = 0;
 
-                for (int i = 0; i < particle_dats.size(); i++)
+                for (int i = 0; i < (int)particle_dats.size(); i++)
                 {
                     oppic_dat& dat = particle_dats[i];
 
@@ -515,13 +515,13 @@ void opp_part_set_comm_init(oppic_set set)
     // print the per rank received buffers
     if (OP_DEBUG)
     {
-        for (int i = 0; i < recv_buffers.size(); i++) 
+        for (int i = 0; i < (int)recv_buffers.size(); i++) 
         {
             // what I have (mappings) in import exec buffers, mappings before renumbering from that rank
             int* imp_buffer = &(imp_exec_list->list[imp_exec_list->disps[i]]); 
 
             std::string log = "";
-            for (int k = 0; k < recv_buffers[i].size(); k++)
+            for (int k = 0; k < (int)recv_buffers[i].size(); k++)
                 log += std::to_string((recv_buffers[i])[k]) + "|" + std::to_string(imp_buffer[k]) + " ";  
 
             opp_printf("opp_part_set_comm_init", "%s RECEIVE neighbour_rank %d recv_size %d (new|old) -> %s", 
@@ -531,11 +531,11 @@ void opp_part_set_comm_init(oppic_set set)
 
     if (true) // TODO : this might break existing OP2 functionality, check for issues
     { 
-        for (int i = 0; i < recv_buffers.size(); i++) 
+        for (int i = 0; i < (int)recv_buffers.size(); i++) 
         {
             int* imp_buffer = &(imp_exec_list->list[imp_exec_list->disps[i]]); 
             
-            for (int k = 0; k < recv_buffers[i].size(); k++)
+            for (int k = 0; k < (int)recv_buffers[i].size(); k++)
                 imp_buffer[k] = (recv_buffers[i])[k];  
         }
     }
@@ -616,7 +616,7 @@ void opp_part_comm_destroy()
 {
     if (OP_DEBUG) opp_printf("opp_part_comm_destroy", "START"); 
 
-    for (int i = 0; i < oppic_sets.size(); i++)
+    for (int i = 0; i < (int)oppic_sets.size(); i++)
     {
         oppic_set set = oppic_sets[i];
 

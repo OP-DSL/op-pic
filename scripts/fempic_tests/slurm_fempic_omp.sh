@@ -9,6 +9,7 @@
 binFolder="/home/dcs/csrcnj/phd/OP-PIC/fempic_mpi/bin"
 runFolder=$PWD"/LogOMP_"$(date +"D_%Y_%m_%d_T_%I_%M_%S")
 echo "creating running folder" $runFolder
+echo "bin folder" $binFolder
 
 # source /ext-home/zl/phd/OP-PIC/scripts/source_oneapi
 module load GCC/10.3.0  OpenMPI/4.1.1

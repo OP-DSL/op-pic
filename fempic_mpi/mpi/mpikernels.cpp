@@ -181,7 +181,7 @@ void opp_loop_all_part_move__MoveToCells(
 
     int *map0idx = nullptr;
 
-    int set_size = opp_mpi_halo_exchanges(set, nargs, args);
+    opp_mpi_halo_exchanges(set, nargs, args);
 
     // if there is access to a dat with OPP_Map_from_Mesh_Rel and a mapping, 
     // then we should reduce the contributions to the element containing rank

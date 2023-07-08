@@ -112,7 +112,7 @@ void opp_mpi_halo_wait_all(int nargs, oppic_arg *args);
 
 void opp_mpi_set_dirtybit(int nargs, oppic_arg *args);
 
-void opp_abort();
+void opp_abort(std::string s = "");
 
 opp_move_var opp_get_move_var(int thread = 0);
 

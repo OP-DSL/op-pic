@@ -1,17 +1,17 @@
 #!/bin/bash --login
 #SBATCH --job-name=PIC_MPID
-#SBATCH --nodes=2
-#SBATCH --ntasks-per-node=18
+#SBATCH --nodes=16
+#SBATCH --ntasks-per-node=48
 #SBATCH --time=10:00:00
 #SBATCH --cpus-per-task=1
-#SBATCH --partition=hmem
 
-thr=36
+thr=768
 
 # binFolder="/ext-home/zl/phd/OP-PIC/fempic_mpi/bin"
 binFolder="/home/dcs/csrcnj/phd/OP-PIC/fempic_mpi/bin"
 runFolder=$PWD"/LogMPID_"$(date +"D_%Y_%m_%d_T_%I_%M_%S")
 echo "creating running folder" $runFolder
+echo "bin folder" $binFolder
 
 # source /ext-home/zl/phd/OP-PIC/scripts/source_oneapi
 

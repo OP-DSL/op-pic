@@ -501,7 +501,7 @@ bool oppic_increase_particle_count_core(oppic_set particles_set, const int num_p
         }
         else
         {
-            char* old = current_oppic_dat->data;
+            // char* old = current_oppic_dat->data;
             current_oppic_dat->data = (char *)realloc(current_oppic_dat->data, (size_t)(new_particle_set_capacity * current_oppic_dat->size));
             // opp_printf("oppic_increase_particle_count_core", "realloc %p name %s %p size %d", old, current_oppic_dat->name, current_oppic_dat->data, (new_particle_set_capacity * current_oppic_dat->size));
 
@@ -515,7 +515,7 @@ bool oppic_increase_particle_count_core(oppic_set particles_set, const int num_p
         if (current_oppic_dat->is_cell_index && (current_oppic_dat->data != nullptr))
         {
             int* mesh_rel_array = (int *)current_oppic_dat->data;
-            for (int i = particles_set->size; i < new_particle_set_capacity; i++)
+            for (size_t i = (size_t)particles_set->size; i < new_particle_set_capacity; i++)
                 mesh_rel_array[i] = MAX_CELL_INDEX;
         }
         // else
@@ -587,7 +587,7 @@ void oppic_finalize_particle_move_core(oppic_set set)
             int removed_count = 0;
             int skip_count = 0;
 
-            for (size_t j = 0; j < set->size; j++)
+            for (size_t j = 0; j < (size_t)set->size; j++)
             {
                 if (mesh_relation_data[j] != MAX_CELL_INDEX) continue;
 
@@ -599,7 +599,7 @@ void oppic_finalize_particle_move_core(oppic_set set)
                 {
                     skip_count++;
                 }
-                if (j >= (set->size - removed_count - skip_count - 1)) 
+                if (j >= (size_t)(set->size - removed_count - skip_count - 1)) 
                 {
                     if (OP_DEBUG && i == 0) opp_printf("oppic_finalize_particle_move_core", "Current Iteration index [%d] and replacement index %d; hence breaking [%s]", 
                         j, (set->size - removed_count - skip_count - 1), set->name);

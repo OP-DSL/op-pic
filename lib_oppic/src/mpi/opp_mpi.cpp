@@ -535,7 +535,7 @@ void opp_partition_core(std::string lib_name, op_set prime_set, op_map prime_map
         {
             log = "RANK [" + std::to_string(i) + "]";
             
-            for (int j = 0; j < oppic_sets.size(); j++)
+            for (int j = 0; j < (int)oppic_sets.size(); j++)
                 log += "\t- " + std::to_string(set_sizes[j][i * 3]) + "|" + 
                     std::to_string(set_sizes[j][i * 3 + 1]) + "|" + std::to_string(set_sizes[j][i * 3 + 2]);
 
@@ -549,7 +549,7 @@ std::map<int, oppic_dat> negative_mapping_indices;
 //*******************************************************************************
 void opp_sanitize_all_maps()
 {
-    for (int i = 0; i < oppic_maps.size(); i++)
+    for (int i = 0; i < (int)oppic_maps.size(); i++)
     {
         oppic_map map = oppic_maps[i];
 
@@ -620,7 +620,7 @@ void opp_sanitize_all_maps()
 //*******************************************************************************
 void opp_desanitize_all_maps()
 {
-    for (int i = 0; i < oppic_maps.size(); i++)
+    for (int i = 0; i < (int)oppic_maps.size(); i++)
     {
         oppic_map map = oppic_maps[i];
 

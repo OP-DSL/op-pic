@@ -77,7 +77,9 @@ namespace opp {
         *  @param 
         */ 
         inline void reg(std::string profName) {
-            ProfilerData& profData = m_elapsedTimeMap[profName];  
+            ProfilerData profData = m_elapsedTimeMap[profName];  
+
+            // m_elapsedTimeMap.insert(std::make_pair(profName, ProfilerData()));
             // Do nothing
         }
 
@@ -312,7 +314,7 @@ namespace opp {
         }
 
         inline std::string adjustString(const std::string& input, int maxLength) const {
-            if (input.length() >= maxLength) {
+            if (input.length() >= (size_t)maxLength) {
                 return input.substr(0, maxLength);
             } else {
                 std::string paddedString = input;

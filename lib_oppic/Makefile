@@ -25,12 +25,12 @@ HIPCCFLAGS = -std=c++11 -isystem -D__HIP_PLATFORM_NVIDIA__ $(NVCCFLAGS_ADD)
 
 DEBUG ?= 0
 ifeq ($(DEBUG), 1)
-	CPPFLAGS   += -O0 -g -debug all
+	CPPFLAGS   += -O0 -g -fsanitize=address
 	NVCCFLAGS  += -O0 -g -lineinfo
 	HIPCCFLAGS += -O0 -g -lineinfo
 	DEBUG_LOG   = 1
 else
-	CPPFLAGS   += -O3 -g
+	CPPFLAGS   += -O3 -g -fsanitize=address
 	NVCCFLAGS  += -O3 -g
 	HIPCCFLAGS += -O3 -g
 endif
@@ -66,7 +66,7 @@ ifeq ($(HIP), 1)
 	HIP_INC   = -I$(ROCM_INSTALL_DIR)/include -I$(ROCM_THRUST_DIR)/include -I$(ROCM_PRIM_DIR)/include
 endif
 
-OPP_INC    = -I$(OPPIC_PATH)/include -I/ext-home/zl/lib/include
+OPP_INC    = -I$(OPPIC_PATH)/include
 
 PARMETIS ?= 0
 ifeq ($(PARMETIS), 1)

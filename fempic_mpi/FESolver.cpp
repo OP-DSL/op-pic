@@ -72,7 +72,7 @@ FESolver::FESolver(
     //     n_nodes_set, n_nodes_inc_halo, n_elements_set, n_elements_inc_halo);
 
     // TODO : DO NOT CALCULATE SOLUTION FOR IMPORT NON EXEC, the owning rank will do that
-    for (std::size_t i = 0; i < n_nodes_set; i++) 
+    for (int i = 0; i < n_nodes_set; i++) 
         if (((int*)node_type_dat->data)[i] == NORMAL || ((int*)node_type_dat->data)[i] == OPEN) 
             neq++;
 
@@ -377,7 +377,7 @@ void FESolver::preAssembly(oppic_map cell_to_nodes_map, oppic_dat node_bnd_pot)
 
     initialzeMatrix(K);
 
-    double scalar1 = 1 / SCALLING;
+    // double scalar1 = 1 / SCALLING;
     double scalar2 = 1 / (SCALLING * SCALLING); 
 
     VecScale(F0vec, scalar2);   // downscalling since NX is scalled to avoid precision issues
@@ -523,7 +523,7 @@ void FESolver::computePhi(oppic_arg arg0, oppic_arg arg1, oppic_arg arg2)
 
     args[1].idx = 2; // HACK to forcefully make halos to download
 
-    int set_size = opp_mpi_halo_exchanges(arg1.dat->set, nargs, args);
+    opp_mpi_halo_exchanges(arg1.dat->set, nargs, args);
     opp_mpi_halo_wait_all(nargs, args);
 
     if (false) // incase if we want to print current ranks node_charge_density including halos
@@ -544,7 +544,7 @@ void FESolver::computePhi(oppic_arg arg0, oppic_arg arg1, oppic_arg arg2)
     {
         if (linearSolve(ion_den) == false)
         {
-            char* str_reason = "\0";
+            char* str_reason;
             KSPGetConvergedReasonString(ksp, (const char**)(&str_reason));
             std::cerr << "linearSolve Petsc failed to converge : " << str_reason <<
                 "; run with -ksp_converged_reason" << std::endl;           
@@ -583,13 +583,14 @@ void FESolver::nonLinearSolve(double *ion_den)
 
     for (; it<10; it++) 
     {
-        if (converged = linearSolve(ion_den))
+        converged = linearSolve(ion_den);
+        if (converged)
             break;
     }
 
     if (!converged) 
     {
-        char* str_reason = "\0";
+        char* str_reason;
         KSPGetConvergedReasonString(ksp, (const char**)(&str_reason));
         std::cerr << "nonLinearSolve Petsc failed to converge : " << str_reason << 
             "; run with -ksp_converged_reason"<< std::endl;

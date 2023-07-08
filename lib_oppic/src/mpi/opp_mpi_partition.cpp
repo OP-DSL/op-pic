@@ -1300,7 +1300,7 @@ MPI_Comm OP_PART_WORLD;
         new_g_index = (int *)realloc(new_g_index, sizeof(int) * count);
         int *new_part = (int *)malloc(sizeof(int) * count);
         
-        for (int i = 0; i < count; i++)
+        for (size_t i = 0; i < count; i++)
             new_part[i] = my_rank;
 
         free(rbuf);

@@ -93,7 +93,7 @@ int main(int argc, char **argv)
         opp_dat cell_volume      = opp_decl_mesh_dat(cell_set, ONE,         DT_REAL, m->c_vol, "c_volume");        
         opp_dat cell_ef          = opp_decl_mesh_dat(cell_set, DIM,         DT_REAL, m->c_ef,  "c_ef");
         opp_dat cell_shape_deriv = opp_decl_mesh_dat(cell_set, N_PER_C*DIM, DT_REAL, m->c_sd,  "c_shape_deri"); 
-        opp_dat cell_id          = opp_decl_mesh_dat(cell_set, ONE,         DT_INT,  m->c_id,  "c_id"); 
+        // opp_dat cell_id          = opp_decl_mesh_dat(cell_set, ONE,         DT_INT,  m->c_id,  "c_id"); 
         opp_dat cell_colors      = opp_decl_mesh_dat(cell_set, ONE,         DT_INT,  m->c_col, "c_colors");
 
         opp_dat node_volume      = opp_decl_mesh_dat(node_set, ONE, DT_REAL, m->n_vol,     "n_vol");        
@@ -102,8 +102,8 @@ int main(int argc, char **argv)
         opp_dat node_pos         = opp_decl_mesh_dat(node_set, DIM, DT_REAL, m->n_pos,     "n_pos");     
         opp_dat node_type        = opp_decl_mesh_dat(node_set, ONE, DT_INT,  m->n_type,    "n_type");
         opp_dat node_bnd_pot     = opp_decl_mesh_dat(node_set, ONE, DT_REAL, m->n_bnd_pot, "n_bnd_pot");
-        opp_dat node_id          = opp_decl_mesh_dat(node_set, ONE, DT_INT,  m->n_id,      "n_id"); 
-        opp_dat node_colors      = opp_decl_mesh_dat(node_set, ONE, DT_INT,  m->n_color,   "n_colors");
+        // opp_dat node_id          = opp_decl_mesh_dat(node_set, ONE, DT_INT,  m->n_id,      "n_id"); 
+        // opp_dat node_colors      = opp_decl_mesh_dat(node_set, ONE, DT_INT,  m->n_color,   "n_colors");
 
         opp_dat iface_v_norm  = opp_decl_mesh_dat(iface_set, DIM, DT_REAL, m->if_v_norm, "iface_v_norm");        
         opp_dat iface_u_norm  = opp_decl_mesh_dat(iface_set, DIM, DT_REAL, m->if_u_norm, "iface_u_norm"); 
@@ -111,7 +111,7 @@ int main(int argc, char **argv)
         opp_dat iface_area    = opp_decl_mesh_dat(iface_set, ONE, DT_REAL, m->if_area,   "iface_area");
         opp_dat iface_dist    = opp_decl_mesh_dat(iface_set, ONE, DT_INT,  m->if_dist,   "iface_dist");
         opp_dat iface_n_pos   = opp_decl_mesh_dat(iface_set, DIM, DT_REAL, m->if_n_pos,  "iface_n_pos"); 
-        opp_dat iface_id      = opp_decl_mesh_dat(iface_set, ONE, DT_INT,  m->if_id,     "iface_id"); 
+        // opp_dat iface_id      = opp_decl_mesh_dat(iface_set, ONE, DT_INT,  m->if_id,     "iface_id"); 
 
         opp_dat part_position = opp_decl_part_dat(particle_set, DIM,     DT_REAL, nullptr, "part_position");
         opp_dat part_velocity = opp_decl_part_dat(particle_set, DIM,     DT_REAL, nullptr, "part_velocity");    
@@ -234,7 +234,7 @@ int main(int argc, char **argv)
         opp_profiler->end("MainLoop");
 
         if (OP_DEBUG)
-            print_per_cell_particle_counts(cell_id, part_mesh_rel); // cell_id will reset
+            print_per_cell_particle_counts(cell_colors, part_mesh_rel); // cell_colors will reset
     }
 
     opp_exit();
