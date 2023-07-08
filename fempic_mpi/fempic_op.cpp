@@ -149,6 +149,10 @@ int main(int argc, char **argv)
 
         opp_profiler->start("MainLoop");
 
+MPI_Barrier(OP_MPI_WORLD);
+if (OPP_rank == OPP_ROOT) 
+    opp_printf("Main", "Main loop start *************XXXX");
+
         for (OPP_main_loop_iter = 0; OPP_main_loop_iter < max_iter; OPP_main_loop_iter++)
         {
             // also measure time excluding the first iteration, to avoid some setup costs
@@ -157,7 +161,15 @@ int main(int argc, char **argv)
             if (OP_DEBUG && OPP_rank == OPP_ROOT) 
                 opp_printf("Main", "Starting main loop iteration %d *************", OPP_main_loop_iter);
 
+MPI_Barrier(OP_MPI_WORLD);
+if (OPP_rank == OPP_ROOT) 
+    opp_printf("Main", "opp_inc_part_count_with_distribution iteration %d *************", OPP_main_loop_iter);
+
             opp_inc_part_count_with_distribution(particle_set, n_parts_to_inject, iface_dist, false);
+
+MPI_Barrier(OP_MPI_WORLD);
+if (OPP_rank == OPP_ROOT) 
+    opp_printf("Main", "opp_loop_inject__InjectIons iteration %d *************", OPP_main_loop_iter);
 
             int old_nparts = particle_set->size;
             opp_loop_inject__InjectIons(
@@ -174,9 +186,17 @@ int main(int argc, char **argv)
                 opp_get_arg(dummy_part_rand,              OP_READ, OPP_Map_from_Inj_part) 
             );
 
+MPI_Barrier(OP_MPI_WORLD);
+if (OPP_rank == OPP_ROOT) 
+    opp_printf("Main", "opp_reset_dat 1 iteration %d *************", OPP_main_loop_iter);            
+    
             opp_reset_dat(
                 node_charge_den, 
                 (char*)opp_zero_double16);
+
+MPI_Barrier(OP_MPI_WORLD);
+if (OPP_rank == OPP_ROOT) 
+    opp_printf("Main", "opp_loop_all_part_move__MoveToCells iteration %d *************", OPP_main_loop_iter);
 
             opp_loop_all_part_move__MoveToCells(
                 particle_set,                                                                           
@@ -194,21 +214,37 @@ int main(int argc, char **argv)
                 opp_get_arg(node_charge_den, 3, cell_v_nodes_map, OP_INC,  OPP_Map_from_Mesh_Rel) 
             );
 
+MPI_Barrier(OP_MPI_WORLD);
+if (OPP_rank == OPP_ROOT) 
+    opp_printf("Main", "opp_loop_all__ComputeNodeChargeDensity iteration %d *************", OPP_main_loop_iter);
+
             opp_loop_all__ComputeNodeChargeDensity(
                 node_set,                            
                 opp_get_arg(node_charge_den,  OP_RW), 
                 opp_get_arg(node_volume,      OP_READ)
             );
-        
+
+MPI_Barrier(OP_MPI_WORLD);
+if (OPP_rank == OPP_ROOT) 
+    opp_printf("Main", "field_solver->computePhi iteration %d *************", OPP_main_loop_iter);
+
             field_solver->computePhi(  // TODO: Change this to kernel calls
                 opp_get_arg(node_potential,  OP_WRITE),
                 opp_get_arg(node_charge_den, OP_READ),
                 opp_get_arg(node_bnd_pot,    OP_READ)
             );
 
+MPI_Barrier(OP_MPI_WORLD);
+if (OPP_rank == OPP_ROOT) 
+    opp_printf("Main", "opp_reset_dat 2 iteration %d *************", OPP_main_loop_iter);
+
             opp_reset_dat(
                 cell_ef, 
                 (char*)opp_zero_double16); 
+
+MPI_Barrier(OP_MPI_WORLD);
+if (OPP_rank == OPP_ROOT) 
+    opp_printf("Main", "opp_loop_all__ComputeElectricField iteration %d *************", OPP_main_loop_iter);
 
             opp_loop_all__ComputeElectricField(
                 cell_set,                                                   
@@ -230,6 +266,10 @@ int main(int argc, char **argv)
                 opp_printf("Main", "ts: %d %s ****", OPP_main_loop_iter, log.c_str());
         }
 
+MPI_Barrier(OP_MPI_WORLD);
+if (OPP_rank == OPP_ROOT) 
+    opp_printf("Main", "Main Loop Over *************XXXX");
+
         opp_profiler->end("MainLoop t-1");
         opp_profiler->end("MainLoop");
 
@@ -237,8 +277,14 @@ int main(int argc, char **argv)
             print_per_cell_particle_counts(cell_colors, part_mesh_rel); // cell_colors will reset
     }
 
+MPI_Barrier(OP_MPI_WORLD);
+if (OPP_rank == OPP_ROOT) 
+    opp_printf("Main", "opp_exit START *************XXXX");
+
     opp_exit();
 
+if (OPP_rank == OPP_ROOT) 
+    opp_printf("Main", "opp_exit DONE *************XXXX");
 
     return 0;
 }
