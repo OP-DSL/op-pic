@@ -38,6 +38,13 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <oppic_lib.h>
 #include "fempic_ori/meshes.h"
 
+#ifndef USE_PETSC
+    #define Vec int
+    #define Mat int
+    #define KSP int
+    #define KSPConvergedReason int
+#endif
+
 const double EPS0 = 8.8541878e-12;      /*permittivity of free space*/
 const double QE   = 1.602e-19;          /*elementary charge*/
 const double AMU  = 1.660538921e-27;    /*atomic mass unit*/

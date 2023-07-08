@@ -657,6 +657,8 @@ MPI_Comm OP_PART_WORLD;
 
 /* static */ void partition_all(op_set primary_set, int my_rank, int comm_size) 
 {
+    if (OP_DEBUG) opp_printf("partition_all", "start");
+
     // Compute global partition range information for each set
     int **part_range = (int **)malloc(OP_set_index * sizeof(int *));
     get_part_range(part_range, my_rank, comm_size, OP_PART_WORLD);
@@ -973,6 +975,8 @@ MPI_Comm OP_PART_WORLD;
     for (int i = 0; i < OP_set_index; i++)
         free(part_range[i]);
     free(part_range);
+
+    if (OP_DEBUG) opp_printf("partition_all", "end");
 }
 
 /*******************************************************************************
@@ -980,6 +984,8 @@ MPI_Comm OP_PART_WORLD;
  *******************************************************************************/
 /* static */ void migrate_all(int my_rank, int comm_size) 
 {
+    if (OP_DEBUG) opp_printf("migrate_all", "start");
+
     /*--STEP 1 - Create Imp/Export Lists for reverse migrating elements ----------*/
 
     // create imp/exp lists for reverse migration
@@ -1399,6 +1405,8 @@ MPI_Comm OP_PART_WORLD;
         free(pe_list[set->index]);
         free(pi_list[set->index]);
     }
+
+    if (OP_DEBUG) opp_printf("migrate_all", "end");
 }
 
 /*******************************************************************************
@@ -1406,6 +1414,8 @@ MPI_Comm OP_PART_WORLD;
  *******************************************************************************/
 void opp_partition_destroy() 
 {
+    if (OP_DEBUG) opp_printf("opp_partition_destroy", "start");
+
     // destroy OP_part_list[]
     for (int s = 0; s < OP_set_index; s++)  // for each set
     { 
@@ -1423,6 +1433,8 @@ void opp_partition_destroy()
     }
 
     free(orig_part_range);
+
+    if (OP_DEBUG) opp_printf("opp_partition_destroy", "end");
 }
 
 /*******************************************************************************
@@ -1900,11 +1912,13 @@ void opp_partition_external(op_set primary_set, op_dat partvec)
 
     op_timers(&cpu_t2, &wall_t2); // timer stop for partitioning
 
+    if (OP_DEBUG) opp_printf("opp_partition_external", "done - calculating time");
+
     // print time for partitioning
     time = wall_t2 - wall_t1;
-    MPI_Reduce(&time, &max_time, 1, MPI_DOUBLE, MPI_MAX, MPI_ROOT, OP_PART_WORLD);
+    MPI_Reduce(&time, &max_time, 1, MPI_DOUBLE, MPI_MAX, OPP_ROOT, OP_PART_WORLD);
     MPI_Comm_free(&OP_PART_WORLD);
-    if (my_rank == MPI_ROOT)
+    if (my_rank == OPP_ROOT)
        opp_printf("opp_partition_external", "Max total random partitioning time = %lf", max_time);
 
     if (OP_DEBUG) opp_printf("opp_partition_external", "end");
@@ -2045,9 +2059,9 @@ void opp_partition_geom(op_dat coords)
 
     // printf time for partitioning
     time = wall_t2 - wall_t1;
-    MPI_Reduce(&time, &max_time, 1, MPI_DOUBLE, MPI_MAX, MPI_ROOT, OP_PART_WORLD);
+    MPI_Reduce(&time, &max_time, 1, MPI_DOUBLE, MPI_MAX, OPP_ROOT, OP_PART_WORLD);
     MPI_Comm_free(&OP_PART_WORLD);
-    if (my_rank == MPI_ROOT)
+    if (my_rank == OPP_ROOT)
         printf("Max total geometric partitioning time = %lf\n", max_time);
 
 #endif

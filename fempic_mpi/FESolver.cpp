@@ -42,6 +42,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 bool print_petsc = false;
 
+#ifdef USE_PETSC
 //*************************************************************************************************
 FESolver::FESolver(
     oppic_map cell_to_nodes_map, 
@@ -916,3 +917,37 @@ void FESolver::sanityCheck()
 }
 
 //*************************************************************************************************
+
+#else
+
+    FESolver::FESolver(
+        oppic_map cell_to_nodes_map, 
+        oppic_dat node_type, 
+        oppic_dat node_pos,  
+        oppic_dat node_bnd_pot,
+        int argc, char **argv) {};
+    FESolver::~FESolver() {};
+
+    void FESolver::computePhi(oppic_arg arg0, oppic_arg arg1, oppic_arg arg2) {};
+    
+    void FESolver::preAssembly(oppic_map cell_to_nodes_map, oppic_dat node_bnd_pot) {};
+    void FESolver::enrich_cell_shape_deriv(oppic_dat cell_shape_deriv) {};
+
+    bool FESolver::linearSolve(double *ion_den) { return true; }; 
+    void FESolver::nonLinearSolve(double *ion_den) {}; 
+    void FESolver::buildJmatrix() {};
+    void FESolver::buildF1Vector(double *ion_den) {};
+    
+    void FESolver::summarize(std::ostream &out) {};  
+
+    void FESolver::addKe(double** K, int e, double ke[4][4]) {};
+    void FESolver::addFe(Vec *Fvec, int e, double fe[4]) {};
+    double FESolver::evalNa(int a, double xi, double eta, double zeta) { return -1.0; };
+    void FESolver::getNax(double nx[3], int e, int a) {};
+    void FESolver::initialzeMatrix(double **p_A) {};
+    void FESolver::computeNX(oppic_dat node_pos, oppic_map cell_to_nodes_map) {};
+    void FESolver::sanityCheck() {};
+    void FESolver::initID(oppic_dat node_type_dat) {};
+    void FESolver::initPetscStructures() {};
+    
+#endif

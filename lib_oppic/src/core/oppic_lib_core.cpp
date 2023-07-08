@@ -569,6 +569,7 @@ void oppic_mark_particle_to_move_core(oppic_set set, int particle_index, int mov
     }
 }
 
+#ifdef USE_OLD_FINALIZE
 //****************************************
 void oppic_finalize_particle_move_core(oppic_set set)
 {
@@ -589,20 +590,39 @@ void oppic_finalize_particle_move_core(oppic_set set)
 
             for (size_t j = 0; j < (size_t)set->size; j++)
             {
+                if (set->particle_remove_count == (removed_count + skip_count))
+                {
+                    if (OP_DEBUG && i == 0) 
+                        opp_printf("oppic_finalize_particle_move_core", 
+                        "Required number already removed %d [%s] j=%d", 
+                        set->particle_remove_count, set->name, j);
+                    break;
+                }
+
                 if (mesh_relation_data[j] != MAX_CELL_INDEX) continue;
 
                 char* dat_removed_ptr = (char *)(current_oppic_dat->data + (size_t)(j * current_oppic_dat->size));
 
                 // BUG_FIX: (set->size - removed_count - 1) This index could marked to be removed, and if marked, 
                 // then there could be an array index out of bounds access error in the future
-                while (mesh_relation_data[set->size - removed_count - skip_count - 1] == MAX_CELL_INDEX)
+                while ((set->size - removed_count - skip_count - 1 >= 0) && 
+                    (mesh_relation_data[set->size - removed_count - skip_count - 1] == MAX_CELL_INDEX))
                 {
                     skip_count++;
                 }
                 if (j >= (size_t)(set->size - removed_count - skip_count - 1)) 
                 {
-                    if (OP_DEBUG && i == 0) opp_printf("oppic_finalize_particle_move_core", "Current Iteration index [%d] and replacement index %d; hence breaking [%s]", 
+                    if (OP_DEBUG && i == 0) opp_printf("oppic_finalize_particle_move_core", 
+                        "Current Iteration index [%d] and replacement index %d; hence breaking [%s]", 
                         j, (set->size - removed_count - skip_count - 1), set->name);
+                    break;
+                }
+                if (set->size - removed_count - skip_count - 1 < 0)
+                {
+                    //if (OP_DEBUG && i == 0) 
+                        opp_printf("oppic_finalize_particle_move_core", 
+                        "(set->size - removed_count - skip_count - 1 < 0) %d %d %d [%s] j=%d %d", 
+                        set->size, removed_count, skip_count, set->name, j, set->particle_remove_count);
                     break;
                 }
 
@@ -628,6 +648,85 @@ void oppic_finalize_particle_move_core(oppic_set set)
 
     set->size -= set->particle_remove_count;
 }
+
+#else
+//****************************************
+void oppic_finalize_particle_move_core(oppic_set set)
+{
+    if (OP_DEBUG) 
+        opp_printf("oppic_finalize_particle_move_core", "set [%s] size[%d] with particle_remove_count [%d]", 
+        set->name, set->size, set->particle_remove_count);
+
+    // return if there are no particles to be removed
+    if (set->particle_remove_count <= 0) 
+        return;
+
+    if (OP_auto_sort == 0) // if not auto sorting, fill the holes
+    {
+        int *mesh_relation_data = (int *)set->mesh_relation_dat->data;
+        std::vector<std::pair<size_t, size_t>> swap_indices;    // contain hole index and the index from back to swap
+
+        // Idea: The last available element should be copied to the hole
+        // In the below scope we try to calculate the element to be swapped with the hole
+        {
+            // set->particle_remove_count   // the particle count that should be removed
+            int removed_count = 0;          // how many elements currently being removed
+            int skip_count = 0;             // how many elements from the back is skipped ..
+                                            // .. due to that element is also to be removed
+
+            for (size_t j = 0; j < (size_t)set->size; j++)
+            {
+                // skip if the current index is not to be removed
+                if (mesh_relation_data[j] != MAX_CELL_INDEX) 
+                    continue;
+
+                // handle if the element from the back is also to be removed
+                while ((set->size - removed_count - skip_count - 1 >= 0) && 
+                    (mesh_relation_data[set->size - removed_count - skip_count - 1] == MAX_CELL_INDEX))
+                {
+                    skip_count++;
+                }
+
+                // check whether the holes are at the back!
+                if ((set->size - removed_count - skip_count - 1 < 0) ||
+                    (j >= (size_t)(set->size - removed_count - skip_count - 1))) 
+                {
+                    if (OP_DEBUG) 
+                        opp_printf("oppic_finalize_particle_move_core", 
+                        "Current Iteration index [%d] and replacement index %d; hence breaking [%s]", 
+                        j, (set->size - removed_count - skip_count - 1), set->name);
+                    break;
+                }
+
+                swap_indices.push_back(std::make_pair(j, (size_t)(set->size - removed_count - skip_count - 1)));
+
+                removed_count++;
+            }
+        }
+
+        // For all the dats, fill the holes using the swap_indices
+        for (oppic_dat& dat : *(set->particle_dats))
+        {
+            for (const auto& x : swap_indices)
+            {
+                char* dat_removed_ptr = (char *)(dat->data + (x.first * dat->size));
+
+                size_t offset_byte = x.second * dat->size;
+                char* dat_to_replace_ptr = (char *)(dat->data + offset_byte);
+                
+                memcpy(dat_removed_ptr, dat_to_replace_ptr, dat->size); 
+            }
+        }
+    }
+    else
+    {
+        if (OP_DEBUG) 
+            opp_printf("oppic_finalize_particle_move_core", "Not processing dats since OP_auto_sort = TRUE");
+    }
+
+    set->size -= set->particle_remove_count;
+}
+#endif
 
 //****************************************
 void oppic_mark_particle_to_remove_core(oppic_set set, int particle_index)
