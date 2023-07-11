@@ -1,120 +1,131 @@
-/*==============================================================================*
- * FESOLVER
- *------------------------------------------------------------------------------*
- * Maintainer: Ed Higgins <ed.higgins@york.ac.uk>
- * Based on `fem-pic.cpp` by Lubos Brieda 
- * See https://www.particleincell.com/2015/fem-pic/ for more information
- *------------------------------------------------------------------------------*
- * Version: 0.1.1, 2022-10-05
- *------------------------------------------------------------------------------*
- * This code is distributed under the MIT license.
- *==============================================================================*/
+/* 
+BSD 3-Clause License
 
-#ifndef FESOLVER_H
-#define FESOLVER_H
+Copyright (c) 2022, OP-DSL
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions are met:
+
+1. Redistributions of source code must retain the above copyright notice, this
+   list of conditions and the following disclaimer.
+
+2. Redistributions in binary form must reproduce the above copyright notice,
+   this list of conditions and the following disclaimer in the documentation
+   and/or other materials provided with the distribution.
+
+3. Neither the name of the copyright holder nor the names of its
+   contributors may be used to endorse or promote products derived from
+   this software without specific prior written permission.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+*/
+
+#pragma once
+
+//*********************************************
+// USER WRITTEN CODE
+//*********************************************
 
 #include <oppic_lib.h>
 #include "fempic_ori/meshes.h"
-#include <memory>
 
-// #define USE_PETSC // define using makefile
-
-#ifdef USE_PETSC
-    #include <petscksp.h>
+#ifndef USE_PETSC
+    #define Vec int
+    #define Mat int
+    #define KSP int
+    #define KSPConvergedReason int
 #endif
 
-const double EPS0 = 8.8541878e-12;   /*permittivity of free space*/
-const double QE   = 1.602e-19;       /*elementary charge*/
-const double AMU  = 1.660538921e-27; /*atomic mass unit*/
-const double Kb    = 8.617333262e-5;    /*Boltzmann's  constant*/
+const double EPS0 = 8.8541878e-12;      /*permittivity of free space*/
+const double QE   = 1.602e-19;          /*elementary charge*/
+const double AMU  = 1.660538921e-27;    /*atomic mass unit*/
+const double Kb   = 8.617333262e-5;     /*Boltzmann's  constant*/
 
 /*solver class*/
 class FESolver {
 public:
-    enum Method {NonLinear, GaussSeidel, Lapack, Petsc};
-    double **K;        /*global stiffness matrix, should use a sparse matrix*/
-    double **J;        /*Jacobian matrix*/
-    double *Amat;      /*A matrix for Lapack*/
-    double *Bvec;      /*B vector for Lapack*/
-    double *F0;        /*"fh" and "fg" parts of the global force vector*/
-    double *F1;        /*"ff" part of the force vector*/
+    enum Method { NonLinear, GaussSeidel, Lapack, Petsc };
+
+    FESolver(
+        oppic_map cell_to_nodes_map, 
+        oppic_dat node_type, 
+        oppic_dat node_pos,  
+        oppic_dat node_bnd_pot,
+        int argc, char **argv);
+    ~FESolver();
+
+    void computePhi(oppic_arg arg0, oppic_arg arg1, oppic_arg arg2);
+    
+    void preAssembly(oppic_map cell_to_nodes_map, oppic_dat node_bnd_pot);
+    void enrich_cell_shape_deriv(oppic_dat cell_shape_deriv);
+
+    bool linearSolve(double *ion_den); 
+    void nonLinearSolve(double *ion_den); 
+    void buildJmatrix();
+    void buildF1Vector(double *ion_den);
+    
+    void summarize(std::ostream &out);  
+
+protected:
+    void addKe(double** K, int e, double ke[4][4]);
+    void addFe(Vec *Fvec, int e, double fe[4]);
+    double evalNa(int a, double xi, double eta, double zeta);
+    void getNax(double nx[3], int e, int a);
+    void initialzeMatrix(double **p_A);
+    void computeNX(oppic_dat node_pos, oppic_map cell_to_nodes_map);
+    void sanityCheck();
+    void initID(oppic_dat node_type_dat);
+    void initPetscStructures();
+
+    Method fesolver_method = Method::Petsc;
 
     int *ID;        /*ID[n]=A*/
-    int **LM;        /*LM[e][a] location matrix */
-    double ***NX;    /*NX[e][a] is a dNa/dx [3] vector*/
+    int **LM;       /*LM[e][a] location matrix */
+    double ***NX;   /*NX[e][a] is a dNa/dx [3] vector*/
     int neq;        /*number of unknowns/equations*/
+    double *detJ;     /* determinant of the jacobian x_xi */
 
-    /*reference values for the Boltzmann term*/
     double n0;
     double phi0;
     double kTe;
+    double wall_potential;
 
-    /*solution*/
-    double *d;        /*d[neq] is the solution on the uknown nodes*/
-    double *g;        /*g[n] essential boundaries*/
-    double *uh;        /*uh[n] solution on nodes, union of d and g*/
+    double *d;        /* d[neq] is the solution from the linear solver */  
 
-    double **ef;    /*ef[e][3] is the electric field in cell e*/
+    int n_nodes_set = 0;
+    int n_nodes_inc_halo = 0; 
+    int n_elements_set = 0;
+    int n_elements_inc_halo = 0;
 
-    double *detJ; /*determinant of the jacobian x_xi*/
-
-    FESolver(std::shared_ptr<Volume> volume, int argc, char **argv);    /*constructor, initialized data structures*/
-    ~FESolver();    /*destructor, frees memory*/
-
-    void startAssembly();    /*clears K and F*/
-    void preAssembly();
-    void addKe(int e, double ke[4][4]);    /*adds contributions from element stiffness matrix*/
-    void addFe(double *F, int e, double fe[4]); /*adds contributions from element force vector*/
-
-    double evalNa(int a, double xi, double eta, double zeta);
-    void getNax(double nx[3], int e, int a);
-    void inverse(double M[3][3], double V[3][3]);
-    void computePhi(Method method, oppic_arg arg0, oppic_arg arg1);
-    void buildF1Vector(double *ion_den);
-    void solve(double *d, Method method);
-    void solveNonLinear(double *d, double *y, double *G);
-    void solveLinear(double **K, double *d, double *F);    /*solves Kd=F for d*/
-    void solveLinearLapack(double **K, double *d, double *F);    /*solves Kd=F for d*/
-    void initialzeMatrix(double **p_A);
-    void solveLinearPetsc(double **K, double *d, double *F);  
-    
-    void updateEf();
-
-    /*evaluates ef in cell e. Since constant field in cell, just copy*/
-    void evalEf(double res[3], int e) {for (int i=0;i<3;i++) res[i]=ef[e][i];}
-
-    void summarize(std::ostream &out);
-
-    void buildJmatrix(Method method);
-
-    inline void setPotentialArray(double* potential_array) { uh = potential_array; }
-
-protected:
-    void computeNX();
-
-    std::shared_ptr<Volume> volume;
-    int n_nodes;
-    int n_elements;    /*save this so we can properly deallocate LM*/
+    int own_start = 0;
+    int own_end = 0;
+    int global_neq = 0;
 
     /*quadrature points*/
     double l[2];
     double W[2];
-    int n_int;
+    int n_int = 0;
 
-#ifdef USE_PETSC
     /* Petsc related variables */
-    Vec         x, b;        /* approx solution, RHS, exact solution */
-    Mat         A;              /* linear system matrix */
+    Vec         Xvec, Bvec, F0vec, F1vec, Dvec, Yvec;       
+    Mat         Jmat, Kmat;                                 
     KSP         ksp;            /* linear solver context */
     KSPConvergedReason reason;
 
-    int *vecCol, *matCol;
-    int **matIndex;
-    double **matIndexValues;
-
-    bool matIndexCreated = false;
-#endif
+    // TODO : revise -- these can be removed...
+    int *vecCol;                    
+    int *matCol;                    // Number of non zero columns per row
+    int **matIndex;                 // Non zero column indices per row
+    double **matIndexValues;        // Non zero column values per row (temp copy to enrich K matrix)
+    bool matIndexCreated = false;   // Not required
 };
 
-
-#endif /* !FESOLVER_H */

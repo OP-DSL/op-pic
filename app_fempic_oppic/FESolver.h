@@ -22,19 +22,25 @@
 const double EPS0 = 8.8541878e-12;      /*permittivity of free space*/
 const double QE   = 1.602e-19;          /*elementary charge*/
 const double AMU  = 1.660538921e-27;    /*atomic mass unit*/
-const double Kb    = 8.617333262e-5;    /*Boltzmann's  constant*/
+const double Kb   = 8.617333262e-5;    /*Boltzmann's  constant*/
 
 /*solver class*/
 class FESolver {
 public:
-    enum Method {NonLinear, GaussSeidel, Lapack, Petsc}; // TODO : remove this
 
-    FESolver(opp::Params& params, std::shared_ptr<Volume> volume, int argc, char **argv);
+    FESolver(
+        opp::Params* params, 
+        oppic_set cells_set, 
+        oppic_map cell_to_nodes_map, 
+        oppic_dat node_type, 
+        oppic_dat node_pos,  
+        oppic_dat node_bnd_pot,
+        int argc, char **argv);
     ~FESolver();
 
-    void computePhi(Method method, oppic_arg arg0, oppic_arg arg1);
+    void computePhi(oppic_arg arg0, oppic_arg arg1, oppic_arg arg2);
     
-    void preAssembly();
+    void preAssembly(oppic_map cell_to_nodes_map, oppic_dat node_bnd_pot);
     void enrich_cell_shape_deriv(oppic_dat cell_shape_deriv);
 
     void solve(double *d);
@@ -48,9 +54,8 @@ protected:
     void addFe(Vec *Fvec, int e, double fe[4]);
     double evalNa(int a, double xi, double eta, double zeta);
     void getNax(double nx[3], int e, int a);
-    void inverse(double M[3][3], double V[3][3]);
     void initialzeMatrix(double **p_A);
-    void computeNX();
+    void computeNX(oppic_dat node_pos, oppic_map cell_to_nodes_map);
 
     int *ID;        /*ID[n]=A*/
     int **LM;       /*LM[e][a] location matrix */
@@ -65,11 +70,9 @@ protected:
 
     /*solution*/
     double *d;        /* d[neq] is the solution from the linear solver */
-    double *g;        /* g[n] essential boundaries (boundary potentials) */
 
     double *detJ;     /* determinant of the jacobian x_xi */
 
-    std::shared_ptr<Volume> volume;
     int n_nodes = 0;
     int n_elements = 0;    /*save this so we can properly deallocate LM*/
 

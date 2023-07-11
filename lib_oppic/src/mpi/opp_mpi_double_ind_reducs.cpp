@@ -1,3 +1,35 @@
+
+/* 
+BSD 3-Clause License
+
+Copyright (c) 2022, OP-DSL
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions are met:
+
+1. Redistributions of source code must retain the above copyright notice, this
+   list of conditions and the following disclaimer.
+
+2. Redistributions in binary form must reproduce the above copyright notice,
+   this list of conditions and the following disclaimer in the documentation
+   and/or other materials provided with the distribution.
+
+3. Neither the name of the copyright holder nor the names of its
+   contributors may be used to endorse or promote products derived from
+   this software without specific prior written permission.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+*/
+
 #include <opp_mpi.h>
 
 //*******************************************************************************
@@ -41,7 +73,7 @@ void opp_init_double_indirect_reductions(int nargs, oppic_arg *args)
                 }
 
                 // reset the import non execute halos
-                oppic_reset_dat(args[n].dat, reset_values, OPP_Reset_inh);
+                opp_reset_dat(args[n].dat, reset_values, OPP_Reset_inh);
             }
         }
     }
@@ -95,6 +127,10 @@ void opp_exchange_double_indirect_reductions(oppic_dat dat, opp_reduc_comm reduc
     halo_list exp_nonexec_list = OP_export_nonexec_list[dat->set->index];
     op_mpi_buffer reduc_buf    = (op_mpi_buffer)(dat->mpi_reduc_buffer);
 
+    opp_profiler->startMpiComm("", opp::OPP_Mesh);
+
+    double total_send_size = 0.0;
+
     // send reduction contributions related to export non-execute lists
     int init = (dat->set->size + dat->set->exec_size) * dat->size;
     for (int i = 0; i < imp_nonexec_list->ranks_size; i++) 
@@ -107,7 +143,11 @@ void opp_exchange_double_indirect_reductions(oppic_dat dat, opp_reduc_comm reduc
         if (OP_DEBUG) opp_printf("opp_exchange_double_indirect_reductions", "SEND SIZE %d", send_size);
 
         MPI_Isend(send_buf, send_size, MPI_CHAR, send_rank, dat->index, OP_MPI_WORLD, req);
+
+        total_send_size += (send_size * 1.0f);
     }
+
+    opp_profiler->addTransferSize("", opp::OPP_Mesh, total_send_size);
 
     // receive reduction contributions related to export non-execute lists
     for (int i = 0; i < exp_nonexec_list->ranks_size; i++) 
@@ -123,6 +163,8 @@ void opp_exchange_double_indirect_reductions(oppic_dat dat, opp_reduc_comm reduc
     }
 
     dat->reduc_comm = reduc_comm;
+
+    opp_profiler->endMpiComm("", opp::OPP_Mesh);
 
     if (OP_DEBUG) opp_printf("opp_exchange_double_indirect_reductions", "END dat %s", dat->name);
 }
@@ -166,10 +208,14 @@ void opp_complete_double_indirect_reductions(oppic_dat dat)
 
     if (OP_DEBUG) opp_printf("opp_complete_double_indirect_reductions", "START dat %s", dat->name);
 
+    opp_profiler->startMpiComm("", opp::OPP_Mesh);
+
     op_mpi_buffer reduc_buf = (op_mpi_buffer)(dat->mpi_reduc_buffer);
 
     MPI_Waitall(reduc_buf->s_num_req, reduc_buf->s_req, MPI_STATUSES_IGNORE);
     MPI_Waitall(reduc_buf->r_num_req, reduc_buf->r_req, MPI_STATUSES_IGNORE);
+
+    opp_profiler->endMpiComm("", opp::OPP_Mesh);
 
     reduc_buf->s_num_req = 0;
     reduc_buf->r_num_req = 0;

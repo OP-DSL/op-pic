@@ -37,47 +37,65 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "../fempic.h"
 #include <oppic_cuda.h>
 
-#define GPU_THREADS_PER_BLOCK 32
-
-// TODO : This should be removed
+// TODO : This should be removed - only for testing
 double CONST_spwt = 0, CONST_ion_velocity = 0, CONST_dt = 0, CONST_plasma_den = 0, CONST_mass = 0, CONST_charge = 0;
 
 //****************************************
-__constant__ double CONST_spwt_cuda, CONST_ion_velocity_cuda = 0, CONST_dt_cuda = 0, CONST_plasma_den_cuda = 0, CONST_mass_cuda = 0, CONST_charge_cuda = 0;
-void oppic_decl_const_impl(int dim, int size, char* data, const char* name)
-{
-    if (!strcmp(name,"CONST_spwt"))              cutilSafeCall(cudaMemcpyToSymbol(CONST_spwt_cuda, data, dim*size));
-    else if (!strcmp(name,"CONST_ion_velocity")) cutilSafeCall(cudaMemcpyToSymbol(CONST_ion_velocity_cuda, data, dim*size));
-    else if (!strcmp(name,"CONST_dt"))           cutilSafeCall(cudaMemcpyToSymbol(CONST_dt_cuda, data, dim*size));
-    else if (!strcmp(name,"CONST_plasma_den"))   cutilSafeCall(cudaMemcpyToSymbol(CONST_plasma_den_cuda, data, dim*size));
-    else if (!strcmp(name,"CONST_mass"))         cutilSafeCall(cudaMemcpyToSymbol(CONST_mass_cuda, data, dim*size));
-    else if (!strcmp(name,"CONST_charge"))       cutilSafeCall(cudaMemcpyToSymbol(CONST_charge_cuda, data, dim*size));
-    else std::cerr << "error: unknown const name" << std::endl;
+__constant__ double CONST_spwt_cuda = 0.0;
+__constant__ double CONST_ion_velocity_cuda = 0.0;
+__constant__ double CONST_dt_cuda = 0.0;
+__constant__ double CONST_plasma_den_cuda = 0.0;
+__constant__ double CONST_mass_cuda = 0.0;
+__constant__ double CONST_charge_cuda = 0.0;
 
-    // TODO : This block should be removed
-    {    if (!strcmp(name,"CONST_spwt"))              CONST_spwt = *((double*)data);
-        else if (!strcmp(name,"CONST_ion_velocity")) CONST_ion_velocity = *((double*)data);
-        else if (!strcmp(name,"CONST_dt"))           CONST_dt = *((double*)data);
-        else if (!strcmp(name,"CONST_plasma_den"))   CONST_plasma_den = *((double*)data);
-        else if (!strcmp(name,"CONST_mass"))         CONST_mass = *((double*)data);
-        else if (!strcmp(name,"CONST_charge"))       CONST_charge = *((double*)data);
-        else std::cerr << "error: unknown const name" << std::endl; } // TODO : This block should be removed
+void opp_decl_const_impl(int dim, int size, char* data, const char* name)
+{
+    if (!strcmp(name,"CONST_spwt"))              
+        cutilSafeCall(cudaMemcpyToSymbol(CONST_spwt_cuda, data, dim*size));
+    else if (!strcmp(name,"CONST_ion_velocity")) 
+        cutilSafeCall(cudaMemcpyToSymbol(CONST_ion_velocity_cuda, data, dim*size));
+    else if (!strcmp(name,"CONST_dt"))           
+        cutilSafeCall(cudaMemcpyToSymbol(CONST_dt_cuda, data, dim*size));
+    else if (!strcmp(name,"CONST_plasma_den"))   
+        cutilSafeCall(cudaMemcpyToSymbol(CONST_plasma_den_cuda, data, dim*size));
+    else if (!strcmp(name,"CONST_mass"))         
+        cutilSafeCall(cudaMemcpyToSymbol(CONST_mass_cuda, data, dim*size));
+    else if (!strcmp(name,"CONST_charge"))       
+        cutilSafeCall(cudaMemcpyToSymbol(CONST_charge_cuda, data, dim*size));
+    else 
+        std::cerr << "error: unknown const name" << std::endl;
+
+    // TODO : This block should be removed - only for testing
+    {   
+        if (!strcmp(name,"CONST_spwt"))             
+            CONST_spwt = *((double*)data);
+        else if (!strcmp(name,"CONST_ion_velocity")) 
+            CONST_ion_velocity = *((double*)data);
+        else if (!strcmp(name,"CONST_dt"))           
+            CONST_dt = *((double*)data);
+        else if (!strcmp(name,"CONST_plasma_den"))   
+            CONST_plasma_den = *((double*)data);
+        else if (!strcmp(name,"CONST_mass"))         
+            CONST_mass = *((double*)data);
+        else if (!strcmp(name,"CONST_charge"))       
+            CONST_charge = *((double*)data);
+        else std::cerr << "error: unknown const name" << std::endl; 
+       
+    } // TODO : This block should be removed
 }
 //****************************************
 
-//*************************************************************************************************
-#include "oppic_inject__Increase_particle_count.cu"
 
 //*************************************************************************************************
-#include "oppic_par_loop_inject__InjectIons.cu"
+#include "opp_loop_inject__InjectIons.cu"
 
 //*************************************************************************************************
-#include "oppic_par_loop_particle_all__MoveToCells.cu"
+#include "opp_loop_all_part_move__MoveToCells.cu"
 
 //*************************************************************************************************
-#include "oppic_par_loop_all__ComputeNodeChargeDensity.cu"
+#include "opp_loop_all__ComputeNodeChargeDensity.cu"
 
 //*************************************************************************************************
-#include "oppic_par_loop_all__ComputeElectricField.cu"
+#include "opp_loop_all__ComputeElectricField.cu"
 
 //*************************************************************************************************

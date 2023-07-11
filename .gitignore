@@ -23,3 +23,15 @@ Log*/
 save_*
 *_backup
 outputFolder
+mpi_files*
+vtune*
+scalling*
+build/
+junk/
+*.out
+*.nvvp
+*nsight*
+*.qdrep
+*.sqlite
+advisor*
+vg*

@@ -34,16 +34,16 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //*********************************************
 
 
-__constant__ int computeElectricField_stride_OPP_CUDA_0;
-__constant__ int computeElectricField_stride_OPP_CUDA_1;
+__constant__ int computeEF_stride_OPP_CUDA_0;
+__constant__ int computeEF_stride_OPP_CUDA_1;
 
-int computeElectricField_stride_OPP_HOST_0 = -1;
-int computeElectricField_stride_OPP_HOST_1 = -1;
+int computeEF_stride_OPP_HOST_0 = -1;
+int computeEF_stride_OPP_HOST_1 = -1;
 
 //user function
 //*************************************************************************************************
 __device__ void compute_electric_field__kernel_gpu(
-    double *cell_electric_field,             
+    double *cell_ef,             
     const double *cell_shape_deriv,
     const double *node_potential0,
     const double *node_potential1,
@@ -51,18 +51,25 @@ __device__ void compute_electric_field__kernel_gpu(
     const double *node_potential3
 )
 {
-    for (int dim = 0; dim < DIMENSIONS; dim++)
+    for (int dim = 0; dim < DIM; dim++)
     {
-        cell_electric_field[dim * computeElectricField_stride_OPP_CUDA_0] -= (cell_shape_deriv[(0 * DIMENSIONS + dim) * computeElectricField_stride_OPP_CUDA_1] * (*node_potential0));
-        cell_electric_field[dim * computeElectricField_stride_OPP_CUDA_0] -= (cell_shape_deriv[(1 * DIMENSIONS + dim) * computeElectricField_stride_OPP_CUDA_1] * (*node_potential1));
-        cell_electric_field[dim * computeElectricField_stride_OPP_CUDA_0] -= (cell_shape_deriv[(2 * DIMENSIONS + dim) * computeElectricField_stride_OPP_CUDA_1] * (*node_potential2));
-        cell_electric_field[dim * computeElectricField_stride_OPP_CUDA_0] -= (cell_shape_deriv[(3 * DIMENSIONS + dim) * computeElectricField_stride_OPP_CUDA_1] * (*node_potential3));
+        cell_ef[dim * computeEF_stride_OPP_CUDA_0] -= 
+            (cell_shape_deriv[(0 * DIM + dim) * computeEF_stride_OPP_CUDA_1] * (*node_potential0));
+
+        cell_ef[dim * computeEF_stride_OPP_CUDA_0] -= 
+            (cell_shape_deriv[(1 * DIM + dim) * computeEF_stride_OPP_CUDA_1] * (*node_potential1));
+
+        cell_ef[dim * computeEF_stride_OPP_CUDA_0] -= 
+            (cell_shape_deriv[(2 * DIM + dim) * computeEF_stride_OPP_CUDA_1] * (*node_potential2));
+
+        cell_ef[dim * computeEF_stride_OPP_CUDA_0] -= 
+            (cell_shape_deriv[(3 * DIM + dim) * computeEF_stride_OPP_CUDA_1] * (*node_potential3));
     }    
 }
 
 // CUDA kernel function
 //*************************************************************************************************
-__global__ void oppic_cuda_ComputeElectricField(
+__global__ void opp_cuda_ComputeElectricField(
     double *__restrict dir_arg0,
     const double *__restrict dir_arg1,
     const double *__restrict ind_arg2,
@@ -98,55 +105,66 @@ __global__ void oppic_cuda_ComputeElectricField(
 }
 
 //*************************************************************************************************
-void oppic_par_loop_all__ComputeElectricField(
-    oppic_set set,      // cells_set
-    oppic_arg arg0,     // cell_electric_field,
-    oppic_arg arg1,     // cell_shape_deriv,
-    oppic_arg arg2,     // node_potential0,
-    oppic_arg arg3,     // node_potential1,
-    oppic_arg arg4,     // node_potential2,
-    oppic_arg arg5      // node_potential3,
+void opp_loop_all__ComputeElectricField(
+    opp_set set,      // cells_set
+    opp_arg arg0,     // cell_ef,
+    opp_arg arg1,     // cell_shape_deriv,
+    opp_arg arg2,     // node_potential0,
+    opp_arg arg3,     // node_potential1,
+    opp_arg arg4,     // node_potential2,
+    opp_arg arg5      // node_potential3,
 )
-{ TRACE_ME;
+{ 
 
-    if (FP_DEBUG) printf("FEMPIC - oppic_par_loop_all__ComputeElectricField set_size %d\n", set->size);
+    if (FP_DEBUG) opp_printf("FEMPIC", "opp_loop_all__ComputeElectricField set_size %d", set->size);
+
+    opp_profiler->start("ComputeElectricField");
 
     int nargs = 6;
-    oppic_arg args[nargs] = { arg0, arg1, arg2, arg3, arg4, arg5 };
+    opp_arg args[nargs];
 
-    int set_size = oppic_mpi_halo_exchanges_grouped(set, nargs, args, Device_GPU);
+    args[0] = std::move(arg0);
+    args[1] = std::move(arg1);
+    args[2] = std::move(arg2);
+    args[3] = std::move(arg3);
+    args[4] = std::move(arg4);
+    args[5] = std::move(arg5);
+
+    int set_size = opp_mpi_halo_exchanges_grouped(set, nargs, args, Device_GPU);
     if (set_size > 0) 
     {
-        computeElectricField_stride_OPP_HOST_0 = arg0.dat->set->set_capacity;
-        computeElectricField_stride_OPP_HOST_1 = arg1.dat->set->set_capacity;
+        computeEF_stride_OPP_HOST_0 = args[0].dat->set->set_capacity;
+        computeEF_stride_OPP_HOST_1 = args[1].dat->set->set_capacity;
 
-        cudaMemcpyToSymbol(computeElectricField_stride_OPP_CUDA_0, &computeElectricField_stride_OPP_HOST_0, sizeof(int));
-        cudaMemcpyToSymbol(computeElectricField_stride_OPP_CUDA_1, &computeElectricField_stride_OPP_HOST_1, sizeof(int));
+        cudaMemcpyToSymbol(computeEF_stride_OPP_CUDA_0, &computeEF_stride_OPP_HOST_0, sizeof(int));
+        cudaMemcpyToSymbol(computeEF_stride_OPP_CUDA_1, &computeEF_stride_OPP_HOST_1, sizeof(int));
 
         int start = 0;
         int end   = set->size;
 
         if (end - start > 0) 
         {
-            int nthreads = GPU_THREADS_PER_BLOCK;
+            int nthreads = OPP_gpu_threads_per_block;
             int nblocks = (end - start - 1) / nthreads + 1;
 
-            oppic_cuda_ComputeElectricField <<<nblocks, nthreads>>> (
-                (double *)  arg0.data_d,
-                (double *)  arg1.data_d,       
-                (double *)  arg2.data_d,
-                (int *)     arg2.map_data_d,
-                (double *)  arg3.data_d,
-                (double *)  arg4.data_d,
-                (double *)  arg5.data_d,
+            opp_cuda_ComputeElectricField <<<nblocks, nthreads>>> (
+                (double *)  args[0].data_d,
+                (double *)  args[1].data_d,       
+                (double *)  args[2].data_d,
+                (int *)     args[2].map_data_d,
+                (double *)  args[3].data_d,
+                (double *)  args[4].data_d,
+                (double *)  args[5].data_d,
                 start, 
                 end,
                 arg2.map->from->size);
         }
     }
 
-    oppic_mpi_set_dirtybit_grouped(nargs, args, Device_GPU);
+    opp_mpi_set_dirtybit_grouped(nargs, args, Device_GPU);
     cutilSafeCall(cudaDeviceSynchronize());
+
+    opp_profiler->end("ComputeElectricField");   
 }
 
 //*************************************************************************************************

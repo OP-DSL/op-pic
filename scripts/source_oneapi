@@ -18,6 +18,10 @@ export HDF5_INSTALL_PATH=/opt/hdf5/1.8.18/intel/18.0/impi/2018/
 export LD_LIBRARY_PATH=/ext-home/zl/libs/alsa/lib:/ext-home/zl/libs/parmetis-4.0.3/lib:/ext-home/zl/libs/parmetis-4.0.3/metis/lib:/ext-home/zl/libs/scotch/6.0.9/lib:/opt/ptscotch/current/icc/15.0u6/impi/5.0u3/lib:/opt/hdf5/1.8.18/intel/18.0/impi/2018/lib:/ext-home/zl/libs/papi/5.7/lib:/ext-home/zl/libs/metis/5.1.0/lib:/ext-home/zl/slope/SLOPE/lib:/opt/cuda/10.2.89/toolkit/lib64:/opt/cuda/10.2.89/lib64:{LD_LIBRARY_PATH:+:LD_LIBRARY_PATH}
 LIBRARY_PATH=$LD_LIBRARY_PATH
 
+# export CPLUS_INCLUDE_PATH=/ext-home/zl/lib/include:/ext-home/zl/lib_install/petsc-3.18.3-oneapi-2021.3-mpi_telos/include:$CPLUS_INCLUDE_PATH
+# export CPLUS_INCLUDE_PATH=/ext-home/zl/lib/include:/ext-home/zl/lib_install/petsc-3.18.3-oneapi-2021.3-mpi_telos/include:$CPLUS_INCLUDE_PATH
+# export CPLUS_INCLUDE_PATH=/ext-home/zl/lib_setup/spack/opt/spack/linux-debian10-skylake_avx512/gcc-8.3.0/intel-mpi-2019.10.317-2u5n4emcs34ui2yhmp4vemnv4iqar7jt/impi/2019.10.317/intel64/include:$CPLUS_INCLUDE_PATH
+
 #NVIDIA CUDA
 module load cuda/toolkit-10.2.89
 export CUDA_INSTALL_PATH=/opt/cuda/10.2.89/toolkit
@@ -26,8 +30,12 @@ if [ "$(hostname)" == 'telos' ]; then
   export NV_ARCH=Volta
   export CUDA_VISIBLE_DEVICES=0
   echo $NV_ARCH $(hostname)
-  export LD_LIBRARY_PATH=/ext-home/zl/lib_install/petsc-3.18.3-oneapi-2021.3-cuda-rel/lib:$LD_LIBRARY_PATH
-  export PETSC_INSTALL_PATH=/ext-home/zl/lib_install/petsc-3.18.3-oneapi-2021.3-cuda-rel
+  # export LD_LIBRARY_PATH=/ext-home/zl/lib_install/petsc-3.18.3-oneapi-2021.3-cuda-rel/lib:$LD_LIBRARY_PATH
+  # export PETSC_INSTALL_PATH=/ext-home/zl/lib_install/petsc-3.18.3-oneapi-2021.3-cuda-rel
+  # export LD_LIBRARY_PATH=/ext-home/zl/lib_install/petsc-3.18.2-oneapi-2021.3-release/lib:$LD_LIBRARY_PATH
+  # export PETSC_INSTALL_PATH=/ext-home/zl/lib_install/petsc-3.18.2-oneapi-2021.3-release
+  export LD_LIBRARY_PATH=/ext-home/zl/lib_install/petsc-3.18.3-oneapi-2021.3-mpi_telos/lib:$LD_LIBRARY_PATH
+  export PETSC_INSTALL_PATH=/ext-home/zl/lib_install/petsc-3.18.3-oneapi-2021.3-mpi_telos
   export NVCCFLAGS_ADD='-gencode arch=compute_70,code=sm_70'
 elif [ "$(hostname)" == 'kos' ]; then
   export NV_ARCH=Pascal
@@ -68,3 +76,17 @@ export SLOPE_INSTALL_PATH=/ext-home/zl/slope/SLOPE/
 export METIS_INSTALL_PATH=/ext-home/zl/libs/metis/5.1.0/
 
 # export LD_LIBRARY_PATH=/ext-home/zl/lib_install/petsc-3.18.3-oneapi-2021.3-cuda-rel/lib:$LD_LIBRARY_PATH
+
+
+# AT AVON
+
+# module load GCC/10.3.0  OpenMPI/4.1.1
+# module load PETSc/3.15.1
+
+# export PETSC_INSTALL_PATH=/scrtp/avon/eb/software/PETSc/3.15.1-foss-2021a
+# export OPPIC_PATH=/home/dcs/csrcnj/phd/OP-PIC/lib_oppic
+
+# For MPI
+# salloc -p hmem --nodes=1 --ntasks-per-node=48 --cpus-per-task=1 --mem-per-cpu=3700 --time=03:00:00 
+
+# mpirun -np 8 bin/mpi /home/dcs/csrcnj/phd/OP-PIC/scripts/fempic_tests/configs/coarse_5.param

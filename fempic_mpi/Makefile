@@ -6,13 +6,13 @@ INC = .
 LIB = lib
 OBJ = obj
 BIN = bin
-
+# scorep-mpiicpc  -qopt-report=2 -qopt-report-phase=vec -xHOST          --generate-line-info
 CPP        = mpicxx
 MPICPP	   = mpicxx
 NVCC       = nvcc
 HIPCC      = hipcc
 
-CPPFLAGS   = -std=c++11 -Wall -fopenmp -fPIC
+CPPFLAGS   = -std=c++14 -Wall -fPIC
 NVCCFLAGS  = -m64 -Xptxas -dlcm=ca -Xptxas=-v $(NVCCFLAGS_ADD)
 HIPCCFLAGS = -std=c++17 -Wall -isystem -D__HIP_PLATFORM_AMD__
 
@@ -48,10 +48,10 @@ ifeq ($(DEBUG_LOG), 1)
 	HIPCCFLAGS += -DDEBUG_LOG
 endif
 
-PETSC ?= 0
+PETSC ?= 1
 ifeq ($(PETSC), 1)
 	CPPFLAGS   += -DUSE_PETSC
-	# HIPCCFLAGS += -DUSE_PETSC
+	NVCCFLAGS += -DUSE_PETSC
 	PETSC_INC  = -I$(PETSC_INSTALL_PATH)/include
 	PETSC_LIB  = -L$(PETSC_INSTALL_PATH)/lib -lpetsc
 endif
@@ -67,8 +67,16 @@ ifeq ($(HIP), 1)
 	HIP_INC   = -I$(ROCM_INSTALL_DIR)/include -I$(ROCM_THRUST_DIR)/include -I$(ROCM_PRIM_DIR)/include
 endif
 
-ALL_INC    = -I$(OPPIC_PATH)/include $(PETSC_INC) -I/ext-home/zl/lib/inclide
-ALL_LIBS   = -L$(OPPIC_PATH)/lib -L/ext-home/zl/lib/lib -lparmetis -lmetis $(PETSC_LIB) 
+PARMETIS ?= 0
+ifeq ($(PARMETIS), 1)
+	ALL_LIBS = -lparmetis -lmetis
+	ALL_INC  += -DHAVE_PARMETIS
+endif
+
+ALL_INC    += -I$(OPPIC_PATH)/include $(PETSC_INC) -I/ext-home/zl/lib/inclide
+ALL_LIBS   += -L$(OPPIC_PATH)/lib -L/ext-home/zl/lib/lib $(PETSC_LIB) 
+
+
 
 .PHONY: clean mklib
 
@@ -92,8 +100,8 @@ seq: common
 	     $(CPP) $(CPPFLAGS) -o $(BIN)/seq $(OBJ)/fempic_op.o $(OBJ)/meshes.o $(OBJ)/particles.o $(OBJ)/maths.o $(OBJ)/seqkernels.o $(OBJ)/FESolver.o $(ALL_INC) $(ALL_LIBS) -loppic_seq
 
 omp: common
-		 $(CPP) $(CPPFLAGS) -c omp/ompkernels.cpp -o $(OBJ)/ompkernels.o $(ALL_INC)
-	     $(CPP) $(CPPFLAGS) -o $(BIN)/omp $(OBJ)/fempic_op.o $(OBJ)/meshes.o $(OBJ)/particles.o $(OBJ)/maths.o $(OBJ)/ompkernels.o $(OBJ)/FESolver.o $(ALL_INC) $(ALL_LIBS) -loppic_omp
+		 $(CPP) $(CPPFLAGS) -fopenmp -c omp/ompkernels.cpp -o $(OBJ)/ompkernels.o $(ALL_INC)
+	     $(CPP) $(CPPFLAGS) -fopenmp -o $(BIN)/omp $(OBJ)/fempic_op.o $(OBJ)/meshes.o $(OBJ)/particles.o $(OBJ)/maths.o $(OBJ)/ompkernels.o $(OBJ)/FESolver.o $(ALL_INC) $(ALL_LIBS) -loppic_omp
 
 mpiX: common
 		 $(CPP) $(CPPFLAGS) -c mpi/mpikernels.cpp -o $(OBJ)/mpikernels.o $(ALL_INC)
@@ -109,13 +117,13 @@ mpi_test: mklib
 	     $(CPP) $(CPPFLAGS) -o $(BIN)/mpi $(OBJ)/fempic_test.o $(OBJ)/meshes.o $(OBJ)/particles.o $(OBJ)/maths.o $(OBJ)/mpikernels.o $(OBJ)/FESolver.o  -loppic_mpi $(ALL_INC) $(ALL_LIBS)
 
 mpi: mklib
-	     $(CPP) $(CPPFLAGS) -c fempic_op.cpp -o $(OBJ)/fempic_op.o $(ALL_INC)
-		 $(CPP) $(CPPFLAGS) -c fempic_ori/meshes.cpp -o $(OBJ)/meshes.o $(ALL_INC)
-	     $(CPP) $(CPPFLAGS) -c fempic_ori/particles.cpp -o $(OBJ)/particles.o $(ALL_INC)
-		 $(CPP) $(CPPFLAGS) -c fempic_ori/maths.cpp -o $(OBJ)/maths.o $(ALL_INC)
-		 $(CPP) $(CPPFLAGS) -c FESolver.cpp -o $(OBJ)/FESolver.o $(ALL_INC)		 
-		 $(CPP) $(CPPFLAGS) -c mpi/mpikernels.cpp -o $(OBJ)/mpikernels.o $(ALL_INC)
-	     $(CPP) $(CPPFLAGS) -o $(BIN)/mpi $(OBJ)/fempic_op.o $(OBJ)/meshes.o $(OBJ)/particles.o $(OBJ)/maths.o $(OBJ)/mpikernels.o $(OBJ)/FESolver.o  -loppic_mpi $(ALL_INC) $(ALL_LIBS)
+	     $(CPP) $(CPPFLAGS) -DENABLE_MPI -c fempic_op.cpp -o $(OBJ)/fempic_op.o $(ALL_INC)
+		 $(CPP) $(CPPFLAGS) -DENABLE_MPI -c fempic_ori/meshes.cpp -o $(OBJ)/meshes.o $(ALL_INC)
+	     $(CPP) $(CPPFLAGS) -DENABLE_MPI -c fempic_ori/particles.cpp -o $(OBJ)/particles.o $(ALL_INC)
+		 $(CPP) $(CPPFLAGS) -DENABLE_MPI -c fempic_ori/maths.cpp -o $(OBJ)/maths.o $(ALL_INC)
+		 $(CPP) $(CPPFLAGS) -DENABLE_MPI -c FESolver.cpp -o $(OBJ)/FESolver.o $(ALL_INC)		 
+		 $(CPP) $(CPPFLAGS) -DENABLE_MPI -c mpi/mpikernels.cpp -o $(OBJ)/mpikernels.o $(ALL_INC)
+	     $(CPP) $(CPPFLAGS) -DENABLE_MPI -o $(BIN)/mpi $(OBJ)/fempic_op.o $(OBJ)/meshes.o $(OBJ)/particles.o $(OBJ)/maths.o $(OBJ)/mpikernels.o $(OBJ)/FESolver.o  -loppic_mpi $(ALL_INC) $(ALL_LIBS)
 
 cuda: common
 		 $(NVCC) $(NVCCFLAGS) -c cuda/cudakernels.cu -o $(OBJ)/cudakernels.o $(ALL_INC) $(CUDA_INC)

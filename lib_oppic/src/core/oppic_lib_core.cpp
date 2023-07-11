@@ -32,12 +32,10 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <oppic_lib_core.h>
 
-
 #ifdef USE_TRACE
     int trace::enabled = 1;
     Trace trace::current = Trace("__TRACE_BASE__");
 #endif
-
 
 //****************************************
 std::vector<oppic_set> oppic_sets;
@@ -50,26 +48,32 @@ int OP_auto_soa             = 0;
 int OP_part_alloc_mult      = 1;
 int OP_auto_sort            = 1;
 int OPP_mpi_part_alloc_mult = 1;
-int OPP_my_rank             = 0;
+int OPP_rank                = 0;
 int OPP_comm_size           = 1;
 int OPP_comm_iteration      = 0;
+int OPP_max_comm_iteration  = 0;
 int OPP_iter_start          = 0;
 int OPP_iter_end            = 0;
+int OPP_main_loop_iter      = 0;
+int OPP_gpu_threads_per_block       = OPP_DEFAULT_GPU_THREADS_PER_BLOCK;
+size_t OPP_gpu_shared_mem_per_block = -1;
 int *OPP_mesh_relation_data = nullptr;
-opp::Params* opp_params     = nullptr;
+std::unique_ptr<opp::Params> opp_params;
+std::unique_ptr<opp::Profiler> opp_profiler;
 
 //****************************************
-void oppic_init_core(int argc, char **argv, opp::Params* params) 
+void oppic_init_core(int argc, char **argv) 
 {
     oppic_sets.clear();
     oppic_maps.clear();
     oppic_dats.clear();
 
-    opp_params = params;
-    
+    opp_params = std::make_unique<opp::Params>(argv[1]);
+    opp_profiler = std::make_unique<opp::Profiler>();
+
     // these will be overidden by args
-    OP_auto_sort = params->get<OPP_BOOL>("opp_auto_sort");
-    OP_part_alloc_mult = params->get<OPP_INT>("opp_allocation_multiple");
+    OP_auto_sort = opp_params->get<OPP_BOOL>("opp_auto_sort");
+    OP_part_alloc_mult = opp_params->get<OPP_INT>("opp_allocation_multiple");
 
     for (int n = 1; n < argc; n++) 
     {
@@ -111,6 +115,13 @@ void oppic_exit_core()
         std::string trace_file_name = std::string("trace/trace_") + getTimeStr() + ".csv";
         trace::current.write_profile(trace_file_name);
     #endif
+
+    if (opp_profiler.get())
+    {    
+        if (opp_params->get<OPP_BOOL>("opp_profile_all"))
+            opp_profiler->printProfile(true);
+        opp_profiler->printProfile();
+    }
 }
 
 //****************************************
@@ -446,10 +457,10 @@ oppic_dat oppic_decl_particle_dat_core(oppic_set set, int dim, char const *type,
 }
 
 //****************************************
-void oppic_increase_particle_count_core(oppic_set particles_set, const int num_particles_to_insert)
-{ TRACE_ME;
+bool oppic_increase_particle_count_core(oppic_set particles_set, const int num_particles_to_insert)
+{ 
 
-    if (num_particles_to_insert <= 0) return;
+    if (num_particles_to_insert <= 0) return true;
 
     if (OP_DEBUG) 
         opp_printf("oppic_increase_particle_count_core", "set [%s] with size [%d]", particles_set->name, num_particles_to_insert);
@@ -464,14 +475,15 @@ void oppic_increase_particle_count_core(oppic_set particles_set, const int num_p
         
         particles_set->size = new_particle_set_size;
         particles_set->diff = num_particles_to_insert;   
-        return;
+        return true;
     }
 
-    int new_particle_set_capacity = particles_set->size + num_particles_to_insert * OP_part_alloc_mult;
+    size_t new_particle_set_capacity = particles_set->size + num_particles_to_insert * OP_part_alloc_mult;
     // int new_particle_set_capacity = new_particle_set_size;
+    bool return_flag = true;
 
     if (OP_DEBUG)
-        opp_printf("oppic_increase_particle_count_core", "new_particle_set_capacity %d particles_set->size %d set_dat_count %d", 
+        opp_printf("oppic_increase_particle_count_core", "new_particle_set_capacity %zu particles_set->size %d set_dat_count %d", 
             new_particle_set_capacity, particles_set->size, particles_set->particle_dats->size());
 
     for (auto& current_oppic_dat : *(particles_set->particle_dats))
@@ -480,18 +492,30 @@ void oppic_increase_particle_count_core(oppic_set particles_set, const int num_p
         {
             current_oppic_dat->data = (char *)malloc((size_t)(new_particle_set_capacity * current_oppic_dat->size));
             // opp_printf("oppic_increase_particle_count_core", "malloc name %s %p size %d", current_oppic_dat->name, current_oppic_dat->data, (new_particle_set_capacity * current_oppic_dat->size));
+
+            if (current_oppic_dat->data == nullptr)
+            {
+                opp_printf("oppic_increase_particle_count_core", "Error... alloc of dat name %s failed (size %zu)", current_oppic_dat->name, (size_t)(new_particle_set_capacity * current_oppic_dat->size));
+                return_flag = false;
+            }
         }
         else
         {
-            char* old = current_oppic_dat->data;
+            // char* old = current_oppic_dat->data;
             current_oppic_dat->data = (char *)realloc(current_oppic_dat->data, (size_t)(new_particle_set_capacity * current_oppic_dat->size));
             // opp_printf("oppic_increase_particle_count_core", "realloc %p name %s %p size %d", old, current_oppic_dat->name, current_oppic_dat->data, (new_particle_set_capacity * current_oppic_dat->size));
+
+            if (current_oppic_dat->data == nullptr)
+            {
+                opp_printf("oppic_increase_particle_count_core", "Error... realloc of dat name %s failed (size %zu)", current_oppic_dat->name, (size_t)(new_particle_set_capacity * current_oppic_dat->size));
+                return_flag = false;
+            }
         }
 
-        if (current_oppic_dat->is_cell_index)
+        if (current_oppic_dat->is_cell_index && (current_oppic_dat->data != nullptr))
         {
             int* mesh_rel_array = (int *)current_oppic_dat->data;
-            for (int i = particles_set->size; i < new_particle_set_capacity; i++)
+            for (size_t i = (size_t)particles_set->size; i < new_particle_set_capacity; i++)
                 mesh_rel_array[i] = MAX_CELL_INDEX;
         }
         // else
@@ -503,6 +527,8 @@ void oppic_increase_particle_count_core(oppic_set particles_set, const int num_p
     particles_set->size         = new_particle_set_size;
     particles_set->set_capacity = new_particle_set_capacity;
     particles_set->diff         = num_particles_to_insert;
+
+    return return_flag;
 }
 
 //****************************************
@@ -543,6 +569,7 @@ void oppic_mark_particle_to_move_core(oppic_set set, int particle_index, int mov
     }
 }
 
+#ifdef USE_OLD_FINALIZE
 //****************************************
 void oppic_finalize_particle_move_core(oppic_set set)
 {
@@ -561,26 +588,46 @@ void oppic_finalize_particle_move_core(oppic_set set)
             int removed_count = 0;
             int skip_count = 0;
 
-            for (int j = 0; j < set->size; j++)
+            for (size_t j = 0; j < (size_t)set->size; j++)
             {
-                if (mesh_relation_data[j] != MAX_CELL_INDEX) continue;
-
-                char* dat_removed_ptr = (char *)(current_oppic_dat->data + (j * current_oppic_dat->size));
-
-                // BUG_FIX: (set->size - removed_count - 1) This index could marked to be removed, and if marked, 
-                // then there could be an array index out of bounds access error in the future
-                while (mesh_relation_data[set->size - removed_count - skip_count - 1] == MAX_CELL_INDEX)
+                if (set->particle_remove_count == (removed_count + skip_count))
                 {
-                    skip_count++;
-                }
-                if (j >= (set->size - removed_count - skip_count - 1)) 
-                {
-                    if (OP_DEBUG && i == 0) opp_printf("oppic_finalize_particle_move_core", "Current Iteration index [%d] and replacement index %d; hence breaking [%s]", 
-                        j, (set->size - removed_count - skip_count - 1), set->name);
+                    if (OP_DEBUG && i == 0) 
+                        opp_printf("oppic_finalize_particle_move_core", 
+                        "Required number already removed %d [%s] j=%d", 
+                        set->particle_remove_count, set->name, j);
                     break;
                 }
 
-                char* dat_to_replace_ptr = (char *)(current_oppic_dat->data + ((set->size - removed_count - skip_count - 1) * current_oppic_dat->size));
+                if (mesh_relation_data[j] != MAX_CELL_INDEX) continue;
+
+                char* dat_removed_ptr = (char *)(current_oppic_dat->data + (size_t)(j * current_oppic_dat->size));
+
+                // BUG_FIX: (set->size - removed_count - 1) This index could marked to be removed, and if marked, 
+                // then there could be an array index out of bounds access error in the future
+                while ((set->size - removed_count - skip_count - 1 >= 0) && 
+                    (mesh_relation_data[set->size - removed_count - skip_count - 1] == MAX_CELL_INDEX))
+                {
+                    skip_count++;
+                }
+                if (j >= (size_t)(set->size - removed_count - skip_count - 1)) 
+                {
+                    if (OP_DEBUG && i == 0) opp_printf("oppic_finalize_particle_move_core", 
+                        "Current Iteration index [%d] and replacement index %d; hence breaking [%s]", 
+                        j, (set->size - removed_count - skip_count - 1), set->name);
+                    break;
+                }
+                if (set->size - removed_count - skip_count - 1 < 0)
+                {
+                    //if (OP_DEBUG && i == 0) 
+                        opp_printf("oppic_finalize_particle_move_core", 
+                        "(set->size - removed_count - skip_count - 1 < 0) %d %d %d [%s] j=%d %d", 
+                        set->size, removed_count, skip_count, set->name, j, set->particle_remove_count);
+                    break;
+                }
+
+                size_t offset_byte = (size_t)(set->size - removed_count - skip_count - 1) * current_oppic_dat->size;
+                char* dat_to_replace_ptr = (char *)(current_oppic_dat->data + offset_byte);
                 
                 // Get the last element and replace the hole // Not the Optimum!!!
                 // TODO : Can we make NULL data and handle it in sort?
@@ -601,6 +648,85 @@ void oppic_finalize_particle_move_core(oppic_set set)
 
     set->size -= set->particle_remove_count;
 }
+
+#else
+//****************************************
+void oppic_finalize_particle_move_core(oppic_set set)
+{
+    if (OP_DEBUG) 
+        opp_printf("oppic_finalize_particle_move_core", "set [%s] size[%d] with particle_remove_count [%d]", 
+        set->name, set->size, set->particle_remove_count);
+
+    // return if there are no particles to be removed
+    if (set->particle_remove_count <= 0) 
+        return;
+
+    if (OP_auto_sort == 0) // if not auto sorting, fill the holes
+    {
+        int *mesh_relation_data = (int *)set->mesh_relation_dat->data;
+        std::vector<std::pair<size_t, size_t>> swap_indices;    // contain hole index and the index from back to swap
+
+        // Idea: The last available element should be copied to the hole
+        // In the below scope we try to calculate the element to be swapped with the hole
+        {
+            // set->particle_remove_count   // the particle count that should be removed
+            int removed_count = 0;          // how many elements currently being removed
+            int skip_count = 0;             // how many elements from the back is skipped ..
+                                            // .. due to that element is also to be removed
+
+            for (size_t j = 0; j < (size_t)set->size; j++)
+            {
+                // skip if the current index is not to be removed
+                if (mesh_relation_data[j] != MAX_CELL_INDEX) 
+                    continue;
+
+                // handle if the element from the back is also to be removed
+                while ((set->size - removed_count - skip_count - 1 >= 0) && 
+                    (mesh_relation_data[set->size - removed_count - skip_count - 1] == MAX_CELL_INDEX))
+                {
+                    skip_count++;
+                }
+
+                // check whether the holes are at the back!
+                if ((set->size - removed_count - skip_count - 1 < 0) ||
+                    (j >= (size_t)(set->size - removed_count - skip_count - 1))) 
+                {
+                    if (OP_DEBUG) 
+                        opp_printf("oppic_finalize_particle_move_core", 
+                        "Current Iteration index [%d] and replacement index %d; hence breaking [%s]", 
+                        j, (set->size - removed_count - skip_count - 1), set->name);
+                    break;
+                }
+
+                swap_indices.push_back(std::make_pair(j, (size_t)(set->size - removed_count - skip_count - 1)));
+
+                removed_count++;
+            }
+        }
+
+        // For all the dats, fill the holes using the swap_indices
+        for (oppic_dat& dat : *(set->particle_dats))
+        {
+            for (const auto& x : swap_indices)
+            {
+                char* dat_removed_ptr = (char *)(dat->data + (x.first * dat->size));
+
+                size_t offset_byte = x.second * dat->size;
+                char* dat_to_replace_ptr = (char *)(dat->data + offset_byte);
+                
+                memcpy(dat_removed_ptr, dat_to_replace_ptr, dat->size); 
+            }
+        }
+    }
+    else
+    {
+        if (OP_DEBUG) 
+            opp_printf("oppic_finalize_particle_move_core", "Not processing dats since OP_auto_sort = TRUE");
+    }
+
+    set->size -= set->particle_remove_count;
+}
+#endif
 
 //****************************************
 void oppic_mark_particle_to_remove_core(oppic_set set, int particle_index)
@@ -657,10 +783,12 @@ void oppic_remove_marked_particles_from_set_core(oppic_set set, std::vector<int>
 
 //****************************************
 void oppic_particle_sort_core(oppic_set set)
-{ TRACE_ME;
+{ 
     
     if (OP_DEBUG) printf("\toppic_particle_sort set [%s]\n", set->name);
     
+    opp_profiler->start("PartSort");
+
     int* mesh_relation_data = (int*)set->mesh_relation_dat->data;
 
     std::vector<size_t> idx_before_sort = sort_indexes(mesh_relation_data, set->set_capacity);
@@ -701,11 +829,14 @@ void oppic_particle_sort_core(oppic_set set)
     //     }
     //     map[previous_cell_index].end = (set->size - 1);
     // }
+
+    opp_profiler->end("PartSort");
 }
 
 //****************************************
 void oppic_print_dat_to_txtfile_core(oppic_dat dat, const char *file_name_prefix, const char *file_name_suffix)
-{ TRACE_ME;
+{ 
+    opp_profiler->start("PrintFile");
 
     const std::string file_name = std::string("files/") + file_name_prefix + "_" + file_name_suffix; 
 
@@ -790,6 +921,8 @@ void oppic_print_dat_to_txtfile_core(oppic_dat dat, const char *file_name_prefix
     }
     
     fclose(fp);
+
+    opp_profiler->end("PrintFile");
 }
 
 //****************************************
@@ -833,7 +966,8 @@ void oppic_dump_dat_core(oppic_dat data)
 
 //****************************************
 void oppic_print_map_to_txtfile_core(oppic_map map, const char *file_name_prefix, const char *file_name_suffix)
-{ TRACE_ME;
+{ 
+    opp_profiler->start("PrintFile");
 
     const std::string file_name = std::string("files/") + file_name_prefix + "_" + file_name_suffix; 
 
@@ -870,6 +1004,8 @@ void oppic_print_map_to_txtfile_core(oppic_map map, const char *file_name_prefix
     }
     
     fclose(fp);
+
+    opp_profiler->end("PrintFile");
 }
  
 //****************************************
@@ -981,4 +1117,32 @@ void* oppic_load_from_file_core(const char* file_name, int set_size, int dim, ch
     }
 
     return data;
+}
+
+//****************************************
+bool opp_inc_part_count_with_distribution_core(oppic_set particles_set, int num_particles_to_insert, oppic_dat part_dist)
+{
+    opp_profiler->start("IncPartCountWithDistribution");
+
+    if (!oppic_increase_particle_count_core(particles_set, num_particles_to_insert))
+    {
+        opp_profiler->end("IncPartCountWithDistribution");
+        return false;
+    }
+
+    int* part_mesh_connectivity = (int *)particles_set->mesh_relation_dat->data;
+    int* distribution           = (int *)part_dist->data;
+
+    int start = (particles_set->size - particles_set->diff);
+    int j = 0;
+
+    for (int i = 0; i < particles_set->diff; i++)
+    {
+        if (i >= distribution[j]) j++; // check whether it is j or j-1    
+        part_mesh_connectivity[start + i] = j;
+    } 
+
+    opp_profiler->end("IncPartCountWithDistribution");
+
+    return true;
 }

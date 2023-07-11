@@ -13,24 +13,24 @@ SRC = src
 INC = include
 LIB = lib
 OBJ = obj
-
+# scorep-mpiicpc  -qopt-report=2 -qopt-report-phase=vec -xHOST     --generate-line-info
 CPP        = mpicxx
 MPICPP	   = mpicxx
 NVCC       = nvcc
 HIPCC      = hipcc
 
-CPPFLAGS   = -std=c++11 -Wall -fopenmp -fPIC
+CPPFLAGS   = -std=c++14 -Wall -fPIC
 NVCCFLAGS  = -m64 -Xptxas -dlcm=ca -Xptxas=-v $(NVCCFLAGS_ADD)
 HIPCCFLAGS = -std=c++11 -isystem -D__HIP_PLATFORM_NVIDIA__ $(NVCCFLAGS_ADD)
 
 DEBUG ?= 0
 ifeq ($(DEBUG), 1)
-	CPPFLAGS   += -O0 -g -debug all
+	CPPFLAGS   += -O0 -g -fsanitize=address
 	NVCCFLAGS  += -O0 -g -lineinfo
 	HIPCCFLAGS += -O0 -g -lineinfo
 	DEBUG_LOG   = 1
 else
-	CPPFLAGS   += -O3 -g
+	CPPFLAGS   += -O3 -g -fsanitize=address
 	NVCCFLAGS  += -O3 -g
 	HIPCCFLAGS += -O3 -g
 endif
@@ -49,10 +49,10 @@ ifeq ($(DEBUG_LOG), 1)
 	HIPCCFLAGS += -DDEBUG_LOG
 endif
 
-PETSC ?= 0
+PETSC ?= 1
 ifeq ($(PETSC), 1)
 	CPPFLAGS   += -DUSE_PETSC
-	# HIPCCFLAGS += -DUSE_PETSC
+	NVCCFLAGS += -DUSE_PETSC
 	PETSC_INC  = -I$(PETSC_INSTALL_PATH)/include
 endif
 
@@ -66,7 +66,12 @@ ifeq ($(HIP), 1)
 	HIP_INC   = -I$(ROCM_INSTALL_DIR)/include -I$(ROCM_THRUST_DIR)/include -I$(ROCM_PRIM_DIR)/include
 endif
 
-OPP_INC    = -I$(OPPIC_PATH)/include -I/ext-home/zl/lib/include
+OPP_INC    = -I$(OPPIC_PATH)/include
+
+PARMETIS ?= 0
+ifeq ($(PARMETIS), 1)
+	OPP_INC  += -DHAVE_PARMETIS
+endif
 
 .PHONY: clean mklib
 
@@ -86,11 +91,11 @@ seq: mklib
 	     ar -r $(LIB)/liboppic_seq.a $(OBJ)/oppic_lib_core.o $(OBJ)/oppic_util.o $(OBJ)/trace.o $(OBJ)/opp_params.o $(OBJ)/oppic_seq.o
 
 omp: mklib
-	     $(CPP) $(CPPFLAGS) -c $(SRC)/core/oppic_lib_core.cpp -o $(OBJ)/oppic_lib_core.o $(OPP_INC) $(PETSC_INC)
-	     $(CPP) $(CPPFLAGS) -c $(SRC)/core/oppic_util.cpp -o $(OBJ)/oppic_util.o $(OPP_INC) $(PETSC_INC)
-	     $(CPP) $(CPPFLAGS) -c $(SRC)/core/trace.cpp -o $(OBJ)/trace.o $(OPP_INC) $(PETSC_INC)
-		 $(CPP) $(CPPFLAGS) -c $(SRC)/core/opp_params.cpp -o $(OBJ)/opp_params.o $(OPP_INC) $(PETSC_INC)
-	     $(CPP) $(CPPFLAGS) -c $(SRC)/omp/oppic_omp.cpp -o $(OBJ)/oppic_omp.o $(OPP_INC) $(PETSC_INC)
+	     $(CPP) $(CPPFLAGS) -fopenmp -c $(SRC)/core/oppic_lib_core.cpp -o $(OBJ)/oppic_lib_core.o $(OPP_INC) $(PETSC_INC)
+	     $(CPP) $(CPPFLAGS) -fopenmp -c $(SRC)/core/oppic_util.cpp -o $(OBJ)/oppic_util.o $(OPP_INC) $(PETSC_INC)
+	     $(CPP) $(CPPFLAGS) -fopenmp -c $(SRC)/core/trace.cpp -o $(OBJ)/trace.o $(OPP_INC) $(PETSC_INC)
+		 $(CPP) $(CPPFLAGS) -fopenmp -c $(SRC)/core/opp_params.cpp -o $(OBJ)/opp_params.o $(OPP_INC) $(PETSC_INC)
+	     $(CPP) $(CPPFLAGS) -fopenmp -c $(SRC)/omp/oppic_omp.cpp -o $(OBJ)/oppic_omp.o $(OPP_INC) $(PETSC_INC)
 	     ar -r $(LIB)/liboppic_omp.a $(OBJ)/oppic_lib_core.o $(OBJ)/oppic_util.o $(OBJ)/trace.o $(OBJ)/opp_params.o $(OBJ)/oppic_omp.o
 
 cuda: mklib
@@ -112,16 +117,16 @@ hip: mklib
 	     ar -r $(LIB)/liboppic_hip.a $(OBJ)/oppic_lib_core.o $(OBJ)/oppic_util.o $(OBJ)/trace.o $(OBJ)/opp_params.o $(OBJ)/oppic_hip.o $(OBJ)/particle_sorter_hip.o
 
 mpi: mklib
-	     $(CPP) $(CPPFLAGS) -c $(SRC)/core/oppic_lib_core.cpp -o $(OBJ)/oppic_lib_core.o $(OPP_INC) $(PETSC_INC)
-	     $(CPP) $(CPPFLAGS) -c $(SRC)/core/oppic_util.cpp -o $(OBJ)/oppic_util.o $(OPP_INC) $(PETSC_INC)
-	     $(CPP) $(CPPFLAGS) -c $(SRC)/core/trace.cpp -o $(OBJ)/trace.o $(OPP_INC) $(PETSC_INC)
-		 $(CPP) $(CPPFLAGS) -c $(SRC)/core/opp_params.cpp -o $(OBJ)/opp_params.o $(OPP_INC) $(PETSC_INC)
-		 $(CPP) $(CPPFLAGS) -c $(SRC)/mpi/opp_mpi_halo.cpp -o $(OBJ)/opp_mpi_halo.o $(OPP_INC) $(PETSC_INC)
-		 $(CPP) $(CPPFLAGS) -c $(SRC)/mpi/opp_mpi_partition.cpp -o $(OBJ)/opp_mpi_partition.o $(OPP_INC) $(PETSC_INC)
-		 $(CPP) $(CPPFLAGS) -c $(SRC)/mpi/opp_mpi.cpp -o $(OBJ)/opp_mpi.o $(OPP_INC) $(PETSC_INC)
-		 $(CPP) $(CPPFLAGS) -c $(SRC)/mpi/opp_mpi_utils.cpp -o $(OBJ)/opp_mpi_utils.o $(OPP_INC) $(PETSC_INC)
-		 $(CPP) $(CPPFLAGS) -c $(SRC)/mpi/opp_mpi_particle_comm.cpp -o $(OBJ)/opp_mpi_particle_comm.o $(OPP_INC) $(PETSC_INC)
-		 $(CPP) $(CPPFLAGS) -c $(SRC)/mpi/opp_mpi_double_ind_reducs.cpp -o $(OBJ)/opp_mpi_double_ind_reducs.o $(OPP_INC) $(PETSC_INC)
+	     $(CPP) $(CPPFLAGS) -DENABLE_MPI -c $(SRC)/core/oppic_lib_core.cpp -o $(OBJ)/oppic_lib_core.o $(OPP_INC) $(PETSC_INC)
+	     $(CPP) $(CPPFLAGS) -DENABLE_MPI -c $(SRC)/core/oppic_util.cpp -o $(OBJ)/oppic_util.o $(OPP_INC) $(PETSC_INC)
+	     $(CPP) $(CPPFLAGS) -DENABLE_MPI -c $(SRC)/core/trace.cpp -o $(OBJ)/trace.o $(OPP_INC) $(PETSC_INC)
+		 $(CPP) $(CPPFLAGS) -DENABLE_MPI -c $(SRC)/core/opp_params.cpp -o $(OBJ)/opp_params.o $(OPP_INC) $(PETSC_INC)
+		 $(CPP) $(CPPFLAGS) -DENABLE_MPI -c $(SRC)/mpi/opp_mpi_halo.cpp -o $(OBJ)/opp_mpi_halo.o $(OPP_INC) $(PETSC_INC)
+		 $(CPP) $(CPPFLAGS) -DENABLE_MPI -c $(SRC)/mpi/opp_mpi_partition.cpp -o $(OBJ)/opp_mpi_partition.o $(OPP_INC) $(PETSC_INC)
+		 $(CPP) $(CPPFLAGS) -DENABLE_MPI -c $(SRC)/mpi/opp_mpi.cpp -o $(OBJ)/opp_mpi.o $(OPP_INC) $(PETSC_INC)
+		 $(CPP) $(CPPFLAGS) -DENABLE_MPI -c $(SRC)/mpi/opp_mpi_utils.cpp -o $(OBJ)/opp_mpi_utils.o $(OPP_INC) $(PETSC_INC)
+		 $(CPP) $(CPPFLAGS) -DENABLE_MPI -c $(SRC)/mpi/opp_mpi_particle_comm.cpp -o $(OBJ)/opp_mpi_particle_comm.o $(OPP_INC) $(PETSC_INC)
+		 $(CPP) $(CPPFLAGS) -DENABLE_MPI -c $(SRC)/mpi/opp_mpi_double_ind_reducs.cpp -o $(OBJ)/opp_mpi_double_ind_reducs.o $(OPP_INC) $(PETSC_INC)
 	     ar -r $(LIB)/liboppic_mpi.a $(OBJ)/oppic_lib_core.o $(OBJ)/oppic_util.o $(OBJ)/trace.o $(OBJ)/opp_params.o $(OBJ)/opp_mpi.o $(OBJ)/opp_mpi_utils.o $(OBJ)/opp_mpi_halo.o $(OBJ)/opp_mpi_partition.o $(OBJ)/opp_mpi_particle_comm.o $(OBJ)/opp_mpi_double_ind_reducs.o
 		 
 		 

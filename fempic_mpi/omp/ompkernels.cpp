@@ -39,7 +39,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 //****************************************
 double CONST_spwt = 0, CONST_ion_velocity = 0, CONST_dt = 0, CONST_plasma_den = 0, CONST_mass = 0, CONST_charge = 0;
-void oppic_decl_const_impl(int dim, int size, char* data, const char* name)
+void opp_decl_const_impl(int dim, int size, char* data, const char* name)
 {
     if (!strcmp(name,"CONST_spwt"))              CONST_spwt = *((double*)data);
     else if (!strcmp(name,"CONST_ion_velocity")) CONST_ion_velocity = *((double*)data);
@@ -54,70 +54,34 @@ void oppic_decl_const_impl(int dim, int size, char* data, const char* name)
 #include "../kernels.h"
 
 //*************************************************************************************************
-void oppic_inject__Increase_particle_count
-(
-    oppic_set particles_set,    // particles_set
-    oppic_set set,              // inlect_face_set
-    oppic_arg arg0,             // injected total global,
-    oppic_arg arg1,             // iface_area,
-    oppic_arg arg2,             // iface_inj_part_dist,
-    oppic_arg arg3              // remainder global,
+void opp_loop_inject__InjectIons(
+    opp_set set,      // particles_set
+    opp_arg arg0,     // part_position,
+    opp_arg arg1,     // part_velocity,
+    opp_arg arg2,     // part_cell_connectivity,
+    opp_arg arg3,     // iface to cell map
+    opp_arg arg4,     // cell_ef,
+    opp_arg arg5,     // iface_u,
+    opp_arg arg6,     // iface_v,
+    opp_arg arg7,     // iface_normal,
+    opp_arg arg8,     // iface_node_pos
+    opp_arg arg9      // dummy_part_random
 )
-{ TRACE_ME;
+{ 
 
-    if (FP_DEBUG) printf("FEMPIC - oppic_inject__Increase_particle_count set_size %d diff %d\n", set->size, set->diff);
+    if (FP_DEBUG) opp_printf("FEMPIC", "opp_loop_inject__InjectIons set_size %d diff %d", 
+        set->size, set->diff);
+    
+    opp_profiler->start("InjectIons");
 
-    for (int i = 0; i < set->size; i++)
-    {   
-        calculate_injection_distribution(
-            ((int *)arg0.data),
-            &((double *)arg1.data)[i],
-            &((int *)arg2.data)[i],
-            ((double *)arg3.data) 
-        );
-    }
-
-    oppic_increase_particle_count(particles_set, *((int *)arg0.data));
-
-    int* part_mesh_connectivity = (int *)particles_set->mesh_relation_dat->data;
-    int* distribution           = (int *)arg2.data;
-
-    int start = (particles_set->size - particles_set->diff);
-    int j = 0;
-
-    for (int i = 0; i < particles_set->diff; i++)
-    {
-        if (i >= distribution[j]) j++; // check whether it is j or j-1    
-        part_mesh_connectivity[start + i] = j;
-    }   
-}
-
-//*************************************************************************************************
-void oppic_par_loop_inject__InjectIons(
-    oppic_set set,      // particles_set
-    oppic_arg arg0,     // part_position,
-    oppic_arg arg1,     // part_velocity,
-    oppic_arg arg2,     // part_cell_connectivity,
-    oppic_arg arg3,     // iface to cell map
-    oppic_arg arg4,     // cell_ef,
-    oppic_arg arg5,     // iface_u,
-    oppic_arg arg6,     // iface_v,
-    oppic_arg arg7,     // iface_normal,
-    oppic_arg arg8,     // iface_node_pos
-    oppic_arg arg9      // dummy_part_random
-)
-{ TRACE_ME;
-
-    if (FP_DEBUG) printf("FEMPIC - oppic_par_loop_inject__InjectIons set_size %d diff %d\n", set->size, set->diff);
-
-    int inj_start = (set->size - set->diff);
+    const int inj_start = (set->size - set->diff);
+    int map0idx = -1, map1idx = 0;
 
     #pragma omp parallel for
     for (int i = 0; i < set->diff; i++)
-    {    
-        int map0idx    = ((int *)set->mesh_relation_dat->data)[(inj_start + i) * set->mesh_relation_dat->dim]; // iface index
-
-        const int map1idx = arg4.map_data[map0idx]; // cell index
+    {
+        map0idx = ((int *)set->mesh_relation_dat->data)[inj_start + i]; // iface index        
+        map1idx = arg4.map_data[map0idx]; // cell index
 
         inject_ions__kernel(
             &((double *)arg0.data)[(inj_start + i) * arg0.dim],    // part_position,
@@ -132,109 +96,111 @@ void oppic_par_loop_inject__InjectIons(
             &((double*)arg9.data)[i * arg9.dim]                    // dummy_part_random
         );
     }
+
+    opp_profiler->end("InjectIons");
 }
 
 //*************************************************************************************************
-void oppic_par_loop_particle_all__MoveToCells(
-    oppic_set set,      // particles_set
-    oppic_arg arg0,     // cell_ef,
-    oppic_arg arg1,     // part_pos,
-    oppic_arg arg2,     // part_vel,
-    oppic_arg arg3,     // part_lc,
-    oppic_arg arg4,     // current_cell_index,
-    oppic_arg arg5,     // current_cell_volume,
-    oppic_arg arg6,     // current_cell_det,
-    oppic_arg arg7,     // cell_connectivity,
-    oppic_arg arg8,     // node_charge_den0,
-    oppic_arg arg9,     // node_charge_den1,
-    oppic_arg arg10,    // node_charge_den2,
-    oppic_arg arg11     // node_charge_den3,
+void opp_loop_all_part_move__MoveToCells(
+    opp_set set,      // particles_set
+    opp_arg arg0,     // cell_ef,
+    opp_arg arg1,     // part_pos,
+    opp_arg arg2,     // part_vel,
+    opp_arg arg3,     // part_lc,
+    opp_arg arg4,     // current_cell_index,
+    opp_arg arg5,     // current_cell_volume,
+    opp_arg arg6,     // current_cell_det,
+    opp_arg arg7,     // cell_connectivity,
+    opp_arg arg8,     // node_charge_den0,
+    opp_arg arg9,     // node_charge_den1,
+    opp_arg arg10,    // node_charge_den2,
+    opp_arg arg11     // node_charge_den3,
 )
-{ TRACE_ME;
+{ 
 
-    if (FP_DEBUG) printf("FEMPIC - oppic_par_loop_particle_all__MoveToCells set_size %d diff %d\n", set->size, set->diff);
+    if (FP_DEBUG) opp_printf("FEMPIC", "opp_loop_all_part_move__MoveToCells set_size %d diff %d", 
+        set->size, set->diff);
+
+    opp_profiler->start("MoveToCells");
+
+    opp_create_thread_level_data<double>(arg8, 0.0);
+    
+    opp_init_particle_move(set, 0, nullptr);
 
     int nthreads = omp_get_max_threads();
-    
-    oppic_create_thread_level_data<double>(arg8, 0.0);
-    oppic_init_particle_move(set);
 
-    int *mesh_relation_data = ((int *)set->mesh_relation_dat->data);
-    int remove_count[nthreads] = { 0 };
-
-    int64_t set_size = set->size;
+    int set_size = set->size;
 
     #pragma omp parallel for
-    for (int i = 0; i < set_size; i++)
+    for (int thr = 0; thr < nthreads; thr++)
     {
-        int thr = omp_get_thread_num();
+        size_t start  = ((size_t)set_size * thr) / nthreads;
+        size_t finish = ((size_t)set_size * (thr+1)) / nthreads;
+
         char* arg8_dat_thread_data = (*(arg8.dat->thread_data))[thr];
-        
-        opp_move_var m;    
+        int *map0idx = nullptr;
 
-        do
-        { 
-            int& map0idx      = mesh_relation_data[i];
+        for (size_t i = start; i < finish; i++)
+        {          
+            opp_move_var m = opp_get_move_var(thr);
 
-            const int map1idx = arg8.map_data[map0idx * arg8.map->dim + 0];
-            const int map2idx = arg8.map_data[map0idx * arg8.map->dim + 1];
-            const int map3idx = arg8.map_data[map0idx * arg8.map->dim + 2];
-            const int map4idx = arg8.map_data[map0idx * arg8.map->dim + 3];
+            do
+            { 
+                map0idx = &(OPP_mesh_relation_data[i]);
 
-            move_all_particles_to_cell__kernel(
-                (m),
-                &((double *)arg0.data)[map0idx * arg0.dim],       // const double *cell_ef,
-                &((double *)arg1.data)[i * arg1.dim],             // double *part_pos,
-                &((double *)arg2.data)[i * arg2.dim],             // double *part_vel,
-                &((double *)arg3.data)[i * arg3.dim],             // double *part_lc,
-                &((int *)arg4.data)[i * arg4.dim],                // int* current_cell_index,
-                &((double*)arg5.data)[map0idx * arg5.dim],        // const double *current_cell_volume,
-                &((double*)arg6.data)[map0idx * arg6.dim],        // const double *current_cell_det,
-                &((int*)arg7.data)[map0idx * arg7.dim],           // const int *cell_connectivity,
-                &((double*)arg8_dat_thread_data)[map1idx],        // double *node_charge_den0,
-                &((double*)arg8_dat_thread_data)[map2idx],        // double *node_charge_den1,
-                &((double*)arg8_dat_thread_data)[map3idx],        // double *node_charge_den2,
-                &((double*)arg8_dat_thread_data)[map4idx]         // double *node_charge_den3,
-            );  
-            
-            m.OPP_iteration_one = false;
-            m.OPP_inside_cell = true;
+                const int map1idx = arg8.map_data[*map0idx * arg8.map->dim + 0];
+                const int map2idx = arg8.map_data[*map0idx * arg8.map->dim + 1];
+                const int map3idx = arg8.map_data[*map0idx * arg8.map->dim + 2];
+                const int map4idx = arg8.map_data[*map0idx * arg8.map->dim + 3];
 
-        } while (m.OPP_move_status == (int)OPP_NEED_MOVE);
+                move_all_particles_to_cell__kernel(
+                    (m),
+                    &((double *)arg0.data)[*map0idx * arg0.dim], // cell_ef,
+                    &((double *)arg1.data)[i * arg1.dim],        // part_pos,
+                    &((double *)arg2.data)[i * arg2.dim],        // part_vel,
+                    &((double *)arg3.data)[i * arg3.dim],        // part_lc,
+                    &((int *)arg4.data)[i * arg4.dim],           // current_cell_index,
+                    &((double*)arg5.data)[*map0idx * arg5.dim],  // current_cell_volume,
+                    &((double*)arg6.data)[*map0idx * arg6.dim],  // current_cell_det,
+                    &((int*)arg7.data)[*map0idx * arg7.dim],     // cell_connectivity,
+                    &((double*)arg8_dat_thread_data)[map1idx],   // node_charge_den0,
+                    &((double*)arg8_dat_thread_data)[map2idx],   // node_charge_den1,
+                    &((double*)arg8_dat_thread_data)[map3idx],   // node_charge_den2,
+                    &((double*)arg8_dat_thread_data)[map4idx]    // node_charge_den3,
+                );  
 
-        if (m.OPP_move_status == OPP_NEED_REMOVE) /*outside the mesh*/
-        {  
-            remove_count[thr] += 1;
-            mesh_relation_data[i] = MAX_CELL_INDEX;
+            } while (opp_part_check_status(m, *map0idx, set, i, thr, thr));  
         }
-    
     }
 
-    for (int i = 0; i < nthreads; i++) set->particle_remove_count += remove_count[i];
+    opp_finalize_particle_move(set);
 
-    oppic_finalize_particle_move(set);
-    oppic_reduce_thread_level_data<double>(arg8);
+    opp_reduce_thread_level_data<double>(arg8);
+
+    opp_profiler->end("MoveToCells");
 }
 
 //*************************************************************************************************
-void oppic_par_loop_all__ComputeNodeChargeDensity(
-    oppic_set set,     // nodes_set
-    oppic_arg arg0,    // node_charge_density
-    oppic_arg arg1     // node_volume
+void opp_loop_all__ComputeNodeChargeDensity(
+    opp_set set,     // nodes_set
+    opp_arg arg0,    // node_charge_density
+    opp_arg arg1     // node_volume
 )
-{ TRACE_ME;
+{ 
     
-    if (FP_DEBUG) printf("FEMPIC - oppic_par_loop_all__ComputeNodeChargeDensity set_size %d\n", set->size);
+    if (FP_DEBUG) opp_printf("FEMPIC", "opp_loop_all__ComputeNodeChargeDensity set_size %d", set->size);
+
+    opp_profiler->start("ComputeNodeChargeDensity");
 
     int nthreads = omp_get_max_threads();
 
     #pragma omp parallel for
     for (int thr = 0; thr < nthreads; thr++)
     {
-        int start  = (set->size* thr)/nthreads;
-        int finish = (set->size*(thr+1))/nthreads;
+        size_t start  = ((size_t)set->size * thr) / nthreads;
+        size_t finish = ((size_t)set->size * (thr+1)) / nthreads;
 
-        for (int i = start; i < finish; i++)
+        for (size_t i = start; i < finish; i++)
         { 
             compute_node_charge_density__kernel(
                 &((double*)arg0.data)[i * arg0.dim],
@@ -242,33 +208,37 @@ void oppic_par_loop_all__ComputeNodeChargeDensity(
             );
         }
     }
+
+    opp_profiler->end("ComputeNodeChargeDensity");
 }
 
 //*************************************************************************************************
-void oppic_par_loop_all__ComputeElectricField(
-    oppic_set set,      // cells_set
-    oppic_arg arg0,     // cell_electric_field,
-    oppic_arg arg1,     // cell_shape_deriv,
-    oppic_arg arg2,     // node_potential0,
-    oppic_arg arg3,     // node_potential1,
-    oppic_arg arg4,     // node_potential2,
-    oppic_arg arg5      // node_potential3,
+void opp_loop_all__ComputeElectricField(
+    opp_set set,      // cells_set
+    opp_arg arg0,     // cell_electric_field,
+    opp_arg arg1,     // cell_shape_deriv,
+    opp_arg arg2,     // node_potential0,
+    opp_arg arg3,     // node_potential1,
+    opp_arg arg4,     // node_potential2,
+    opp_arg arg5      // node_potential3,
 )
-{ TRACE_ME;
+{ 
 
-    if (FP_DEBUG) printf("FEMPIC - oppic_par_loop_all__ComputeElectricField set_size %d\n", set->size);
+    if (FP_DEBUG) opp_printf("FEMPIC", "opp_loop_all__ComputeElectricField set_size %d", set->size);
+    
+    opp_profiler->start("ComputeElectricField");
 
     int nthreads = omp_get_max_threads();
 
-    int64_t set_size = set->size;
+    int set_size = set->size;
 
     #pragma omp parallel for
     for (int thr = 0; thr < nthreads; thr++)
     {
-        int64_t start  = (set_size * thr)/nthreads;
-        int64_t finish = (set_size * (thr+1))/nthreads;
+        size_t start  = ((size_t)set_size * thr) / nthreads;
+        size_t finish = ((size_t)set_size * (thr+1)) / nthreads;
 
-        for (int64_t i = start; i < finish; i++)
+        for (size_t i = start; i < finish; i++)
         { 
             const int map1idx = arg2.map_data[i * arg2.map->dim + 0];
             const int map2idx = arg2.map_data[i * arg2.map->dim + 1];
@@ -285,4 +255,6 @@ void oppic_par_loop_all__ComputeElectricField(
             );
         }
     }   
+
+    opp_profiler->end("ComputeElectricField"); 
 }

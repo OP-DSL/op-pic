@@ -1,4 +1,36 @@
 
+
+/* 
+BSD 3-Clause License
+
+Copyright (c) 2022, OP-DSL
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions are met:
+
+1. Redistributions of source code must retain the above copyright notice, this
+   list of conditions and the following disclaimer.
+
+2. Redistributions in binary form must reproduce the above copyright notice,
+   this list of conditions and the following disclaimer in the documentation
+   and/or other materials provided with the distribution.
+
+3. Neither the name of the copyright holder nor the names of its
+   contributors may be used to endorse or promote products derived from
+   this software without specific prior written permission.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+*/
+
 #include <opp_mpi.h>
 
 // MPI Halo related global variables
@@ -30,7 +62,7 @@ double t1, t2, c1, c2;
  *******************************************************************************/
 void opp_halo_create() 
 {
-    opp_printf("opp_halo_create", OPP_my_rank, "start");
+    if (OP_DEBUG) opp_printf("opp_halo_create", "start");
 
     // declare timers
     double cpu_t1, cpu_t2, wall_t1, wall_t2;
@@ -850,9 +882,10 @@ void opp_halo_create()
 
     for (int i = 0; i < OP_set_index; i++) 
     {
-        if (OP_set_list[i]->is_particle) continue;
-
         free(part_range[i]);
+
+        if (OP_set_list[i]->is_particle) continue;
+        
         free(core_elems[i]);
         free(exp_elems[i]);
     }
@@ -863,7 +896,7 @@ void opp_halo_create()
     op_timers(&cpu_t2, &wall_t2); // timer stop for list create
     // compute import/export lists creation time
     time = wall_t2 - wall_t1;
-    MPI_Reduce(&time, &max_time, 1, MPI_DOUBLE, MPI_MAX, OPP_MPI_ROOT, OP_MPI_WORLD);
+    MPI_Reduce(&time, &max_time, 1, MPI_DOUBLE, MPI_MAX, OPP_ROOT, OP_MPI_WORLD);
 
     // compute avg/min/max set sizes and exec sizes accross the MPI universe
     int avg_size = 0, min_size = 0, max_size = 0;
@@ -874,14 +907,14 @@ void opp_halo_create()
         if (set->is_particle) continue;
 
         // number of set elements first
-        MPI_Reduce(&set->size, &avg_size, 1, MPI_INT, MPI_SUM, OPP_MPI_ROOT,
+        MPI_Reduce(&set->size, &avg_size, 1, MPI_INT, MPI_SUM, OPP_ROOT,
                 OP_MPI_WORLD);
-        MPI_Reduce(&set->size, &min_size, 1, MPI_INT, MPI_MIN, OPP_MPI_ROOT,
+        MPI_Reduce(&set->size, &min_size, 1, MPI_INT, MPI_MIN, OPP_ROOT,
                 OP_MPI_WORLD);
-        MPI_Reduce(&set->size, &max_size, 1, MPI_INT, MPI_MAX, OPP_MPI_ROOT,
+        MPI_Reduce(&set->size, &max_size, 1, MPI_INT, MPI_MAX, OPP_ROOT,
                 OP_MPI_WORLD);
 
-        if (my_rank == OPP_MPI_ROOT) 
+        if (my_rank == OPP_ROOT) 
         {
             opp_printf("opp_halo_create", "Num of %8s (avg | min | max)", set->name);
             opp_printf("opp_halo_create", "total elems         %10d %10d %10d", avg_size / comm_size, min_size, max_size);
@@ -892,14 +925,14 @@ void opp_halo_create()
         max_size = 0;
 
         // number of OWNED elements second
-        MPI_Reduce(&set->core_size, &avg_size, 1, MPI_INT, MPI_SUM, OPP_MPI_ROOT,
+        MPI_Reduce(&set->core_size, &avg_size, 1, MPI_INT, MPI_SUM, OPP_ROOT,
                 OP_MPI_WORLD);
-        MPI_Reduce(&set->core_size, &min_size, 1, MPI_INT, MPI_MIN, OPP_MPI_ROOT,
+        MPI_Reduce(&set->core_size, &min_size, 1, MPI_INT, MPI_MIN, OPP_ROOT,
                 OP_MPI_WORLD);
-        MPI_Reduce(&set->core_size, &max_size, 1, MPI_INT, MPI_MAX, OPP_MPI_ROOT,
+        MPI_Reduce(&set->core_size, &max_size, 1, MPI_INT, MPI_MAX, OPP_ROOT,
                 OP_MPI_WORLD);
 
-        if (my_rank == OPP_MPI_ROOT) 
+        if (my_rank == OPP_ROOT) 
         {
             opp_printf("opp_halo_create", "core elems         %10d %10d %10d", avg_size / comm_size, min_size, max_size);
         }
@@ -909,13 +942,13 @@ void opp_halo_create()
 
         // number of exec halo elements third
         MPI_Reduce(&OP_import_exec_list[set->index]->size, &avg_size, 1, MPI_INT,
-                MPI_SUM, OPP_MPI_ROOT, OP_MPI_WORLD);
+                MPI_SUM, OPP_ROOT, OP_MPI_WORLD);
         MPI_Reduce(&OP_import_exec_list[set->index]->size, &min_size, 1, MPI_INT,
-                MPI_MIN, OPP_MPI_ROOT, OP_MPI_WORLD);
+                MPI_MIN, OPP_ROOT, OP_MPI_WORLD);
         MPI_Reduce(&OP_import_exec_list[set->index]->size, &max_size, 1, MPI_INT,
-                MPI_MAX, OPP_MPI_ROOT, OP_MPI_WORLD);
+                MPI_MAX, OPP_ROOT, OP_MPI_WORLD);
 
-        if (my_rank == OPP_MPI_ROOT) 
+        if (my_rank == OPP_ROOT) 
         {
             opp_printf("opp_halo_create", "exec halo elems     %10d %10d %10d", avg_size / comm_size, min_size, max_size);
         }
@@ -925,20 +958,20 @@ void opp_halo_create()
 
         // number of non-exec halo elements fourth
         MPI_Reduce(&OP_import_nonexec_list[set->index]->size, &avg_size, 1, MPI_INT,
-                MPI_SUM, OPP_MPI_ROOT, OP_MPI_WORLD);
+                MPI_SUM, OPP_ROOT, OP_MPI_WORLD);
         MPI_Reduce(&OP_import_nonexec_list[set->index]->size, &min_size, 1, MPI_INT,
-                MPI_MIN, OPP_MPI_ROOT, OP_MPI_WORLD);
+                MPI_MIN, OPP_ROOT, OP_MPI_WORLD);
         MPI_Reduce(&OP_import_nonexec_list[set->index]->size, &max_size, 1, MPI_INT,
-                MPI_MAX, OPP_MPI_ROOT, OP_MPI_WORLD);
+                MPI_MAX, OPP_ROOT, OP_MPI_WORLD);
 
-        if (my_rank == OPP_MPI_ROOT) 
+        if (my_rank == OPP_ROOT) 
         {
             opp_printf("opp_halo_create", "non-exec halo elems %10d %10d %10d", avg_size / comm_size, min_size, max_size);
         }
         avg_size = 0;
         min_size = 0;
         max_size = 0;
-        if (my_rank == OPP_MPI_ROOT) 
+        if (my_rank == OPP_ROOT) 
         {
             opp_printf("opp_halo_create", "-----------------------------------------------------");
         }
@@ -955,13 +988,13 @@ void opp_halo_create()
 
         // number of exec halo neighbors first
         MPI_Reduce(&OP_import_exec_list[set->index]->ranks_size, &avg_size, 1,
-                MPI_INT, MPI_SUM, OPP_MPI_ROOT, OP_MPI_WORLD);
+                MPI_INT, MPI_SUM, OPP_ROOT, OP_MPI_WORLD);
         MPI_Reduce(&OP_import_exec_list[set->index]->ranks_size, &min_size, 1,
-                MPI_INT, MPI_MIN, OPP_MPI_ROOT, OP_MPI_WORLD);
+                MPI_INT, MPI_MIN, OPP_ROOT, OP_MPI_WORLD);
         MPI_Reduce(&OP_import_exec_list[set->index]->ranks_size, &max_size, 1,
-                MPI_INT, MPI_MAX, OPP_MPI_ROOT, OP_MPI_WORLD);
+                MPI_INT, MPI_MAX, OPP_ROOT, OP_MPI_WORLD);
 
-        if (my_rank == OPP_MPI_ROOT) 
+        if (my_rank == OPP_ROOT) 
         {
             opp_printf("opp_halo_create", "MPI neighbors for exchanging %8s (avg | min | max)", set->name);
             opp_printf("opp_halo_create", "exec halo elems     %4d %4d %4d", avg_size / comm_size, min_size, max_size);
@@ -972,20 +1005,20 @@ void opp_halo_create()
 
         // number of non-exec halo neighbors second
         MPI_Reduce(&OP_import_nonexec_list[set->index]->ranks_size, &avg_size, 1,
-                MPI_INT, MPI_SUM, OPP_MPI_ROOT, OP_MPI_WORLD);
+                MPI_INT, MPI_SUM, OPP_ROOT, OP_MPI_WORLD);
         MPI_Reduce(&OP_import_nonexec_list[set->index]->ranks_size, &min_size, 1,
-                MPI_INT, MPI_MIN, OPP_MPI_ROOT, OP_MPI_WORLD);
+                MPI_INT, MPI_MIN, OPP_ROOT, OP_MPI_WORLD);
         MPI_Reduce(&OP_import_nonexec_list[set->index]->ranks_size, &max_size, 1,
-                MPI_INT, MPI_MAX, OPP_MPI_ROOT, OP_MPI_WORLD);
+                MPI_INT, MPI_MAX, OPP_ROOT, OP_MPI_WORLD);
 
-        if (my_rank == OPP_MPI_ROOT) 
+        if (my_rank == OPP_ROOT) 
         {
             opp_printf("opp_halo_create", "non-exec halo elems %4d %4d %4d", avg_size / comm_size, min_size, max_size);
         }
         avg_size = 0;
         min_size = 0;
         max_size = 0;
-        if (my_rank == OPP_MPI_ROOT) {
+        if (my_rank == OPP_ROOT) {
             opp_printf("opp_halo_create", "-----------------------------------------------------");
         }
     }
@@ -1012,16 +1045,16 @@ void opp_halo_create()
         }
     }
     int avg_halo_size;
-    MPI_Reduce(&tot_halo_size, &avg_halo_size, 1, MPI_INT, MPI_SUM, OPP_MPI_ROOT, OP_MPI_WORLD);
+    MPI_Reduce(&tot_halo_size, &avg_halo_size, 1, MPI_INT, MPI_SUM, OPP_ROOT, OP_MPI_WORLD);
 
     // print performance results
-    if (my_rank == OPP_MPI_ROOT) 
+    if (my_rank == OPP_ROOT) 
     {
         opp_printf("opp_halo_create", "Max total halo creation time = %lf", max_time);
         opp_printf("opp_halo_create", "Average (worst case) Halo size = %d Bytes", avg_halo_size / comm_size);
     }
 
-    opp_printf("opp_halo_create", OPP_my_rank, "end");
+    if (OP_DEBUG) opp_printf("opp_halo_create", "end");
 }
 
 /*******************************************************************************
@@ -1206,14 +1239,14 @@ void opp_halo_destroy()
         free(((op_mpi_buffer)(dat->mpi_reduc_buffer))->buf_nonexec);
         free(((op_mpi_buffer)(dat->mpi_reduc_buffer))->s_req);
         free(((op_mpi_buffer)(dat->mpi_reduc_buffer))->r_req);
-        ((op_mpi_buffer)(dat->mpi_reduc_buffer));
+        free((op_mpi_buffer)(dat->mpi_reduc_buffer));
     }
 }
 
 //****************************************
-int oppic_mpi_halo_exchanges(oppic_set set, int nargs, oppic_arg *args) 
+int opp_mpi_halo_exchanges(oppic_set set, int nargs, oppic_arg *args) 
 {
-    if (OP_DEBUG) opp_printf("oppic_mpi_halo_exchanges", "START");
+    if (OP_DEBUG) opp_printf("opp_mpi_halo_exchanges", "START");
 
     int size = set->size;
     bool direct_flag = true;
@@ -1253,12 +1286,12 @@ int oppic_mpi_halo_exchanges(oppic_set set, int nargs, oppic_arg *args)
 
             if (!already_done)
             {
-                if (OP_DEBUG) opp_printf("oppic_mpi_halo_exchanges", "opp_exchange_halo for dat [%s]", args[n].dat->name);
+                if (OP_DEBUG) opp_printf("opp_mpi_halo_exchanges", "opp_exchange_halo for dat [%s] exec_flag %d", args[n].dat->name, exec_flag);
                 opp_mpi_halo_exchange(&args[n], exec_flag);
             }
             // else
             // {
-            //     if (OP_DEBUG) opp_printf("oppic_mpi_halo_exchanges", "opp_exchange_halo already done for dat [%s]", args[n].dat->name);
+            //     if (OP_DEBUG) opp_printf("opp_mpi_halo_exchanges", "opp_exchange_halo already done for dat [%s]", args[n].dat->name);
             // }
         }
     }  
@@ -1277,7 +1310,7 @@ void opp_mpi_halo_exchange(oppic_arg *arg, int exec_flag)
     {
         opp_printf("opp_mpi_halo_exchange", "Error: Halo exchange already in flight for dat %s", dat->name);
         fflush(stdout);
-        MPI_Abort(OP_MPI_WORLD, 2);
+        opp_abort("opp_mpi_halo_exchange");
     }
 
     if (exec_flag == 0 && arg->idx == -1)
@@ -1306,15 +1339,19 @@ void opp_mpi_halo_exchange(oppic_arg *arg, int exec_flag)
         if (compare_sets(imp_exec_list->set, dat->set) == 0) 
         {
             opp_printf("opp_mpi_halo_exchange", "Error: Import list and set mismatch\n");
-            MPI_Abort(OP_MPI_WORLD, 2);
+            opp_abort("opp_mpi_halo_exchange Error: Import list and set mismatch");
         }
         if (compare_sets(exp_exec_list->set, dat->set) == 0) 
         {
             opp_printf("opp_mpi_halo_exchange", "Error: Export list and set mismatch\n");
-            MPI_Abort(OP_MPI_WORLD, 2);
+            opp_abort("opp_mpi_halo_exchange Error: Export list and set mismatch");
         }
 
         op_mpi_buffer mpi_buffer = (op_mpi_buffer)(dat->mpi_buffer);
+
+        opp_profiler->startMpiComm("", opp::OPP_Mesh);
+
+        double total_send_size = 0.0;
 
         int set_elem_index = -1;
         for (int i = 0; i < exp_exec_list->ranks_size; i++) 
@@ -1327,7 +1364,7 @@ void opp_mpi_halo_exchange(oppic_arg *arg, int exec_flag)
             }
             
 // printf("export exec from %d to %d data %10s, number of elements of size %d | sending:\n ",
-//             OPP_my_rank, exp_exec_list->ranks[i], dat->name,exp_exec_list->sizes[i]);
+//             OPP_rank, exp_exec_list->ranks[i], dat->name,exp_exec_list->sizes[i]);
 // double *b = (double*)&mpi_buffer->buf_exec[exp_exec_list->disps[i] * dat->size];
 // for (int el = 0; el < (dat->size * exp_exec_list->sizes[i])/8; el++)
 //   printf("%g ", b[el]);
@@ -1335,6 +1372,8 @@ void opp_mpi_halo_exchange(oppic_arg *arg, int exec_flag)
             
             MPI_Isend(&mpi_buffer->buf_exec[exp_exec_list->disps[i] * dat->size], dat->size * exp_exec_list->sizes[i], 
                 MPI_CHAR, exp_exec_list->ranks[i], dat->index, OP_MPI_WORLD, &mpi_buffer->s_req[mpi_buffer->s_num_req++]);
+            
+            total_send_size += (dat->size * exp_exec_list->sizes[i] * 1.0f);
         }
 
         int init = dat->set->size * dat->size;
@@ -1353,12 +1392,12 @@ void opp_mpi_halo_exchange(oppic_arg *arg, int exec_flag)
         if (compare_sets(imp_nonexec_list->set, dat->set) == 0) 
         {
             opp_printf("opp_mpi_halo_exchange", "Error: Non-Import list and set mismatch");
-            MPI_Abort(OP_MPI_WORLD, 2);
+            opp_abort("opp_mpi_halo_exchange Error: Non-Import list and set mismatch");
         }
         if (compare_sets(exp_nonexec_list->set, dat->set) == 0) 
         {
             opp_printf("opp_mpi_halo_exchange", "Error: Non-Export list and set mismatch");
-            MPI_Abort(OP_MPI_WORLD, 2);
+            opp_abort("opp_mpi_halo_exchange Error: Non-Export list and set mismatch");
         }
 
         for (int i = 0; i < exp_nonexec_list->ranks_size; i++) 
@@ -1371,7 +1410,7 @@ void opp_mpi_halo_exchange(oppic_arg *arg, int exec_flag)
             }
 
 // printf("export nonexec from %d to %d data %10s, number of elements of size %d | sending:\n ",
-//                 OPP_my_rank, exp_nonexec_list->ranks[i], dat->name,exp_nonexec_list->sizes[i]);
+//                 OPP_rank, exp_nonexec_list->ranks[i], dat->name,exp_nonexec_list->sizes[i]);
 // double *b = (double*)&mpi_buffer ->buf_nonexec[exp_nonexec_list->disps[i] * dat->size];
 // for (int el = 0; el < (dat->size * exp_nonexec_list->sizes[i])/8; el++)
 //   printf("%g ", b[el]);
@@ -1379,6 +1418,8 @@ void opp_mpi_halo_exchange(oppic_arg *arg, int exec_flag)
 
             MPI_Isend(&mpi_buffer->buf_nonexec[exp_nonexec_list->disps[i] * dat->size], dat->size * exp_nonexec_list->sizes[i], 
                 MPI_CHAR, exp_nonexec_list->ranks[i], dat->index, OP_MPI_WORLD, &mpi_buffer->s_req[mpi_buffer->s_num_req++]);
+            
+            total_send_size += (dat->size * exp_nonexec_list->sizes[i] * 1.0f);
         }
 
         int nonexec_init = (dat->set->size + imp_exec_list->size) * dat->size;
@@ -1393,6 +1434,10 @@ void opp_mpi_halo_exchange(oppic_arg *arg, int exec_flag)
             MPI_CHAR, imp_nonexec_list->ranks[i], dat->index, OP_MPI_WORLD, &mpi_buffer->r_req[mpi_buffer->r_num_req++]);
         }
         
+        opp_profiler->addTransferSize("", opp::OPP_Mesh, total_send_size, 1);
+
+        opp_profiler->endMpiComm("", opp::OPP_Mesh);
+
         // clear dirty bit
         dat->dirtybit = 0;
         arg->sent = 1;
@@ -1403,6 +1448,8 @@ void opp_mpi_halo_exchange(oppic_arg *arg, int exec_flag)
 void opp_mpi_halo_wait_all(int nargs, oppic_arg *args)
 {
     if (OP_DEBUG) opp_printf("opp_mpi_halo_wait_all", "START");
+
+    opp_profiler->startMpiComm("", opp::OPP_Mesh);
 
     for (int n = 0; n < nargs; n++) 
     {
@@ -1426,6 +1473,8 @@ void opp_mpi_halo_wait_all(int nargs, oppic_arg *args)
             arg->sent = 2; // set flag to indicate completed comm
         }
     }
+
+    opp_profiler->endMpiComm("", opp::OPP_Mesh);
 
     if (OP_DEBUG) opp_printf("opp_mpi_halo_wait_all", "END");
 }

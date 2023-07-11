@@ -37,12 +37,23 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <iostream>
 #include <trace.h>
 #include <opp_params.h>
+#include <opp_profiler.h>
 #include <oppic_util.h>
 #include <cstring>
 #include <limits.h>
 #include <inttypes.h>
 #include <stdio.h>
 #include <stdarg.h>
+#include <memory>
+
+#ifdef USE_PETSC
+    #include <petscksp.h>
+#endif
+
+#define opp_set oppic_set
+#define opp_map oppic_map
+#define opp_dat oppic_dat
+#define opp_arg oppic_arg
 
 //*************************************************************************************************
 
@@ -52,10 +63,10 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
     #define OP_DEBUG false
 #endif
 
-#ifdef OPP_MPI_ROOT
-    #undef OPP_MPI_ROOT
+#ifdef OPP_ROOT
+    #undef OPP_ROOT
 #endif
-#define OPP_MPI_ROOT 0
+#define OPP_ROOT 0
 
 #define MAX_CELL_INDEX     INT_MAX
 
@@ -80,6 +91,8 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #define ZERO_ull       0
 #define ZERO_bool      0
 
+#define OPP_DEFAULT_GPU_THREADS_PER_BLOCK 32
+
 #ifdef USE_THRUST
     #include <thrust/device_vector.h>
     #include <thrust/host_vector.h>
@@ -90,7 +103,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
     #define THRUST_INT void
 #endif
 
-#define LOG_STR_LEN 1000
+#define LOG_STR_LEN 100000
 
 //*************************************************************************************************
 enum oppic_iterate_type
@@ -108,8 +121,8 @@ enum opp_move_status
 
 enum opp_data_type 
 {
-    OPP_TYPE_INT = 0,
-    OPP_TYPE_REAL,
+    DT_INT = 0,
+    DT_REAL,
 };
 
 enum DeviceType
@@ -139,6 +152,7 @@ enum opp_reset
     OPP_Reset_Set,
     OPP_Reset_ieh,
     OPP_Reset_inh,
+    OPP_Reset_All,
 };
 
 enum opp_reduc_comm
@@ -254,9 +268,9 @@ struct oppic_dat_core {
 #define op_set oppic_set
 #define op_map oppic_map
 #define op_dat oppic_dat
-#define OP_set_index oppic_sets.size()
-#define OP_map_index oppic_maps.size()
-#define OP_dat_index oppic_dats.size()
+#define OP_set_index (int)oppic_sets.size()
+#define OP_map_index (int)oppic_maps.size()
+#define OP_dat_index (int)oppic_dats.size()
 #define OP_set_list oppic_sets
 #define OP_map_list oppic_maps
 #define OP_dat_list oppic_dats
@@ -264,7 +278,7 @@ struct oppic_dat_core {
 //*************************************************************************************************
 // oppic API calls
 
-void oppic_init_core(int argc, char **argv, opp::Params* params);
+void oppic_init_core(int argc, char **argv);
 void oppic_exit_core();
 
 void oppic_set_args_core(char *argv);
@@ -291,9 +305,11 @@ oppic_set oppic_decl_particle_set_core(char const *name, oppic_set cells_set);
 
 oppic_dat oppic_decl_particle_dat_core(oppic_set set, int dim, char const *type, int size, char *data, char const *name, bool cell_index = false);
 
-void oppic_decl_const_impl(int dim, int size, char* data, const char* name);
+void opp_decl_const_impl(int dim, int size, char* data, const char* name);
 
-void oppic_increase_particle_count_core(oppic_set particles_set, const int num_particles_to_insert);
+bool oppic_increase_particle_count_core(oppic_set particles_set, const int num_particles_to_insert);
+
+bool opp_inc_part_count_with_distribution_core(oppic_set particles_set, int num_particles_to_insert, oppic_dat part_dist);
 
 void oppic_reset_num_particles_to_insert_core(oppic_set set);
 
@@ -322,29 +338,34 @@ extern int OP_auto_soa;
 extern int OP_part_alloc_mult;
 extern int OP_auto_sort;
 extern int OPP_mpi_part_alloc_mult;
-extern int OPP_my_rank;
+extern int OPP_rank;
 extern int OPP_comm_size;
 extern int OPP_comm_iteration;
+extern int OPP_max_comm_iteration;
 extern int OPP_iter_start;
 extern int OPP_iter_end;
 extern int *OPP_mesh_relation_data;
+extern int OPP_main_loop_iter;
+extern int OPP_gpu_threads_per_block;
+extern size_t OPP_gpu_shared_mem_per_block;
 
 extern std::vector<oppic_set> oppic_sets;
 extern std::vector<oppic_map> oppic_maps;
 extern std::vector<oppic_dat> oppic_dats;
 
-extern opp::Params* opp_params;
+extern std::unique_ptr<opp::Params> opp_params;
+extern std::unique_ptr<opp::Profiler> opp_profiler;
 
 void* oppic_load_from_file_core(const char* file_name, int set_size, int dim, char const *type, int size);
 
 inline void getDatTypeSize(opp_data_type dtype, std::string& type, int& size)
 {
-    if (dtype == OPP_TYPE_REAL)
+    if (dtype == DT_REAL)
     {
         type = "double";
         size = sizeof(OPP_REAL);
     }
-    else if (dtype == OPP_TYPE_INT)
+    else if (dtype == DT_INT)
     {
         type = "int";
         size = sizeof(OPP_INT);       
@@ -355,7 +376,7 @@ inline void getDatTypeSize(opp_data_type dtype, std::string& type, int& size)
     }
 }
 
-inline void opp_printf(char* function, int rank, char *format, ...)
+inline void opp_printf(const char* function, int rank, const char *format, ...)
 {
     char buf[LOG_STR_LEN];
     va_list args;
@@ -363,10 +384,10 @@ inline void opp_printf(char* function, int rank, char *format, ...)
     vsnprintf(buf, LOG_STR_LEN, format, args);
     va_end(args);
 
-    printf("%s[%d] - %s\n", function, rank, buf);
+    printf("%s[%d][%d] - %s\n", function, rank, OPP_main_loop_iter, buf);
 }
 
-inline void opp_printf(char* function, char *format, ...)
+inline void opp_printf(const char* function, const char *format, ...)
 {
     char buf[LOG_STR_LEN];
     va_list args;
@@ -374,7 +395,7 @@ inline void opp_printf(char* function, char *format, ...)
     vsnprintf(buf, LOG_STR_LEN, format, args);
     va_end(args);
 
-    printf("%s[%d] - %s\n", function, OPP_my_rank, buf);
+    printf("%s[%d][%d] - %s\n", function, OPP_rank, OPP_main_loop_iter, buf);
 }
 
 template <typename T> 
@@ -382,8 +403,6 @@ inline void opp_reduce_dat_element(T* out_dat, const T* in_dat, int dim, opp_red
 {
     for (int d = 0; d < dim; d++)
     {
-// opp_printf("SS", "%lf %lf", in, out);
-
         switch (reduc_comm)
         {
             case OPP_Reduc_SUM_Comm: 
@@ -395,6 +414,8 @@ inline void opp_reduce_dat_element(T* out_dat, const T* in_dat, int dim, opp_red
             case OPP_Reduc_MIN_Comm: 
                 out_dat[d] = MIN(out_dat[d], in_dat[d]);
                 break;
+            default:
+                opp_printf("opp_reduce_dat_element", "Unhandled reduction type");
         }  
     }   
 }

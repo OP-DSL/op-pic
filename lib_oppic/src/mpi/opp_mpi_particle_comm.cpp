@@ -1,4 +1,35 @@
 
+/* 
+BSD 3-Clause License
+
+Copyright (c) 2022, OP-DSL
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions are met:
+
+1. Redistributions of source code must retain the above copyright notice, this
+   list of conditions and the following disclaimer.
+
+2. Redistributions in binary form must reproduce the above copyright notice,
+   this list of conditions and the following disclaimer in the documentation
+   and/or other materials provided with the distribution.
+
+3. Neither the name of the copyright holder nor the names of its
+   contributors may be used to endorse or promote products derived from
+   this software without specific prior written permission.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+*/
+
 #include <opp_mpi.h>
 
 #define MPI_COUNT_EXCHANGE 0
@@ -12,6 +43,8 @@ void opp_part_pack(oppic_set set, int index, int send_rank)
 {
     // if (OP_DEBUG) opp_printf("opp_part_pack", "set [%s] | index %d | send_rank %d", set->name, index, send_rank);
 
+    opp_profiler->start("Pack");
+
     opp_all_mpi_part_buffers* send_buffers = (opp_all_mpi_part_buffers*)set->mpi_part_buffers;
 
     // check whether send_rank is a neighbour or not
@@ -21,7 +54,7 @@ void opp_part_pack(oppic_set set, int index, int send_rank)
         {
             opp_printf("opp_part_pack", "Error: send_rank %d is not a neighbour, cannot send index %d of set [%s]",
                 send_rank, index, set->name);
-            MPI_Abort(OP_MPI_WORLD, 1);
+            opp_abort("opp_part_pack");
         }
     }
 
@@ -52,7 +85,7 @@ void opp_part_pack(oppic_set set, int index, int send_rank)
     int displacement = 0;
 
     // pack the particle data from dats into the export buffer 
-    for (int i = 0; i < particle_dats.size(); i++)
+    for (int i = 0; i < (int)particle_dats.size(); i++)
     {
         oppic_dat& dat = particle_dats[i];
 
@@ -82,6 +115,8 @@ void opp_part_pack(oppic_set set, int index, int send_rank)
     send_rank_buffer.buf_export_index += set->particle_size;
     (send_buffers->export_counts)[send_rank] += 1;
 
+    opp_profiler->end("Pack");
+
     // if (OP_DEBUG) opp_printf("opp_part_pack", "END send_rank %d exported count %d", send_rank, (send_buffers->export_counts)[send_rank]);
 }
 
@@ -90,6 +125,8 @@ void opp_part_unpack(oppic_set set)
 {
     if (OP_DEBUG) opp_printf("opp_part_unpack", "set [%s]", set->name);
 
+    opp_profiler->start("Unpack");
+
     std::vector<oppic_dat>& particle_dats = *(set->particle_dats);
     int num_particles = 0;
 
@@ -97,7 +134,7 @@ void opp_part_unpack(oppic_set set)
     std::vector<int>& neighbours = receive_buffers->neighbours;
 
     // count the number of particles to be received from all ranks
-    for (int i = 0; i < neighbours.size(); i++)
+    for (int i = 0; i < (int)neighbours.size(); i++)
     {
         int neighbour_rank = neighbours[i];
         num_particles += (receive_buffers->import_counts)[neighbour_rank];
@@ -107,10 +144,15 @@ void opp_part_unpack(oppic_set set)
     {
         int particle_size = set->particle_size;
 
-        oppic_increase_particle_count_core(set, num_particles);
+        if (!oppic_increase_particle_count_core(set, num_particles))
+        {
+            opp_printf("opp_part_unpack", "Error: Failed to increase particle count of particle set [%s]", set->name);
+            opp_abort("opp_part_unpack");
+        }
+
         int new_part_index = (set->size - set->diff);
 
-        for (int i = 0; i < neighbours.size(); i++)
+        for (int i = 0; i < (int)neighbours.size(); i++)
         {
             int neighbour_rank = neighbours[i];
 
@@ -123,7 +165,7 @@ void opp_part_unpack(oppic_set set)
                 char* part_buffer = &(receive_rank_buffer.buf_import[particle_size * part]);
                 int displacement = 0;
 
-                for (int i = 0; i < particle_dats.size(); i++)
+                for (int i = 0; i < (int)particle_dats.size(); i++)
                 {
                     oppic_dat& dat = particle_dats[i];
 
@@ -154,19 +196,22 @@ void opp_part_unpack(oppic_set set)
         }
     }
 
+    opp_profiler->end("Unpack");
+
     if (OP_DEBUG) opp_printf("opp_part_unpack", "END");
 }
 
 //*******************************************************************************
-bool opp_part_check_status(opp_move_var& m, int map0idx, oppic_set set, int particle_index, int& remove_count) 
+bool opp_part_check_status(opp_move_var& m, int map0idx, oppic_set set, 
+    int particle_index, int& remove_count, int thread) 
 {
-    m.OPP_iteration_one = false;
+    m.iteration_one = false;
 
-    if (m.OPP_move_status == OPP_MOVE_DONE)
+    if (m.move_status == OPP_MOVE_DONE)
     {
         return false;
     }
-    else if (m.OPP_move_status == OPP_NEED_REMOVE)
+    else if (m.move_status == OPP_NEED_REMOVE)
     {
         remove_count += 1;
         OPP_mesh_relation_data[particle_index] = MAX_CELL_INDEX;
@@ -194,14 +239,14 @@ bool opp_part_check_status(opp_move_var& m, int map0idx, oppic_set set, int part
         opp_part_pack(set, particle_index, comm_data.cell_residing_rank);
         
         // This particle is already packed, hence needs to be removed from the current rank
-        m.OPP_move_status = OPP_NEED_REMOVE; 
+        m.move_status = OPP_NEED_REMOVE; 
         remove_count += 1;
         OPP_mesh_relation_data[particle_index] = MAX_CELL_INDEX;
 
         return false;
     }
 
-    // map0idx is an own cell and m.OPP_move_status == OPP_NEED_MOVE
+    // map0idx is an own cell and m.move_status == OPP_NEED_MOVE
     return true;
 }
 
@@ -209,6 +254,8 @@ bool opp_part_check_status(opp_move_var& m, int map0idx, oppic_set set, int part
 void opp_part_exchange(oppic_set set)
 {
     if (OP_DEBUG) opp_printf("opp_part_exchange", "set [%s] - particle size [%d]", set->name, set->particle_size);
+
+    opp_profiler->start("Exchange");
 
     opp_all_mpi_part_buffers* mpi_buffers = (opp_all_mpi_part_buffers*)set->mpi_part_buffers;
 
@@ -225,6 +272,8 @@ void opp_part_exchange(oppic_set set)
     std::vector<MPI_Request> send_req_countEx(neighbour_count);
     std::vector<MPI_Request> recv_req_countEx(neighbour_count);
 
+    opp_profiler->startMpiComm("", opp::OPP_Particle);
+
     // send/receive send_counts to/from only to neighbours
     for (int i = 0; i < neighbour_count; i++)
     {
@@ -236,6 +285,8 @@ void opp_part_exchange(oppic_set set)
         int& recv_count = mpi_buffers->import_counts[neighbour_rank];
         MPI_Irecv(&recv_count, 1, MPI_INT, neighbour_rank, MPI_COUNT_EXCHANGE, OP_MPI_WORLD, &(recv_req_countEx[i]));
     }
+
+    double total_send_size = 0.0;
 
     // send the particle data only to neighbours
     for (int i = 0; i < neighbour_count; i++)
@@ -261,7 +312,11 @@ void opp_part_exchange(oppic_set set)
         MPI_Request req;
         MPI_Isend(send_buffer, send_size, MPI_CHAR, neighbour_rank, MPI_TAG_PART_EX, OP_MPI_WORLD, &req);
         mpi_buffers->send_req.push_back(req);
+
+        total_send_size += (send_size * 1.0f);
     }
+
+    opp_profiler->addTransferSize("", opp::OPP_Particle, total_send_size, (size_t)(total_send_size / set->particle_size));
 
     // wait for the counts to receive only from neighbours
     MPI_Waitall(neighbour_count, &recv_req_countEx[0], MPI_STATUSES_IGNORE);
@@ -314,6 +369,10 @@ void opp_part_exchange(oppic_set set)
         mpi_buffers->buffers[it->first].buf_export_index = 0; // make the export index of that rank to zero for the next iteration
     }
 
+    opp_profiler->endMpiComm("", opp::OPP_Particle);
+
+    opp_profiler->end("Exchange");
+
     if (OP_DEBUG) opp_printf("opp_part_exchange", "END");
 }
 
@@ -329,10 +388,13 @@ void opp_part_wait_all(oppic_set set)
 
     // std::vector<MPI_Status> recv_status(recv_req.size());
     // std::vector<MPI_Status> send_status(send_req.size());
+    opp_profiler->startMpiComm("", opp::OPP_Particle);
 
     // wait till all the particles from all the ranks are received
     MPI_Waitall(send_req.size(), &(send_req[0]), MPI_STATUSES_IGNORE); // &(send_status[0])); //
     MPI_Waitall(recv_req.size(), &(recv_req[0]), MPI_STATUSES_IGNORE); // &(recv_status[0])); //
+
+    opp_profiler->endMpiComm("", opp::OPP_Particle); // started at opp_part_exchange()
 
     send_req.clear();
     recv_req.clear();
@@ -360,8 +422,12 @@ bool opp_part_check_all_done(oppic_set set)
     bool bool_ret = false;
     bool* buffer_recv = (bool *)malloc(OPP_comm_size * sizeof(bool));
 
+    opp_profiler->startMpiComm("", opp::OPP_Particle);
+
     // gather from all MPI ranks to see whether atleast one rank needs to communicate to another
     MPI_Allgather(&imported_parts, 1, MPI_C_BOOL, buffer_recv, 1, MPI_C_BOOL, OP_MPI_WORLD);
+
+    opp_profiler->endMpiComm("", opp::OPP_Particle);
 
     std::string log = "";
     for (int i = 0; i < OPP_comm_size; i++)
@@ -375,6 +441,8 @@ bool opp_part_check_all_done(oppic_set set)
     if (OP_DEBUG) 
         opp_printf("opp_part_check_all_done", "%s -%s", (bool_ret ? "ITER AGAIN" : "ALL DONE"), log.c_str());
 
+    free(buffer_recv);
+    
     return !bool_ret;
 }
 
@@ -414,7 +482,7 @@ void opp_part_set_comm_init(oppic_set set)
         int send_size = exp_exec_list->sizes[i];
     
         MPI_Request req;
-        MPI_Isend(send_buffer, send_size, MPI_INT, neighbour_rank, OPP_my_rank, OP_MPI_WORLD, &req);
+        MPI_Isend(send_buffer, send_size, MPI_INT, neighbour_rank, OPP_rank, OP_MPI_WORLD, &req);
         send_req.push_back(req);  
 
         //print the per rank send buffers
@@ -449,13 +517,13 @@ void opp_part_set_comm_init(oppic_set set)
     // print the per rank received buffers
     if (OP_DEBUG)
     {
-        for (int i = 0; i < recv_buffers.size(); i++) 
+        for (int i = 0; i < (int)recv_buffers.size(); i++) 
         {
             // what I have (mappings) in import exec buffers, mappings before renumbering from that rank
             int* imp_buffer = &(imp_exec_list->list[imp_exec_list->disps[i]]); 
 
             std::string log = "";
-            for (int k = 0; k < recv_buffers[i].size(); k++)
+            for (int k = 0; k < (int)recv_buffers[i].size(); k++)
                 log += std::to_string((recv_buffers[i])[k]) + "|" + std::to_string(imp_buffer[k]) + " ";  
 
             opp_printf("opp_part_set_comm_init", "%s RECEIVE neighbour_rank %d recv_size %d (new|old) -> %s", 
@@ -465,11 +533,11 @@ void opp_part_set_comm_init(oppic_set set)
 
     if (true) // TODO : this might break existing OP2 functionality, check for issues
     { 
-        for (int i = 0; i < recv_buffers.size(); i++) 
+        for (int i = 0; i < (int)recv_buffers.size(); i++) 
         {
             int* imp_buffer = &(imp_exec_list->list[imp_exec_list->disps[i]]); 
             
-            for (int k = 0; k < recv_buffers[i].size(); k++)
+            for (int k = 0; k < (int)recv_buffers[i].size(); k++)
                 imp_buffer[k] = (recv_buffers[i])[k];  
         }
     }
@@ -538,6 +606,10 @@ void opp_part_set_comm_init(oppic_set set)
 
     set->mpi_part_buffers = (void*)mpi_buffers;
 
+    opp_profiler->reg("Pack");
+    opp_profiler->reg("Exchange");
+    opp_profiler->reg("Unpack");
+
     if (OP_DEBUG) opp_printf("opp_part_set_comm_init", "set: %s END", set->name); 
 }
 
@@ -546,7 +618,7 @@ void opp_part_comm_destroy()
 {
     if (OP_DEBUG) opp_printf("opp_part_comm_destroy", "START"); 
 
-    for (int i = 0; i < oppic_sets.size(); i++)
+    for (int i = 0; i < (int)oppic_sets.size(); i++)
     {
         oppic_set set = oppic_sets[i];
 

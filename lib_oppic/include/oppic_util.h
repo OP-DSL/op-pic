@@ -82,3 +82,16 @@ int compare_sets(oppic_set set1, oppic_set set2);
 
 void op_timers(double *cpu, double *et); 
 
+template <typename T>
+std::string str(T value, std::string format) {
+    char buffer[32];
+    //int numChars = snprintf(buffer, sizeof(buffer), format.c_str(), value);
+    snprintf(buffer, sizeof(buffer), format.c_str(), value);
+    return std::string(buffer);
+}
+
+double rnd();
+
+void reset_seed();
+
+double* get_dandom_distriution(int count, int dim);

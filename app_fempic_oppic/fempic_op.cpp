@@ -53,7 +53,7 @@ int main(int argc, char **argv)
     opp::Params params(argv[1]);
     params.write(std::cout);
 
-    FieldPointers mesh = LoadMesh(params, argc, argv);
+    std::shared_ptr<FieldPointers> mesh = LoadMesh(params, argc, argv);
 
     double plasma_den = params.get<OPP_REAL>("plasma_den");
     double dt = params.get<OPP_REAL>("dt");
@@ -68,38 +68,41 @@ int main(int argc, char **argv)
     { // Start Scope for oppic
         oppic_init(argc, argv, &params);
  
-        oppic_set nodes_set            = oppic_decl_set(mesh.n_nodes, "mesh_nodes");
-        oppic_set cells_set            = oppic_decl_set(mesh.n_cells, "mesh_cells");
-        oppic_set ifaces_set           = oppic_decl_set(mesh.n_ifaces, "inlet_faces_cells");
+        oppic_set nodes_set            = oppic_decl_set(mesh->n_nodes, "mesh_nodes");
+        oppic_set cells_set            = oppic_decl_set(mesh->n_cells, "mesh_cells");
+        oppic_set ifaces_set           = oppic_decl_set(mesh->n_ifaces, "inlet_faces_cells");
         oppic_set particles_set        = oppic_decl_particle_set("particles", cells_set); 
 
-        oppic_map cell_to_nodes_map    = oppic_decl_map(cells_set,  nodes_set, NODES_PER_CELL,  mesh.cell_to_nodes,  "cell_to_nodes_map");
-        oppic_map cell_to_cell_map     = oppic_decl_map(cells_set,  cells_set, NEIGHBOUR_CELLS, mesh.cell_to_cell,   "cell_to_cell_map"); 
-        oppic_map iface_to_cell_map    = oppic_decl_map(ifaces_set, cells_set, 1,               mesh.iface_to_cell,  "iface_to_cell_map"); 
+        oppic_map cell_to_nodes_map    = oppic_decl_map(cells_set,  nodes_set, NODES_PER_CELL,  mesh->cell_to_nodes,  "cell_to_nodes_map");
+        oppic_map cell_to_cell_map     = oppic_decl_map(cells_set,  cells_set, NEIGHBOUR_CELLS, mesh->cell_to_cell,   "cell_to_cell_map"); 
+        oppic_map iface_to_cell_map    = oppic_decl_map(ifaces_set, cells_set, 1,               mesh->iface_to_cell,  "iface_to_cell_map"); 
 
-        oppic_dat cell_determinants    = oppic_decl_dat(cells_set, (NEIGHBOUR_CELLS*DET_FIELDS), OPP_TYPE_REAL, (char*)mesh.cell_det,         "cell_determinants");  
-        oppic_dat cell_volume          = oppic_decl_dat(cells_set, 1,                            OPP_TYPE_REAL, (char*)mesh.cell_volume,      "cell_volume");        
-        oppic_dat cell_electric_field  = oppic_decl_dat(cells_set, DIMENSIONS,                   OPP_TYPE_REAL, (char*)mesh.cell_ef,          "cell_electric_field");
-        oppic_dat cell_shape_deriv     = oppic_decl_dat(cells_set, (NODES_PER_CELL*DIMENSIONS),  OPP_TYPE_REAL, (char*)mesh.cell_shape_deriv, "cell_shape_deriv"); 
+        oppic_dat cell_determinants    = oppic_decl_dat(cells_set, (NEIGHBOUR_CELLS*DET_FIELDS), OPP_TYPE_REAL, (char*)mesh->cell_det,         "cell_determinants");  
+        oppic_dat cell_volume          = oppic_decl_dat(cells_set, 1,                            OPP_TYPE_REAL, (char*)mesh->cell_volume,      "cell_volume");        
+        oppic_dat cell_electric_field  = oppic_decl_dat(cells_set, DIMENSIONS,                   OPP_TYPE_REAL, (char*)mesh->cell_ef,          "cell_electric_field");
+        oppic_dat cell_shape_deriv     = oppic_decl_dat(cells_set, (NODES_PER_CELL*DIMENSIONS),  OPP_TYPE_REAL, (char*)mesh->cell_shape_deriv, "cell_shape_deriv"); 
    
-        oppic_dat node_volume          = oppic_decl_dat(nodes_set, 1, OPP_TYPE_REAL, (char*)mesh.node_volume,  "node_volume");        
-        oppic_dat node_potential       = oppic_decl_dat(nodes_set, 1, OPP_TYPE_REAL, (char*)mesh.node_pot,     "node_potential");     
-        oppic_dat node_charge_density  = oppic_decl_dat(nodes_set, 1, OPP_TYPE_REAL, (char*)mesh.node_ion_den, "node_charge_density");
+        oppic_dat node_volume          = oppic_decl_dat(nodes_set, 1,          OPP_TYPE_REAL, (char*)mesh->node_volume,  "node_volume");        
+        oppic_dat node_potential       = oppic_decl_dat(nodes_set, 1,          OPP_TYPE_REAL, (char*)mesh->node_pot,     "node_potential");     
+        oppic_dat node_charge_density  = oppic_decl_dat(nodes_set, 1,          OPP_TYPE_REAL, (char*)mesh->node_ion_den, "node_charge_density");
+        oppic_dat node_pos             = oppic_decl_dat(nodes_set, DIMENSIONS, OPP_TYPE_REAL, (char*)mesh->node_pos,     "node_pos");     
+        oppic_dat node_type            = oppic_decl_dat(nodes_set, 1,          OPP_TYPE_INT,  (char*)mesh->node_type,    "node_type");
+        oppic_dat node_bnd_pot         = oppic_decl_dat(nodes_set, 1,          OPP_TYPE_REAL, (char*)mesh->node_bnd_pot, "node_bnd_pot");
 
-        oppic_dat iface_v_normal       = oppic_decl_dat(ifaces_set, DIMENSIONS, OPP_TYPE_REAL, (char*)mesh.iface_v_normal,      "iface_v_normal");        
-        oppic_dat iface_u_normal       = oppic_decl_dat(ifaces_set, DIMENSIONS, OPP_TYPE_REAL, (char*)mesh.iface_u_normal,      "iface_u_normal"); 
-        oppic_dat iface_normal         = oppic_decl_dat(ifaces_set, DIMENSIONS, OPP_TYPE_REAL, (char*)mesh.iface_normal,        "iface_normal");     
-        oppic_dat iface_area           = oppic_decl_dat(ifaces_set, 1,          OPP_TYPE_REAL, (char*)mesh.iface_area,          "iface_area");
-        oppic_dat iface_inj_part_dist  = oppic_decl_dat(ifaces_set, 1,          OPP_TYPE_INT,  (char*)mesh.iface_inj_part_dist, "iface_inj_part_dist");
-        oppic_dat iface_node_pos       = oppic_decl_dat(ifaces_set, DIMENSIONS, OPP_TYPE_REAL, (char*)mesh.iface_node_pos,      "iface_node_pos"); 
+        oppic_dat iface_v_normal       = oppic_decl_dat(ifaces_set, DIMENSIONS, OPP_TYPE_REAL, (char*)mesh->iface_v_normal,      "iface_v_normal");        
+        oppic_dat iface_u_normal       = oppic_decl_dat(ifaces_set, DIMENSIONS, OPP_TYPE_REAL, (char*)mesh->iface_u_normal,      "iface_u_normal"); 
+        oppic_dat iface_normal         = oppic_decl_dat(ifaces_set, DIMENSIONS, OPP_TYPE_REAL, (char*)mesh->iface_normal,        "iface_normal");     
+        oppic_dat iface_area           = oppic_decl_dat(ifaces_set, 1,          OPP_TYPE_REAL, (char*)mesh->iface_area,          "iface_area");
+        oppic_dat iface_inj_part_dist  = oppic_decl_dat(ifaces_set, 1,          OPP_TYPE_INT,  (char*)mesh->iface_inj_part_dist, "iface_inj_part_dist");
+        oppic_dat iface_node_pos       = oppic_decl_dat(ifaces_set, DIMENSIONS, OPP_TYPE_REAL, (char*)mesh->iface_node_pos,      "iface_node_pos"); 
 
         oppic_dat part_position        = oppic_decl_particle_dat(particles_set, DIMENSIONS,     OPP_TYPE_REAL, nullptr, "part_position");
         oppic_dat part_velocity        = oppic_decl_particle_dat(particles_set, DIMENSIONS,     OPP_TYPE_REAL, nullptr, "part_velocity");    
         oppic_dat part_lc              = oppic_decl_particle_dat(particles_set, NODES_PER_CELL, OPP_TYPE_REAL, nullptr, "part_lc");
         oppic_dat part_mesh_relation   = oppic_decl_particle_dat(particles_set, 1,              OPP_TYPE_INT,  nullptr, "part_mesh_relation", true); // new cell index field
 
-        oppic_set dummy_part_set       = oppic_decl_particle_set(mesh.n_approx_injected, "dummy particles", cells_set); 
-        oppic_dat dum_part_random      = oppic_decl_dat(dummy_part_set, 2, OPP_TYPE_REAL, (char*)mesh.dummy_part_random, "dum_part_random");
+        oppic_set dummy_part_set       = oppic_decl_particle_set(mesh->n_approx_injected, "dummy particles", cells_set); 
+        oppic_dat dum_part_random      = oppic_decl_particle_dat(dummy_part_set, 2, OPP_TYPE_REAL, (char*)mesh->dummy_part_random, "dum_part_random");
 
         oppic_decl_const<double>(1, &spwt,         "CONST_spwt");
         oppic_decl_const<double>(1, &ion_velocity, "CONST_ion_velocity");
@@ -108,9 +111,10 @@ int main(int argc, char **argv)
         oppic_decl_const<double>(1, &mass,         "CONST_mass");
         oppic_decl_const<double>(1, &charge,       "CONST_charge");
 
-        mesh.DeleteValues();
+        mesh->DeleteValues();
 
-        mesh.solver->enrich_cell_shape_deriv(cell_shape_deriv);
+        std::shared_ptr<FESolver> solver = std::make_shared<FESolver>(&params, cells_set, cell_to_nodes_map, node_type, node_pos, node_bnd_pot, argc, argv);
+        solver->enrich_cell_shape_deriv(cell_shape_deriv);
 
         auto start = std::chrono::system_clock::now();
         auto start_iter1 = std::chrono::system_clock::now();
@@ -167,10 +171,10 @@ int main(int argc, char **argv)
                 oppic_arg_dat(node_volume,          OP_READ)     // node_volume
             );
 
-            mesh.solver->computePhi(  // TODO: Change this to kernel calls
-                mesh.fesolver_method,
+            solver->computePhi(  // TODO: Change this to kernel calls
                 oppic_arg_dat(node_potential,      OP_WRITE),
-                oppic_arg_dat(node_charge_density, OP_READ)
+                oppic_arg_dat(node_charge_density, OP_READ),
+                oppic_arg_dat(node_bnd_pot,        OP_READ)
             );
 
             oppic_reset_dat(cell_electric_field, (char*)opp_zero_double16); 
@@ -188,7 +192,7 @@ int main(int argc, char **argv)
                 double max_den = 0.0, max_phi = 0.0;
                 if (params.get<OPP_BOOL>("check_max_values"))
                 {
-                    for (int n = 0; n< mesh.n_nodes; n++) // ideally, need to copy data from device to host, but at this point host has correct data
+                    for (int n = 0; n< mesh->n_nodes; n++) // ideally, need to copy data from device to host, but at this point host has correct data
                     {
                         if (((double*)node_charge_density->data)[n] > max_den) max_den = ((double*)node_charge_density->data)[n];
                         if (abs(((double*)node_potential->data)[n]) > max_phi) max_phi = abs(((double*)node_potential->data)[n]);   

@@ -75,12 +75,18 @@ __device__ void inject_ions__kernel_gpu(
         b = (1 - b);
     }
 
-    for (int i = 0; i < DIMENSIONS; i++) 
+    for (int i = 0; i < DIM; i++) 
     {
-        part_pos[i * injectIons_stride_OPP_CUDA_0] = a * iface_u[i * injectIons_stride_OPP_CUDA_5] + b * iface_v[i * injectIons_stride_OPP_CUDA_6] + node_pos[i * injectIons_stride_OPP_CUDA_8];
+        part_pos[i * injectIons_stride_OPP_CUDA_0] = 
+            a * iface_u[i * injectIons_stride_OPP_CUDA_5] + 
+            b * iface_v[i * injectIons_stride_OPP_CUDA_6] + 
+            node_pos[i * injectIons_stride_OPP_CUDA_8];
 
-        part_vel[i * injectIons_stride_OPP_CUDA_1] = (iface_normal[i * injectIons_stride_OPP_CUDA_7] * CONST_ion_velocity_cuda);
-        part_vel[i * injectIons_stride_OPP_CUDA_1] -= CONST_charge_cuda / CONST_mass_cuda * cell_ef[i * injectIons_stride_OPP_CUDA_4] * (0.5 * CONST_dt_cuda);
+        part_vel[i * injectIons_stride_OPP_CUDA_1] = 
+            (iface_normal[i * injectIons_stride_OPP_CUDA_7] * CONST_ion_velocity_cuda);
+        
+        part_vel[i * injectIons_stride_OPP_CUDA_1] -= CONST_charge_cuda / CONST_mass_cuda * 
+            cell_ef[i * injectIons_stride_OPP_CUDA_4] * (0.5 * CONST_dt_cuda);
     }
 
     (*part_cell_connectivity) = (*cell_id);
@@ -88,7 +94,7 @@ __device__ void inject_ions__kernel_gpu(
 
 // CUDA kernel function
 //*************************************************************************************************
-__global__ void oppic_cuda_InjectIons(
+__global__ void opp_cuda_InjectIons(
     const int *__restrict mesh_relation,
     double *__restrict dir_arg0,
     double *__restrict dir_arg1,
@@ -130,37 +136,51 @@ __global__ void oppic_cuda_InjectIons(
     }
 }
 
-void oppic_par_loop_inject__InjectIons(
-    oppic_set set,      // particles_set
-    oppic_arg arg0,     // part_position,
-    oppic_arg arg1,     // part_velocity,
-    oppic_arg arg2,     // part_cell_connectivity,
-    oppic_arg arg3,     // iface to cell map
-    oppic_arg arg4,     // cell_ef,
-    oppic_arg arg5,     // iface_u,
-    oppic_arg arg6,     // iface_v,
-    oppic_arg arg7,     // iface_normal,
-    oppic_arg arg8,     // iface_node_pos
-    oppic_arg arg9      // dummy_part_random
+void opp_loop_inject__InjectIons(
+    opp_set set,      // particles_set
+    opp_arg arg0,     // part_position,
+    opp_arg arg1,     // part_velocity,
+    opp_arg arg2,     // part_cell_connectivity,
+    opp_arg arg3,     // iface to cell map
+    opp_arg arg4,     // cell_ef,
+    opp_arg arg5,     // iface_u,
+    opp_arg arg6,     // iface_v,
+    opp_arg arg7,     // iface_normal,
+    opp_arg arg8,     // iface_node_pos
+    opp_arg arg9      // dummy_part_random
 )
-{ TRACE_ME;
+{ 
 
-    if (FP_DEBUG) printf("FEMPIC - oppic_par_loop_inject__InjectIons set_size %d diff %d\n", set->size, set->diff);
+    if (FP_DEBUG) opp_printf("FEMPIC", "opp_loop_inject__InjectIons set_size %d diff %d", 
+        set->size, set->diff);
+    
+    opp_profiler->start("InjectIons");
 
-    int nargs = 10;
-    oppic_arg args[nargs] = { arg0, arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9 };
+    const int nargs = 10;
+    opp_arg args[nargs];
 
-    int set_size = oppic_mpi_halo_exchanges_grouped(set, nargs, args, Device_GPU);
+    args[0] = std::move(arg0);
+    args[1] = std::move(arg1);
+    args[2] = std::move(arg2);
+    args[3] = std::move(arg3);
+    args[4] = std::move(arg4);
+    args[5] = std::move(arg5);
+    args[6] = std::move(arg6);
+    args[7] = std::move(arg7);
+    args[8] = std::move(arg8);
+    args[9] = std::move(arg9);
+
+    int set_size = opp_mpi_halo_exchanges_grouped(set, nargs, args, Device_GPU);
     if (set_size > 0) 
     {
-        injectIons_stride_OPP_HOST_0 = arg0.dat->set->set_capacity;
-        injectIons_stride_OPP_HOST_1 = arg1.dat->set->set_capacity;
-        injectIons_stride_OPP_HOST_4 = arg4.dat->set->set_capacity;
-        injectIons_stride_OPP_HOST_5 = arg5.dat->set->set_capacity;
-        injectIons_stride_OPP_HOST_6 = arg6.dat->set->set_capacity;
-        injectIons_stride_OPP_HOST_7 = arg7.dat->set->set_capacity;
-        injectIons_stride_OPP_HOST_8 = arg8.dat->set->set_capacity;
-        injectIons_stride_OPP_HOST_9 = arg9.dat->set->set_capacity;
+        injectIons_stride_OPP_HOST_0 = args[0].dat->set->set_capacity;
+        injectIons_stride_OPP_HOST_1 = args[1].dat->set->set_capacity;
+        injectIons_stride_OPP_HOST_4 = args[4].dat->set->set_capacity;
+        injectIons_stride_OPP_HOST_5 = args[5].dat->set->set_capacity;
+        injectIons_stride_OPP_HOST_6 = args[6].dat->set->set_capacity;
+        injectIons_stride_OPP_HOST_7 = args[7].dat->set->set_capacity;
+        injectIons_stride_OPP_HOST_8 = args[8].dat->set->set_capacity;
+        injectIons_stride_OPP_HOST_9 = args[9].dat->set->set_capacity;
 
         cudaMemcpyToSymbol(injectIons_stride_OPP_CUDA_0, &injectIons_stride_OPP_HOST_0, sizeof(int));
         cudaMemcpyToSymbol(injectIons_stride_OPP_CUDA_1, &injectIons_stride_OPP_HOST_1, sizeof(int));
@@ -177,28 +197,30 @@ void oppic_par_loop_inject__InjectIons(
 
         if (end - start > 0) 
         {
-            int nthread = GPU_THREADS_PER_BLOCK;
+            int nthread = OPP_gpu_threads_per_block;
             int nblocks = (end - start - 1) / nthread + 1;
 
-            oppic_cuda_InjectIons<<<nblocks, nthread>>>(
+            opp_cuda_InjectIons<<<nblocks, nthread>>>(
                 (int *)    set->mesh_relation_dat->data_d,
-                (double *) arg0.data_d,
-                (double *) arg1.data_d,
-                (int *)    arg2.data_d,
-                (int *)    arg3.data_d,
-                (double *) arg4.data_d,
-                (int *)    arg4.map_data_d,
-                (double *) arg5.data_d,
-                (double *) arg6.data_d,
-                (double *) arg7.data_d,
-                (double *) arg8.data_d,
-                (double *) arg9.data_d,
+                (double *) args[0].data_d,
+                (double *) args[1].data_d,
+                (int *)    args[2].data_d,
+                (int *)    args[3].data_d,
+                (double *) args[4].data_d,
+                (int *)    args[4].map_data_d,
+                (double *) args[5].data_d,
+                (double *) args[6].data_d,
+                (double *) args[7].data_d,
+                (double *) args[8].data_d,
+                (double *) args[9].data_d,
                 start, 
                 end, 
                 inj_start);
         }
     }
 
-    oppic_mpi_set_dirtybit_grouped(nargs, args, Device_GPU);
+    opp_mpi_set_dirtybit_grouped(nargs, args, Device_GPU);
     cutilSafeCall(cudaDeviceSynchronize());
+
+    opp_profiler->end("InjectIons");
 }
