@@ -18,7 +18,7 @@ HIPCCFLAGS = -std=c++17 -Wall -isystem -D__HIP_PLATFORM_AMD__
 
 DEBUG ?= 0
 ifeq ($(DEBUG), 1)
-	CPPFLAGS   += -O0 -g -debug all
+	CPPFLAGS   += -O0 -g
 	NVCCFLAGS  += -O0 -g -lineinfo
 	HIPCCFLAGS += -O0 -g -lineinfo
 	DEBUG_LOG   = 1

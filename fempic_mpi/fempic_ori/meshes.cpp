@@ -18,14 +18,12 @@
 #include <map>
 #include <algorithm>
 
-
-#include "trace.h"
 #include "maths.h"
 #include "particles.h"
 #include "meshes.h"
 
 /*loads and initializes volume mesh*/
-bool LoadVolumeMesh(const std::string file_name, Volume &volume) { //TRACE_ME;
+bool LoadVolumeMesh(const std::string file_name, Volume &volume) { 
     /*open file*/
     std::ifstream in(file_name);
     if (!in.is_open()) {std::cerr<<"Failed to open "<<file_name<<std::endl; return false;}
@@ -265,7 +263,7 @@ bool LoadVolumeMesh(const std::string file_name, Volume &volume) { //TRACE_ME;
 }
 
 /*loads nodes from a surface mesh file and sets them to the specified node type*/
-bool LoadSurfaceMesh(const std::string file_name, Volume &volume, NodeType node_type, bool invert_normal) { //TRACE_ME;
+bool LoadSurfaceMesh(const std::string file_name, Volume &volume, NodeType node_type, bool invert_normal) { 
     /*open file*/
     std::ifstream in(file_name);
     if (!in.is_open()) {std::cerr<<"Failed to open "<<file_name<<std::endl; return false;}
@@ -357,7 +355,7 @@ bool LoadSurfaceMesh(const std::string file_name, Volume &volume, NodeType node_
 }
 
 /*saves volume mesh*/
-void OutputMesh(int ts, Volume &volume, double *phi, double **ef, double *ion_den) { //TRACE_ME;
+void OutputMesh(int ts, Volume &volume, double *phi, double **ef, double *ion_den) { 
     std::stringstream ss;
     ss<<"mesh_"<<std::setfill('0')<<std::setw(4)<<ts+1<<".vtu";
     std::ofstream out(ss.str());

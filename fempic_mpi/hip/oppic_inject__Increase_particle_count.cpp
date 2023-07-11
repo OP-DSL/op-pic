@@ -72,7 +72,7 @@ void oppic_inject__Increase_particle_count(
     oppic_arg arg2,             // iface_inj_part_dist,
     oppic_arg arg3              // remainder global,
 )
-{ TRACE_ME;
+{ 
 
     if (FP_DEBUG) printf("FEMPIC - oppic_inject__Increase_particle_count set_size %d diff %d\n", set->size, set->diff);
 
@@ -162,7 +162,7 @@ void oppic_inject__Increase_particle_count(
     oppic_arg arg2,             // iface_inj_part_dist,
     oppic_arg arg3              // remainder global,
 )
-{ TRACE_ME;
+{ 
 
     if (FP_DEBUG) printf("FEMPIC - oppic_inject__Increase_particle_count set_size %d diff %d\n", set->size, set->diff);
 

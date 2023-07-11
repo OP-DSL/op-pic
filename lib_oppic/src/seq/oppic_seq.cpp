@@ -57,8 +57,9 @@ void opp_exit()
 }
 
 //****************************************
-void opp_abort()
+void opp_abort(std::string s)
 {
+    opp_printf("opp_abort", "%s", s.c_str());
     exit(-1);
 }
 
@@ -199,14 +200,14 @@ void oppic_increase_particle_count(oppic_set particles_set, const int num_partic
 }
 
 //****************************************
-void opp_inc_part_count_with_distribution(oppic_set particles_set, int num_particles_to_insert, oppic_dat part_dist)
+void opp_inc_part_count_with_distribution(oppic_set particles_set, int num_particles_to_insert, oppic_dat part_dist, bool calc_new)
 {
     if (OP_DEBUG) opp_printf("opp_inc_part_count_with_distribution", "num_particles_to_insert [%d]", num_particles_to_insert);
 
     if (!opp_inc_part_count_with_distribution_core(particles_set, num_particles_to_insert, part_dist))
     {
         opp_printf("opp_inc_part_count_with_distribution", "Error: opp_inc_part_count_with_distribution_core failed for particle set [%s]", particles_set->name);
-        exit(-1);        
+        opp_abort("opp_inc_part_count_with_distribution_core");        
     }
 }
 

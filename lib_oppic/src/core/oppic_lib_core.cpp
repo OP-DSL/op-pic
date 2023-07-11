@@ -32,32 +32,28 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <oppic_lib_core.h>
 
-#ifdef USE_TRACE
-    int trace::enabled = 1;
-    Trace trace::current = Trace("__TRACE_BASE__");
-#endif
-
 //****************************************
 std::vector<oppic_set> oppic_sets;
 std::vector<oppic_map> oppic_maps;
 std::vector<oppic_dat> oppic_dats;
 
-int OP_hybrid_gpu           = 0;
-int OP_maps_base_index      = 0;
-int OP_auto_soa             = 0;
-int OP_part_alloc_mult      = 1;
-int OP_auto_sort            = 1;
-int OPP_mpi_part_alloc_mult = 1;
-int OPP_rank                = 0;
-int OPP_comm_size           = 1;
-int OPP_comm_iteration      = 0;
-int OPP_max_comm_iteration  = 0;
-int OPP_iter_start          = 0;
-int OPP_iter_end            = 0;
-int OPP_main_loop_iter      = 0;
+int OP_hybrid_gpu                   = 0;
+int OP_maps_base_index              = 0;
+int OP_auto_soa                     = 0;
+int OP_part_alloc_mult              = 1;
+int OP_auto_sort                    = 1;
+int OPP_mpi_part_alloc_mult         = 1;
+int OPP_rank                        = 0;
+int OPP_comm_size                   = 1;
+int OPP_comm_iteration              = 0;
+int OPP_max_comm_iteration          = 0;
+int OPP_iter_start                  = 0;
+int OPP_iter_end                    = 0;
+int OPP_main_loop_iter              = 0;
 int OPP_gpu_threads_per_block       = OPP_DEFAULT_GPU_THREADS_PER_BLOCK;
 size_t OPP_gpu_shared_mem_per_block = -1;
-int *OPP_mesh_relation_data = nullptr;
+int *OPP_mesh_relation_data         = nullptr;
+
 std::unique_ptr<opp::Params> opp_params;
 std::unique_ptr<opp::Profiler> opp_profiler;
 
@@ -93,7 +89,9 @@ void oppic_exit_core()
 
     for (auto& a : oppic_dats) {
         free(a->data);
-        for (int thr = 1; thr < (int)a->thread_data->size(); thr++) { free(a->thread_data->at(thr)); }
+        for (int thr = 1; thr < (int)a->thread_data->size(); thr++) { 
+            free(a->thread_data->at(thr)); 
+        }
         delete a->thread_data;
         free((char*)a->name);
         free((char*)a->type);
@@ -110,11 +108,6 @@ void oppic_exit_core()
         free(a);
     }
     oppic_sets.clear();
-
-    #ifdef USE_TRACE
-        std::string trace_file_name = std::string("trace/trace_") + getTimeStr() + ".csv";
-        trace::current.write_profile(trace_file_name);
-    #endif
 
     if (opp_profiler.get())
     {    
@@ -194,25 +187,27 @@ oppic_map oppic_decl_map_core(oppic_set from, oppic_set to, int dim, int *imap, 
 {
     if (from == NULL) 
     {
-        printf("\t oppic_decl_map error -- invalid 'from' set for map %s\n", name);
+        opp_printf("oppic_decl_map", "Error -- invalid 'from' set for map %s", name);
         exit(-1);
     }
 
     if (to == NULL) 
     {
-        printf("\toppic_decl_map error -- invalid 'to' set for map %s\n", name);
+        opp_printf("oppic_decl_map", "Error -- invalid 'to' set for map %s", name);
         exit(-1);
     }
 
     if (dim <= 0) 
     {
-        printf("\toppic_decl_map error -- negative/zero dimension for map %s\n", name);
+        opp_printf("oppic_decl_map", "Error -- negative/zero dimension for map %s", name);
         exit(-1);
     }
 
     if (from->is_particle || to->is_particle) 
     {
-        printf("\toppic_decl_map error -- cannot have mappings between a dynamic (particle) set [%s to %s]\n", from->name, to->name);
+        opp_printf("oppic_decl_map", 
+            "Error -- cannot have mappings between a dynamic (particle) set [%s to %s]", 
+            from->name, to->name);
         exit(-1);
     }
 
@@ -242,12 +237,14 @@ oppic_map oppic_decl_map_core(oppic_set from, oppic_set to, int dim, int *imap, 
 //****************************************
 oppic_dat oppic_decl_dat_core(oppic_set set, int dim, char const *type, int size, char *data, char const *name) 
 {
-    if (set == NULL) {
+    if (set == NULL) 
+    {
         printf("\toppic_decl_dat error -- invalid set for data: %s\n", name);
         exit(-1);
     }
 
-    if (dim <= 0) {
+    if (dim <= 0) 
+    {
         printf("\toppic_decl_dat error -- negative/zero dimension for data: %s\n", name);
         exit(-1);
     }
@@ -259,7 +256,8 @@ oppic_dat oppic_decl_dat_core(oppic_set set, int dim, char const *type, int size
 
     if (set->size > 0)
     {
-        size_t bytes = (size_t)dim * (size_t)size * (size_t)(set->size + set->exec_size + set->nonexec_size) * sizeof(char);
+        size_t bytes = (size_t)dim * (size_t)size * 
+                            (size_t)(set->size + set->exec_size + set->nonexec_size) * sizeof(char);
         dat->data = (char *)malloc(bytes);
         memcpy(dat->data, data, (size_t)dim * (size_t)size * (size_t)set->size * sizeof(char));
     }
@@ -297,19 +295,30 @@ oppic_dat oppic_decl_dat_core(oppic_set set, int dim, char const *type, int size
 //****************************************
 oppic_arg oppic_arg_dat_core(oppic_dat dat, int idx, oppic_map map, oppic_access acc, opp_mapping mapping) 
 {
-    if (dat == nullptr) { std::cerr << "dat is NULL at oppic_arg_dat" << std::endl; oppic_arg arg; return arg; }
+    if (dat == nullptr) 
+    { 
+        std::cerr << "dat is NULL at oppic_arg_dat" << std::endl; 
+        oppic_arg arg; 
+        return arg; 
+    }
     
     return oppic_arg_dat_core(dat, idx, map, dat->dim, dat->type, acc, mapping);
 }
 
 oppic_arg oppic_arg_dat_core(oppic_dat dat, oppic_access acc, opp_mapping mapping) 
 {
-    if (dat == nullptr) { std::cerr << "dat is NULL at oppic_arg_dat" << std::endl; oppic_arg arg; return arg; }
+    if (dat == nullptr) 
+    { 
+        std::cerr << "dat is NULL at oppic_arg_dat" << std::endl; 
+        oppic_arg arg; 
+        return arg; 
+    }
     
     return oppic_arg_dat_core(dat, -1, NULL, dat->dim, dat->type, acc, mapping);
 }
 
-oppic_arg oppic_arg_dat_core(oppic_dat dat, int idx, oppic_map map, int dim, const char *typ, oppic_access acc, opp_mapping mapping) 
+oppic_arg oppic_arg_dat_core(oppic_dat dat, int idx, oppic_map map, int dim, const char *typ, 
+                                oppic_access acc, opp_mapping mapping) 
 {
     oppic_arg arg;
     arg.index       = -1;
@@ -341,7 +350,8 @@ oppic_arg oppic_arg_dat_core(oppic_map data_map, oppic_access acc, opp_mapping m
 }
 
 // arg.map has the map, can change to mapping data map if required
-oppic_arg oppic_arg_dat_core(oppic_map data_map, int idx, oppic_map map, oppic_access acc, opp_mapping mapping)
+oppic_arg oppic_arg_dat_core(oppic_map data_map, int idx, oppic_map map, oppic_access acc, 
+                                opp_mapping mapping)
 {
     oppic_arg arg;
     arg.argtype     = OP_ARG_MAP;
@@ -421,7 +431,8 @@ oppic_arg oppic_arg_gbl_core(const bool *data, int dim, char const *typ, oppic_a
 }
 
 //****************************************
-oppic_set oppic_decl_particle_set_core(int size, char const *name, oppic_set cells_set) // oppic_decl_particle_set should make an oppic_set which changes size during the loop
+// oppic_decl_particle_set should make an oppic_set which changes size during the loop
+oppic_set oppic_decl_particle_set_core(int size, char const *name, oppic_set cells_set) 
 {   
     oppic_set set = oppic_decl_set_core(size, name);
 
@@ -431,7 +442,8 @@ oppic_set oppic_decl_particle_set_core(int size, char const *name, oppic_set cel
     return set;
 }
 
-oppic_set oppic_decl_particle_set_core(char const *name, oppic_set cells_set) // oppic_decl_particle_set should make an oppic_set which changes size during the loop
+// oppic_decl_particle_set should make an oppic_set which changes size during the loop
+oppic_set oppic_decl_particle_set_core(char const *name, oppic_set cells_set) 
 {    
     oppic_set set = oppic_decl_particle_set_core(0, name, cells_set);
 
@@ -439,7 +451,8 @@ oppic_set oppic_decl_particle_set_core(char const *name, oppic_set cells_set) //
 }
 
 //****************************************
-oppic_dat oppic_decl_particle_dat_core(oppic_set set, int dim, char const *type, int size, char *data, char const *name, bool cell_index) 
+oppic_dat oppic_decl_particle_dat_core(oppic_set set, int dim, char const *type, int size, char *data, 
+                                        char const *name, bool cell_index) 
 {
     if (set->is_particle != true) 
     {
@@ -457,84 +470,89 @@ oppic_dat oppic_decl_particle_dat_core(oppic_set set, int dim, char const *type,
 }
 
 //****************************************
-bool oppic_increase_particle_count_core(oppic_set particles_set, const int num_particles_to_insert)
+bool oppic_increase_particle_count_core(oppic_set part_set, const int num_parts_to_insert)
 { 
 
-    if (num_particles_to_insert <= 0) return true;
+    if (num_parts_to_insert <= 0) 
+        return true;
 
     if (OP_DEBUG) 
-        opp_printf("oppic_increase_particle_count_core", "set [%s] with size [%d]", particles_set->name, num_particles_to_insert);
+        opp_printf("oppic_increase_particle_count_core", "set [%s] with size [%d]", 
+            part_set->name, num_parts_to_insert);
 
-    int new_particle_set_size = particles_set->size + num_particles_to_insert;
+    int new_part_set_size = part_set->size + num_parts_to_insert;
 
-    if (particles_set->set_capacity >= new_particle_set_size)
+    // if the new particle set size is less or equal to set capacity, then just set new sizes instead of resizing
+    if (part_set->set_capacity >= new_part_set_size)
     {
         if (OP_DEBUG) 
-            opp_printf("oppic_increase_particle_count_core", "set [%s] No need to reallocate, new size[%d] set_capacity[%d]", 
-                particles_set->name, new_particle_set_size, particles_set->set_capacity);        
+            opp_printf("opp_increase_particle_count_core", "set [%s] No need to realloc, new size[%d] set_capacity[%d]", 
+                part_set->name, new_part_set_size, part_set->set_capacity);        
         
-        particles_set->size = new_particle_set_size;
-        particles_set->diff = num_particles_to_insert;   
+        part_set->size = new_part_set_size;
+        part_set->diff = num_parts_to_insert;   
         return true;
     }
 
-    size_t new_particle_set_capacity = particles_set->size + num_particles_to_insert * OP_part_alloc_mult;
-    // int new_particle_set_capacity = new_particle_set_size;
+    // if the set needs resizing, then use alloc multiple to increase set capacity to reduce regular resizing of the set
+    size_t new_part_set_capacity = part_set->size + num_parts_to_insert * OP_part_alloc_mult;
     bool return_flag = true;
 
     if (OP_DEBUG)
-        opp_printf("oppic_increase_particle_count_core", "new_particle_set_capacity %zu particles_set->size %d set_dat_count %d", 
-            new_particle_set_capacity, particles_set->size, particles_set->particle_dats->size());
+        opp_printf("opp_increase_particle_count_core", "new_set_capacity %zu set_size %d num_dats_in_set %d", 
+            new_part_set_capacity, part_set->size, part_set->particle_dats->size());
 
-    for (auto& current_oppic_dat : *(particles_set->particle_dats))
+    // iterate over all the particle dats of that set and resize the arrays as necessary
+    for (auto& dat : *(part_set->particle_dats))
     {
-        if (current_oppic_dat->data == NULL) 
+        if (dat->data == NULL) 
         {
-            current_oppic_dat->data = (char *)malloc((size_t)(new_particle_set_capacity * current_oppic_dat->size));
-            // opp_printf("oppic_increase_particle_count_core", "malloc name %s %p size %d", current_oppic_dat->name, current_oppic_dat->data, (new_particle_set_capacity * current_oppic_dat->size));
+            dat->data = (char *)malloc((size_t)(new_part_set_capacity * dat->size));
+            // opp_printf("oppic_increase_particle_count_core", "malloc name %s %p size %d", 
+            //     dat->name, dat->data, (new_part_set_capacity * dat->size));
 
-            if (current_oppic_dat->data == nullptr)
+            if (dat->data == nullptr)
             {
-                opp_printf("oppic_increase_particle_count_core", "Error... alloc of dat name %s failed (size %zu)", current_oppic_dat->name, (size_t)(new_particle_set_capacity * current_oppic_dat->size));
+                opp_printf("opp_increase_particle_count_core", "Error... alloc of dat name %s failed (size %zu)", 
+                    dat->name, (size_t)(new_part_set_capacity * dat->size));
                 return_flag = false;
             }
         }
         else
         {
-            // char* old = current_oppic_dat->data;
-            current_oppic_dat->data = (char *)realloc(current_oppic_dat->data, (size_t)(new_particle_set_capacity * current_oppic_dat->size));
-            // opp_printf("oppic_increase_particle_count_core", "realloc %p name %s %p size %d", old, current_oppic_dat->name, current_oppic_dat->data, (new_particle_set_capacity * current_oppic_dat->size));
+            // char* old = dat->data;
+            dat->data = (char *)realloc(dat->data, (size_t)(new_part_set_capacity * dat->size));
+            // opp_printf("oppic_increase_particle_count_core", "realloc %p name %s %p size %d", 
+            //     old, dat->name, dat->data, (new_part_set_capacity * dat->size));
 
-            if (current_oppic_dat->data == nullptr)
+            if (dat->data == nullptr)
             {
-                opp_printf("oppic_increase_particle_count_core", "Error... realloc of dat name %s failed (size %zu)", current_oppic_dat->name, (size_t)(new_particle_set_capacity * current_oppic_dat->size));
+                opp_printf("opp_increase_particle_count_core", "Error... realloc of dat name %s failed (size %zu)", 
+                    dat->name, (size_t)(new_part_set_capacity * dat->size));
                 return_flag = false;
             }
         }
 
-        if (current_oppic_dat->is_cell_index && (current_oppic_dat->data != nullptr))
+        if (dat->is_cell_index && (dat->data != nullptr))
         {
-            int* mesh_rel_array = (int *)current_oppic_dat->data;
-            for (size_t i = (size_t)particles_set->size; i < new_particle_set_capacity; i++)
+            int* mesh_rel_array = (int *)dat->data;
+            for (size_t i = (size_t)part_set->size; i < new_part_set_capacity; i++)
                 mesh_rel_array[i] = MAX_CELL_INDEX;
         }
-        // else
-        // {
-        //     memset(current_oppic_dat->data + (particles_set->size * current_oppic_dat->size), 0, (new_particle_set_capacity - particles_set->size) * current_oppic_dat->size);
-        // }
+        // Note : The remainder in array from set size to set capacity will be garbage, except in mesh_relation_dat
     }
     
-    particles_set->size         = new_particle_set_size;
-    particles_set->set_capacity = new_particle_set_capacity;
-    particles_set->diff         = num_particles_to_insert;
+    part_set->size         = new_part_set_size;
+    part_set->set_capacity = new_part_set_capacity;
+    part_set->diff         = num_parts_to_insert;
 
     return return_flag;
 }
 
 //****************************************
 // Not quite necessary - 
-// If oppic_reset_num_particles_to_insert isn't called, set->diff will not reset and oppic_par_looppic_inject__ will loop only on the injected particles
-// However it will reset upon oppic_increase_particle_count call
+// If oppic_reset_num_particles_to_insert isn't called, set->diff will not reset and oppic_par_looppic_inject__ will 
+// loop only on the injected particles; However it will reset upon oppic_increase_particle_count call
 void oppic_reset_num_particles_to_insert_core(oppic_set set)
 {
     set->diff = 0;
@@ -558,14 +576,16 @@ void oppic_mark_particle_to_move_core(oppic_set set, int particle_index, int mov
 {
     if (move_status == (int)OPP_NEED_REMOVE) /*outside the mesh*/
     {  
-        if (OP_DEBUG) opp_printf("oppic_mark_particle_to_move_core", "set [%s] particle_index [%d]\n", set->name, particle_index);
+        if (OP_DEBUG) 
+            opp_printf("opp_mark_particle_to_move_core", "set [%s] particle_index [%d]", set->name, particle_index);
 
         set->particle_statuses[particle_index] = OPP_NEED_REMOVE;
         (set->particle_remove_count)++;
     }
     else if (move_status != (int)OPP_MOVE_DONE) 
     {
-        std::cerr << "oppic_mark_particle_to_move_core Failed to find the cell - Particle Index " << particle_index << std::endl;
+        std::cerr << "opp_mark_particle_to_move_core Failed to find the cell - Particle Index " << 
+            particle_index << std::endl;
     }
 }
 
@@ -573,14 +593,18 @@ void oppic_mark_particle_to_move_core(oppic_set set, int particle_index, int mov
 //****************************************
 void oppic_finalize_particle_move_core(oppic_set set)
 {
-    if (OP_DEBUG) opp_printf("oppic_finalize_particle_move_core", "set [%s] size[%d] with particle_remove_count [%d]", set->name, set->size, set->particle_remove_count);
+    if (OP_DEBUG) 
+        opp_printf("oppic_finalize_particle_move_core", "set [%s] size[%d] with particle_remove_count [%d]", 
+            set->name, set->size, set->particle_remove_count);
 
     if (set->particle_remove_count <= 0) return;
 
     if (OP_auto_sort == 0) // if not auto sorting, fill the holes
     {
-        int *mesh_relation_data = (int *)malloc(set->set_capacity * set->mesh_relation_dat->size); // getting a backup of cell index since it will also be rearranged using a random OMP thread
-        memcpy((char*)mesh_relation_data, set->mesh_relation_dat->data, set->set_capacity * set->mesh_relation_dat->size);
+        // getting a backup of cell index since it will also be rearranged using a random OMP thread
+        int *mesh_relation_data = (int *)malloc(set->set_capacity * set->mesh_relation_dat->size); 
+        memcpy((char*)mesh_relation_data, set->mesh_relation_dat->data, 
+                    set->set_capacity * set->mesh_relation_dat->size);
 
         for (int i = 0; i < (int)set->particle_dats->size(); i++)
         {
@@ -636,20 +660,23 @@ void oppic_finalize_particle_move_core(oppic_set set)
                 removed_count++;
             }
 
-            // current_oppic_dat->data = (char *)realloc(current_oppic_dat->data, (size_t)(set->size - removed_count) * (size_t)current_oppic_dat->size);
+            // current_oppic_dat->data = (char *)realloc(current_oppic_dat->data, 
+            //     (size_t)(set->size - removed_count) * (size_t)current_oppic_dat->size);
         }
 
         free(mesh_relation_data);
     }
     else
     {
-        if (OP_DEBUG) opp_printf("oppic_finalize_particle_move_core", "Not processing dats since OP_auto_sort = TRUE");
+        if (OP_DEBUG) 
+            opp_printf("oppic_finalize_particle_move_core", "Not processing dats since OP_auto_sort = TRUE");
     }
 
     set->size -= set->particle_remove_count;
 }
 
 #else
+
 //****************************************
 void oppic_finalize_particle_move_core(oppic_set set)
 {
@@ -746,34 +773,39 @@ void oppic_remove_marked_particles_from_set_core(oppic_set set, std::vector<int>
 
     std::sort(idx_to_remove.begin(), idx_to_remove.end());
 
-    if (OP_DEBUG) printf("\toppic_remove_marked_particles_from_set set [%s] with size [%d]\n", set->name, num_particles_to_remove);
+    if (OP_DEBUG) 
+        printf("\toppic_remove_marked_particles_from_set set [%s] with size [%d]\n", 
+            set->name, num_particles_to_remove);
 
     if (num_particles_to_remove <= 0) return;
 
     for (int i = 0; i < (int)set->particle_dats->size(); i++)
     {
-        oppic_dat current_oppic_dat = set->particle_dats->at(i);
+        oppic_dat dat = set->particle_dats->at(i);
         int removed_count = 0;
 
         for (const int& j : idx_to_remove)
         {
             if (j < 0 || j > set->size) 
             {
-                std::cerr << "oppic_remove_marked_particles_from_set set [" << set->name << "] has idx_to_remove [" << j << "]" << std::endl;
+                std::cerr << "oppic_remove_marked_particles_from_set set [" << set->name << 
+                    "] has idx_to_remove [" << j << "]" << std::endl;
                 continue;
             }
 
-            char* dat_removed_ptr = (char *)(current_oppic_dat->data + (j * current_oppic_dat->size));
-            char* dat_to_replace_ptr = (char *)(current_oppic_dat->data + ((set->size - removed_count - 1) * current_oppic_dat->size));
+            char* dat_removed_ptr = (char *)(dat->data + (j * dat->size));
+            // TODO : This will have a bug if the dat_to_replace is also to be removed! 
+            // CHECK : oppic_finalize_particle_move_core and correct this if being used
+            char* dat_to_replace_ptr = (char *)(dat->data + ((set->size - removed_count - 1) * dat->size));
             
             // Get the last element and replace the hole // Not the Optimum!!!
             // TODO : Can we make NULL data and handle it in sort?
-            memcpy(dat_removed_ptr, dat_to_replace_ptr, current_oppic_dat->size); 
+            memcpy(dat_removed_ptr, dat_to_replace_ptr, dat->size); 
 
             removed_count++;
         }
 
-        current_oppic_dat->data = (char *)realloc(current_oppic_dat->data, (size_t)(set->size - removed_count) * (size_t)current_oppic_dat->size);
+        dat->data = (char *)realloc(dat->data, (size_t)(set->size - removed_count) * (size_t)dat->size);
     }
 
     set->size -= num_particles_to_remove;
@@ -909,15 +941,18 @@ void oppic_print_dat_to_txtfile_core(oppic_dat dat, const char *file_name_prefix
             } 
             else 
             {
-                printf("\toppic_print_dat_to_txtfile_core Unknown type %s, cannot be written to file %s\n", dat->type, file_name.c_str());
+                printf("\toppic_print_dat_to_txtfile_core Unknown type %s, cannot be written to file %s\n", 
+                    dat->type, file_name.c_str());
                 exit(2);
             }
         }
 
         fprintf(fp, "\n");
 
-        if (i+1 == dat->set->size) fprintf(fp, "import_exec_below ****************************************\n");
-        if (i+1 == dat->set->size + dat->set->exec_size) fprintf(fp, "import_non_exec_below ****************************************\n");
+        if (i+1 == dat->set->size) 
+            fprintf(fp, "import_exec_below ****************************************\n");
+        if (i+1 == dat->set->size + dat->set->exec_size) 
+            fprintf(fp, "import_non_exec_below ****************************************\n");
     }
     
     fclose(fp);
@@ -978,7 +1013,8 @@ void oppic_print_map_to_txtfile_core(oppic_map map, const char *file_name_prefix
         exit(2);
     }
 
-    if (fprintf(fp, "%d %d -- %d %d\n", map->from->size, map->dim, map->from->exec_size, map->from->nonexec_size) < 0) 
+    if (fprintf(fp, "%d %d -- %d %d\n", 
+                map->from->size, map->dim, map->from->exec_size, map->from->nonexec_size) < 0) 
     {
         printf("\toppic_print_map_to_txtfile_core error writing to %s\n", file_name.c_str());
         exit(2);
@@ -999,8 +1035,10 @@ void oppic_print_map_to_txtfile_core(oppic_map map, const char *file_name_prefix
 
         fprintf(fp, "\n");
 
-        if (i+1 == map->from->size) fprintf(fp, "import_exec_below ****************************************\n");
-        if (i+1 == map->from->size + map->from->exec_size) fprintf(fp, "import_non_exec_below ****************************************\n");
+        if (i+1 == map->from->size) 
+            fprintf(fp, "import_exec_below ****************************************\n");
+        if (i+1 == map->from->size + map->from->exec_size) 
+            fprintf(fp, "import_non_exec_below ****************************************\n");
     }
     
     fclose(fp);
@@ -1054,14 +1092,17 @@ void* oppic_load_from_file_core(const char* file_name, int set_size, int dim, ch
                     is_error = true;
                 break;
             case 4:
-                if (fscanf(fp, " %lf %lf %lf %lf\n", &d_data[n * dim + 0], &d_data[n * dim + 1], &d_data[n * dim + 2], &d_data[n * dim + 3]) != 4) 
-                    is_error = true;
+                if (fscanf(fp, " %lf %lf %lf %lf\n", 
+                    &d_data[n * dim + 0], &d_data[n * dim + 1], &d_data[n * dim + 2], &d_data[n * dim + 3]) != 4) 
+                        is_error = true;
                 break;    
             case 16:
                 if (fscanf(fp, " %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf\n", 
-                    &d_data[n * dim + 0], &d_data[n * dim + 1], &d_data[n * dim + 2], &d_data[n * dim + 3], &d_data[n * dim + 4], &d_data[n * dim + 5], &d_data[n * dim + 6], &d_data[n * dim + 7],
-                    &d_data[n * dim + 8], &d_data[n * dim + 9], &d_data[n * dim + 10], &d_data[n * dim + 11], &d_data[n * dim + 12], &d_data[n * dim + 13], &d_data[n * dim + 14], &d_data[n * dim + 15]) != 16) 
-                    is_error = true;
+                    &d_data[n * dim + 0], &d_data[n * dim + 1], &d_data[n * dim + 2], &d_data[n * dim + 3], 
+                    &d_data[n * dim + 4], &d_data[n * dim + 5], &d_data[n * dim + 6], &d_data[n * dim + 7],
+                    &d_data[n * dim + 8], &d_data[n * dim + 9], &d_data[n * dim + 10], &d_data[n * dim + 11], 
+                    &d_data[n * dim + 12], &d_data[n * dim + 13], &d_data[n * dim + 14], &d_data[n * dim + 15]) != 16) 
+                        is_error = true;
                 break;
             default: is_error = true;
             }
@@ -1091,12 +1132,14 @@ void* oppic_load_from_file_core(const char* file_name, int set_size, int dim, ch
                     is_error = true;
                 break;
             case 3:
-                if (fscanf(fp, " %d %d %d\n", &i_data[n * dim + 0], &i_data[n * dim + 1], &i_data[n * dim + 2]) != 3) 
-                    is_error = true;
+                if (fscanf(fp, " %d %d %d\n", 
+                    &i_data[n * dim + 0], &i_data[n * dim + 1], &i_data[n * dim + 2]) != 3) 
+                        is_error = true;
                 break;
             case 4:
-                if (fscanf(fp, " %d %d %d %d\n", &i_data[n * dim + 0], &i_data[n * dim + 1], &i_data[n * dim + 2], &i_data[n * dim + 3]) != 4) 
-                    is_error = true;
+                if (fscanf(fp, " %d %d %d %d\n", 
+                    &i_data[n * dim + 0], &i_data[n * dim + 1], &i_data[n * dim + 2], &i_data[n * dim + 3]) != 4) 
+                        is_error = true;
                 break;    
             default: is_error = true;
             }
@@ -1120,26 +1163,26 @@ void* oppic_load_from_file_core(const char* file_name, int set_size, int dim, ch
 }
 
 //****************************************
-bool opp_inc_part_count_with_distribution_core(oppic_set particles_set, int num_particles_to_insert, oppic_dat part_dist)
+bool opp_inc_part_count_with_distribution_core(oppic_set set, int num_parts_to_insert, oppic_dat part_dist)
 {
     opp_profiler->start("IncPartCountWithDistribution");
 
-    if (!oppic_increase_particle_count_core(particles_set, num_particles_to_insert))
+    if (!oppic_increase_particle_count_core(set, num_parts_to_insert))
     {
         opp_profiler->end("IncPartCountWithDistribution");
         return false;
     }
 
-    int* part_mesh_connectivity = (int *)particles_set->mesh_relation_dat->data;
+    int* mesh_connectivity = (int *)set->mesh_relation_dat->data;
     int* distribution           = (int *)part_dist->data;
 
-    int start = (particles_set->size - particles_set->diff);
+    int start = (set->size - set->diff);
     int j = 0;
 
-    for (int i = 0; i < particles_set->diff; i++)
+    for (int i = 0; i < set->diff; i++)
     {
         if (i >= distribution[j]) j++; // check whether it is j or j-1    
-        part_mesh_connectivity[start + i] = j;
+        mesh_connectivity[start + i] = j;
     } 
 
     opp_profiler->end("IncPartCountWithDistribution");

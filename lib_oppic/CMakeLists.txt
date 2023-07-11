@@ -27,7 +27,6 @@ include_directories(${CMAKE_CURRENT_SOURCE_DIR}/include)
 set(CORE_SOURCES
     src/core/oppic_lib_core.cpp 
     src/core/oppic_util.cpp 
-    src/core/trace.cpp 
     src/core/opp_params.cpp 
 )
 

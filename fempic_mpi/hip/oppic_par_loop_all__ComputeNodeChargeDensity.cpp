@@ -73,7 +73,7 @@ void oppic_par_loop_all__ComputeNodeChargeDensity(
     oppic_arg arg0,    // node_charge_density
     oppic_arg arg1     // node_volume
 )
-{ TRACE_ME;
+{ 
     
     if (FP_DEBUG) printf("FEMPIC - oppic_par_loop_all__ComputeNodeChargeDensity set_size %d\n", set->size);
 

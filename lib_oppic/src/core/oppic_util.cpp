@@ -34,7 +34,6 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <oppic_lib_core.h>
 #include <chrono>
 #include <numeric>
-#include "trace.h"
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
@@ -52,7 +51,7 @@ std::string getTimeStr()
 
 //********************************************************************************
 std::vector<size_t> sort_indexes(const int* cell_indices, int size) 
-{ TRACE_ME;
+{ 
 
     std::vector<size_t> idx(size);
     std::iota(idx.begin(), idx.end(), 0);

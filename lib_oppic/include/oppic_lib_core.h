@@ -35,7 +35,6 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <vector>
 #include <map>
 #include <iostream>
-#include <trace.h>
 #include <opp_params.h>
 #include <opp_profiler.h>
 #include <oppic_util.h>

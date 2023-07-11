@@ -16,6 +16,7 @@
 #include <vector>
 #include <string>
 #include <iostream>
+#include <fstream>
 
 /*particle*/
 struct Particle {

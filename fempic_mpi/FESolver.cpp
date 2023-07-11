@@ -510,7 +510,7 @@ void FESolver::buildJmatrix()
 //*************************************************************************************************
 /*wrapper for solving the non-linear Poisson's equation*/
 void FESolver::computePhi(oppic_arg arg0, oppic_arg arg1, oppic_arg arg2) 
-{ TRACE_ME;
+{ 
 
     if (OP_DEBUG) opp_printf("FESolver", "computePhi START");
 
@@ -575,7 +575,7 @@ void FESolver::computePhi(oppic_arg arg0, oppic_arg arg1, oppic_arg arg2)
 
 //*************************************************************************************************
 void FESolver::nonLinearSolve(double *ion_den) 
-{ TRACE_ME;
+{ 
 
     int it = 0;
 
@@ -602,7 +602,7 @@ void FESolver::nonLinearSolve(double *ion_den)
 
 //*************************************************************************************************
 bool FESolver::linearSolve(double *ion_den) 
-{ TRACE_ME;
+{ 
 
     if (OP_DEBUG) opp_printf("FESolver", "linearSolve START");
 

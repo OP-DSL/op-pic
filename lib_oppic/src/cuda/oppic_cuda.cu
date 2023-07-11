@@ -76,8 +76,9 @@ void opp_exit()
 }
 
 //****************************************
-void opp_abort()
+void opp_abort(std::string s)
 {
+    opp_printf("opp_abort", "%s", s.c_str());
     exit(-1);
 }
 

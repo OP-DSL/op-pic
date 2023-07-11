@@ -144,7 +144,7 @@ void oppic_par_loop_inject__InjectIons(
     oppic_arg arg8,     // iface_node_pos
     oppic_arg arg9      // dummy_part_random
 )
-{ TRACE_ME;
+{ 
 
     if (FP_DEBUG) printf("FEMPIC - oppic_par_loop_inject__InjectIons set_size %d diff %d\n", set->size, set->diff);
 
