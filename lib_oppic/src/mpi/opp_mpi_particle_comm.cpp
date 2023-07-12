@@ -35,6 +35,8 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #define MPI_COUNT_EXCHANGE 0
 #define MPI_TAG_PART_EX 1
 
+#define PACK_AOS  false // PACK_AOS == false, is performing better
+
 struct opp_particle_move_info
 {
     int local_particle_index;
@@ -50,9 +52,9 @@ std::map<oppic_set, std::map<int, std::vector<opp_particle_move_info>>> opp_part
 //*******************************************************************************
 void opp_part_mark_move(oppic_set set, int particle_index, opp_particle_comm_data& comm_data)
 {
-    if (OP_DEBUG) 
-        opp_printf("opp_part_mark_move", "set [%s] | particle_index %d | send_rank %d | foreign_rank_index %d", 
-            set->name, particle_index, comm_data.cell_residing_rank, comm_data.local_index);
+    // if (OP_DEBUG) 
+    //     opp_printf("opp_part_mark_move", "set [%s] | particle_index %d | send_rank %d | foreign_rank_index %d", 
+    //         set->name, particle_index, comm_data.cell_residing_rank, comm_data.local_index);
 
     opp_part_move_indices[set][comm_data.cell_residing_rank].push_back({ particle_index, comm_data.local_index });
 }
@@ -67,16 +69,16 @@ void opp_part_pack(oppic_set set)
 
     opp_all_mpi_part_buffers* send_buffers = (opp_all_mpi_part_buffers*)set->mpi_part_buffers;
 
-    std::map<int, std::vector<opp_particle_move_info>>& set_move_indices = opp_part_move_indices[set];
+    std::map<int, std::vector<opp_particle_move_info>>& set_move_indices_per_rank = opp_part_move_indices[set];
 
     // iterate over all the ranks to sent particles to
-    for (auto& x : set_move_indices)
+    for (auto& move_indices_per_rank : set_move_indices_per_rank)
     {
-        int send_rank = x.first;
-        std::vector<opp_particle_move_info>& part_move_info = x.second;
+        int send_rank = move_indices_per_rank.first;
+        std::vector<opp_particle_move_info>& move_indices_vector = move_indices_per_rank.second;
 
         opp_mpi_part_buffer& send_rank_buffer = send_buffers->buffers[send_rank];
-        int required_buffer_size = (part_move_info.size() * set->particle_size);
+        int required_buffer_size = (move_indices_vector.size() * set->particle_size);
 
         // resize the export buffer if required
         if (send_rank_buffer.buf_export_index + required_buffer_size >= send_rank_buffer.buf_export_capacity)
@@ -101,8 +103,10 @@ void opp_part_pack(oppic_set set)
             }        
         }
 
+#if PACK_AOS
+
         // iterate over all the particles to be sent to this send_rank
-        for (auto& part : part_move_info)
+        for (auto& part : move_indices_vector)
         {
             int displacement = 0;
 
@@ -129,14 +133,53 @@ void opp_part_pack(oppic_set set)
             (send_buffers->export_counts)[send_rank] += 1;
         }
 
-        part_move_info.clear();
+#else // PACK_SOA
+
+        // Cannot use multiple packs before sending them, if opp_part_pack() is called multiple times with PACK_SOA, 
+        // the communication data will get currupted
+        int displacement = 0;
+
+        for (auto& dat : *(set->particle_dats))
+        {
+            int dat_size = dat->size;
+
+            if (dat->is_cell_index)
+            {
+                for (const auto& part : move_indices_vector)
+                {
+                    // we need to copy the cell index of the foreign rank, to correctly unpack in the foreign rank
+                    memcpy(&(send_rank_buffer.buf_export[send_rank_buffer.buf_export_index + displacement]), 
+                        &part.foreign_cell_index, dat->size);
+                 
+                    displacement += dat_size;
+                }
+
+            }
+            else
+            {
+                for (const auto& part : move_indices_vector)
+                {
+                    // copy the dat value to the send buffer
+                    memcpy(&(send_rank_buffer.buf_export[send_rank_buffer.buf_export_index + displacement]), 
+                        &(dat->data[part.local_particle_index * dat->size]), dat->size);
+                    
+                    displacement += dat_size;
+                }                
+            }
+        }
+
+        send_rank_buffer.buf_export_index = (int)(set->particle_size * move_indices_vector.size()); // Not used
+        (send_buffers->export_counts)[send_rank] = (int)move_indices_vector.size();
+
+#endif
+
+        move_indices_vector.clear();
     }
 
     opp_profiler->end("Pack");
 
-    // if (OP_DEBUG) 
-    //     opp_printf("opp_part_pack", "END send_rank %d exported count %d", send_rank, 
-    //         (send_buffers->export_counts)[send_rank]);
+    if (OP_DEBUG) 
+        opp_printf("opp_part_pack", "set [%s] END", set->name);
 }
 
 // //*******************************************************************************
@@ -262,12 +305,14 @@ void opp_part_unpack(oppic_set set)
 
         for (int i = 0; i < (int)neighbours.size(); i++)
         {
-            int neighbour_rank = neighbours[i];
+            int recv_rank = neighbours[i];
 
-            opp_mpi_part_buffer& receive_rank_buffer = recv_buffers->buffers[neighbour_rank];
-            int receive_count = recv_buffers->import_counts[neighbour_rank];
+            opp_mpi_part_buffer& receive_rank_buffer = recv_buffers->buffers[recv_rank];
+            int receive_count = recv_buffers->import_counts[recv_rank];
 
-            // unpack the received buffer from rank 'neighbour_rank' in to particle dats
+#if PACK_AOS
+
+            // unpack the received buffer from rank 'recv_rank' in to particle dats
             for (int part = 0; part < receive_count; part++)
             {
                 char* part_buffer = &(receive_rank_buffer.buf_import[particle_size * part]);
@@ -279,28 +324,30 @@ void opp_part_unpack(oppic_set set)
 
                     memcpy(dat->data + new_part_index * dat->size, part_buffer + displacement, dat->size);
 
-                    if (OP_DEBUG)
-                    {
-                        std::string log = "";
-                        if (strcmp(dat->type, "double") == 0)
-                        {
-                            double* d = (double*)(part_buffer + displacement);
-                            for (int l = 0; l < dat->dim; l++) log += " " + std::to_string(d[l]);
-                        }
-                        else if (strcmp(dat->type, "int") == 0)
-                        {
-                            int* d = (int*)(part_buffer + displacement);
-                            for (int l = 0; l < dat->dim; l++) log += " " + std::to_string(d[l]);
-                        }
-
-                        // opp_printf("opp_part_unpack", "%s to index %d -%s", dat->name, new_part_index, log.c_str());
-                    }
-
                     displacement += dat->size;     
                 }
 
                 new_part_index++;
             }
+
+#else // PACK_SOA
+
+            int displacement = 0;
+
+            for (auto& dat : *(set->particle_dats))
+            {
+                int dat_size = dat->size;
+
+                memcpy(dat->data + new_part_index * dat->size, receive_rank_buffer.buf_import + displacement, 
+                    dat->size * receive_count);
+                
+                displacement += dat->size * receive_count;
+                
+            }
+
+            new_part_index += receive_count;
+
+#endif
         }
     }
 
