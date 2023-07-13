@@ -49,6 +49,9 @@ std::map<oppic_set, std::map<int, opp_particle_comm_data>> opp_part_comm_neighbo
 // this translate to std::map<particle_set, std::map<send_rank, std::vector<opp_particle_move_info>>>
 std::map<oppic_set, std::map<int, std::vector<opp_particle_move_info>>> opp_part_move_indices;
 
+std::vector<MPI_Request> send_req_count;
+std::vector<MPI_Request> recv_req_count;
+
 //*******************************************************************************
 void opp_part_mark_move(oppic_set set, int particle_index, opp_particle_comm_data& comm_data)
 {
@@ -336,13 +339,10 @@ void opp_part_unpack(oppic_set set)
 
             for (auto& dat : *(set->particle_dats))
             {
-                int dat_size = dat->size;
-
                 memcpy(dat->data + new_part_index * dat->size, receive_rank_buffer.buf_import + displacement, 
                     dat->size * receive_count);
                 
-                displacement += dat->size * receive_count;
-                
+                displacement += dat->size * receive_count;            
             }
 
             new_part_index += receive_count;
@@ -427,8 +427,13 @@ void opp_part_exchange(oppic_set set)
     mpi_buffers->recv_req.clear();
     mpi_buffers->send_req.clear();
 
-    std::vector<MPI_Request> send_req_countEx(neighbour_count);
-    std::vector<MPI_Request> recv_req_countEx(neighbour_count);
+    // std::vector<MPI_Request> send_req_count(neighbour_count);
+    // std::vector<MPI_Request> recv_req_count(neighbour_count);
+    send_req_count.clear();
+    recv_req_count.clear();
+
+    send_req_count.resize(neighbour_count);
+    recv_req_count.resize(neighbour_count);
 
     opp_profiler->startMpiComm("", opp::OPP_Particle);
 
@@ -438,10 +443,10 @@ void opp_part_exchange(oppic_set set)
         int neighbour_rank = neighbours[i];
 
         int& send_count = mpi_buffers->export_counts[neighbour_rank];
-        MPI_Isend(&send_count, 1, MPI_INT, neighbour_rank, MPI_COUNT_EXCHANGE, OP_MPI_WORLD, &(send_req_countEx[i]));
+        MPI_Isend(&send_count, 1, MPI_INT, neighbour_rank, MPI_COUNT_EXCHANGE, OP_MPI_WORLD, &(send_req_count[i]));
 
         int& recv_count = mpi_buffers->import_counts[neighbour_rank];
-        MPI_Irecv(&recv_count, 1, MPI_INT, neighbour_rank, MPI_COUNT_EXCHANGE, OP_MPI_WORLD, &(recv_req_countEx[i]));
+        MPI_Irecv(&recv_count, 1, MPI_INT, neighbour_rank, MPI_COUNT_EXCHANGE, OP_MPI_WORLD, &(recv_req_count[i]));
     }
 
     double total_send_size = 0.0;
@@ -477,7 +482,7 @@ void opp_part_exchange(oppic_set set)
     opp_profiler->addTransferSize("", opp::OPP_Particle, total_send_size, (size_t)(total_send_size / set->particle_size));
 
     // wait for the counts to receive only from neighbours
-    MPI_Waitall(neighbour_count, &recv_req_countEx[0], MPI_STATUSES_IGNORE);
+    MPI_Waitall(neighbour_count, &recv_req_count[0], MPI_STATUSES_IGNORE);
 
     // create/resize data structures and receive particle data from neighbours
     for (int i = 0; i < neighbour_count; i++)
@@ -500,15 +505,12 @@ void opp_part_exchange(oppic_set set)
             if (recv_buffer.buf_import == nullptr)
             {
                 recv_buffer.buf_import_capacity  = OPP_mpi_part_alloc_mult * recv_size;           
-                recv_buffer.buf_import           = (char *)malloc(recv_buffer.buf_import_capacity);
-                // memset(recv_buffer.buf_import, 0 ,recv_buffer.buf_import_capacity); // not essential, can remove            
+                recv_buffer.buf_import           = (char *)malloc(recv_buffer.buf_import_capacity);          
             }
             else
             {
                 recv_buffer.buf_import_capacity += OPP_mpi_part_alloc_mult * recv_size;
                 recv_buffer.buf_import           = (char *)realloc(recv_buffer.buf_import, recv_buffer.buf_import_capacity);
-                // memset(&(recv_buffer.buf_import[recv_buffer.buf_import_capacity - OPP_mpi_part_alloc_mult * set->particle_size]),
-                //     0, OPP_mpi_part_alloc_mult * set->particle_size); // not essential, can remove
             }
         }
 
@@ -802,6 +804,7 @@ void opp_part_comm_destroy()
     }
 
     opp_part_comm_neighbour_data.clear();
+    opp_part_move_indices.clear();
 
     if (OP_DEBUG) opp_printf("opp_part_comm_destroy", "END"); 
 }
