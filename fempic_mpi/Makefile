@@ -12,7 +12,7 @@ MPICPP	   = mpicxx
 NVCC       = nvcc
 HIPCC      = hipcc
 
-CPPFLAGS   = -std=c++14 -Wall -fPIC
+CPPFLAGS   = -std=c++17 -Wall -fPIC
 NVCCFLAGS  = -m64 -Xptxas -dlcm=ca -Xptxas=-v $(NVCCFLAGS_ADD)
 HIPCCFLAGS = -std=c++17 -Wall -isystem -D__HIP_PLATFORM_AMD__
 
@@ -98,6 +98,12 @@ common: mklib
 seq: common
 		 $(CPP) $(CPPFLAGS) -c seq/seqkernels.cpp -o $(OBJ)/seqkernels.o $(ALL_INC)
 	     $(CPP) $(CPPFLAGS) -o $(BIN)/seq $(OBJ)/fempic_op.o $(OBJ)/meshes.o $(OBJ)/particles.o $(OBJ)/maths.o $(OBJ)/seqkernels.o $(OBJ)/FESolver.o $(ALL_INC) $(ALL_LIBS) -loppic_seq
+
+t:
+	     $(CPP) $(CPPFLAGS) -c fempic_test.cpp -o $(OBJ)/fempic_test.o $(ALL_INC)
+	     $(CPP) $(CPPFLAGS) -c fempic_ori/meshes.cpp -o $(OBJ)/meshes.o $(ALL_INC)
+	     $(CPP) $(CPPFLAGS) -o $(BIN)/test $(OBJ)/fempic_test.o $(OBJ)/meshes.o $(OBJ)/particles.o $(OBJ)/maths.o $(OBJ)/FESolver.o $(ALL_INC) $(ALL_LIBS) -loppic_seq
+
 
 omp: common
 		 $(CPP) $(CPPFLAGS) -fopenmp -c omp/ompkernels.cpp -o $(OBJ)/ompkernels.o $(ALL_INC)

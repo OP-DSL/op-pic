@@ -33,549 +33,526 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 // AUTO GENERATED CODE
 //*********************************************
 
-// THIS IS JUST A BACKUP OF AN OLD CODE // Check fempic_op.cpp
-
 #include "fempic.h"
-#include <opp_mpi.h>
+#include <list>
 
-void oppic_inject__Increase_particle_count(oppic_set,oppic_set,oppic_arg,oppic_arg,
-    oppic_arg,oppic_arg);
-void oppic_par_loop_inject__InjectIons(oppic_set,oppic_arg,oppic_arg,oppic_arg,oppic_arg,
-    oppic_arg,oppic_arg,oppic_arg,oppic_arg,oppic_arg,oppic_arg);
-void oppic_par_loop_particle_all__MoveToCells(oppic_set,oppic_arg,oppic_arg,oppic_arg,
-    oppic_arg,oppic_arg,oppic_arg,oppic_arg,oppic_arg,oppic_arg,oppic_arg,oppic_arg,oppic_arg);
-void oppic_par_loop_all__ComputeNodeChargeDensity(oppic_set,oppic_arg,oppic_arg);
-void oppic_par_loop_all__ComputeElectricField(oppic_set,oppic_arg,oppic_arg,oppic_arg,oppic_arg,
-    oppic_arg,oppic_arg);
+constexpr double MAX_REAL = std::numeric_limits<double>::max();
+constexpr double MIN_REAL = std::numeric_limits<double>::min();
+
+constexpr int MAX_INT = std::numeric_limits<int>::max();
+constexpr int MIN_INT = std::numeric_limits<int>::min();
+
+constexpr double ONE_OVER_SIX = (1.0 / 6.0);
+
+constexpr int TEST_ITER_COUNT = 100;
+
+struct opp_point {
+    opp_point(double _x, double _y, double _z) {
+        x = _x; 
+        y = _y;
+        z = _z;
+    };
+    opp_point() { };
+
+    double x = 0.0;
+    double y = 0.0;
+    double z = 0.0;
+};
+
+//*************************************************************************************************
+opp_move_status find_point_in_mesh_cells(const double *point_pos, int* current_cell_index,
+    const double *cell_volume, const double *cell_det, const int *cell_connectivity) {
+
+    bool inside = true;  
+    double lc[N_PER_C];
+    double coefficient2 = ONE_OVER_SIX / (*cell_volume);
+
+    for (int i=0; i<N_PER_C; i++) { /*loop over vertices*/
+    
+        lc[i] = coefficient2 * (
+            cell_det[i * DET_FIELDS + 0] - 
+            cell_det[i * DET_FIELDS + 1] * point_pos[0] + 
+            cell_det[i * DET_FIELDS + 2] * point_pos[1] - 
+            cell_det[i * DET_FIELDS + 3] * point_pos[2]);
+        
+        if (lc[i] < 0.0 || 
+            lc[i] > 1.0)  
+                inside = false;
+    }    
+    
+    if (inside) {
+        return OPP_MOVE_DONE;
+    }
+
+    // outside the last known cell, find most negative weight and 
+    // use that cell_index to reduce computations
+    int min_i = 0;
+    double min_lc = lc[0];
+    
+    for (int i=1; i<NEIGHB_C; i++) {
+        if (lc[i] < min_lc) {
+            min_lc = lc[i];
+            min_i = i;
+        }
+    }
+
+    if (cell_connectivity[min_i] >= 0) { // is there a neighbor in this direction?
+        (*current_cell_index) = cell_connectivity[min_i];
+        return OPP_NEED_MOVE;
+    }
+    else {
+        (*current_cell_index) = -999;
+        return OPP_NEED_REMOVE;
+    }
+}
+
+void opp_decl_const_impl(int dim, int size, char* data, const char* name)
+{
+}
+
+// For now, implement only 3D, MinCoordinate[x,y,z], MaxCoordinate[x,y,z]
+std::array<opp_point, 2> getBoundingBox(opp_dat node_pos_dat)
+{
+    opp_point minCoordinate(MAX_REAL, MAX_REAL, MAX_REAL);
+    opp_point maxCoordinate(MIN_REAL, MIN_REAL, MIN_REAL);
+
+    double* node_pos = (double*)node_pos_dat->data;
+
+    for (int i = 0; i < node_pos_dat->set->size; i++) {
+        minCoordinate.x = std::min(node_pos[i * DIM + 0], minCoordinate.x);
+        minCoordinate.y = std::min(node_pos[i * DIM + 1], minCoordinate.y);
+        minCoordinate.z = std::min(node_pos[i * DIM + 2], minCoordinate.z);
+        maxCoordinate.x = std::max(node_pos[i * DIM + 0], maxCoordinate.x);
+        maxCoordinate.y = std::max(node_pos[i * DIM + 1], maxCoordinate.y);
+        maxCoordinate.z = std::max(node_pos[i * DIM + 2], maxCoordinate.z);
+    }
+
+    opp_printf("getBoundingBox", "[%2.6lE %2.6lE %2.6lE] x [%2.6lE %2.6lE %2.6lE]", 
+        minCoordinate.x, minCoordinate.y, minCoordinate.z, maxCoordinate.x, maxCoordinate.y, maxCoordinate.z);
+
+    std::array<opp_point, 2> boundingBox = { minCoordinate, maxCoordinate };
+
+    return boundingBox;
+}
+
+opp_point getCentroidOfBox(const opp_point& coordinate, const opp_point& maxCoordinate, double gridSpacing) {
+    
+#define ASSIGN_CENTROID_TO_DIM(K)       \
+    if (coordinate.K + gridSpacing <= maxCoordinate.K) {  \
+        centroid.K = coordinate.K + gridSpacing / 2;;            \
+    }                                                               \
+    else { \
+        centroid.K = (coordinate.K + maxCoordinate.K) * 0.5; \
+    } \
+
+    opp_point centroid(MIN_REAL, MIN_REAL, MIN_REAL);
+    
+    // can remove this validation I guess! check further...
+    if (coordinate.x >= maxCoordinate.x || coordinate.y >= maxCoordinate.y || coordinate.z >= maxCoordinate.z)
+        return centroid;
+
+    const int dim = 3; // Hardcoded for now
+    switch (dim) {
+        case 1:
+            ASSIGN_CENTROID_TO_DIM(x); 
+            break;
+        case 2:
+            ASSIGN_CENTROID_TO_DIM(x);
+            ASSIGN_CENTROID_TO_DIM(y);
+            break;
+        case 3:
+            ASSIGN_CENTROID_TO_DIM(x);
+            ASSIGN_CENTROID_TO_DIM(y);
+            ASSIGN_CENTROID_TO_DIM(z);
+            break;
+        default:
+            std::cerr << "Error getCentroidOfBox: Dimension invalid " << dim << std::endl;
+    }
+
+#undef ASSIGN_CENTROID_TO_DIM
+    
+    return centroid;
+}
+
+#define GET_VERT(D,K) ((K > maxCoordinate.D) ? maxCoordinate.D : K)
+
+void generateStructMeshToCellIndexMap(const opp_point& minCoordinate, const opp_point& maxCoordinate, 
+    double gridSpacing, const opp_point& gridDimensions, const opp_dat cell_volume_dat, const opp_dat cell_det_dat, 
+    const opp_map cell_connectivity_map, std::vector<int>& structMeshToCellIndexMap) {
+    
+    structMeshToCellIndexMap.clear();
+    structMeshToCellIndexMap.reserve(gridDimensions.x * gridDimensions.y * gridDimensions.z);
+
+    for (double z = minCoordinate.z; z < maxCoordinate.z; z += gridSpacing) {
+        for (double y = minCoordinate.y; y < maxCoordinate.y; y += gridSpacing) {
+            for (double x = minCoordinate.x; x < maxCoordinate.x; x += gridSpacing) {
+            
+                const opp_point centroid = getCentroidOfBox(opp_point(x, y ,z), maxCoordinate, gridSpacing);
+
+                // Find in which cell this centroid lies and in which MPI rank (for MPI backend)
+                int cellIndex = 0;
+                opp_move_status m = OPP_NEED_MOVE;
+
+                do {
+                    m = find_point_in_mesh_cells(
+                        (const double*)&centroid, 
+                        &cellIndex,
+                        &((double*)cell_volume_dat->data)[cellIndex], 
+                        &((double*)cell_det_dat->data)[cellIndex * cell_det_dat->dim], 
+                        &((int*)cell_connectivity_map->map)[cellIndex * cell_connectivity_map->dim]);
+
+                } while (m == OPP_NEED_MOVE);
+
+                if (m == OPP_NEED_REMOVE) {
+                    
+                    // Eventhough the centroid is out of the structured mesh, 
+                    // check atleast one vertex of the structured mesh is within an unstructured mesh cell
+                    double gs = gridSpacing;
+                    bool found = false;
+
+                    std::array<opp_point,8> vertices = {
+                        opp_point(GET_VERT(x,x),    GET_VERT(y,y),    GET_VERT(z,z)),
+                        opp_point(GET_VERT(x,x),    GET_VERT(y,y+gs), GET_VERT(z,z)),
+                        opp_point(GET_VERT(x,x),    GET_VERT(y,y+gs), GET_VERT(z,z+gs)),
+                        opp_point(GET_VERT(x,x),    GET_VERT(y,y),    GET_VERT(z,z+gs)),
+                        opp_point(GET_VERT(x,x+gs), GET_VERT(y,y),    GET_VERT(z,z)),
+                        opp_point(GET_VERT(x,x+gs), GET_VERT(y,y+gs), GET_VERT(z,z)),
+                        opp_point(GET_VERT(x,x+gs), GET_VERT(y,y),    GET_VERT(z,z+gs)),
+                        opp_point(GET_VERT(x,x+gs), GET_VERT(y,y+gs), GET_VERT(z,z+gs)),
+                    };
+
+                    for (const auto& point : vertices) {
+                        cellIndex = 0;
+                        opp_move_status m = OPP_NEED_MOVE;
+
+                        do {
+                            m = find_point_in_mesh_cells(
+                                (const double*)&point, 
+                                &cellIndex,
+                                &((double*)cell_volume_dat->data)[cellIndex], 
+                                &((double*)cell_det_dat->data)[cellIndex * cell_det_dat->dim], 
+                                &((int*)cell_connectivity_map->map)[cellIndex * cell_connectivity_map->dim]);
+
+                        } while (m == OPP_NEED_MOVE);
+
+                        if (m == OPP_MOVE_DONE) {
+                            found = true;
+                            break;
+                        }
+                    }    
+
+                    if (!found) {
+                        cellIndex = -999;
+                    }
+                }
+
+                structMeshToCellIndexMap.push_back(cellIndex);
+            }
+        }
+    }
+}
+
+#undef GET_VERT
+
+void moveWithHops(size_t size, const double* dist, int* ci1, const opp_dat cell_volume_dat, const opp_dat cell_det_dat, 
+                    const opp_map cell_connectivity_map) {
+
+    for (size_t i = 0; i < size; i++) {    
+        opp_move_status m = OPP_NEED_MOVE;
+
+        do {
+            int cellIndex = ci1[i];
+
+            m = find_point_in_mesh_cells(
+                &((const double*)dist)[i * 3], 
+                &((int*)ci1)[i],
+                &((double*)cell_volume_dat->data)[cellIndex], 
+                &((double*)cell_det_dat->data)[cellIndex * cell_det_dat->dim], 
+                &((int*)cell_connectivity_map->map)[cellIndex * cell_connectivity_map->dim]);
+
+        } while (m == OPP_NEED_MOVE);
+    }
+}
+
+int findClosestCellIndex(const double* targetPosition, const std::vector<int>& structMeshToCellIndexMap,  
+                const opp_point& gridDimensions, double oneOverGridSpacing, const opp_point& minCoordinate) {
+
+    int targetXIndex = static_cast<int>((targetPosition[0] - minCoordinate.x) * oneOverGridSpacing);
+    int targetYIndex = static_cast<int>((targetPosition[1] - minCoordinate.y) * oneOverGridSpacing);
+    int targetZIndex = static_cast<int>((targetPosition[2] - minCoordinate.z) * oneOverGridSpacing);
+
+    int closestIndex = targetXIndex + targetYIndex * gridDimensions.x + targetZIndex * gridDimensions.x * gridDimensions.y;
+
+    return structMeshToCellIndexMap[closestIndex];
+}
+
+void moveDirect(size_t size, const double* dist, int* ci2, const opp_dat cell_volume_dat, const opp_dat cell_det_dat, 
+    const opp_map cell_connectivity_map, const std::vector<int>& structMeshToCellIndexMap, const opp_point& gridDimensions, 
+    double gridSpacing, const opp_point& minCoordinate) {
+    
+    const double oneOverGridSpacing = (1.0 / gridSpacing);
+
+    for (size_t i = 0; i < size; i++) {   
+
+        ci2[i] = findClosestCellIndex(&((const double*)dist)[i * 3], structMeshToCellIndexMap, gridDimensions, 
+                                        oneOverGridSpacing, minCoordinate);
+        if (ci2[i] < 0 || ci2[i] >= cell_volume_dat->set->size) {
+            ci2[i] = -999;
+            continue;
+        }
+
+        opp_move_status m = OPP_NEED_MOVE;
+
+        do {
+            int cellIndex = ci2[i];
+
+            m = find_point_in_mesh_cells(
+                &((const double*)dist)[i * 3], 
+                &((int*)ci2)[i],
+                &((double*)cell_volume_dat->data)[cellIndex], 
+                &((double*)cell_det_dat->data)[cellIndex * cell_det_dat->dim], 
+                &((int*)cell_connectivity_map->map)[cellIndex * cell_connectivity_map->dim]);
+
+        } while (m == OPP_NEED_MOVE);
+    }
+}
+
+
+void generateCoordinateVec(const opp_point& minCoordinate, const opp_point& maxCoordinate, double gridSpacing,
+                            std::vector<opp_point>& coordinateVec, opp_point& gridDimensions) {
+
+    coordinateVec.clear(); 
+    coordinateVec.reserve(gridDimensions.x * gridDimensions.y * gridDimensions.z);
+
+    for (double z = minCoordinate.z; z < maxCoordinate.z; z += gridSpacing) {
+        for (double y = minCoordinate.y; y < maxCoordinate.y; y += gridSpacing) {
+            for (double x = minCoordinate.x; x < maxCoordinate.x; x += gridSpacing) {
+                coordinateVec.emplace_back(opp_point(x, y, z)); 
+            } 
+        }
+    }
+}
+
+void calculateGridDimensions(const opp_point& minCoordinate, const opp_point& maxCoordinate, double gridSpacing,
+                                opp_point& gridDimensions) {
+
+    const double oneOverGridSpacing = (1.0 / gridSpacing);
+
+    gridDimensions.x = std::ceil((maxCoordinate.x - minCoordinate.x) * oneOverGridSpacing);
+    gridDimensions.y = std::ceil((maxCoordinate.y - minCoordinate.y) * oneOverGridSpacing);
+    gridDimensions.z = std::ceil((maxCoordinate.z - minCoordinate.z) * oneOverGridSpacing);
+}
 
 //*********************************************MAIN****************************************************
 int main(int argc, char **argv) 
 {
-    // if (argc < 2) {
-    //     std::cerr << "Usage: " << argv[0] << " <config_file> ..." << std::endl;
-    //     exit(-1);
-    // }
-
-    opp::Params params("/ext-home/zl/phd/OP-PIC/scripts/fempic_tests/configs/coarse_1.param");
-    
-    oppic_init(argc, argv, &params);
-    
-    opp_printf("Main()", "RUNNING fempic TEST");  
-
-    params.write(std::cout);
-
-    std::shared_ptr<FieldPointers> g_mesh, g1_mesh;
-
-    g1_mesh = LoadMesh(params, argc, argv);
-
-// opp_printf("XXXXXXXXXX", OPP_my_rank, " 00");  
-    
-    g1_mesh->DeleteValues();
-
-// opp_printf("XXXXXXXXXX", OPP_my_rank, " 1");
-
-    if (OPP_my_rank == OPP_MPI_ROOT)
+    if (argc < 2) 
     {
-        g_mesh = LoadMesh(params, argc, argv);
-    }
-    else
-    {
-        g_mesh = std::make_shared<FieldPointers>();
+        std::cerr << "Usage: " << argv[0] << " <config_file> ..." << 
+        "/ext-home/zl/phd/OP-PIC/scripts/fempic_tests/configs/coarse_1.param" << std::endl;
+        exit(-1);
     }
 
-// opp_printf("XXXXXXXXXX", OPP_my_rank, " 2");
-    
-    FieldPointers mesh;
+    opp_init(argc, argv);
+    opp_params->write(std::cout);
 
-    mesh.n_nodes  = opp_get_uniform_local_size(g1_mesh->n_nodes);
-    mesh.n_cells  = opp_get_uniform_local_size(g1_mesh->n_cells);
-    mesh.n_ifaces = opp_get_uniform_local_size(g1_mesh->n_ifaces);
-
-    opp_printf("Main()", OPP_my_rank, "Local Sizes before partitioning - Nodes[%d] Cells[%d] IFaces[%d]", 
-        mesh.n_nodes, mesh.n_cells, mesh.n_ifaces);
-// opp_printf("XXXXXXXXXX", OPP_my_rank, " 3");
-
-    mesh.CreateMeshArrays();
-
-// opp_printf("XXXXXXXXXX", OPP_my_rank, " 4");
-
-    opp_uniform_scatter_array(g_mesh->cell_ef            , mesh.cell_ef            , g1_mesh->n_cells , 
-        mesh.n_cells , DIMENSIONS);
-    opp_uniform_scatter_array(g_mesh->cell_to_nodes      , mesh.cell_to_nodes      , g1_mesh->n_cells , 
-        mesh.n_cells , NODES_PER_CELL); 
-    opp_uniform_scatter_array(g_mesh->cell_to_cell       , mesh.cell_to_cell       , g1_mesh->n_cells , 
-        mesh.n_cells , NEIGHBOUR_CELLS); 
-    opp_uniform_scatter_array(g_mesh->cell_det           , mesh.cell_det           , g1_mesh->n_cells , 
-        mesh.n_cells , DET_FIELDS * NEIGHBOUR_CELLS); 
-    opp_uniform_scatter_array(g_mesh->cell_volume        , mesh.cell_volume        , g1_mesh->n_cells , 
-        mesh.n_cells , 1); 
-    opp_uniform_scatter_array(g_mesh->cell_shape_deriv   , mesh.cell_shape_deriv   , g1_mesh->n_cells , 
-        mesh.n_cells , NODES_PER_CELL*DIMENSIONS); 
-    opp_uniform_scatter_array(g_mesh->node_bnd_pot       , mesh.node_bnd_pot       , g1_mesh->n_nodes , 
-        mesh.n_nodes , 1); 
-    opp_uniform_scatter_array(g_mesh->node_pot           , mesh.node_pot           , g1_mesh->n_nodes , 
-        mesh.n_nodes , 1); 
-    opp_uniform_scatter_array(g_mesh->node_ion_den       , mesh.node_ion_den       , g1_mesh->n_nodes , 
-        mesh.n_nodes , 1); 
-    opp_uniform_scatter_array(g_mesh->node_pos           , mesh.node_pos           , g1_mesh->n_nodes , 
-        mesh.n_nodes , DIMENSIONS); 
-    opp_uniform_scatter_array(g_mesh->node_volume        , mesh.node_volume        , g1_mesh->n_nodes , 
-        mesh.n_nodes , 1);
-    opp_uniform_scatter_array(g_mesh->iface_to_cell      , mesh.iface_to_cell      , g1_mesh->n_ifaces, 
-        mesh.n_ifaces, 1); 
-    opp_uniform_scatter_array(g_mesh->iface_to_nodes     , mesh.iface_to_nodes     , g1_mesh->n_ifaces, 
-        mesh.n_ifaces, DIMENSIONS); 
-    opp_uniform_scatter_array(g_mesh->iface_v_normal     , mesh.iface_v_normal     , g1_mesh->n_ifaces, 
-        mesh.n_ifaces, DIMENSIONS); 
-    opp_uniform_scatter_array(g_mesh->iface_u_normal     , mesh.iface_u_normal     , g1_mesh->n_ifaces, 
-        mesh.n_ifaces, DIMENSIONS); 
-    opp_uniform_scatter_array(g_mesh->iface_normal       , mesh.iface_normal       , g1_mesh->n_ifaces, 
-        mesh.n_ifaces, DIMENSIONS); 
-    opp_uniform_scatter_array(g_mesh->iface_area         , mesh.iface_area         , g1_mesh->n_ifaces, 
-        mesh.n_ifaces, 1); 
-    opp_uniform_scatter_array(g_mesh->iface_inj_part_dist, mesh.iface_inj_part_dist, g1_mesh->n_ifaces, 
-        mesh.n_ifaces, 1); 
-    opp_uniform_scatter_array(g_mesh->iface_node_pos     , mesh.iface_node_pos     , g1_mesh->n_ifaces, 
-        mesh.n_ifaces, DIMENSIONS);        
-
-// opp_printf("XXXXXXXXXX", OPP_my_rank, " 5");
-
-    if (OPP_my_rank == OPP_MPI_ROOT)
     {
-        g_mesh->DeleteValues();
-    }
+        opp_profiler->start("Setup");
 
-// opp_printf("XXXXXXXXXX", OPP_my_rank, " 6");
+        std::string log     = "";
 
-    double plasma_den = params.get<OPP_REAL>("plasma_den");
-    double dt = params.get<OPP_REAL>("dt");
-    double ion_velocity = params.get<OPP_REAL>("ion_velocity");
-    double spwt = params.get<OPP_REAL>("spwt");
-    double mass = 2 * AMU;
-    double charge = 1 * QE;
-    int max_iter = params.get<OPP_INT>("max_iter");
-    double remainder = 0.0;
-    int ts = 0;
-
-// opp_printf("main()", OPP_my_rank, " starting to decl opp structs: nodes:%d cells:%d, ifaces:%d", 
-//    mesh.n_nodes, mesh.n_cells, mesh.n_ifaces);
-//     { // Start Scope for oppic
-
-        int pcount = 20;
-        double* arr_part_position    = new double[pcount * DIMENSIONS];
-        double* arr_part_velocity    = new double[pcount * DIMENSIONS];
-        int* arr_part_lc             = new int[pcount * NODES_PER_CELL];
-        int* arr_part_mesh_relation  = new int[pcount];
-
-        for (int z = 0; z < pcount; z++)
+        std::shared_ptr<FieldPointers> g_m, m; // g_m - global mesh, m - local mesh
+        g_m = std::make_shared<FieldPointers>();
+        
+        if (OPP_rank == OPP_ROOT)
         {
-            arr_part_position[z * DIMENSIONS + 0] = (OPP_my_rank+1) * 1000 + z * 10 + 0;
-            arr_part_position[z * DIMENSIONS + 1] = (OPP_my_rank+1) * 1000 + z * 10 + 1;
-            arr_part_position[z * DIMENSIONS + 2] = (OPP_my_rank+1) * 1000 + z * 10 + 2;
-
-            arr_part_velocity[z * DIMENSIONS + 0] = (OPP_my_rank+1) * 10000 + z * 10 + 0;
-            arr_part_velocity[z * DIMENSIONS + 1] = (OPP_my_rank+1) * 10000 + z * 10 + 1;
-            arr_part_velocity[z * DIMENSIONS + 2] = (OPP_my_rank+1) * 10000 + z * 10 + 2;
-
-            arr_part_lc[z * NODES_PER_CELL + 0] = (OPP_my_rank+1) * 100000 + z * 10 + 0;
-            arr_part_lc[z * NODES_PER_CELL + 1] = (OPP_my_rank+1) * 100000 + z * 10 + 1;
-            arr_part_lc[z * NODES_PER_CELL + 2] = (OPP_my_rank+1) * 100000 + z * 10 + 2;
-            arr_part_lc[z * NODES_PER_CELL + 3] = (OPP_my_rank+1) * 100000 + z * 10 + 3;
-
-            arr_part_mesh_relation[z] = ((z*873 +1) % mesh.n_cells);
+            // Load using the original FemPIC loaders and distribute
+            g_m = LoadMesh();
+            opp_printf("Main", "Global counts - Nodes[%d] Cells[%d] IFaces[%d]", 
+                g_m->n_nodes, g_m->n_cells, g_m->n_ifaces);
         }
- 
-        oppic_set nodes_set            = oppic_decl_set(mesh.n_nodes, "mesh_nodes");
-        oppic_set cells_set            = oppic_decl_set(mesh.n_cells, "mesh_cells");
-        oppic_set ifaces_set           = oppic_decl_set(mesh.n_ifaces, "mesh_inlet_faces");
+
+        DistributeMeshOverRanks(g_m, m);
+
+        opp_set node_set         = opp_decl_mesh_set(m->n_nodes, "mesh_nodes");
+        opp_set cell_set         = opp_decl_mesh_set(m->n_cells, "mesh_cells");
+        opp_set iface_set        = opp_decl_mesh_set(m->n_ifaces, "inlet_faces_cells");
+        opp_set particle_set     = opp_decl_part_set("particles", cell_set); 
+
+        opp_map cell_v_nodes_map = opp_decl_mesh_map(cell_set,  node_set, N_PER_C,  m->c_to_n, "c_v_n_map");
+        opp_map cell_v_cell_map  = opp_decl_mesh_map(cell_set,  cell_set, NEIGHB_C, m->c_to_c,  "c_v_c_map"); 
+        opp_map iface_v_cell_map = opp_decl_mesh_map(iface_set, cell_set, ONE,      m->if_to_c, "if_v_c_map"); 
+
+        opp_dat cell_det         = opp_decl_mesh_dat(cell_set, ALL_DET,     DT_REAL, m->c_det, "c_det");  
+        opp_dat cell_volume      = opp_decl_mesh_dat(cell_set, ONE,         DT_REAL, m->c_vol, "c_volume");        
+        opp_dat cell_ef          = opp_decl_mesh_dat(cell_set, DIM,         DT_REAL, m->c_ef,  "c_ef");
+        opp_dat cell_shape_deriv = opp_decl_mesh_dat(cell_set, N_PER_C*DIM, DT_REAL, m->c_sd,  "c_shape_deri"); 
+        // opp_dat cell_id          = opp_decl_mesh_dat(cell_set, ONE,         DT_INT,  m->c_id,  "c_id"); 
+        opp_dat cell_colors      = opp_decl_mesh_dat(cell_set, ONE,         DT_INT,  m->c_col, "c_colors");
+
+        opp_dat node_volume      = opp_decl_mesh_dat(node_set, ONE, DT_REAL, m->n_vol,     "n_vol");        
+        opp_dat node_potential   = opp_decl_mesh_dat(node_set, ONE, DT_REAL, m->n_pot,     "n_potential");     
+        opp_dat node_charge_den  = opp_decl_mesh_dat(node_set, ONE, DT_REAL, m->n_ion_den, "n_charge_den");
+        opp_dat node_pos         = opp_decl_mesh_dat(node_set, DIM, DT_REAL, m->n_pos,     "n_pos");     
+        opp_dat node_type        = opp_decl_mesh_dat(node_set, ONE, DT_INT,  m->n_type,    "n_type");
+        opp_dat node_bnd_pot     = opp_decl_mesh_dat(node_set, ONE, DT_REAL, m->n_bnd_pot, "n_bnd_pot");
+        // opp_dat node_id          = opp_decl_mesh_dat(node_set, ONE, DT_INT,  m->n_id,      "n_id"); 
+        // opp_dat node_colors      = opp_decl_mesh_dat(node_set, ONE, DT_INT,  m->n_color,   "n_colors");
+
+        opp_dat iface_v_norm  = opp_decl_mesh_dat(iface_set, DIM, DT_REAL, m->if_v_norm, "iface_v_norm");        
+        opp_dat iface_u_norm  = opp_decl_mesh_dat(iface_set, DIM, DT_REAL, m->if_u_norm, "iface_u_norm"); 
+        opp_dat iface_norm    = opp_decl_mesh_dat(iface_set, DIM, DT_REAL, m->if_norm,   "iface_norm");     
+        opp_dat iface_area    = opp_decl_mesh_dat(iface_set, ONE, DT_REAL, m->if_area,   "iface_area");
+        opp_dat iface_dist    = opp_decl_mesh_dat(iface_set, ONE, DT_INT,  m->if_dist,   "iface_dist");
+        opp_dat iface_n_pos   = opp_decl_mesh_dat(iface_set, DIM, DT_REAL, m->if_n_pos,  "iface_n_pos"); 
+        // opp_dat iface_id      = opp_decl_mesh_dat(iface_set, ONE, DT_INT,  m->if_id,     "iface_id"); 
+
+        opp_dat part_position = opp_decl_part_dat(particle_set, DIM,     DT_REAL, nullptr, "part_position");
+        opp_dat part_velocity = opp_decl_part_dat(particle_set, DIM,     DT_REAL, nullptr, "part_velocity");    
+        opp_dat part_lc       = opp_decl_part_dat(particle_set, N_PER_C, DT_REAL, nullptr, "part_lc");
+        opp_dat part_mesh_rel = opp_decl_part_dat(particle_set, ONE,     DT_INT,  nullptr, "part_mesh_rel", true);
+
+        opp_set dummy_part_set   = opp_decl_part_set("dummy particles", cell_set); 
+        opp_dat dummy_part_rand  = opp_decl_part_dat(dummy_part_set, 2, DT_REAL, nullptr, "dummy_part_rand");
+
+        m->DeleteValues();
         
-// opp_printf("XXXXXXXXXX", OPP_my_rank, " 62");
-        oppic_map cell_to_nodes_map    = oppic_decl_map(cells_set,  nodes_set, NODES_PER_CELL,  
-            mesh.cell_to_nodes,  "cell_to_nodes_map");
-        oppic_map cell_to_cell_map     = oppic_decl_map(cells_set,  cells_set, NEIGHBOUR_CELLS, 
-            mesh.cell_to_cell,   "cell_to_cell_map"); 
-        oppic_map iface_to_cell_map    = oppic_decl_map(ifaces_set, cells_set, 1,               
-            mesh.iface_to_cell,  "iface_to_cell_map"); 
-// opp_printf("XXXXXXXXXX", OPP_my_rank, " 63");
-        oppic_dat cell_determinants    = oppic_decl_dat(cells_set, (NEIGHBOUR_CELLS*DET_FIELDS),
-            OPP_TYPE_REAL, (char*)mesh.cell_det,         "cell_determinants");  
-        oppic_dat cell_volume          = oppic_decl_dat(cells_set, 1,                           
-            OPP_TYPE_REAL, (char*)mesh.cell_volume,      "cell_volume");        
-        oppic_dat cell_electric_field  = oppic_decl_dat(cells_set, DIMENSIONS,                  
-            OPP_TYPE_REAL, (char*)mesh.cell_ef,          "cell_electric_field");
-        oppic_dat cell_shape_deriv     = oppic_decl_dat(cells_set, (NODES_PER_CELL*DIMENSIONS), 
-            OPP_TYPE_REAL, (char*)mesh.cell_shape_deriv, "cell_shape_deriv"); 
-// opp_printf("XXXXXXXXXX", OPP_my_rank, " 64");   
-        oppic_dat node_volume          = oppic_decl_dat(nodes_set, 1, OPP_TYPE_REAL, 
-            (char*)mesh.node_volume,  "node_volume");        
-        oppic_dat node_potential       = oppic_decl_dat(nodes_set, 1, OPP_TYPE_REAL, 
-            (char*)mesh.node_pot,     "node_potential");     
-        oppic_dat node_charge_density  = oppic_decl_dat(nodes_set, 1, OPP_TYPE_REAL, 
-            (char*)mesh.node_ion_den, "node_charge_density");
+        int n_parts_to_inject = InitializeInjectDistributions(iface_dist, iface_area, dummy_part_rand);
 
-double * test = new double[DIMENSIONS*mesh.n_nodes];
-        // This is only for testing, mesh.node_ion_den will be accessed out of counds but will reset
-        oppic_dat node_test            = oppic_decl_dat(nodes_set, DIMENSIONS, OPP_TYPE_REAL, 
-            (char*)test, "node_test"); 
-delete[] test;
-// opp_printf("XXXXXXXXXX", OPP_my_rank, " 65");
-        oppic_dat iface_v_normal       = oppic_decl_dat(ifaces_set, DIMENSIONS, OPP_TYPE_REAL, 
-            (char*)mesh.iface_v_normal,      "iface_v_normal");        
-        oppic_dat iface_u_normal       = oppic_decl_dat(ifaces_set, DIMENSIONS, OPP_TYPE_REAL, 
-            (char*)mesh.iface_u_normal,      "iface_u_normal"); 
-        oppic_dat iface_normal         = oppic_decl_dat(ifaces_set, DIMENSIONS, OPP_TYPE_REAL, 
-            (char*)mesh.iface_normal,        "iface_normal");     
-        oppic_dat iface_area           = oppic_decl_dat(ifaces_set, 1,          OPP_TYPE_REAL, 
-            (char*)mesh.iface_area,          "iface_area");
-        oppic_dat iface_inj_part_dist  = oppic_decl_dat(ifaces_set, 1,          OPP_TYPE_INT,  
-            (char*)mesh.iface_inj_part_dist, "iface_inj_part_dist");
-        oppic_dat iface_node_pos       = oppic_decl_dat(ifaces_set, DIMENSIONS, OPP_TYPE_REAL, 
-            (char*)mesh.iface_node_pos,      "iface_node_pos"); 
-// opp_printf("XXXXXXXXXX", OPP_my_rank, " 66");
-        oppic_set particles_set        = oppic_decl_particle_set(pcount, "particles", cells_set); 
-        oppic_dat part_position        = oppic_decl_particle_dat(particles_set, DIMENSIONS,     
-            OPP_TYPE_REAL, (char*)arr_part_position, "part_position");
-        oppic_dat part_velocity        = oppic_decl_particle_dat(particles_set, DIMENSIONS,     
-            OPP_TYPE_REAL, (char*)arr_part_velocity, "part_velocity");    
-        oppic_dat part_lc              = oppic_decl_particle_dat(particles_set, NODES_PER_CELL, 
-            OPP_TYPE_INT, (char*)arr_part_lc, "part_lc");
-        oppic_dat part_mesh_relation   = oppic_decl_particle_dat(particles_set, 1,              
-            OPP_TYPE_INT,  (char*)arr_part_mesh_relation, "part_mesh_relation", true); // new cell index field
-delete[] arr_part_position;
-delete[] arr_part_velocity;
-delete[] arr_part_lc;
-delete[] arr_part_mesh_relation;
+        opp_profiler->end("Setup");
 
-        oppic_set dummy_part_set       = oppic_decl_particle_set("dummy particles", cells_set); 
-        oppic_dat dummy_part_random    = oppic_decl_particle_dat(dummy_part_set, 2, OPP_TYPE_REAL, 
-            nullptr, "dum_part_random");
+        auto boundingBox = getBoundingBox(node_pos); // index 0 is min, index 1 is max
+        double gridSpacing = 6e-5;  // 60um grid spacing will get all unstructured mesh cells captured in the structured mesh
 
+        opp_point gridDimensions;
+        calculateGridDimensions(boundingBox[0], boundingBox[1], gridSpacing, gridDimensions);
 
-// opp_printf("XXXXXXXXXX", OPP_my_rank, " 9");
+        // TODO : ideally, without coordinateVec, we can get the coordinate by calculating using minCoordinate
+        // Lets keep this for now
+        std::vector<opp_point> coordinateVec; 
+        generateCoordinateVec(boundingBox[0], boundingBox[1], gridSpacing, coordinateVec, gridDimensions);
+        std::cout << "coordinateVec size=" << coordinateVec.size() << std::endl;
 
-        oppic_decl_const<OPP_REAL>(1, &spwt,         "CONST_spwt");
-        oppic_decl_const<OPP_REAL>(1, &ion_velocity, "CONST_ion_velocity");
-        oppic_decl_const<OPP_REAL>(1, &dt,           "CONST_dt");
-        oppic_decl_const<OPP_REAL>(1, &plasma_den,   "CONST_plasma_den");
-        oppic_decl_const<OPP_REAL>(1, &mass,         "CONST_mass");
-        oppic_decl_const<OPP_REAL>(1, &charge,       "CONST_charge");
+        std::vector<int> structMeshToCellIndexMap;
+        generateStructMeshToCellIndexMap(boundingBox[0], boundingBox[1], gridSpacing, gridDimensions, cell_volume,
+                            cell_det, cell_v_cell_map, structMeshToCellIndexMap);
 
-// opp_printf("XXXXXXXXXX", OPP_my_rank, " 8");
+        std::cout << "structMeshToCellIndexMap size=" << structMeshToCellIndexMap.size() << std::endl;
 
-        
-// print_dat_to_txtfile_mpi(cell_shape_deriv, "cell_shape_deriv_pre.dat");
-// opp_printf("XXXXXXXXXX", OPP_my_rank, " 10");
+        std::cout << "structMeshToCellIndexMap0 " << structMeshToCellIndexMap[0] << std::endl;
+        std::cout << "structMeshToCellIndexMap1 " << structMeshToCellIndexMap[1] << std::endl;
 
-        opp_partition(cells_set, cell_to_nodes_map);
-
-        mesh.DeleteValues();
-
-        int n_parts_to_inject = InitializeInjectDistributions(params, iface_inj_part_dist, 
-            iface_area, dummy_part_random);
-
-
-// print_dat_to_txtfile_mpi(cell_shape_deriv, "cell_shape_deriv_post.dat");
-// op_print_dat_to_txtfile(cell_shape_deriv, "cell_shape_deriv_proccessed.dat");
-//  opp_printf("XXXXXXXXXX", OPP_my_rank, " 67");
-    
-    if (false)
-    {
-        std::string f = std::string("A_") + std::to_string(OPP_my_rank);
-        // oppic_print_map_to_txtfile(cell_to_nodes_map  , f.c_str(), "cell_to_nodes_map.dat");
-        // oppic_print_map_to_txtfile(cell_to_cell_map   , f.c_str(), "cell_to_cell_map.dat");
-        // oppic_print_map_to_txtfile(iface_to_cell_map  , f.c_str(), "iface_to_cell_map.dat");
-
-        // oppic_print_dat_to_txtfile(node_charge_density, f.c_str(), "node_charge_density.dat");
-        // oppic_print_dat_to_txtfile(node_potential     , f.c_str(), "node_potential.dat");
-        // oppic_print_dat_to_txtfile(cell_electric_field, f.c_str(), "cell_electric_field.dat");
-
-        // oppic_print_dat_to_txtfile(iface_v_normal,      f.c_str(), "iface_v_normal.dat");
-        // oppic_print_dat_to_txtfile(iface_u_normal,      f.c_str(), "iface_u_normal.dat");
-        // oppic_print_dat_to_txtfile(iface_normal,        f.c_str(), "iface_normal.dat");
-        // oppic_print_dat_to_txtfile(iface_area,          f.c_str(), "iface_area.dat");
-        // oppic_print_dat_to_txtfile(iface_inj_part_dist, f.c_str(), "iface_inj_part_dist.dat");
-
-        oppic_print_dat_to_txtfile(part_position     , f.c_str(), "part_position.dat");
-        oppic_print_dat_to_txtfile(part_velocity     , f.c_str(), "part_velocity.dat");
-        oppic_print_dat_to_txtfile(part_lc           , f.c_str(), "part_lc.dat");
-        oppic_print_dat_to_txtfile(part_mesh_relation, f.c_str(), "part_mesh_relation.dat");
-    }
-
-    // Testing particle communications
-    if (false)
-    {
-        oppic_set set = particles_set;
-
-        int* map0idx = nullptr;
-
-        do
-        {    
-            opp_printf("Main()", "Starting iteration %d, start[%d] end[%d]", 
-                OPP_comm_iteration, OPP_iter_start, OPP_iter_end);
-
-            oppic_init_particle_move(set);
-
-            for (int i = OPP_iter_start; i < OPP_iter_end; i++)
-            {        
-                opp_move_var m = opp_get_move_var();
-
-                opp_printf("Main()", "Iter index %d comm_iteration %d *******************************", 
-                    i, OPP_comm_iteration);
-
-                do
-                { 
-                    map0idx = &(OPP_mesh_relation_data[i]);
-
-                    // Expect this as the kernel **************************************************************
-                    {                    
-                        if (OPP_my_rank == 0 && i == 2 && OPP_comm_iteration==0)
-                        {
-                            opp_printf("EXPECT COMM", "3468 cell of INDEX 1 ieh of RANK 0");
-                            ((int*)part_mesh_relation->data)[i] = 3862;
-                            // ((int*)part_mesh_relation->data)[i] = 1800; 2457;
-                            m.OPP_move_status = OPP_NEED_MOVE;
-                        }
-                        else if (OPP_my_rank == 0 && i == 19 && OPP_comm_iteration==0)
-                        {
-                            opp_printf("EXPECT COMM", "3649 cell of INDEX 182 ieh of RANK 0");
-                            ((int*)part_mesh_relation->data)[i] = 4043;
-                            m.OPP_move_status = OPP_NEED_MOVE;
-                        }
-                        else if (OPP_my_rank == 1 && i == 3 && OPP_comm_iteration==0)
-                        {
-                            opp_printf("EXPECT COMM", "3670 cell of INDEX 3 ieh of RANK 1");
-                            ((int*)part_mesh_relation->data)[i] = 3653;
-                            m.OPP_move_status = OPP_NEED_MOVE;
-                        }
-                        else if (OPP_my_rank == 1 && i == 19 && OPP_comm_iteration==1)
-                        {
-                            opp_printf("EXPECT COMM", "3672 cell of INDEX 1 ieh of RANK 0");
-                            ((int*)part_mesh_relation->data)[i] = 3655;
-                            m.OPP_move_status = OPP_NEED_MOVE;
-
-                            if (m.OPP_iteration_one != false)
-                            {
-                                opp_printf("Main()", "ERROR ERROR ERROR *************************");
-                                exit(-1);
-                            }
-                        }
-                        else
-                        {
-                            m.OPP_move_status = OPP_MOVE_DONE;
-                        }
-                    }
-                    // End of the kernel **************************************************************
-
-                    // should check whether map0idx is in halo list, if yes, pack the particle data into MPI buffer
-                } while (opp_part_check_status(m, *map0idx, set, i, set->particle_remove_count));
+        { // sanity check to test whether all unstructured mesh cells are captured over structured mesh
+            int count = 0;
+            for (int i = 0; i < cell_set->size; i++)
+            {
+                auto it = std::find(structMeshToCellIndexMap.begin(), structMeshToCellIndexMap.end(), i);
+                if (it == structMeshToCellIndexMap.end()) {
+                    std::cout << "Element " << i << " not found in the list." << std::endl;
+                    count++;
+                }            
             }
-
-        } while (oppic_finalize_particle_move(set));
-    }
-
-    if (false)
-    {
-        std::string f = std::string("F_") + std::to_string(OPP_my_rank);
-
-        oppic_print_dat_to_txtfile(part_position     , f.c_str(), "part_position.dat");
-        oppic_print_dat_to_txtfile(part_velocity     , f.c_str(), "part_velocity.dat");
-        oppic_print_dat_to_txtfile(part_lc           , f.c_str(), "part_lc.dat");
-        oppic_print_dat_to_txtfile(part_mesh_relation, f.c_str(), "part_mesh_relation.dat");
-    }
-
-
-
-
-
-    // Testing Double indirect reductions
-    if (false)
-    {
-        oppic_set set = particles_set;
-
-        oppic_arg arg8 = oppic_arg_dat(node_test, 0, cell_to_nodes_map, OP_INC,  OPP_Map_from_Mesh_Rel);
-        oppic_arg arg9 = oppic_arg_dat(part_position, OP_READ);
-
-        int nargs = 2;
-        oppic_arg args[nargs];
-
-        args[0] = arg8;
-        args[1] = arg9;
-
-        oppic_reset_dat(node_test, (char*)opp_zero_double16);
-
-        opp_init_double_indirect_reductions(nargs, args);
-
-        if (true)
-        {
-            std::string f = std::string("Be_") + std::to_string(OPP_my_rank);
-            oppic_print_dat_to_txtfile(node_test     , f.c_str(), "node_test.dat");
-        }  
-
-        int start = 0;
-        int end = set->size;
-
-        int *mesh_relation_data = ((int *)set->mesh_relation_dat->data);      
-                        
-        for (int i = start; i < end; i++)
-        {  
-            int& map0idx      = mesh_relation_data[i];
-
-            int map1idx = arg8.map_data[map0idx * arg8.map->dim + 0];
-            int map2idx = arg8.map_data[map0idx * arg8.map->dim + 1];
-            int map3idx = arg8.map_data[map0idx * arg8.map->dim + 2];
-            int map4idx = arg8.map_data[map0idx * arg8.map->dim + 3];
-
-            if (OPP_my_rank == 0 && i == 10) map4idx = 881; // test works, can see in node_test0.dat file line 883
-            if (OPP_my_rank == 1 && i == 5) map2idx = 779; // test works, can see in node_test1.dat file line 781
-
-            ((double*)node_test->data)[map1idx * arg8.dim + 0] = (OPP_my_rank + 1) * 10000 + 1*1000 + i*10 + 0;
-            ((double*)node_test->data)[map1idx * arg8.dim + 1] = (OPP_my_rank + 1) * 10000 + 1*1000 + i*10 + 1;
-            ((double*)node_test->data)[map1idx * arg8.dim + 2] = (OPP_my_rank + 1) * 10000 + 1*1000 + i*10 + 2;
-
-            ((double*)node_test->data)[map2idx * arg8.dim + 0] = (OPP_my_rank + 1) * 10000 + 2*1000 + i*10 + 0;
-            ((double*)node_test->data)[map2idx * arg8.dim + 1] = (OPP_my_rank + 1) * 10000 + 2*1000 + i*10 + 1;
-            ((double*)node_test->data)[map2idx * arg8.dim + 2] = (OPP_my_rank + 1) * 10000 + 2*1000 + i*10 + 2;
-
-            ((double*)node_test->data)[map3idx * arg8.dim + 0] = (OPP_my_rank + 1) * 10000 + 3*1000 + i*10 + 0;
-            ((double*)node_test->data)[map3idx * arg8.dim + 1] = (OPP_my_rank + 1) * 10000 + 3*1000 + i*10 + 1;
-            ((double*)node_test->data)[map3idx * arg8.dim + 2] = (OPP_my_rank + 1) * 10000 + 3*1000 + i*10 + 2;
-
-            ((double*)node_test->data)[map4idx * arg8.dim + 0] = (OPP_my_rank + 1) * 10000 + 4*1000 + i*10 + 0;
-            ((double*)node_test->data)[map4idx * arg8.dim + 1] = (OPP_my_rank + 1) * 10000 + 4*1000 + i*10 + 1;
-            ((double*)node_test->data)[map4idx * arg8.dim + 2] = (OPP_my_rank + 1) * 10000 + 4*1000 + i*10 + 2;
+            std::cout << count << " cells does not directly relate with structured mesh" << std::endl;
         }
 
-        opp_exchange_double_indirect_reductions(nargs, args);
-
-        // TODO : can this be added to oppic_mpi_halo_exchanges, to complete before the next usage?
-        opp_complete_double_indirect_reductions(nargs, args);
-
-        if (true)
+        // Trying to load random file to generate positions and simulate both scenarios, move with hops and moveDirectly
         {
-            std::string f = std::string("Af_") + std::to_string(OPP_my_rank);
-            oppic_print_dat_to_txtfile(node_test     , f.c_str(), "node_test.dat");
-        }  
+            int total_size = -1, fsize = -1, fdim = -1;
+            FILE *fp = NULL;
+            std::string rand_file_path = opp_params->get<OPP_STRING>("rand_file");
+            
+            if ((fp = fopen(rand_file_path.c_str(), "r")) == NULL) {
+                opp_printf("InitializeInjectDistributions", "Unable to open file %s\n", 
+                    rand_file_path.c_str());
+                opp_abort();
+            }
+            if (fscanf(fp, "%d %d\n", &fsize, &fdim) != 2) {
+                opp_printf("InitializeInjectDistributions", "Error reading file data from %s\n", 
+                    rand_file_path.c_str());
+                opp_abort();
+            }
+            total_size = fsize * fdim;
+            double* dist = new double[fsize * 3];
+            for (int n = 0; n < fsize; n++) {
+                if (fscanf(fp, " %lf %lf\n", &dist[n * 2 + 0], &dist[n * 2 + 1]) != 2) 
+                {
+                    opp_printf("InitializeInjectDistributions", "Error reading from %s at index %d\n", 
+                        rand_file_path.c_str(), n);
+                    opp_abort();
+                }
+                dist[n * 2 + 2] = (dist[n * 2 + 0] + dist[n * 2 + 1]) * (boundingBox[1].z - boundingBox[0].z) + boundingBox[0].z;
+                dist[n * 2 + 1] = (dist[n * 2 + 1]) * (boundingBox[1].y - boundingBox[0].y) + boundingBox[0].y;
+                dist[n * 2 + 0] = (dist[n * 2 + 0]) * (boundingBox[1].x - boundingBox[0].x) + boundingBox[0].x;
+            }
+            fclose(fp);  
+
+            std::vector<int> ci1(fsize);
+            std::vector<int> ci2(fsize);
+
+            opp_printf("Main", "moveWithHops START *************");
+            opp_profiler->start("moveWithHops");
+            for (int x = 0; x < TEST_ITER_COUNT; x++) {
+                     
+                std::fill(ci1.begin(), ci1.end(), 0);
+                moveWithHops(fsize, dist, ci1.data(), cell_volume, cell_det, cell_v_cell_map);
+            }
+            opp_profiler->end("moveWithHops");
+            opp_printf("Main", "moveWithHops DONE *************");
+
+            opp_printf("Main", "moveDirect START *************");
+            opp_profiler->start("moveDirect");
+            for (int x = 0; x < TEST_ITER_COUNT; x++) {
+                     
+                std::fill(ci2.begin(), ci2.end(), 0);
+                moveDirect(fsize, dist, ci2.data(), cell_volume, cell_det, cell_v_cell_map, structMeshToCellIndexMap,
+                    gridDimensions, gridSpacing, boundingBox[0]);
+            }
+            opp_profiler->end("moveDirect");
+            opp_printf("Main", "moveDirect DONE *************");
+
+            opp_printf("Main", "moveWithHops2 START *************");
+            opp_profiler->start("moveWithHops2");
+            for (int x = 0; x < TEST_ITER_COUNT; x++) {
+                     
+                std::fill(ci1.begin(), ci1.end(), 0);
+                moveWithHops(fsize, dist, ci1.data(), cell_volume, cell_det, cell_v_cell_map);
+            }
+            opp_profiler->end("moveWithHops2");
+            opp_printf("Main", "moveWithHops2 DONE *************");
+
+            opp_printf("Main", "moveDirect2 START *************");
+            opp_profiler->start("moveDirect2");
+            for (int x = 0; x < TEST_ITER_COUNT; x++) {
+                     
+                std::fill(ci2.begin(), ci2.end(), 0);
+                moveDirect(fsize, dist, ci2.data(), cell_volume, cell_det, cell_v_cell_map, structMeshToCellIndexMap,
+                    gridDimensions, gridSpacing, boundingBox[0]);
+            }
+            opp_profiler->end("moveDirect2");
+            opp_printf("Main", "moveDirect2 DONE *************");
+
+            // test whether the cell indices calculated by both ways are equal or not!
+            int wrong = 0;
+            for (size_t k = 0; k < ci1.size(); k++) {
+                if (ci1[k] != ci2[k]) {
+                    std::cout << "Index:" << k << " ci1:" << ci1[k] << " ci2:" << ci2[k] << std::endl;
+                    wrong++;
+                }
+            }
+            std::cout << "Lines with issues:" << wrong << std::endl;
+        }
     }
 
-    opp_inc_part_count_with_distribution(particles_set, n_parts_to_inject, iface_inj_part_dist);
+    opp_exit();
 
-    std::string k = "N_" + std::to_string(OPP_my_rank);
-
-    oppic_print_dat_to_txtfile(part_mesh_relation, k.c_str(), "part_mesh_relation.dat");
-    oppic_print_dat_to_txtfile(iface_inj_part_dist, k.c_str(), "iface_inj_part_dist.dat");
-    oppic_print_dat_to_txtfile(dummy_part_random, k.c_str(), "dummy_part_random.dat");
-
-    opp_inc_part_count_with_distribution(particles_set, n_parts_to_inject, iface_inj_part_dist);
-
-    std::string q = "Q_" + std::to_string(OPP_my_rank);
-
-    oppic_print_dat_to_txtfile(part_mesh_relation, q.c_str(), "part_mesh_relation.dat");
-/*
-
-
-opp_printf("XXXXXXXXXX", OPP_my_rank, " 11");
-
-        auto start = std::chrono::system_clock::now();
-        auto start_iter1 = std::chrono::system_clock::now();
-max_iter = 0;
-        for (ts = 0; ts < max_iter; ts++)
-        {
-            if (ts == 1) start_iter1 = std::chrono::system_clock::now();
-
-            int injected_count = 0;
-        //     oppic_inject__Increase_particle_count(
-        //         particles_set,                                                                // inject to particles_set
-        //         ifaces_set,                                                                   // inlect_face_set
-        //         oppic_arg_gbl(&(injected_count), 1, "int",   OP_RW),                          // injected total global,
-        //         oppic_arg_dat(iface_area,                    OP_READ),                        // iface_area,
-        //         oppic_arg_dat(iface_inj_part_dist,           OP_WRITE, OPP_Map_to_Mesh_Rel),  // iface_inj_part_dist,
-        //         oppic_arg_gbl(&(remainder),     1, "double", OP_RW)                           // remainder global,
-        //     );
-
-        //     int old_nparts = particles_set->size;
-        //     oppic_par_loop_inject__InjectIons(
-        //         particles_set,                                                                               // particles_set
-        //         oppic_arg_dat(part_position,                             OP_WRITE),                          // part_position,
-        //         oppic_arg_dat(part_velocity,                             OP_WRITE),                          // part_velocity,
-        //         oppic_arg_dat(part_mesh_relation,                        OP_RW),                             // part_cell_connectivity,
-        //         oppic_arg_dat(iface_to_cell_map,                         OP_READ, OPP_Map_from_Mesh_Rel),    // iface to cell map
-        //         oppic_arg_dat(cell_electric_field, 0, iface_to_cell_map, OP_READ, OPP_Map_from_Mesh_Rel),    // cell_ef,
-        //         oppic_arg_dat(iface_u_normal,                            OP_READ, OPP_Map_from_Mesh_Rel),    // iface_u,
-        //         oppic_arg_dat(iface_v_normal,                            OP_READ, OPP_Map_from_Mesh_Rel),    // iface_v,
-        //         oppic_arg_dat(iface_normal,                              OP_READ, OPP_Map_from_Mesh_Rel),    // iface_normal,
-        //         oppic_arg_dat(iface_node_pos,                            OP_READ, OPP_Map_from_Mesh_Rel),    // iface_node_pos
-        //         oppic_arg_dat(dum_part_random,                           OP_READ, OPP_Map_from_Inj_part)     // dum_part_random
-        //     );
-
-            oppic_reset_dat(node_charge_density, (char*)opp_zero_double16);
-        //     oppic_par_loop_particle_all__MoveToCells(
-        //         particles_set,                                                                                // particles_set
-        //         oppic_arg_dat(cell_electric_field,                       OP_READ, OPP_Map_from_Mesh_Rel),     // cell_ef,
-        //         oppic_arg_dat(part_position,                             OP_RW),                              // part_pos,
-        //         oppic_arg_dat(part_velocity,                             OP_RW),                              // part_vel,
-        //         oppic_arg_dat(part_lc,                                   OP_RW),                              // part_lc,
-        //         oppic_arg_dat(part_mesh_relation,                        OP_RW),                              // current_cell_index,
-        //         oppic_arg_dat(cell_volume,                               OP_READ, OPP_Map_from_Mesh_Rel),     // current_cell_volume,
-        //         oppic_arg_dat(cell_determinants,                         OP_READ, OPP_Map_from_Mesh_Rel),     // current_cell_det,
-        //         oppic_arg_dat(cell_to_cell_map,                          OP_READ, OPP_Map_from_Mesh_Rel),     // cell_connectivity,
-        //         oppic_arg_dat(node_charge_density, 0, cell_to_nodes_map, OP_INC,  OPP_Map_from_Mesh_Rel),     // node_charge_den0,
-        //         oppic_arg_dat(node_charge_density, 1, cell_to_nodes_map, OP_INC,  OPP_Map_from_Mesh_Rel),     // node_charge_den1,
-        //         oppic_arg_dat(node_charge_density, 2, cell_to_nodes_map, OP_INC,  OPP_Map_from_Mesh_Rel),     // node_charge_den2,
-        //         oppic_arg_dat(node_charge_density, 3, cell_to_nodes_map, OP_INC,  OPP_Map_from_Mesh_Rel)      // node_charge_den3,
-        //     );
-
-            oppic_par_loop_all__ComputeNodeChargeDensity(
-                nodes_set,                                       // nodes_set
-                oppic_arg_dat(node_charge_density,  OP_RW),      // node_charge_density
-                oppic_arg_dat(node_volume,          OP_READ)     // node_volume
-            );
-
-        //     mesh.solver->computePhi(  // TODO: Change this to kernel calls
-        //         mesh.fesolver_method,
-        //         oppic_arg_dat(node_potential,      OP_WRITE),
-        //         oppic_arg_dat(node_charge_density, OP_READ)
-        //     );
-
-        //     oppic_reset_dat(cell_electric_field, (char*)opp_zero_double16); 
-        //     oppic_par_loop_all__ComputeElectricField(
-        //         cells_set,                                                        // cells_set
-        //         oppic_arg_dat(cell_electric_field,                  OP_INC),      // cell_electric_field,
-        //         oppic_arg_dat(cell_shape_deriv,                     OP_READ),     // cell_shape_deriv,
-        //         oppic_arg_dat(node_potential, 0, cell_to_nodes_map, OP_READ),     // node_potential0,
-        //         oppic_arg_dat(node_potential, 1, cell_to_nodes_map, OP_READ),     // node_potential1,
-        //         oppic_arg_dat(node_potential, 2, cell_to_nodes_map, OP_READ),     // node_potential2,
-        //         oppic_arg_dat(node_potential, 3, cell_to_nodes_map, OP_READ)      // node_potential3,
-        //     );
-
-        //     {
-        //         double max_den = 0.0, max_phi = 0.0;
-        //         if (params.get<OPP_BOOL>("check_max_values"))
-        //         {
-        //             for (int n = 0; n< mesh.n_nodes; n++) // ideally, need to copy data from device to host, but at this point host has correct data
-        //             {
-        //                 if (((double*)node_charge_density->data)[n] > max_den) max_den = ((double*)node_charge_density->data)[n];
-        //                 if (abs(((double*)node_potential->data)[n]) > max_phi) max_phi = abs(((double*)node_potential->data)[n]);   
-        //             }
-        //         }
-
-        //         std::cout<<"ts: " << ts << "\t np: " << particles_set->size 
-        //             << " (" <<  injected_count << " added, "<< old_nparts - particles_set->size << " removed)"                
-        //             << "\t max den: " << max_den << "\t max |phi|: " << max_phi << "\t ****" << std::endl;
-        //     }
-        }
-
-        std::chrono::duration<double> diff   = std::chrono::system_clock::now() - start;
-        std::chrono::duration<double> diff_1 = std::chrono::system_clock::now() - start_iter1;
-        opp_printf("FEMPIC", "Time to iterate ts=%d <sec>: ", max_iter);
-        // std::cout << "\nFEMPIC - Time to iterate ts=" << max_iter << " <sec>: " << diff.count() << " and (ts-1) <sec>:" << diff_1.count() << "\n\n";
-*/
-        oppic_exit(); 
-    // } // End Scope for oppic
+    if (OPP_rank == OPP_ROOT) 
+        opp_printf("Main", "opp_exit DONE *************XXXX");
 
     return 0;
 }
 
 //*************************************************************************************************
 // std::string f = std::string("F_") + std::to_string(ts + 1);
-// oppic_print_map_to_txtfile(cell_to_nodes_map  , f.c_str(), "cell_to_nodes_map.dat");
-// oppic_print_dat_to_txtfile(node_charge_density, f.c_str(), "node_charge_density.dat");
+// opp_print_map_to_txtfile(cell_v_nodes_map  , f.c_str(), "cell_v_nodes_map.dat");
+// opp_print_dat_to_txtfile(node_charge_den, f.c_str(), "node_charge_den.dat");
+// opp_mpi_print_dat_to_txtfile(cell_shape_deriv, "cell_shape_deriv.dat");
