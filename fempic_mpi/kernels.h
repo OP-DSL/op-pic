@@ -102,6 +102,32 @@ inline void inject_ions__kernel(
     (*part_cell_connectivity) = (*cell_id);
 }
 
+inline void calculate_new_pos_vel__kernel(
+    const double *cell_ef,
+    double *part_pos,
+    double *part_vel ) {
+
+    double coefficient1 = CONST_charge / CONST_mass * (CONST_dt);
+    for (int i = 0; i < DIM; i++)
+        part_vel[i] += (coefficient1 * cell_ef[i]);                  
+    
+    for (int i = 0; i < DIM; i++)
+        part_pos[i] += part_vel[i] * (CONST_dt); // v = u + at
+}
+
+inline void deposit_charge_on_nodes__kernel(
+    const double *part_lc,
+    double *node_charge_den0,
+    double *node_charge_den1,
+    double *node_charge_den2,
+    double *node_charge_den3) {
+
+    (*node_charge_den0) += part_lc[0];
+    (*node_charge_den1) += part_lc[1];
+    (*node_charge_den2) += part_lc[2];
+    (*node_charge_den3) += part_lc[3];
+}
+
 //*************************************************************************************************
 inline void move_all_particles_to_cell__kernel(
     opp_move_var& m,

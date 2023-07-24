@@ -99,6 +99,72 @@ void opp_loop_inject__InjectIons(
     opp_profiler->end("InjectIons");
 }
 
+void opp_loop_all__CalculateNewPartPosVel(
+    opp_set set,      // particles_set
+    opp_arg arg0,     // cell_ef,
+    opp_arg arg1,     // part_pos,
+    opp_arg arg2      // part_vel,
+) {
+
+    if (FP_DEBUG) opp_printf("FEMPIC", "opp_loop_all__CalculateNewPartPosVel set_size %d diff %d", 
+        set->size, set->diff);
+
+    opp_profiler->start("CalcPosVel");  
+
+    OPP_mesh_relation_data = ((int *)set->mesh_relation_dat->data); 
+
+    for (int i = 0; i < set->size; i++)
+    { 
+        const int map0idx = OPP_mesh_relation_data[i];
+
+        calculate_new_pos_vel__kernel(
+            &((double*) arg0.data)[map0idx * arg0.dim],  // cell_ef,
+            &((double*) arg1.data)[i * arg1.dim],        // part_pos,
+            &((double*) arg2.data)[i * arg2.dim]         // part_vel,
+        );
+    }
+
+    opp_profiler->end("CalcPosVel");    
+}
+
+void opp_loop_all__DepositChargeOnNodes(
+    opp_set set,      // particles_set
+    opp_arg arg0,     // part_lc,
+    opp_arg arg1,     // node_charge_den0,
+    opp_arg arg2,     // node_charge_den1,
+    opp_arg arg3,     // node_charge_den2,
+    opp_arg arg4      // node_charge_den3,
+)
+{
+    if (FP_DEBUG) 
+        opp_printf("FEMPIC", "opp_loop_all__DepositChargeOnNodes set_size %d diff %d", 
+        set->size, set->diff);
+
+    opp_profiler->start("DepCharge");  
+
+    OPP_mesh_relation_data = ((int *)set->mesh_relation_dat->data); 
+
+    for (int i = 0; i < set->size; i++)
+    { 
+        const int map0idx = OPP_mesh_relation_data[i];
+
+        const int map1idx = arg1.map_data[map0idx * arg1.map->dim + 0];
+        const int map2idx = arg1.map_data[map0idx * arg1.map->dim + 1];
+        const int map3idx = arg1.map_data[map0idx * arg1.map->dim + 2];
+        const int map4idx = arg1.map_data[map0idx * arg1.map->dim + 3];
+
+        deposit_charge_on_nodes__kernel(
+            &((const double*) arg0.data)[i * arg0.dim],      // part_lc,
+            &((double*) arg1.data)[map1idx],                 // node_charge_den0,
+            &((double*) arg1.data)[map2idx],                 // node_charge_den1,
+            &((double*) arg1.data)[map3idx],                 // node_charge_den2,
+            &((double*) arg1.data)[map4idx]                  // node_charge_den3,
+        );
+    }
+
+    opp_profiler->end("DepCharge");   
+}
+
 //*************************************************************************************************
 void opp_loop_all_part_move__MoveToCells(
     opp_set set,      // particles_set
@@ -123,21 +189,22 @@ void opp_loop_all_part_move__MoveToCells(
     opp_profiler->start("MoveToCells");
 
     int *map0idx = nullptr;
-
+int over_one = 0;
     opp_init_particle_move(set, 0, nullptr);
+int map1idx, map2idx, map3idx, map4idx;
 
     for (int i = OPP_iter_start; i < OPP_iter_end; i++)
     {        
         opp_move_var m = opp_get_move_var();
-
+int in_count = 0;
         do
         { 
             map0idx = &(OPP_mesh_relation_data[i]);
 
-            const int map1idx = arg8.map_data[*map0idx * arg8.map->dim + 0];
-            const int map2idx = arg8.map_data[*map0idx * arg8.map->dim + 1];
-            const int map3idx = arg8.map_data[*map0idx * arg8.map->dim + 2];
-            const int map4idx = arg8.map_data[*map0idx * arg8.map->dim + 3];
+            map1idx = arg8.map_data[*map0idx * arg8.map->dim + 0];
+            map2idx = arg8.map_data[*map0idx * arg8.map->dim + 1];
+            map3idx = arg8.map_data[*map0idx * arg8.map->dim + 2];
+            map4idx = arg8.map_data[*map0idx * arg8.map->dim + 3];
 
             move_all_particles_to_cell__kernel(
                 (m),
@@ -154,10 +221,14 @@ void opp_loop_all_part_move__MoveToCells(
                 &((double*) arg8.data)[map3idx],                 // node_charge_den2,
                 &((double*) arg8.data)[map4idx]                  // node_charge_den3,
             );         
-
+in_count++;
         } while (opp_part_check_status(m, *map0idx, set, i, set->particle_remove_count));  
+if (in_count > 1) {
+    over_one++;
+}
     }
-
+// opp_printf("FEMPIC", "opp_loop_all_part_move__MoveToCells Iterated=%d, parts with inner over one iter=%d", 
+//         (OPP_iter_end - OPP_iter_start), over_one);
     opp_finalize_particle_move(set);
 
     opp_profiler->end("MoveToCells");

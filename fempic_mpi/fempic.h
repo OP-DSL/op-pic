@@ -39,6 +39,9 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //     #define ENABLE_MPI
 // #endif
 
+#include "opp_move_with_approx.h"
+extern std::unique_ptr<opp::CellApproximator> opp_mover;
+
 #include <oppic_lib.h>
 #ifdef ENABLE_MPI
     #include <opp_mpi.h>

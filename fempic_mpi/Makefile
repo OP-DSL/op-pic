@@ -97,17 +97,20 @@ common: mklib
 
 seq: common
 		 $(CPP) $(CPPFLAGS) -c seq/seqkernels.cpp -o $(OBJ)/seqkernels.o $(ALL_INC)
-	     $(CPP) $(CPPFLAGS) -o $(BIN)/seq $(OBJ)/fempic_op.o $(OBJ)/meshes.o $(OBJ)/particles.o $(OBJ)/maths.o $(OBJ)/seqkernels.o $(OBJ)/FESolver.o $(ALL_INC) $(ALL_LIBS) -loppic_seq
+		 $(CPP) $(CPPFLAGS) -c opp_move_with_approx.cpp -o $(OBJ)/opp_move_with_approx.o $(ALL_INC)
+	     $(CPP) $(CPPFLAGS) -o $(BIN)/seq $(OBJ)/fempic_op.o $(OBJ)/meshes.o $(OBJ)/particles.o $(OBJ)/maths.o $(OBJ)/seqkernels.o $(OBJ)/opp_move_with_approx.o $(OBJ)/FESolver.o $(ALL_INC) $(ALL_LIBS) -loppic_seq
 
 t:
 	     $(CPP) $(CPPFLAGS) -c fempic_test.cpp -o $(OBJ)/fempic_test.o $(ALL_INC)
+		 $(CPP) $(CPPFLAGS) -c opp_move_with_approx.cpp -o $(OBJ)/opp_move_with_approx.o $(ALL_INC)
 	     $(CPP) $(CPPFLAGS) -c fempic_ori/meshes.cpp -o $(OBJ)/meshes.o $(ALL_INC)
 	     $(CPP) $(CPPFLAGS) -o $(BIN)/test $(OBJ)/fempic_test.o $(OBJ)/meshes.o $(OBJ)/particles.o $(OBJ)/maths.o $(OBJ)/FESolver.o $(ALL_INC) $(ALL_LIBS) -loppic_seq
 
 
 omp: common
 		 $(CPP) $(CPPFLAGS) -fopenmp -c omp/ompkernels.cpp -o $(OBJ)/ompkernels.o $(ALL_INC)
-	     $(CPP) $(CPPFLAGS) -fopenmp -o $(BIN)/omp $(OBJ)/fempic_op.o $(OBJ)/meshes.o $(OBJ)/particles.o $(OBJ)/maths.o $(OBJ)/ompkernels.o $(OBJ)/FESolver.o $(ALL_INC) $(ALL_LIBS) -loppic_omp
+		 $(CPP) $(CPPFLAGS) -fopenmp -DUSE_OMP -c opp_move_with_approx.cpp -o $(OBJ)/opp_move_with_approx.o $(ALL_INC)
+	     $(CPP) $(CPPFLAGS) -fopenmp -o $(BIN)/omp $(OBJ)/fempic_op.o $(OBJ)/meshes.o $(OBJ)/particles.o $(OBJ)/maths.o $(OBJ)/ompkernels.o $(OBJ)/opp_move_with_approx.o $(OBJ)/FESolver.o $(ALL_INC) $(ALL_LIBS) -loppic_omp
 
 mpiX: common
 		 $(CPP) $(CPPFLAGS) -c mpi/mpikernels.cpp -o $(OBJ)/mpikernels.o $(ALL_INC)

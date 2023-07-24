@@ -19,8 +19,15 @@ STRING global_mesh = /ext-home/zl/phd/mini-pic/examples/one_stream/coarse/mesh.d
 STRING inlet_mesh  = /ext-home/zl/phd/mini-pic/examples/one_stream/coarse/inlet.dat
 STRING wall_mesh   = /ext-home/zl/phd/mini-pic/examples/one_stream/coarse/wall.dat
 
+STRING rand_file   = /ext-home/zl/phd/mini-pic/examples/one_stream/coarse/random_100k.dat
+
 BOOL invert_normals = false
 
 BOOL opp_auto_sort          = false
 INT opp_allocation_multiple = 1
 INT opp_threads_per_block   = 64
+
+BOOL opp_profile_all        = false
+
+REAL grid_spacing  = 60e-6
+BOOL print_final = true

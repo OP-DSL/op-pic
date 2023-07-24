@@ -35,12 +35,17 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "fempic.h"
 
+using namespace opp;
+std::unique_ptr<CellApproximator> opp_mover;
+
 void opp_loop_inject__InjectIons(opp_set,opp_arg,opp_arg,opp_arg,opp_arg,opp_arg,opp_arg,
     opp_arg,opp_arg,opp_arg,opp_arg);
 void opp_loop_all_part_move__MoveToCells(opp_set,opp_arg,opp_arg,opp_arg,opp_arg,opp_arg,
     opp_arg,opp_arg,opp_arg,opp_arg,opp_arg,opp_arg,opp_arg);
 void opp_loop_all__ComputeNodeChargeDensity(opp_set,opp_arg,opp_arg);
 void opp_loop_all__ComputeElectricField(opp_set,opp_arg,opp_arg,opp_arg,opp_arg,opp_arg,opp_arg);
+void opp_loop_all__CalculateNewPartPosVel(opp_set,opp_arg,opp_arg,opp_arg);
+void opp_loop_all__DepositChargeOnNodes(opp_set,opp_arg,opp_arg,opp_arg,opp_arg,opp_arg);
 
 //*********************************************MAIN****************************************************
 int main(int argc, char **argv) 
@@ -62,6 +67,7 @@ int main(int argc, char **argv)
         double dt           = opp_params->get<OPP_REAL>("dt");
         double ion_velocity = opp_params->get<OPP_REAL>("ion_velocity");
         double spwt         = opp_params->get<OPP_REAL>("spwt");
+        double grid_spacing = opp_params->get<OPP_REAL>("grid_spacing");
         double mass         = 2 * AMU;
         double charge       = 1 * QE;
         int max_iter        = opp_params->get<OPP_INT>("max_iter");   
@@ -139,7 +145,10 @@ int main(int argc, char **argv)
         
         int n_parts_to_inject = InitializeInjectDistributions(iface_dist, iface_area, dummy_part_rand);
 
-        std::shared_ptr<FESolver> field_solver = std::make_shared<FESolver>(cell_v_nodes_map, 
+        opp_mover = std::make_unique<CellApproximator>(node_pos, grid_spacing);
+        opp_mover->generateStructMeshToCellIndexVec(cell_volume, cell_det, cell_v_cell_map);
+
+        std::unique_ptr<FESolver> field_solver = std::make_unique<FESolver>(cell_v_nodes_map, 
             node_type, node_pos, node_bnd_pot, argc, argv);
             
         field_solver->enrich_cell_shape_deriv(cell_shape_deriv);
@@ -198,6 +207,8 @@ int main(int argc, char **argv)
 // if (OPP_rank == OPP_ROOT) 
 //     opp_printf("Main", "opp_loop_all_part_move__MoveToCells iteration %d *************", OPP_main_loop_iter);
 
+// #define HOP_MULTIPLE
+#ifdef HOP_MULTIPLE
             opp_loop_all_part_move__MoveToCells(
                 particle_set,                                                                           
                 opp_get_arg(cell_ef,                              OP_READ, OPP_Map_from_Mesh_Rel),
@@ -213,7 +224,36 @@ int main(int argc, char **argv)
                 opp_get_arg(node_charge_den, 2, cell_v_nodes_map, OP_INC,  OPP_Map_from_Mesh_Rel),
                 opp_get_arg(node_charge_den, 3, cell_v_nodes_map, OP_INC,  OPP_Map_from_Mesh_Rel) 
             );
+#else  // HOP_DIRECT
+                opp_loop_all__CalculateNewPartPosVel(
+                    particle_set,                                                                           
+                    opp_get_arg(cell_ef,       OP_READ, OPP_Map_from_Mesh_Rel),
+                    opp_get_arg(part_position, OP_WRITE),                         
+                    opp_get_arg(part_velocity, OP_WRITE)
+                );
 
+                opp_mover->move(
+                    part_position,
+                    part_mesh_rel,
+                    part_lc,
+                    cell_volume, 
+                    cell_det, 
+                    cell_v_cell_map);
+
+                opp_loop_all__DepositChargeOnNodes(
+                    particle_set, 
+                    opp_get_arg(part_lc,                              OP_READ),
+                    opp_get_arg(node_charge_den, 0, cell_v_nodes_map, OP_INC,  OPP_Map_from_Mesh_Rel),
+                    opp_get_arg(node_charge_den, 1, cell_v_nodes_map, OP_INC,  OPP_Map_from_Mesh_Rel),
+                    opp_get_arg(node_charge_den, 2, cell_v_nodes_map, OP_INC,  OPP_Map_from_Mesh_Rel),
+                    opp_get_arg(node_charge_den, 3, cell_v_nodes_map, OP_INC,  OPP_Map_from_Mesh_Rel)
+                );
+#endif
+            // std::string f = std::string("F_") + std::to_string(OPP_main_loop_iter + 1);
+            // opp_print_dat_to_txtfile(node_charge_den, f.c_str(), "node_charge_den.dat");
+            // opp_print_dat_to_txtfile(part_position, f.c_str(), "part_position.dat");
+            // opp_print_dat_to_txtfile(part_velocity, f.c_str(), "part_velocity.dat");
+            // opp_print_dat_to_txtfile(part_mesh_rel, f.c_str(), "part_mesh_rel.dat");
 // MPI_Barrier(OP_MPI_WORLD);
 // if (OPP_rank == OPP_ROOT) 
 //     opp_printf("Main", "opp_loop_all__ComputeNodeChargeDensity iteration %d *************", OPP_main_loop_iter);

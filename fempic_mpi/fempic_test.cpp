@@ -33,8 +33,14 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 // AUTO GENERATED CODE
 //*********************************************
 
+// make PETSC=0 t
+// bin/test /ext-home/zl/phd/OP-PIC/scripts/fempic_tests/configs/coarse_3.param
+
 #include "fempic.h"
 #include <list>
+
+std::vector<size_t> hops_hops_vec;
+std::vector<size_t> hops_direct_vec;
 
 constexpr double MAX_REAL = std::numeric_limits<double>::max();
 constexpr double MIN_REAL = std::numeric_limits<double>::min();
@@ -206,8 +212,8 @@ void generateStructMeshToCellIndexMap(const opp_point& minCoordinate, const opp_
                 if (m == OPP_NEED_REMOVE) {
                     
                     // Eventhough the centroid is out of the structured mesh, 
-                    // check atleast one vertex of the structured mesh is within an unstructured mesh cell
-                    double gs = gridSpacing;
+                    // check atleast one vertex of the structured mesh can be within an unstructured mesh cell
+                    const double gs = gridSpacing;
                     bool found = false;
 
                     std::array<opp_point,8> vertices = {
@@ -254,11 +260,23 @@ void generateStructMeshToCellIndexMap(const opp_point& minCoordinate, const opp_
 
 #undef GET_VERT
 
+bool isCoordinateInBoundingBox(const double* point, const std::array<opp_point, 2>& boundingBox) {
+    if (boundingBox[0].x > point[0] || boundingBox[1].x < point[0]) return false;
+    else if (boundingBox[0].y > point[1] || boundingBox[1].y < point[1]) return false;
+    else if (boundingBox[0].z > point[2] || boundingBox[1].z < point[2]) return false;
+    return true;
+}
+
 void moveWithHops(size_t size, const double* dist, int* ci1, const opp_dat cell_volume_dat, const opp_dat cell_det_dat, 
-                    const opp_map cell_connectivity_map) {
+                    const opp_map cell_connectivity_map, const std::array<opp_point, 2>& boundingBox) { 
 
     for (size_t i = 0; i < size; i++) {    
         opp_move_status m = OPP_NEED_MOVE;
+
+        // if (!isCoordinateInBoundingBox(&((const double*)dist)[i * 3], boundingBox)) { 
+        //     ci1[i] = -999;
+        //     continue;
+        // }
 
         do {
             int cellIndex = ci1[i];
@@ -269,6 +287,8 @@ void moveWithHops(size_t size, const double* dist, int* ci1, const opp_dat cell_
                 &((double*)cell_volume_dat->data)[cellIndex], 
                 &((double*)cell_det_dat->data)[cellIndex * cell_det_dat->dim], 
                 &((int*)cell_connectivity_map->map)[cellIndex * cell_connectivity_map->dim]);
+            
+            hops_hops_vec[i]++;
 
         } while (m == OPP_NEED_MOVE);
     }
@@ -282,22 +302,35 @@ int findClosestCellIndex(const double* targetPosition, const std::vector<int>& s
     int targetZIndex = static_cast<int>((targetPosition[2] - minCoordinate.z) * oneOverGridSpacing);
 
     int closestIndex = targetXIndex + targetYIndex * gridDimensions.x + targetZIndex * gridDimensions.x * gridDimensions.y;
+    
+    // If segmentation fault, uncomment below
+    // if (closestIndex >= structMeshToCellIndexMap.size()) {
+    //     std::cerr << "Invalid Index Generated " << closestIndex << " pos:" << 
+    //         targetPosition[0] << "," << targetPosition[1] << "," << targetPosition[2] << std::endl;
+    //     return -999;
+    // }
 
+    // Assume closestIndex is within structMeshToCellIndexMap.size()
     return structMeshToCellIndexMap[closestIndex];
 }
 
 void moveDirect(size_t size, const double* dist, int* ci2, const opp_dat cell_volume_dat, const opp_dat cell_det_dat, 
     const opp_map cell_connectivity_map, const std::vector<int>& structMeshToCellIndexMap, const opp_point& gridDimensions, 
-    double gridSpacing, const opp_point& minCoordinate) {
+    double gridSpacing, const std::array<opp_point, 2>& boundingBox) {
     
     const double oneOverGridSpacing = (1.0 / gridSpacing);
 
     for (size_t i = 0; i < size; i++) {   
+        
+        // if (!isCoordinateInBoundingBox(&((const double*)dist)[i * 3], boundingBox)) { 
+        //     ci2[i] = -999;
+        //     continue;
+        // }
 
         ci2[i] = findClosestCellIndex(&((const double*)dist)[i * 3], structMeshToCellIndexMap, gridDimensions, 
-                                        oneOverGridSpacing, minCoordinate);
-        if (ci2[i] < 0 || ci2[i] >= cell_volume_dat->set->size) {
-            ci2[i] = -999;
+                                        oneOverGridSpacing, boundingBox[0]);
+        if (ci2[i] < 0) {
+            // std::cout << "Error... " << i << " " << ci2[i] << " " << cell_volume_dat->set->size << std::endl;
             continue;
         }
 
@@ -312,6 +345,8 @@ void moveDirect(size_t size, const double* dist, int* ci2, const opp_dat cell_vo
                 &((double*)cell_volume_dat->data)[cellIndex], 
                 &((double*)cell_det_dat->data)[cellIndex * cell_det_dat->dim], 
                 &((int*)cell_connectivity_map->map)[cellIndex * cell_connectivity_map->dim]);
+            
+            hops_direct_vec[i]++;
 
         } while (m == OPP_NEED_MOVE);
     }
@@ -341,6 +376,29 @@ void calculateGridDimensions(const opp_point& minCoordinate, const opp_point& ma
     gridDimensions.x = std::ceil((maxCoordinate.x - minCoordinate.x) * oneOverGridSpacing);
     gridDimensions.y = std::ceil((maxCoordinate.y - minCoordinate.y) * oneOverGridSpacing);
     gridDimensions.z = std::ceil((maxCoordinate.z - minCoordinate.z) * oneOverGridSpacing);
+}
+
+void countHopsFromVec(std::vector<size_t>& vec, const std::string& name) {
+    int less_2 = 0, less_3 = 0, less_4 = 0, less_5 = 0, less_10 = 0, less_50 = 0, less_100 = 0, less_500 = 0, 
+        less_1000 = 0, more = 0, max = 0;
+
+    for (auto& a : vec) {
+        if (a < 2) less_2++;
+        else if (a < 3) less_3++;
+        else if (a < 4) less_4++;
+        else if (a < 5) less_5++;
+        else if (a < 10) less_10++;
+        else if (a < 50) less_50++;
+        else if (a < 100) less_100++;
+        else if (a < 500) less_500++;
+        else if (a < 1000) less_1000++;
+        else more++;
+
+        max = (max < a) ? a : max;
+    }
+
+    opp_printf("HopCount", "%s MAX=%d | <2=%d <3=%d <4=%d <5=%d <10=%d <50=%d <100=%d <500=%d <1000=%d >=1000=%d",
+        name.c_str(), max, less_2, less_3, less_4, less_5, less_10, less_50, less_100, less_500, less_1000, more);
 }
 
 //*********************************************MAIN****************************************************
@@ -417,30 +475,26 @@ int main(int argc, char **argv)
 
         m->DeleteValues();
         
-        int n_parts_to_inject = InitializeInjectDistributions(iface_dist, iface_area, dummy_part_rand);
-
         opp_profiler->end("Setup");
 
         auto boundingBox = getBoundingBox(node_pos); // index 0 is min, index 1 is max
-        double gridSpacing = 6e-5;  // 60um grid spacing will get all unstructured mesh cells captured in the structured mesh
+        double gridSpacing = 60e-6;  // 60um grid spacing will get all unstructured mesh cells captured in the structured mesh
 
         opp_point gridDimensions;
         calculateGridDimensions(boundingBox[0], boundingBox[1], gridSpacing, gridDimensions);
 
         // TODO : ideally, without coordinateVec, we can get the coordinate by calculating using minCoordinate
         // Lets keep this for now
-        std::vector<opp_point> coordinateVec; 
-        generateCoordinateVec(boundingBox[0], boundingBox[1], gridSpacing, coordinateVec, gridDimensions);
-        std::cout << "coordinateVec size=" << coordinateVec.size() << std::endl;
+        // std::vector<opp_point> coordinateVec; 
+        // generateCoordinateVec(boundingBox[0], boundingBox[1], gridSpacing, coordinateVec, gridDimensions);
+        // std::cout << "coordinateVec size=" << coordinateVec.size() << std::endl;
 
+        opp_profiler->start("generateStructMeshToCellIndexMap");
         std::vector<int> structMeshToCellIndexMap;
         generateStructMeshToCellIndexMap(boundingBox[0], boundingBox[1], gridSpacing, gridDimensions, cell_volume,
                             cell_det, cell_v_cell_map, structMeshToCellIndexMap);
-
-        std::cout << "structMeshToCellIndexMap size=" << structMeshToCellIndexMap.size() << std::endl;
-
-        std::cout << "structMeshToCellIndexMap0 " << structMeshToCellIndexMap[0] << std::endl;
-        std::cout << "structMeshToCellIndexMap1 " << structMeshToCellIndexMap[1] << std::endl;
+        std::cout << "structMeshToCellIndexMap size= " << structMeshToCellIndexMap.size() << " gridSpacing=" << gridSpacing << std::endl;
+        opp_profiler->end("generateStructMeshToCellIndexMap");
 
         { // sanity check to test whether all unstructured mesh cells are captured over structured mesh
             int count = 0;
@@ -448,7 +502,7 @@ int main(int argc, char **argv)
             {
                 auto it = std::find(structMeshToCellIndexMap.begin(), structMeshToCellIndexMap.end(), i);
                 if (it == structMeshToCellIndexMap.end()) {
-                    std::cout << "Element " << i << " not found in the list." << std::endl;
+                    // std::cout << "Element " << i << " not found in the list." << std::endl;
                     count++;
                 }            
             }
@@ -457,7 +511,7 @@ int main(int argc, char **argv)
 
         // Trying to load random file to generate positions and simulate both scenarios, move with hops and moveDirectly
         {
-            int total_size = -1, fsize = -1, fdim = -1;
+            int fsize = -1, fdim = -1;
             FILE *fp = NULL;
             std::string rand_file_path = opp_params->get<OPP_STRING>("rand_file");
             
@@ -471,65 +525,70 @@ int main(int argc, char **argv)
                     rand_file_path.c_str());
                 opp_abort();
             }
-            total_size = fsize * fdim;
             double* dist = new double[fsize * 3];
+            double load[2];
             for (int n = 0; n < fsize; n++) {
-                if (fscanf(fp, " %lf %lf\n", &dist[n * 2 + 0], &dist[n * 2 + 1]) != 2) 
+                if (fscanf(fp, " %lf %lf\n", &load[0], &load[1]) != 2) 
                 {
                     opp_printf("InitializeInjectDistributions", "Error reading from %s at index %d\n", 
                         rand_file_path.c_str(), n);
                     opp_abort();
                 }
-                dist[n * 2 + 2] = (dist[n * 2 + 0] + dist[n * 2 + 1]) * (boundingBox[1].z - boundingBox[0].z) + boundingBox[0].z;
-                dist[n * 2 + 1] = (dist[n * 2 + 1]) * (boundingBox[1].y - boundingBox[0].y) + boundingBox[0].y;
-                dist[n * 2 + 0] = (dist[n * 2 + 0]) * (boundingBox[1].x - boundingBox[0].x) + boundingBox[0].x;
+                dist[n * 3 + 2] = (load[0]) * (boundingBox[1].z - boundingBox[0].z) + boundingBox[0].z;
+                dist[n * 3 + 1] = (load[1]) * (boundingBox[1].y - boundingBox[0].y) + boundingBox[0].y;
+                dist[n * 3 + 0] = (load[0]) * (boundingBox[1].x - boundingBox[0].x) + boundingBox[0].x;
             }
             fclose(fp);  
+
+            opp_printf("Main", "Loaded file of size %d *************", fsize);
 
             std::vector<int> ci1(fsize);
             std::vector<int> ci2(fsize);
 
-            opp_printf("Main", "moveWithHops START *************");
+            hops_hops_vec.resize(fsize);
+            hops_direct_vec.resize(fsize);
+
+            //opp_printf("Main", "moveWithHops START *************");
             opp_profiler->start("moveWithHops");
-            for (int x = 0; x < TEST_ITER_COUNT; x++) {
-                     
-                std::fill(ci1.begin(), ci1.end(), 0);
-                moveWithHops(fsize, dist, ci1.data(), cell_volume, cell_det, cell_v_cell_map);
-            }
+                for (int x = 0; x < TEST_ITER_COUNT; x++) {
+                    std::fill(hops_hops_vec.begin(), hops_hops_vec.end(), 0);     
+                    std::fill(ci1.begin(), ci1.end(), 0);
+                    moveWithHops(fsize, dist, ci1.data(), cell_volume, cell_det, cell_v_cell_map, boundingBox);
+                }
             opp_profiler->end("moveWithHops");
-            opp_printf("Main", "moveWithHops DONE *************");
+            //opp_printf("Main", "moveWithHops DONE *************");
 
-            opp_printf("Main", "moveDirect START *************");
+            //opp_printf("Main", "moveDirect START *************");
             opp_profiler->start("moveDirect");
-            for (int x = 0; x < TEST_ITER_COUNT; x++) {
-                     
-                std::fill(ci2.begin(), ci2.end(), 0);
-                moveDirect(fsize, dist, ci2.data(), cell_volume, cell_det, cell_v_cell_map, structMeshToCellIndexMap,
-                    gridDimensions, gridSpacing, boundingBox[0]);
-            }
+                for (int x = 0; x < TEST_ITER_COUNT; x++) {
+                    std::fill(hops_direct_vec.begin(), hops_direct_vec.end(), 0);    
+                    std::fill(ci2.begin(), ci2.end(), 0);
+                    moveDirect(fsize, dist, ci2.data(), cell_volume, cell_det, cell_v_cell_map, structMeshToCellIndexMap,
+                        gridDimensions, gridSpacing, boundingBox);
+                }
             opp_profiler->end("moveDirect");
-            opp_printf("Main", "moveDirect DONE *************");
+            //opp_printf("Main", "moveDirect DONE *************");
 
-            opp_printf("Main", "moveWithHops2 START *************");
+            //opp_printf("Main", "moveWithHops2 START *************");
             opp_profiler->start("moveWithHops2");
-            for (int x = 0; x < TEST_ITER_COUNT; x++) {
-                     
-                std::fill(ci1.begin(), ci1.end(), 0);
-                moveWithHops(fsize, dist, ci1.data(), cell_volume, cell_det, cell_v_cell_map);
-            }
+                for (int x = 0; x < TEST_ITER_COUNT; x++) {
+                    std::fill(hops_hops_vec.begin(), hops_hops_vec.end(), 0);     
+                    std::fill(ci1.begin(), ci1.end(), 0);
+                    moveWithHops(fsize, dist, ci1.data(), cell_volume, cell_det, cell_v_cell_map, boundingBox);
+                }
             opp_profiler->end("moveWithHops2");
-            opp_printf("Main", "moveWithHops2 DONE *************");
+            //opp_printf("Main", "moveWithHops2 DONE *************");
 
-            opp_printf("Main", "moveDirect2 START *************");
+            //opp_printf("Main", "moveDirect2 START *************");
             opp_profiler->start("moveDirect2");
-            for (int x = 0; x < TEST_ITER_COUNT; x++) {
-                     
-                std::fill(ci2.begin(), ci2.end(), 0);
-                moveDirect(fsize, dist, ci2.data(), cell_volume, cell_det, cell_v_cell_map, structMeshToCellIndexMap,
-                    gridDimensions, gridSpacing, boundingBox[0]);
-            }
+                for (int x = 0; x < TEST_ITER_COUNT; x++) {
+                    std::fill(hops_direct_vec.begin(), hops_direct_vec.end(), 0);     
+                    std::fill(ci2.begin(), ci2.end(), 0);
+                    moveDirect(fsize, dist, ci2.data(), cell_volume, cell_det, cell_v_cell_map, structMeshToCellIndexMap,
+                        gridDimensions, gridSpacing, boundingBox);
+                }
             opp_profiler->end("moveDirect2");
-            opp_printf("Main", "moveDirect2 DONE *************");
+            //opp_printf("Main", "moveDirect2 DONE *************");
 
             // test whether the cell indices calculated by both ways are equal or not!
             int wrong = 0;
@@ -540,6 +599,9 @@ int main(int argc, char **argv)
                 }
             }
             std::cout << "Lines with issues:" << wrong << std::endl;
+
+            countHopsFromVec(hops_hops_vec, std::string("hops_hops_vec"));
+            countHopsFromVec(hops_direct_vec, std::string("hops_direct_vec"));
         }
     }
 

@@ -75,13 +75,12 @@ void opp_loop_inject__InjectIons(
     opp_profiler->start("InjectIons");
 
     const int inj_start = (set->size - set->diff);
-    int map0idx = -1, map1idx = 0;
 
     #pragma omp parallel for
     for (int i = 0; i < set->diff; i++)
     {
-        map0idx = ((int *)set->mesh_relation_dat->data)[inj_start + i]; // iface index        
-        map1idx = arg4.map_data[map0idx]; // cell index
+        const int map0idx = ((int *)set->mesh_relation_dat->data)[inj_start + i]; // iface index        
+        const int map1idx = arg4.map_data[map0idx]; // cell index
 
         inject_ions__kernel(
             &((double *)arg0.data)[(inj_start + i) * arg0.dim],    // part_position,
@@ -99,6 +98,89 @@ void opp_loop_inject__InjectIons(
 
     opp_profiler->end("InjectIons");
 }
+
+void opp_loop_all__CalculateNewPartPosVel(
+    opp_set set,      // particles_set
+    opp_arg arg0,     // cell_ef,
+    opp_arg arg1,     // part_pos,
+    opp_arg arg2      // part_vel,
+) {
+
+    if (FP_DEBUG) opp_printf("FEMPIC", "opp_loop_all__CalculateNewPartPosVel set_size %d diff %d", 
+        set->size, set->diff);
+
+    opp_profiler->start("CalcPosVel");  
+
+    OPP_mesh_relation_data = ((int *)set->mesh_relation_dat->data); 
+
+    #pragma omp parallel for
+    for (int i = 0; i < set->size; i++)
+    { 
+        const int map0idx = OPP_mesh_relation_data[i];
+
+        calculate_new_pos_vel__kernel(
+            &((double*) arg0.data)[map0idx * arg0.dim],  // cell_ef,
+            &((double*) arg1.data)[i * arg1.dim],        // part_pos,
+            &((double*) arg2.data)[i * arg2.dim]         // part_vel,
+        );
+    }
+
+    opp_profiler->end("CalcPosVel");    
+}
+
+void opp_loop_all__DepositChargeOnNodes(
+    opp_set set,      // particles_set
+    opp_arg arg0,     // part_lc,
+    opp_arg arg1,     // node_charge_den0,
+    opp_arg arg2,     // node_charge_den1,
+    opp_arg arg3,     // node_charge_den2,
+    opp_arg arg4      // node_charge_den3,
+)
+{
+    if (FP_DEBUG) 
+        opp_printf("FEMPIC", "opp_loop_all__DepositChargeOnNodes set_size %d diff %d", 
+        set->size, set->diff);
+
+    opp_profiler->start("DepCharge");  
+
+    opp_create_thread_level_data<double>(arg1, 0.0);
+
+    int nthreads = omp_get_max_threads();
+
+    OPP_mesh_relation_data = ((int *)set->mesh_relation_dat->data); 
+
+    #pragma omp parallel for
+    for (int thr = 0; thr < nthreads; thr++)
+    {
+        size_t start  = ((size_t)set->size * thr) / nthreads;
+        size_t finish = ((size_t)set->size * (thr+1)) / nthreads;
+
+        char* arg1_dat_thread_data = (*(arg1.dat->thread_data))[thr];
+
+        for (size_t i = start; i < finish; i++)
+        { 
+            const int map0idx = OPP_mesh_relation_data[i];
+
+            const int map1idx = arg1.map_data[map0idx * arg1.map->dim + 0];
+            const int map2idx = arg1.map_data[map0idx * arg1.map->dim + 1];
+            const int map3idx = arg1.map_data[map0idx * arg1.map->dim + 2];
+            const int map4idx = arg1.map_data[map0idx * arg1.map->dim + 3];
+
+            deposit_charge_on_nodes__kernel(
+                &((const double*) arg0.data)[i * arg0.dim],      // part_lc,
+                &((double*) arg1_dat_thread_data)[map1idx],      // node_charge_den0,
+                &((double*) arg1_dat_thread_data)[map2idx],      // node_charge_den1,
+                &((double*) arg1_dat_thread_data)[map3idx],      // node_charge_den2,
+                &((double*) arg1_dat_thread_data)[map4idx]       // node_charge_den3,
+            );
+        }
+    }
+
+    opp_reduce_thread_level_data<double>(arg1);
+
+    opp_profiler->end("DepCharge");   
+}
+
 
 //*************************************************************************************************
 void opp_loop_all_part_move__MoveToCells(
