@@ -39,7 +39,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "fempic_ori/maths.h"
 #include "oppic_lib.h"
 
-const double ONE_OVER_SIX = (1.0 / 6.0);
+const double K_ONE_OVER_SIX = (1.0 / 6.0);
 
 //*************************************************************************************************
 inline void calculate_injection_distribution(
@@ -156,7 +156,7 @@ inline void move_all_particles_to_cell__kernel(
     }
 
     bool inside = true;
-    double coefficient2 = ONE_OVER_SIX / (*current_cell_volume);
+    double coefficient2 = K_ONE_OVER_SIX / (*current_cell_volume);
     for (int i=0; i<N_PER_C; i++) /*loop over vertices*/
     {
         part_lc[i] = coefficient2 * (

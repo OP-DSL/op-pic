@@ -96,7 +96,7 @@ const std::array<opp_point, 2>& CellApproximator::generateBoundingBox(const opp_
     }
 
     // if (OP_DEBUG)
-        opp_printf("CellApproximator", "getBoundingBox Min[%2.6lE %2.6lE %2.6lE] Max[%2.6lE %2.6lE %2.6lE]", 
+        opp_printf("CellApproximator", "getBoundingBox Min[%2.20lE %2.20lE %2.20lE] Max[%2.20lE %2.20lE %2.20lE]", 
             minCoordinate.x, minCoordinate.y, minCoordinate.z, maxCoordinate.x, maxCoordinate.y, maxCoordinate.z);
 
     this->boundingBox[0] = minCoordinate;
@@ -148,10 +148,24 @@ const std::vector<int>& CellApproximator::generateStructMeshToCellIndexVec(const
     this->structMeshToCellIndexMap.reserve(gridDimensions.x * gridDimensions.y * gridDimensions.z);
 
     double lc[N_PER_C];
+    int cell_set_size = cellVolume_dat->set->size;
 
-    for (double z = minCoordinate.z; z < maxCoordinate.z; z += this->gridSpacing) {
-        for (double y = minCoordinate.y; y < maxCoordinate.y; y += this->gridSpacing) {
-            for (double x = minCoordinate.x; x < maxCoordinate.x; x += this->gridSpacing) {
+    printf("grid dimensions %d %d %d\n", gridDimensions.x, gridDimensions.y, gridDimensions.z);
+
+int ax =0, ay=0, az = 0, call = 0;
+double x = 0.0, y = 0.0, z = 0.0;
+
+    for (int dz = 0; dz < gridDimensions.z; dz++) { ax =0; ay=0; az++;
+        
+        z = minCoordinate.z + dz * this->gridSpacing;
+        
+        for (int dy = 0; dy < gridDimensions.y; dy++) { ax=0; ay++;
+            
+            y = minCoordinate.y + dy * this->gridSpacing;
+            
+            for (int dx = 0; dx < gridDimensions.x; dx++) { ax++;
+                
+                x = minCoordinate.x + dx * this->gridSpacing;
             
                 const opp_point centroid = getCentroidOfBox(opp_point(x, y ,z));
 
@@ -168,7 +182,7 @@ const std::vector<int>& CellApproximator::generateStructMeshToCellIndexVec(const
                         &((double*)cellDet_dat->data)[cellIndex * cellDet_dat->dim], 
                         &((int*)cellConnectivity_map->map)[cellIndex * cellConnectivity_map->dim]);
 
-                } while (m == OPP_NEED_MOVE);
+                } while (m == OPP_NEED_MOVE && cellIndex < cell_set_size);
 
                 if (m == OPP_NEED_REMOVE) {
                     
@@ -190,7 +204,7 @@ const std::vector<int>& CellApproximator::generateStructMeshToCellIndexVec(const
 
                     for (const auto& point : vertices) {
                         cellIndex = 0;
-                        opp_move_status m = OPP_NEED_MOVE;
+                        m = OPP_NEED_MOVE;
 
                         do {
                             m = getCellIndexKernel(
@@ -214,10 +228,43 @@ const std::vector<int>& CellApproximator::generateStructMeshToCellIndexVec(const
                     }
                 }
 
-                this->structMeshToCellIndexMap.push_back(cellIndex);
+                size_t index1 = getCellIndexMappingIndex(opp_point(x, y, z));
+                size_t index = (size_t)(dx + dy * gridDimensions.x + dz * gridDimensions.x * gridDimensions.y);
+                if (index != this->structMeshToCellIndexMap.size()) {
+                    {
+                        size_t xIndex = static_cast<size_t>((x - this->minCoordinate.x) * this->oneOverGridSpacing);
+                        size_t yIndex = static_cast<size_t>((y - this->minCoordinate.y) * this->oneOverGridSpacing);
+                        size_t zIndex = static_cast<size_t>((z - this->minCoordinate.z) * this->oneOverGridSpacing);
+
+                            // return (size_t)(xIndex + yIndex * gridDimensions.x + zIndex * gridDimensions.x * gridDimensions.y);
+                        printf("There is an issue X %2.20lE %2.20lE %2.20lE | %zu %zu %zu | %d %d %d | %zu %zu %zu\n",
+                        x,y,z,xIndex,yIndex,zIndex,ax, ay, az, index1, index,this->structMeshToCellIndexMap.size());
+                    }
+                    // {
+                    //     size_t xIndex = static_cast<size_t>(((size_t)std::floor(x * 1e16) - (size_t)std::floor(this->minCoordinate.x * 1e16) ) * (this->oneOverGridSpacing * 1e-16));
+                    //     size_t yIndex = static_cast<size_t>(((size_t)std::floor(y * 1e16) - (size_t)std::floor(this->minCoordinate.y * 1e16) ) * (this->oneOverGridSpacing * 1e-16));
+                    //     size_t zIndex = static_cast<size_t>(((size_t)std::floor(z * 1e16) - (size_t)std::floor(this->minCoordinate.z * 1e16) ) * (this->oneOverGridSpacing * 1e-16));
+
+                    //         // return (size_t)(xIndex + yIndex * gridDimensions.x + zIndex * gridDimensions.x * gridDimensions.y);
+                    //     printf("There is an issue Y %2.20lE %2.20lE %2.20lE | %zu %zu %zu | %d %d %d | %zu %zu\n",
+                    //     x,y,z,xIndex,yIndex,zIndex,ax, ay, az, index,this->structMeshToCellIndexMap.size());
+                    // }
+                }
+                call++;
+                this->structMeshToCellIndexMap.push_back(cellIndex);                
             }
         }
     }
+
+    printf("CellApproximator grid dimensions %d %d %d -- calls %d %zu\n", ax, ay, az, call, this->structMeshToCellIndexMap.size());
+
+    // printf("CellApproximator %d\n", (int)this->structMeshToCellIndexMap.size());
+    // for (size_t i = 0; i < this->structMeshToCellIndexMap.size(); i++) {
+    //     printf("%d ", this->structMeshToCellIndexMap[i]);
+
+    //     if (i % 400 == 0) printf("\n");
+    // }   
+    // printf("\n");
 
     return this->structMeshToCellIndexMap;
 }
@@ -261,6 +308,17 @@ int CellApproximator::findClosestCellIndex(const opp_point& targetPosition) {
 }
 
 //*******************************************************************************
+// This is correct, but has double precision issues
+size_t CellApproximator::getCellIndexMappingIndex(const opp_point& position) {
+
+    size_t xIndex = static_cast<size_t>((position.x - this->minCoordinate.x) * this->oneOverGridSpacing);
+    size_t yIndex = static_cast<size_t>((position.y - this->minCoordinate.y) * this->oneOverGridSpacing);
+    size_t zIndex = static_cast<size_t>((position.z - this->minCoordinate.z) * this->oneOverGridSpacing);
+
+    return (size_t)(xIndex + yIndex * gridDimensions.x + zIndex * gridDimensions.x * gridDimensions.y);
+}
+
+//*******************************************************************************
 const std::vector<opp_point>& CellApproximator::generateStructCoordinateVec() { 
 
     this->coordinateVec.clear(); 
@@ -284,17 +342,34 @@ const std::vector<opp_point>& CellApproximator::getStructuredCoordinateVec() {
 }
 
 //*******************************************************************************
-const opp_point& CellApproximator::calculateGridDimensions() { 
+const opp_ipoint& CellApproximator::calculateGridDimensions() { 
 
-    gridDimensions.x = std::ceil((maxCoordinate.x - minCoordinate.x) * oneOverGridSpacing);
-    gridDimensions.y = std::ceil((maxCoordinate.y - minCoordinate.y) * oneOverGridSpacing);
-    gridDimensions.z = std::ceil((maxCoordinate.z - minCoordinate.z) * oneOverGridSpacing);
+    // double decimal point issues cause this to deviate
+    // gridDimensions.x = (int)std::ceil((maxCoordinate.x - minCoordinate.x) * oneOverGridSpacing);
+    // gridDimensions.y = (int)std::ceil((maxCoordinate.y - minCoordinate.y) * oneOverGridSpacing);
+    // gridDimensions.z = (int)std::ceil((maxCoordinate.z - minCoordinate.z) * oneOverGridSpacing);
+
+    // Hack : Use this to get correct grid dimension
+    int ax =0, ay=0, az = 0, call = 0;
+    for (double z = minCoordinate.z; z < maxCoordinate.z; z += this->gridSpacing) { 
+        ax =0; ay=0; az++;
+        for (double y = minCoordinate.y; y < maxCoordinate.y; y += this->gridSpacing) { 
+            ax=0; ay++;
+            for (double x = minCoordinate.x; x < maxCoordinate.x; x += this->gridSpacing) { 
+                ax++;
+            }
+        }
+    }
+
+    gridDimensions.x = ax;
+    gridDimensions.y = ay;
+    gridDimensions.z = az;
 
     return gridDimensions;
 }
 
 //*******************************************************************************
-const opp_point& CellApproximator::getGridDimensions() { 
+const opp_ipoint& CellApproximator::getGridDimensions() { 
 
     return gridDimensions;
 }

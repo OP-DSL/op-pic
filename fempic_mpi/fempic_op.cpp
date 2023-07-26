@@ -36,7 +36,8 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "fempic.h"
 
 using namespace opp;
-std::unique_ptr<CellApproximator> opp_mover;
+std::unique_ptr<CellApproximator> opp_mover_approx;
+std::unique_ptr<ParticleMover> opp_mover;
 
 void opp_loop_inject__InjectIons(opp_set,opp_arg,opp_arg,opp_arg,opp_arg,opp_arg,opp_arg,
     opp_arg,opp_arg,opp_arg,opp_arg);
@@ -145,8 +146,10 @@ int main(int argc, char **argv)
         
         int n_parts_to_inject = InitializeInjectDistributions(iface_dist, iface_area, dummy_part_rand);
 
-        opp_mover = std::make_unique<CellApproximator>(node_pos, grid_spacing);
-        opp_mover->generateStructMeshToCellIndexVec(cell_volume, cell_det, cell_v_cell_map);
+        opp_mover_approx = std::make_unique<CellApproximator>(node_pos, grid_spacing);
+        opp_mover_approx->generateStructMeshToCellIndexVec(cell_volume, cell_det, cell_v_cell_map);
+
+        opp_mover = std::make_unique<ParticleMover>(grid_spacing, DIM, node_pos, cell_volume, cell_det, cell_v_cell_map);
 
         std::unique_ptr<FESolver> field_solver = std::make_unique<FESolver>(cell_v_nodes_map, 
             node_type, node_pos, node_bnd_pot, argc, argv);
@@ -232,13 +235,19 @@ int main(int argc, char **argv)
                     opp_get_arg(part_velocity, OP_WRITE)
                 );
 
+                // opp_mover_approx->move(
+                //     part_position,
+                //     part_mesh_rel,
+                //     part_lc,
+                //     cell_volume, 
+                //     cell_det, 
+                //     cell_v_cell_map);
+
                 opp_mover->move(
+                    particle_set, 
                     part_position,
                     part_mesh_rel,
-                    part_lc,
-                    cell_volume, 
-                    cell_det, 
-                    cell_v_cell_map);
+                    part_lc);
 
                 opp_loop_all__DepositChargeOnNodes(
                     particle_set, 

@@ -40,7 +40,10 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 // #endif
 
 #include "opp_move_with_approx.h"
-extern std::unique_ptr<opp::CellApproximator> opp_mover;
+extern std::unique_ptr<opp::CellApproximator> opp_mover_approx;
+
+#include "opp_particle_mover.h"
+extern std::unique_ptr<opp::ParticleMover> opp_mover;
 
 #include <oppic_lib.h>
 #ifdef ENABLE_MPI

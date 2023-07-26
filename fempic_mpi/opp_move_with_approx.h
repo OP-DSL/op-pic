@@ -4,25 +4,7 @@
 #include <oppic_lib.h>
 #include <list>
 #include <cmath>
-
-constexpr double MAX_REAL = std::numeric_limits<double>::max();
-constexpr double MIN_REAL = std::numeric_limits<double>::min();
-
-constexpr int MAX_INT = std::numeric_limits<int>::max();
-constexpr int MIN_INT = std::numeric_limits<int>::min();
-
-struct opp_point {
-    opp_point(double _x, double _y, double _z) {
-        x = _x; 
-        y = _y;
-        z = _z;
-    };
-    opp_point() { };
-
-    double x = 0.0;
-    double y = 0.0;
-    double z = 0.0;
-};
+#include "opp_defs.h"
 
 namespace opp {
 
@@ -60,9 +42,9 @@ namespace opp {
 
         const std::vector<opp_point>& getStructuredCoordinateVec();
 
-        const opp_point& calculateGridDimensions();
+        const opp_ipoint& calculateGridDimensions();
         
-        const opp_point& getGridDimensions();
+        const opp_ipoint& getGridDimensions();
 
         const std::vector<unsigned int>& getHopCountsVec();
         
@@ -71,6 +53,7 @@ namespace opp {
         void move(const opp_dat pos_dat, opp_dat cell_index_dat, opp_dat lc_dat, const opp_dat cell_volume_dat, 
             const opp_dat cell_det_dat, const opp_map cell_connectivity_map);
 
+        size_t getCellIndexMappingIndex(const opp_point& position);
     private:
 
         // CellApproximator* instancePtr = nullptr;
@@ -80,7 +63,7 @@ namespace opp {
         std::array<opp_point,2> boundingBox; // index 0 is min, index 1 is max
         opp_point minCoordinate = opp_point(MAX_REAL, MAX_REAL, MAX_REAL);
         opp_point maxCoordinate = opp_point(MIN_REAL, MIN_REAL, MIN_REAL);
-        opp_point gridDimensions;
+        opp_ipoint gridDimensions;
         std::vector<int> structMeshToCellIndexMap;
         std::vector<opp_point> coordinateVec;
         std::vector<unsigned int> hopCountsVec;
