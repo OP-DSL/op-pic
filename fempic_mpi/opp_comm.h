@@ -1,13 +1,13 @@
 #pragma once
 
 #include <mpi.h>
-#include "opp_def.h"
-
+#include "opp_defs.h"
 
 namespace opp {
 
     class Comm {
-        
+
+    public:    
         //*******************************************************************************
         Comm(MPI_Comm comm_parent) {
             this->comm_parent = comm_parent;
@@ -32,10 +32,14 @@ namespace opp {
                 CHECK(MPI_Comm_rank(this->comm_inter, &this->rank_inter))
                 CHECK(MPI_Comm_size(this->comm_inter, &this->size_inter))
             }
+
+            opp_printf("Comm", "rank_parent %d|s=%d rank_intra %d|s=%d rank_inter %d|s=%d",
+                this->rank_parent, this->size_parent, this->rank_intra, this->size_intra, 
+                this->rank_inter, this->size_inter);
         };
 
         //*******************************************************************************
-        void ~Comm() {
+        ~Comm() {
 
             if ((this->comm_intra != MPI_COMM_NULL) && (this->comm_intra != MPI_COMM_WORLD)) {
                 

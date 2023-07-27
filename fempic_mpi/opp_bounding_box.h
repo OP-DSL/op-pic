@@ -4,7 +4,9 @@
 #include "oppic_lib_core.h"
 
 #ifdef ENABLE_MPI
-#include <mpi.h>
+    #include "opp_comm.h"
+#else
+    #define Comm void
 #endif
 
 namespace opp {
@@ -14,7 +16,7 @@ namespace opp {
     public:
         // For now, only 3D is implemented
         //*******************************************************************************
-        BoundingBox(const opp_dat node_pos_dat, int dim) {
+        BoundingBox(const opp_dat node_pos_dat, int dim, const std::shared_ptr<Comm> comm = nullptr) {
             
             if (dim != 3) {
                 opp_abort(std::string("For now, only 3D BoundingBox is implemented"));
@@ -36,7 +38,7 @@ namespace opp {
                 maxCoordinate.z = std::max(node_pos_data[i * DIM + 2], maxCoordinate.z);
             }
 
-            if (OP_DEBUG)
+            //if (OP_DEBUG)
                 opp_printf("LocalBoundingBox", "Min[%2.6lE %2.6lE %2.6lE] Max[%2.6lE %2.6lE %2.6lE]", 
                     minCoordinate.x, minCoordinate.y, minCoordinate.z, maxCoordinate.x, maxCoordinate.y, maxCoordinate.z);
 
@@ -47,11 +49,11 @@ namespace opp {
 
             const double* localMin = reinterpret_cast<const double*>(&(this->boundingBox[0]));
             double* globalMin = reinterpret_cast<double*>(&(this->globalBoundingBox[0]));    
-            MPI_Allreduce(localMin, globalMin, DIM, MPI_DOUBLE, MPI_MIN, MPI_COMM_WORLD);
+            MPI_Allreduce(localMin, globalMin, DIM, MPI_DOUBLE, MPI_MIN, comm->comm_parent);
 
             const double* localMax = reinterpret_cast<const double*>(&(this->boundingBox[1]));
             double* globalMax = reinterpret_cast<double*>(&(this->globalBoundingBox[1]));    
-            MPI_Allreduce(localMax, globalMax, DIM, MPI_DOUBLE, MPI_MAX, MPI_COMM_WORLD);
+            MPI_Allreduce(localMax, globalMax, DIM, MPI_DOUBLE, MPI_MAX, comm->comm_parent);
 
             if (OPP_rank == OPP_ROOT)
                 opp_printf("Global BoundingBox", "Min[%2.6lE %2.6lE %2.6lE] Max[%2.6lE %2.6lE %2.6lE]", 

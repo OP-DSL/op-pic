@@ -20,8 +20,11 @@ namespace opp {
             : gridSpacing(gridSpacing), dim(dim), cellVolume_dat(cellVolume_dat), cellDet_dat(cellDet_dat), 
               cellConnectivity_map(cellConnectivity_map) {
 
-            boundingBox = std::make_shared<BoundingBox>(node_pos_dat, dim);
-            cellMapper = std::make_shared<CellMapper>(boundingBox, gridSpacing);
+#ifdef ENABLE_MPI
+            comm = std::make_shared<Comm>(MPI_COMM_WORLD);
+#endif
+            boundingBox = std::make_shared<BoundingBox>(node_pos_dat, dim, comm);
+            cellMapper = std::make_shared<CellMapper>(boundingBox, gridSpacing, comm);
 
             cellMapper->generateStructMeshToCellIndexMapping(cellVolume_dat, cellDet_dat, cellConnectivity_map);
         }
@@ -150,6 +153,7 @@ namespace opp {
 
         std::shared_ptr<BoundingBox> boundingBox;
         std::shared_ptr<CellMapper> cellMapper;
+        std::shared_ptr<Comm> comm;
 
         const opp_dat cellDet_dat;
         const opp_dat cellVolume_dat;

@@ -13,14 +13,6 @@
         centroid.K = (coordinate.K + maxCoordinate.K) * 0.5;        \
     }                                                               \
 
-#ifdef ENABLE_MPI
-    #include "opp_comm.h"
-#else
-    #define Comm void
-#endif
-
-
-
 namespace opp {
 
     class CellMapper {
@@ -28,32 +20,33 @@ namespace opp {
     public:
 
         //*******************************************************************************
-        CellMapper(const std::shared_ptr<BoundingBox> boundingBox, const double gridSpacing, Comm* comm = nullptr) 
+        CellMapper(const std::shared_ptr<BoundingBox> boundingBox, const double gridSpacing, 
+            const std::shared_ptr<Comm> comm = nullptr) 
             : boundingBox(boundingBox), gridSpacing(gridSpacing), oneOverGridSpacing(1.0 / gridSpacing), 
                 minGlbCoordinate(boundingBox->getGlobalMin()), comm(comm) {
             
-            const opp_point& minCoordinate = boundingBox->getGlobalMin();
-            const opp_point& maxCoordinate = boundingBox->getGlobalMax();
+            const opp_point& minGblCoordinate = boundingBox->getGlobalMin();
+            const opp_point& maxGblCoordinate = boundingBox->getGlobalMax();
 
-            // this->globalGridDimensions.x = std::ceil((maxCoordinate.x - minCoordinate.x) * oneOverGridSpacing);
-            // this->globalGridDimensions.y = std::ceil((maxCoordinate.y - minCoordinate.y) * oneOverGridSpacing);
-            // this->globalGridDimensions.z = std::ceil((maxCoordinate.z - minCoordinate.z) * oneOverGridSpacing);   
+            // this->globalGridDims.x = std::ceil((maxCoordinate.x - minCoordinate.x) * oneOverGridSpacing);
+            // this->globalGridDims.y = std::ceil((maxCoordinate.y - minCoordinate.y) * oneOverGridSpacing);
+            // this->globalGridDims.z = std::ceil((maxCoordinate.z - minCoordinate.z) * oneOverGridSpacing);   
 
             // Hack : Use this to get correct grid dimension
             int ax =0, ay=0, az = 0, call = 0;
-            for (double z = minCoordinate.z; z < maxCoordinate.z; z += this->gridSpacing) { 
-                ax =0; ay=0; az++;
-                for (double y = minCoordinate.y; y < maxCoordinate.y; y += this->gridSpacing) { 
-                    ax=0; ay++;
-                    for (double x = minCoordinate.x; x < maxCoordinate.x; x += this->gridSpacing) { 
-                        ax++;
-                    }
-                }
+            for (double z = minGblCoordinate.z; z < maxGblCoordinate.z; z += this->gridSpacing) { 
+                az++;
+            }
+            for (double y = minGblCoordinate.y; y < maxGblCoordinate.y; y += this->gridSpacing) { 
+                ay++;
+            }
+            for (double x = minGblCoordinate.x; x < maxGblCoordinate.x; x += this->gridSpacing) { 
+                ax++;
             }
 
-            this->globalGridDimensions.x = ax;
-            this->globalGridDimensions.y = ay;
-            this->globalGridDimensions.z = az; 
+            this->globalGridDims.x = ax;
+            this->globalGridDims.y = ay;
+            this->globalGridDims.z = az; 
         }
 
         //*******************************************************************************
@@ -95,15 +88,15 @@ namespace opp {
 
         //*******************************************************************************
         // Returns the global cell index
-        inline int findClosestCellIndex(const opp_point& targetPosition) { 
+        inline int findClosestCellIndex(const opp_point& pos) { 
 
-            if (!boundingBox->isCoordinateInGlobalBoundingBox(targetPosition)) {
-                // std::cerr << "isCoordinateInGlobalBoundingBox pos:" << targetPosition.x << "," << targetPosition.y << "," 
-                //     << targetPosition.z << " is not within the bounding box" << std::endl;
+            if (!boundingBox->isCoordinateInGlobalBoundingBox(pos)) {
+                // std::cerr << "isCoordinateInGlobalBoundingBox pos:" << pos.x << "," << pos.y << "," 
+                //     << pos.z << " is not within the bounding box" << std::endl;
                 return MAX_CELL_INDEX;
             }
 
-            size_t closestIndexMapping = getCellIndexMappingIndex(targetPosition);
+            size_t closestIndexMapping = getCellIndexMappingIndex(pos);
 
             // Assume closestIndexMapping is within structMeshToCellMapping.size()
             return this->structMeshToCellMapping[closestIndexMapping];
@@ -113,11 +106,11 @@ namespace opp {
         inline void generateStructMeshToCellIndexMapping(const opp_dat cellVolume_dat, const opp_dat cellDet_dat, 
             const opp_map cellConnectivity_map) { 
             
-            size_t globalGridSize = (size_t)(globalGridDimensions.x * globalGridDimensions.y * globalGridDimensions.z);
+            size_t globalGridSize = (size_t)(globalGridDims.x * globalGridDims.y * globalGridDims.z);
 
             // if (OP_DEBUG)
                 opp_printf("CellMapper", "generateStructMeshToCellIndexMapping global grid dimensions %d %d %d",
-                    globalGridDimensions.x, globalGridDimensions.y, globalGridDimensions.z);
+                    globalGridDims.x, globalGridDims.y, globalGridDims.z);
 
 #ifdef ENABLE_MPI
             // create a shared memory window for everyone to write and then sync with all nodes
@@ -135,15 +128,15 @@ namespace opp {
 
             double x = 0.0, y = 0.0, z = 0.0;
 
-            for (int dz = 0; dz < globalGridDimensions.z; dz++) {
+            for (int dz = 0; dz < globalGridDims.z; dz++) {
                 
                 z = minCoordinate.z + dz * this->gridSpacing;
                 
-                for (int dy = 0; dy < globalGridDimensions.y; dy++) {
+                for (int dy = 0; dy < globalGridDims.y; dy++) {
                     
                     y = minCoordinate.y + dy * this->gridSpacing;
                     
-                    for (int dx = 0; dx < globalGridDimensions.x; dx++) {
+                    for (int dx = 0; dx < globalGridDims.x; dx++) {
                         
                         x = minCoordinate.x + dx * this->gridSpacing;
                         
@@ -212,8 +205,8 @@ namespace opp {
                         if (cellIndex < cell_set_size) {
                             
                             // size_t index = getCellIndexMappingIndex(opp_point(x, y, z));
-                            size_t index = (size_t)(dx + dy * globalGridDimensions.x + 
-                                                    dz * globalGridDimensions.x * globalGridDimensions.y);
+                            size_t index = (size_t)(dx + dy * globalGridDims.x + 
+                                                    dz * globalGridDims.x * globalGridDims.y);
                             
                             this->structMeshToCellMapping[index] = cellIndex;
                         }  
@@ -238,7 +231,7 @@ namespace opp {
         //     int yIndex = static_cast<int>((position.y - this->minGlbCoordinate.y) * this->oneOverGridSpacing);
         //     int zIndex = static_cast<int>((position.z - this->minGlbCoordinate.z) * this->oneOverGridSpacing);
 
-        //     return ((size_t)xIndex + (size_t)yIndex * globalGridDimensions.x + (size_t)zIndex * globalGridDimensions.x * globalGridDimensions.y);
+        //     return ((size_t)xIndex + (size_t)yIndex * globalGridDims.x + (size_t)zIndex * globalGridDims.x * globalGridDims.y);
         // }
 
         //*******************************************************************************
@@ -258,18 +251,18 @@ namespace opp {
             int zIndex = static_cast<int>(zDiff);
 
             // Calculate the cell index mapping index
-            return ((size_t)(xIndex) + (size_t)(yIndex * globalGridDimensions.x) + 
-                        (size_t)(zIndex * globalGridDimensions.x * globalGridDimensions.y));
+            return ((size_t)(xIndex) + (size_t)(yIndex * globalGridDims.x) + 
+                        (size_t)(zIndex * globalGridDims.x * globalGridDims.y));
         }
 
     private:
         const double gridSpacing = 0.0;
         const double oneOverGridSpacing = 0.0;
         const std::shared_ptr<BoundingBox> boundingBox;
-        opp_ipoint globalGridDimensions;
+        opp_ipoint globalGridDims;
         const opp_point& minGlbCoordinate;        
         int* structMeshToCellMapping = nullptr;         // This should contain mapping to global cell indices
-        Comm* comm = nullptr;
+        const std::shared_ptr<Comm> comm = nullptr;
 
         const double ONE_OVER_SIX = (1.0 / 6.0);
         const int N_PER_C = 4;
