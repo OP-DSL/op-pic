@@ -3,6 +3,19 @@
 #include <limits>
 #include <array>
 #include <string>
+#include <algorithm>
+
+#ifdef ENABLE_MPI
+    #include "opp_mpi.h"
+#else
+    #define Comm int
+    #define MPI_Win int
+    #define GlobalParticleMover int
+#endif
+
+#ifdef USE_OMP
+#include <omp.h>
+#endif        
 
 constexpr double MAX_REAL = std::numeric_limits<double>::max();
 constexpr double MIN_REAL = std::numeric_limits<double>::min();

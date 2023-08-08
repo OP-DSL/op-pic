@@ -36,8 +36,6 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "fempic.h"
 
 using namespace opp;
-std::unique_ptr<CellApproximator> opp_mover_approx;
-std::unique_ptr<ParticleMover> opp_mover;
 
 void opp_loop_inject__InjectIons(opp_set,opp_arg,opp_arg,opp_arg,opp_arg,opp_arg,opp_arg,
     opp_arg,opp_arg,opp_arg,opp_arg);
@@ -63,6 +61,9 @@ int main(int argc, char **argv)
 
     {
         opp_profiler->start("Setup");
+
+        //std::unique_ptr<CellApproximator> opp_mover_approx;
+        std::unique_ptr<ParticleMover> opp_mover;
 
         double plasma_den   = opp_params->get<OPP_REAL>("plasma_den");
         double dt           = opp_params->get<OPP_REAL>("dt");
@@ -100,7 +101,7 @@ int main(int argc, char **argv)
         opp_dat cell_volume      = opp_decl_mesh_dat(cell_set, ONE,         DT_REAL, m->c_vol, "c_volume");        
         opp_dat cell_ef          = opp_decl_mesh_dat(cell_set, DIM,         DT_REAL, m->c_ef,  "c_ef");
         opp_dat cell_shape_deriv = opp_decl_mesh_dat(cell_set, N_PER_C*DIM, DT_REAL, m->c_sd,  "c_shape_deri"); 
-        // opp_dat cell_id          = opp_decl_mesh_dat(cell_set, ONE,         DT_INT,  m->c_id,  "c_id"); 
+        opp_dat global_cell_id   = opp_decl_mesh_dat(cell_set, ONE,         DT_INT,  m->c_id,  "c_gbl_id"); 
         opp_dat cell_colors      = opp_decl_mesh_dat(cell_set, ONE,         DT_INT,  m->c_col, "c_colors");
 
         opp_dat node_volume      = opp_decl_mesh_dat(node_set, ONE, DT_REAL, m->n_vol,     "n_vol");        
@@ -146,10 +147,11 @@ int main(int argc, char **argv)
         
         int n_parts_to_inject = InitializeInjectDistributions(iface_dist, iface_area, dummy_part_rand);
 
-        opp_mover_approx = std::make_unique<CellApproximator>(node_pos, grid_spacing);
-        opp_mover_approx->generateStructMeshToCellIndexVec(cell_volume, cell_det, cell_v_cell_map);
+        //opp_mover_approx = std::make_unique<CellApproximator>(node_pos, grid_spacing);
+        // opp_mover_approx->generateStructMeshToCellIndexVec(cell_volume, cell_det, cell_v_cell_map);
 
-        opp_mover = std::make_unique<ParticleMover>(grid_spacing, DIM, node_pos, cell_volume, cell_det, cell_v_cell_map);
+        opp_mover = std::make_unique<ParticleMover>(grid_spacing, DIM, node_pos, cell_volume, 
+                                                    cell_det, global_cell_id, cell_v_cell_map);
 
         std::unique_ptr<FESolver> field_solver = std::make_unique<FESolver>(cell_v_nodes_map, 
             node_type, node_pos, node_bnd_pot, argc, argv);
@@ -158,6 +160,8 @@ int main(int argc, char **argv)
 
         opp_profiler->end("Setup");
 
+std::string g = std::string("X_") + std::to_string(OPP_rank);
+opp_print_dat_to_txtfile(global_cell_id, g.c_str(), "global_cell_id.dat");
 
         opp_profiler->start("MainLoop");
 
@@ -168,7 +172,7 @@ int main(int argc, char **argv)
         for (OPP_main_loop_iter = 0; OPP_main_loop_iter < max_iter; OPP_main_loop_iter++)
         {
             // also measure time excluding the first iteration, to avoid some setup costs
-            if (OPP_main_loop_iter == 1) opp_profiler->start("MainLoop t-1"); 
+            // if (OPP_main_loop_iter == 1) opp_profiler->start("MainLoop t-1"); 
 
             if (OP_DEBUG && OPP_rank == OPP_ROOT) 
                 opp_printf("Main", "Starting main loop iteration %d *************", OPP_main_loop_iter);
@@ -258,11 +262,14 @@ int main(int argc, char **argv)
                     opp_get_arg(node_charge_den, 3, cell_v_nodes_map, OP_INC,  OPP_Map_from_Mesh_Rel)
                 );
 #endif
-            // std::string f = std::string("F_") + std::to_string(OPP_main_loop_iter + 1);
-            // opp_print_dat_to_txtfile(node_charge_den, f.c_str(), "node_charge_den.dat");
-            // opp_print_dat_to_txtfile(part_position, f.c_str(), "part_position.dat");
-            // opp_print_dat_to_txtfile(part_velocity, f.c_str(), "part_velocity.dat");
-            // opp_print_dat_to_txtfile(part_mesh_rel, f.c_str(), "part_mesh_rel.dat");
+//             std::string f = std::string("A_") + std::to_string(OPP_rank) + "_" + std::to_string(OPP_main_loop_iter + 1);
+//             opp_print_dat_to_txtfile(node_charge_den, f.c_str(), "node_charge_den.dat");
+//             opp_print_dat_to_txtfile(part_position, f.c_str(), "part_position.dat");
+//             opp_print_dat_to_txtfile(part_velocity, f.c_str(), "part_velocity.dat");
+//             opp_print_dat_to_txtfile(part_mesh_rel, f.c_str(), "part_mesh_rel.dat");
+// #ifdef ENABLE_MPI
+//             opp_mpi_print_dat_to_txtfile(node_charge_den, f.c_str());
+// #endif
 // MPI_Barrier(OP_MPI_WORLD);
 // if (OPP_rank == OPP_ROOT) 
 //     opp_printf("Main", "opp_loop_all__ComputeNodeChargeDensity iteration %d *************", OPP_main_loop_iter);
@@ -319,11 +326,11 @@ int main(int argc, char **argv)
 // if (OPP_rank == OPP_ROOT) 
 //     opp_printf("Main", "Main Loop Over *************XXXX");
 
-        opp_profiler->end("MainLoop t-1");
+        //opp_profiler->end("MainLoop t-1");
         opp_profiler->end("MainLoop");
 
-        if (OP_DEBUG)
-            print_per_cell_particle_counts(cell_colors, part_mesh_rel); // cell_colors will reset
+        // if (OP_DEBUG)
+        //     print_per_cell_particle_counts(cell_colors, part_mesh_rel); // cell_colors will reset
     }
 
 // MPI_Barrier(OP_MPI_WORLD);

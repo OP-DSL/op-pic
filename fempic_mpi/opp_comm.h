@@ -62,16 +62,16 @@ namespace opp {
         /// Communicator between the ranks in a shared memory region.
         MPI_Comm comm_intra;
         /// MPI rank in the parent communicator.
-        int rank_parent;
+        int rank_parent = -1;
         /// MPI rank in the inter shared memory region communicator.
-        int rank_inter;
+        int rank_inter = -1;
         /// MPI rank within the shared memory region communicator.
-        int rank_intra;
+        int rank_intra = -1;
         /// Size of the parent communicator.
-        int size_parent;
+        int size_parent = -1;
         /// Size of the inter shared memory communicator.
-        int size_inter;
+        int size_inter = -1;
         /// Size of the intra shared memory communicator.
-        int size_intra;
+        int size_intra = -1;
     };
 };

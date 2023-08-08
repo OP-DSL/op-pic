@@ -5,9 +5,9 @@
 
 #ifdef ENABLE_MPI
     #include "opp_comm.h"
-#else
-    #define Comm void
 #endif
+
+#define TOLERENCE 1e-6
 
 namespace opp {
 
@@ -24,11 +24,13 @@ namespace opp {
 
             constexpr int DIM = 3;
             const double* node_pos_data = (const double*)node_pos_dat->data;
-            const int node_pos_size = node_pos_dat->set->size;
+            const int node_pos_size = node_pos_dat->set->size + node_pos_dat->set->exec_size + 
+                                        node_pos_dat->set->nonexec_size;;
 
             opp_point minCoordinate = opp_point(MAX_REAL, MAX_REAL, MAX_REAL);
             opp_point maxCoordinate = opp_point(MIN_REAL, MIN_REAL, MIN_REAL);
 
+            // make the bounding box even over the halo regions
             for (int i = 0; i < node_pos_size; i++) {
                 minCoordinate.x = std::min(node_pos_data[i * DIM + 0], minCoordinate.x);
                 minCoordinate.y = std::min(node_pos_data[i * DIM + 1], minCoordinate.y);
@@ -38,9 +40,14 @@ namespace opp {
                 maxCoordinate.z = std::max(node_pos_data[i * DIM + 2], maxCoordinate.z);
             }
 
-            //if (OP_DEBUG)
-                opp_printf("LocalBoundingBox", "Min[%2.6lE %2.6lE %2.6lE] Max[%2.6lE %2.6lE %2.6lE]", 
-                    minCoordinate.x, minCoordinate.y, minCoordinate.z, maxCoordinate.x, maxCoordinate.y, maxCoordinate.z);
+            if (node_pos_size != 0) {
+                minCoordinate.x -= TOLERENCE;
+                minCoordinate.y -= TOLERENCE;
+                minCoordinate.z -= TOLERENCE;
+                maxCoordinate.x += TOLERENCE;
+                maxCoordinate.y += TOLERENCE;
+                maxCoordinate.z += TOLERENCE;
+            }
 
             this->boundingBox[0] = minCoordinate;
             this->boundingBox[1] = maxCoordinate;
@@ -55,6 +62,17 @@ namespace opp {
             double* globalMax = reinterpret_cast<double*>(&(this->globalBoundingBox[1]));    
             MPI_Allreduce(localMax, globalMax, DIM, MPI_DOUBLE, MPI_MAX, comm->comm_parent);
 
+            // This is to avoid min and max corrdinates to not have MAX_REAL and MIN_REAL when current rank has no work
+            if (node_pos_size == 0) {
+                this->boundingBox[0].x = this->globalBoundingBox[0].x; 
+                this->boundingBox[0].y = this->globalBoundingBox[0].y; 
+                this->boundingBox[0].z = this->globalBoundingBox[0].z; 
+
+                this->boundingBox[1].x = this->globalBoundingBox[0].x;
+                this->boundingBox[1].y = this->globalBoundingBox[0].y;
+                this->boundingBox[1].z = this->globalBoundingBox[0].z;
+            }
+
             if (OPP_rank == OPP_ROOT)
                 opp_printf("Global BoundingBox", "Min[%2.6lE %2.6lE %2.6lE] Max[%2.6lE %2.6lE %2.6lE]", 
                     this->globalBoundingBox[0].x, this->globalBoundingBox[0].y, this->globalBoundingBox[0].z, 
@@ -62,6 +80,11 @@ namespace opp {
 #else
             this->globalBoundingBox = this->boundingBox;
 #endif
+
+            if (OP_DEBUG)
+                opp_printf("Local BoundingBox", "Min[%2.6lE %2.6lE %2.6lE] Max[%2.6lE %2.6lE %2.6lE]", 
+                    this->boundingBox[0] .x, this->boundingBox[0] .y, this->boundingBox[0] .z, 
+                    this->boundingBox[1].x, this->boundingBox[1].y, this->boundingBox[1].z);
         }
 
         //*******************************************************************************

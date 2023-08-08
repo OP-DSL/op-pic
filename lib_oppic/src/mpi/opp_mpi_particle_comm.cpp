@@ -37,12 +37,6 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #define PACK_AOS  false // PACK_AOS == false, is performing better
 
-struct opp_particle_move_info
-{
-    int local_particle_index;
-    int foreign_cell_index;
-};
-
 // this translate to std::map<oppic_set, std::map<local_cell_index, opp_particle_comm_data>>
 std::map<oppic_set, std::map<int, opp_particle_comm_data>> opp_part_comm_neighbour_data; 
 
@@ -58,8 +52,8 @@ void opp_part_mark_move(oppic_set set, int particle_index, opp_particle_comm_dat
     // if (OP_DEBUG) 
     //     opp_printf("opp_part_mark_move", "set [%s] | particle_index %d | send_rank %d | foreign_rank_index %d", 
     //         set->name, particle_index, comm_data.cell_residing_rank, comm_data.local_index);
-
-    opp_part_move_indices[set][comm_data.cell_residing_rank].push_back({ particle_index, comm_data.local_index });
+    std::vector<opp_particle_move_info>& vec = opp_part_move_indices[set][comm_data.cell_residing_rank];
+    vec.push_back({ particle_index, comm_data.local_index });
 }
 
 //*******************************************************************************

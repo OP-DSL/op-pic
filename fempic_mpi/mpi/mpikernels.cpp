@@ -128,6 +128,7 @@ void opp_loop_inject__InjectIons(
     opp_profiler->end("InjectIons");
 }
 
+//*************************************************************************************************
 void opp_loop_all__CalculateNewPartPosVel(
     opp_set set,      // particles_set
     opp_arg arg0,     // cell_ef,
@@ -139,6 +140,17 @@ void opp_loop_all__CalculateNewPartPosVel(
         set->size, set->diff);
 
     opp_profiler->start("CalcPosVel");  
+
+    int nargs = 3;
+    opp_arg args[nargs];
+
+    args[0]  = std::move(arg0);
+    args[1]  = std::move(arg1);
+    args[2]  = std::move(arg2);
+
+    opp_mpi_halo_exchanges(set, nargs, args);
+
+    opp_mpi_halo_wait_all(nargs, args); 
 
     OPP_mesh_relation_data = ((int *)set->mesh_relation_dat->data); 
 
@@ -153,9 +165,12 @@ void opp_loop_all__CalculateNewPartPosVel(
         );
     }
 
+    opp_mpi_set_dirtybit(nargs, args);
+
     opp_profiler->end("CalcPosVel");    
 }
 
+//*************************************************************************************************
 void opp_loop_all__DepositChargeOnNodes(
     opp_set set,      // particles_set
     opp_arg arg0,     // part_lc,
@@ -170,6 +185,22 @@ void opp_loop_all__DepositChargeOnNodes(
         set->size, set->diff);
 
     opp_profiler->start("DepCharge");  
+
+    int nargs = 5;
+    opp_arg args[nargs];
+
+    args[0]  = std::move(arg0);
+    args[1]  = std::move(arg1);
+    args[2]  = std::move(arg2);
+    args[3]  = std::move(arg3);
+    args[4]  = std::move(arg4);
+
+    opp_mpi_halo_exchanges(set, nargs, args);
+
+    opp_init_double_indirect_reductions(nargs, args);
+
+    // unable to overlap much of computation and communication
+    opp_mpi_halo_wait_all(nargs, args); 
 
     OPP_mesh_relation_data = ((int *)set->mesh_relation_dat->data); 
 
@@ -190,6 +221,12 @@ void opp_loop_all__DepositChargeOnNodes(
             &((double*) arg1.data)[map4idx]                  // node_charge_den3,
         );
     }
+
+    opp_exchange_double_indirect_reductions(nargs, args);
+
+    opp_complete_double_indirect_reductions(nargs, args);
+
+    opp_mpi_set_dirtybit(nargs, args);
 
     opp_profiler->end("DepCharge");   
 }
