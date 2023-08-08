@@ -1,5 +1,5 @@
 # System parameters
-REAL plasma_den     = 2e17
+REAL plasma_den     = 2e16
 # REAL plasma_den     = 7e17
 REAL ion_velocity   = 1e8
 REAL electron_temperature = 2e8
@@ -29,5 +29,5 @@ INT opp_threads_per_block   = 64
 
 BOOL opp_profile_all        = false
 
-REAL grid_spacing  = 60e-6
+REAL grid_spacing  = 100e-6
 BOOL print_final = true

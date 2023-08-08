@@ -30,12 +30,12 @@ namespace opp {
 #endif
             boundingBox = std::make_shared<BoundingBox>(node_pos_dat, dim, comm);
 
-opp_printf("HERE", "1");MPI_Barrier(MPI_COMM_WORLD);opp_printf("HERE", "2");
+
             cellMapper = std::make_shared<CellMapper>(boundingBox, gridSpacing, comm);
-opp_printf("HERE", "3");MPI_Barrier(MPI_COMM_WORLD);opp_printf("HERE", "4");
+
             cellMapper->generateStructMeshToGlobalCellMappings(cellVolume_dat, cellDet_dat, global_cell_id_dat, 
                                                                 cellConnectivity_map);
-opp_printf("HERE", "5");MPI_Barrier(MPI_COMM_WORLD);opp_printf("HERE", "6");
+
             cellMapper->generateGlobalToLocalCellIndexMapping(global_cell_id_dat);
         }
 
@@ -107,8 +107,6 @@ opp_printf("HERE", "5");MPI_Barrier(MPI_COMM_WORLD);opp_printf("HERE", "6");
 
 #elif defined ENABLE_MPI
 
-// opp_printf("1", "start %d end %d, set size %d diff %d", OPP_iter_start, OPP_iter_end, set->size, set->diff);
- 
         //*******************************************************************************
         inline void move(opp_set set, const opp_dat pos_dat, opp_dat cellIndex_dat, opp_dat lc_dat) { 
             
@@ -264,10 +262,19 @@ opp_printf("HERE", "5");MPI_Barrier(MPI_COMM_WORLD);opp_printf("HERE", "6");
 
 #endif
 
+        //*******************************************************************************
         inline bool checkForGlobalMove(opp_set set, const opp_point& point, const int partIndex, int& cellIdx) {
 
 #ifdef ENABLE_MPI            
             size_t structCellIdx = cellMapper->findStructuredCellIndex(point);
+
+            if (structCellIdx == MAX_CELL_INDEX) {
+                if (OP_DEBUG)
+                    opp_printf("GlobalMove", 
+                    "Remove %d [Struct cell index invalid - strCellIdx:%zu] [%2.16lE, %2.16lE, %2.16lE]", 
+                        partIndex, structCellIdx, point.x, point.y, point.z);
+                return true;
+            }
 
             int structCellRank = cellMapper->findClosestCellRank(structCellIdx);
 
@@ -275,20 +282,22 @@ opp_printf("HERE", "5");MPI_Barrier(MPI_COMM_WORLD);opp_printf("HERE", "6");
             // if no, move to the closest local cell
             if (structCellRank != OPP_rank) {
 
-                if (structCellRank == MAX_CELL_INDEX) {
-                    //if (OP_DEBUG)
-                        opp_printf("GlobalMove", "Remove part %d [Rank invalid - out of the mesh strCellRank:%d strCellIdx:%zu] [%2.6lE %2.6lE %2.6lE]", 
-                            partIndex, structCellRank, structCellIdx, point.x, point.y, point.z);
-                    return true;
-                }
-
                 // Due to renumbering local cell indices will be different to global, hence do global comm with global indices
                 size_t globalCellIndex = cellMapper->findClosestGlobalCellIndex(structCellIdx);
 
+                if (structCellRank == MAX_CELL_INDEX) {
+                    if (OP_DEBUG)
+                        opp_printf("GlobalMove", 
+                        "Remove %d [Rank invalid - strCellRank:%d gblCellIdx:%zu strCellIdx:%zu] [%2.16lE, %2.16lE, %2.16lE]", 
+                            partIndex, structCellRank, globalCellIndex, structCellIdx, point.x, point.y, point.z);
+                    return true;
+                }
+
                 if (globalCellIndex == MAX_CELL_INDEX) {
                     if (OP_DEBUG)
-                        opp_printf("GlobalMove", "Remove part %d [CellIdx invalid - out of the mesh strCellRank:%d gblCellIdx:%zu strCellIdx:%zu]", 
-                            partIndex, structCellRank, globalCellIndex, structCellIdx);
+                        opp_printf("GlobalMove", 
+                        "Remove %d [CellIdx invalid - strCellRank:%d gblCellIdx:%zu strCellIdx:%zu] [%2.16lE, %2.16lE, %2.16lE]", 
+                            partIndex, structCellRank, globalCellIndex, structCellIdx, point.x, point.y, point.z);
                     return true;
                 }
 
