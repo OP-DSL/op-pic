@@ -135,14 +135,14 @@ namespace opp {
                 }
 
                 int newPartIndex = (set->size - set->diff);
-                int rankx = 0;
+                // int rankx = 0;
 
                 for (const auto& x : particleRecvBuffers) {
 
-                    int recvRank = x.first;
+                    // int recvRank = x.first;
                     const std::vector<char>& buffer = x.second;
 
-                    int recvCount = ((int)buffer.size() / set->particle_size) ; // recvRankPartCounts[rankx++];
+                    int recvCount = ((int)buffer.size() / particle_size) ; // recvRankPartCounts[rankx++];
                     int displacement = 0;
 
                     for (auto& dat : particle_dats)

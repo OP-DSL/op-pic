@@ -345,7 +345,6 @@ namespace opp {
         }
 
     private:
-
         std::shared_ptr<BoundingBox> boundingBox;
         std::shared_ptr<CellMapper> cellMapper;
         std::shared_ptr<Comm> comm;
@@ -355,13 +354,13 @@ namespace opp {
         std::stringstream markedForMove;
         std::stringstream markedForRemove;
 
-        const opp_dat cellDet_dat;
+        const double gridSpacing;
+        const int dim = 3;
         const opp_dat cellVolume_dat;
+        const opp_dat cellDet_dat;
         const opp_dat global_cell_id_dat;
         const opp_map cellConnectivity_map;
 
-        const double gridSpacing;
-        const int dim;
         bool useGlobalMove = true;
     };
 };

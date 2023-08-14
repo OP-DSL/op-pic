@@ -340,8 +340,8 @@ opp_print_dat_to_txtfile(global_cell_id, g.c_str(), "global_cell_id.dat");
 
     opp_exit();
 
-if (OPP_rank == OPP_ROOT) 
-    opp_printf("Main", "opp_exit DONE *************XXXX");
+// if (OPP_rank == OPP_ROOT) 
+//     opp_printf("Main", "opp_exit DONE *************XXXX");
 
     return 0;
 }

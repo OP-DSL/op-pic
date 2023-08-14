@@ -215,7 +215,7 @@ namespace opp {
             double lc[N_PER_C];
             int cellSetSizeIncHalo = set->size + set->exec_size + set->nonexec_size;
 
-            const opp_point& minCoordinate = boundingBox->getLocalMin(); // required for GET_VERT
+            // const opp_point& minCoordinate = boundingBox->getLocalMin(); // required for GET_VERT
             const opp_point& maxCoordinate = boundingBox->getLocalMax(); // required for GET_VERT
 
             double x = 0.0, y = 0.0, z = 0.0;
@@ -443,7 +443,7 @@ namespace opp {
             double lc[N_PER_C];
             int cellSetSizeIncHalo = set->size + set->exec_size + set->nonexec_size;
 
-            const opp_point& minCoordinate = boundingBox->getLocalMin(); // required for GET_VERT
+            // const opp_point& minCoordinate = boundingBox->getLocalMin(); // required for GET_VERT
             const opp_point& maxCoordinate = boundingBox->getLocalMax(); // required for GET_VERT
 
             double x = 0.0, y = 0.0, z = 0.0;
@@ -566,7 +566,6 @@ namespace opp {
 
                     const double gs = gridSpacing;
                     int mostSuitableCellIndex = MAX_CELL_INDEX, mostSuitableGblCellIndex = MAX_CELL_INDEX;
-                    opp_move_status m;
 
                     std::array<opp_point,8> vertices = {
                         opp_point(GET_VERT(x,x),    GET_VERT(y,y),    GET_VERT(z,z)),
@@ -583,7 +582,6 @@ namespace opp {
                     for (const auto& point : vertices) {
 
                         int cellIndex = MAX_CELL_INDEX;
-                        m = OPP_NEED_MOVE;
 
                         all_cell_checker(point, cellIndex);
 
@@ -667,8 +665,8 @@ namespace opp {
 #endif
             if (OPP_rank == OPP_ROOT) {
 
-                opp_printf("structMeshToCellMapping", "%s - %s size=%d", 
-                    msg.c_str(), (cellIndices ? "CellIndices" : "MPIRanks"), (int)globalGridSize);
+                opp_printf("structMeshToCellMapping", "%s - %s size=%zu", 
+                    msg.c_str(), (cellIndices ? "CellIndices" : "MPIRanks"), globalGridSize);
 
                 for (size_t i = 0; i < globalGridSize; i++) {
                     printf("%zu|%d ", i, (cellIndices ? this->structMeshToCellMapping[i] : this->structMeshToRankMapping[i]));
@@ -685,7 +683,7 @@ namespace opp {
         //*******************************************************************************
         inline void createStructMeshMappingArrays() {
 
-            globalGridSize = (globalGridDims.x * globalGridDims.y * globalGridDims.z);
+            globalGridSize = (size_t)(globalGridDims.x * globalGridDims.y * globalGridDims.z);
 
 #ifdef ENABLE_MPI
 
@@ -703,7 +701,7 @@ namespace opp {
                 CHECK(MPI_Win_shared_query(this->win_structMeshToCellMapping, 0, &allocatedSize, &disp,
                                             (void *)&this->structMeshToCellMapping))
 
-                if (globalGridSize * sizeof(int) != allocatedSize) {
+                if (globalGridSize * sizeof(int) != (size_t)allocatedSize) {
                     opp_abort(std::string("Pointer to incorrect size in MPI structMeshToCellMapping"));
                 }
                 if (disp != sizeof(int)) {
@@ -730,7 +728,7 @@ namespace opp {
                 CHECK(MPI_Win_shared_query(this->win_structMeshToRankMapping, 0, &allocatedSize, &disp,
                                             (void *)&this->structMeshToRankMapping))
 
-                if (globalGridSize * sizeof(int) != allocatedSize) {
+                if (globalGridSize * sizeof(int) != (size_t)allocatedSize) {
                     opp_abort(std::string("Pointer to incorrect size in MPI structMeshToRankMapping"));
                 }
                 if (disp != sizeof(int)) {
@@ -815,25 +813,24 @@ namespace opp {
         }
 
     private:
+        const std::shared_ptr<BoundingBox> boundingBox = nullptr;
         const double gridSpacing = 0.0;
         const double oneOverGridSpacing = 0.0;
-        
-        const std::shared_ptr<BoundingBox> boundingBox;
+        const opp_point& minGlbCoordinate;  
+        const std::shared_ptr<Comm> comm = nullptr;
+
         opp_ipoint globalGridDims;
         opp_ipoint localGridStart, localGridEnd;
-        const opp_point& minGlbCoordinate;        
-        
+
         std::map<int,int> globalToLocalCellIndexMapping;
 
-        int globalGridSize = 0;
+        size_t globalGridSize = 0;
 
         int* structMeshToCellMapping = nullptr;         // This should contain mapping to global cell indices
         int* structMeshToRankMapping = nullptr;
         
         MPI_Win win_structMeshToCellMapping;
         MPI_Win win_structMeshToRankMapping;
-
-        const std::shared_ptr<Comm> comm = nullptr;
 
         const double ONE_OVER_SIX = (1.0 / 6.0);
         const int N_PER_C = 4;
