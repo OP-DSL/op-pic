@@ -417,6 +417,9 @@ void opp_reset_dat(oppic_dat dat, char* val, opp_reset reset)
     {
         memcpy(dat->data + i * dat->size, val, dat->size);
     }
+
+    // TODO : Check whether this is OK for all the reset options!
+    dat->dirtybit = 0;
 }
 
 //****************************************

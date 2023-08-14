@@ -29,5 +29,7 @@ INT opp_threads_per_block   = 64
 
 BOOL opp_profile_all        = false
 
-REAL grid_spacing  = 100e-6
+REAL grid_spacing  = 50e-6
 BOOL print_final = true
+
+BOOL opp_global_move = true

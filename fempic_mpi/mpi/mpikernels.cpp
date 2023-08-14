@@ -58,24 +58,26 @@ void opp_loop_inject__InjectIons(
     opp_arg arg0,     // part_position,
     opp_arg arg1,     // part_velocity,
     opp_arg arg2,     // part_cell_connectivity,
-    opp_arg arg3,     // iface to cell map
-    opp_arg arg4,     // cell_ef,
-    opp_arg arg5,     // iface_u,
-    opp_arg arg6,     // iface_v,
-    opp_arg arg7,     // iface_normal,
-    opp_arg arg8,     // iface_node_pos
-    opp_arg arg9      // dummy_part_random
+    opp_arg arg3,     // part_id
+    opp_arg arg4,     // iface to cell map
+    opp_arg arg5,     // cell_ef,
+    opp_arg arg6,     // iface_u,
+    opp_arg arg7,     // iface_v,
+    opp_arg arg8,     // iface_normal,
+    opp_arg arg9,     // iface_node_pos
+    opp_arg arg10      // dummy_part_random
 )
 { 
 
-    if (FP_DEBUG) opp_printf("FEMPIC", "opp_loop_inject__InjectIons set_size %d diff %d", 
-        set->size, set->diff);
+    if (FP_DEBUG) 
+        opp_printf("FEMPIC", "opp_loop_inject__InjectIons set_size %d diff %d", 
+            set->size, set->diff);
     
     opp_profiler->start("InjectIons");
 
     const int inj_start = (set->size - set->diff);
 
-    const int nargs = 10;
+    const int nargs = 11;
     opp_arg args[nargs];
 
     args[0] = std::move(arg0);
@@ -88,6 +90,7 @@ void opp_loop_inject__InjectIons(
     args[7] = std::move(arg7);
     args[8] = std::move(arg8);
     args[9] = std::move(arg9);
+    args[10] = std::move(arg10);
 
     int set_size = opp_mpi_halo_exchanges(set, nargs, args);
     opp_mpi_halo_wait_all(nargs, args); // 
@@ -99,26 +102,20 @@ void opp_loop_inject__InjectIons(
         for (int i = 0; i < set->diff; i++)
         {    
             map0idx = ((int *)set->mesh_relation_dat->data)[inj_start + i]; // iface index
-            map1idx = args[4].map_data[map0idx]; // cell index
+            map1idx = args[5].map_data[map0idx]; // cell index
 
-// {
-//  opp_printf("general", "i=%d mesh mapping=%d part=%d", i, map0idx, (inj_start+i));
-//  opp_printf("dummy_part_random", "%+2.20lE %+2.20lE", 
-//       ((double*) args[9].data)[i * args[9].dim], ((double*) args[9].data)[i * args[9].dim+1]);
-//  opp_printf("iface_node_pos", "%+2.20lE %+2.20lE %+2.20lE", ((double*) args[8].data)[map0idx * args[8].dim], 
-//       ((double*) args[8].data)[map0idx * args[8].dim+1], ((double*) args[8].data)[map0idx * args[8].dim+2]);
-// }
             inject_ions__kernel(
                 &((double*) args[0].data)[(inj_start + i) * args[0].dim],     // part_position,
                 &((double*) args[1].data)[(inj_start + i) * args[1].dim],     // part_velocity,
                 &((int*)    args[2].data)[(inj_start + i) * args[2].dim],     // part_cell_connectivity,
-                &((int*)    args[3].data)[map0idx * args[3].dim],             // iface to cell map
-                &((double*) args[4].data)[map1idx * args[4].dim],             // cell_ef,
-                &((double*) args[5].data)[map0idx * args[5].dim],             // iface_u,
-                &((double*) args[6].data)[map0idx * args[6].dim],             // iface_v,
-                &((double*) args[7].data)[map0idx * args[7].dim],             // iface_normal,
-                &((double*) args[8].data)[map0idx * args[8].dim],             // iface_node_pos
-                &((double*) args[9].data)[i * args[9].dim]                    // dummy_part_random
+                &((int*)    args[3].data)[(inj_start + i) * args[3].dim],     // part_id
+                &((int*)    args[4].data)[map0idx * args[4].dim],             // iface to cell map
+                &((double*) args[5].data)[map1idx * args[5].dim],             // cell_ef,
+                &((double*) args[6].data)[map0idx * args[6].dim],             // iface_u,
+                &((double*) args[7].data)[map0idx * args[7].dim],             // iface_v,
+                &((double*) args[8].data)[map0idx * args[8].dim],             // iface_normal,
+                &((double*) args[9].data)[map0idx * args[9].dim],             // iface_node_pos
+                &((double*) args[10].data)[i * args[10].dim]                    // dummy_part_random
             );
         }
     }
@@ -136,8 +133,9 @@ void opp_loop_all__CalculateNewPartPosVel(
     opp_arg arg2      // part_vel,
 ) {
 
-    if (FP_DEBUG) opp_printf("FEMPIC", "opp_loop_all__CalculateNewPartPosVel set_size %d diff %d", 
-        set->size, set->diff);
+    if (FP_DEBUG) 
+        opp_printf("FEMPIC", "opp_loop_all__CalculateNewPartPosVel set_size %d diff %d", 
+            set->size, set->diff);
 
     opp_profiler->start("CalcPosVel");  
 
@@ -182,7 +180,7 @@ void opp_loop_all__DepositChargeOnNodes(
 {
     if (FP_DEBUG) 
         opp_printf("FEMPIC", "opp_loop_all__DepositChargeOnNodes set_size %d diff %d", 
-        set->size, set->diff);
+            set->size, set->diff);
 
     opp_profiler->start("DepCharge");  
 
@@ -250,8 +248,9 @@ void opp_loop_all_part_move__MoveToCells(
 )
 { 
 
-    if (FP_DEBUG) opp_printf("FEMPIC", "opp_loop_all_part_move__MoveToCells set_size %d diff %d", 
-        set->size, set->diff);
+    if (FP_DEBUG) 
+        opp_printf("FEMPIC", "opp_loop_all_part_move__MoveToCells set_size %d diff %d", 
+            set->size, set->diff);
 
     opp_profiler->start("MoveToCells");
 
@@ -393,7 +392,9 @@ void opp_loop_all__ComputeNodeChargeDensity(
 )
 { 
 
-    if (FP_DEBUG) opp_printf("FEMPIC", "opp_loop_all__ComputeNodeChargeDensity set_size %d", set->size);
+    if (FP_DEBUG) 
+        opp_printf("FEMPIC", "opp_loop_all__ComputeNodeChargeDensity set_size %d", 
+            set->size);
 
     opp_profiler->start("ComputeNodeChargeDensity");
 
@@ -437,7 +438,9 @@ void opp_loop_all__ComputeElectricField(
 )
 { 
 
-    if (FP_DEBUG) opp_printf("FEMPIC", "opp_loop_all__ComputeElectricField set_size %d", set->size);
+    if (FP_DEBUG) 
+        opp_printf("FEMPIC", "opp_loop_all__ComputeElectricField set_size %d", 
+            set->size);
 
     opp_profiler->start("ComputeElectricField");
 

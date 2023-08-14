@@ -69,11 +69,14 @@ inline void calculate_injection_distribution(
     (*particle_distribution) = (*injected_total);
 }
 
+int part_counter = 0;
+
 //*************************************************************************************************
 inline void inject_ions__kernel(
     double *part_pos,
     double *part_vel,
     int *part_cell_connectivity,
+    int *part_id,
     int *cell_id, 
     double *cell_ef,
     double *iface_u,
@@ -100,6 +103,7 @@ inline void inject_ions__kernel(
     }
 
     (*part_cell_connectivity) = (*cell_id);
+    (*part_id) = OPP_rank * 10000000 + (part_counter++);
 }
 
 inline void calculate_new_pos_vel__kernel(

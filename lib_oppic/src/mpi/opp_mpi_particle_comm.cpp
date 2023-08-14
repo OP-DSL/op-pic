@@ -41,7 +41,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 std::map<oppic_set, std::map<int, opp_particle_comm_data>> opp_part_comm_neighbour_data; 
 
 // this translate to std::map<particle_set, std::map<send_rank, std::vector<opp_particle_move_info>>>
-std::map<oppic_set, std::map<int, std::vector<opp_particle_move_info>>> opp_part_move_indices;
+std::map<int, std::map<int, std::vector<opp_particle_move_info>>> opp_part_move_indices;
 
 std::vector<MPI_Request> send_req_count;
 std::vector<MPI_Request> recv_req_count;
@@ -52,8 +52,15 @@ void opp_part_mark_move(oppic_set set, int particle_index, opp_particle_comm_dat
     // if (OP_DEBUG) 
     //     opp_printf("opp_part_mark_move", "set [%s] | particle_index %d | send_rank %d | foreign_rank_index %d", 
     //         set->name, particle_index, comm_data.cell_residing_rank, comm_data.local_index);
-    std::vector<opp_particle_move_info>& vec = opp_part_move_indices[set][comm_data.cell_residing_rank];
-    vec.push_back({ particle_index, comm_data.local_index });
+
+    auto& part_move_data_of_set = opp_part_move_indices[set->index];
+    std::vector<opp_particle_move_info>& vec = part_move_data_of_set[comm_data.cell_residing_rank];
+
+    opp_particle_move_info obj;
+    obj.local_particle_index = particle_index;
+    obj.foreign_cell_index = comm_data.local_index;
+
+    vec.push_back(obj);
 }
 
 //*******************************************************************************
@@ -66,7 +73,7 @@ void opp_part_pack(oppic_set set)
 
     opp_all_mpi_part_buffers* send_buffers = (opp_all_mpi_part_buffers*)set->mpi_part_buffers;
 
-    std::map<int, std::vector<opp_particle_move_info>>& set_move_indices_per_rank = opp_part_move_indices[set];
+    std::map<int, std::vector<opp_particle_move_info>>& set_move_indices_per_rank = opp_part_move_indices[set->index];
 
     // iterate over all the ranks to sent particles to
     for (auto& move_indices_per_rank : set_move_indices_per_rank)
@@ -566,7 +573,7 @@ bool opp_part_check_all_done(oppic_set set)
 
     opp_all_mpi_part_buffers* mpi_buffers = (opp_all_mpi_part_buffers*)set->mpi_part_buffers;
     bool imported_parts = true;
-    
+
     if (mpi_buffers->total_recv == 0)
     {
         imported_parts = false;
@@ -593,7 +600,8 @@ bool opp_part_check_all_done(oppic_set set)
     }
 
     if (OP_DEBUG) 
-        opp_printf("opp_part_check_all_done", "%s -%s", (bool_ret ? "ITER AGAIN" : "ALL DONE"), log.c_str());
+        opp_printf("opp_part_check_all_done", "recv %d - %s -%s", mpi_buffers->total_recv, 
+            (bool_ret ? "ITER AGAIN" : "ALL DONE"), log.c_str());
 
     free(buffer_recv);
     

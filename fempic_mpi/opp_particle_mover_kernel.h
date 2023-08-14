@@ -8,8 +8,8 @@ const int DET_FIELDS = 4;
 const int NEIGHB_C = 4;
 
 //*******************************************************************************
-inline bool isPointInCellKernel(const double *point_pos, int* current_cell_index,
-    double* point_lc, const double *cell_volume, const double *cell_det) { 
+inline bool isPointInCellKernel(const double *point_pos, double* point_lc, 
+                                const double *cell_volume, const double *cell_det) { 
 
     bool inside = true;  
     double coefficient2 = ONE_OVER_SIX / (*cell_volume);
@@ -34,7 +34,7 @@ inline bool isPointInCellKernel(const double *point_pos, int* current_cell_index
 inline opp_move_status getCellIndexKernel(const double *point_pos, int* current_cell_index,
     double* point_lc, const double *cell_volume, const double *cell_det, const int *cell_connectivity) { 
 
-    if (isPointInCellKernel(point_pos, current_cell_index, point_lc, cell_volume, cell_det)) {
+    if (isPointInCellKernel(point_pos, point_lc, cell_volume, cell_det)) {
         return OPP_MOVE_DONE;
     }
 

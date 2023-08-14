@@ -1273,7 +1273,7 @@ int opp_mpi_halo_exchanges(oppic_set set, int nargs, oppic_arg *args)
 
     for (int n = 0; n < nargs; n++) 
     {
-        if (args[n].opt && args[n].argtype == OP_ARG_DAT && (!args[n].dat->set->is_particle)) 
+        if (args[n].opt && args[n].argtype == OP_ARG_DAT && (!args[n].dat->set->is_particle) && (args[n].dat->dirtybit == 1)) 
         {
             bool already_done = false;
 
@@ -1286,7 +1286,8 @@ int opp_mpi_halo_exchanges(oppic_set set, int nargs, oppic_arg *args)
 
             if (!already_done)
             {
-                if (OP_DEBUG) opp_printf("opp_mpi_halo_exchanges", "opp_exchange_halo for dat [%s] exec_flag %d", args[n].dat->name, exec_flag);
+                if (OP_DEBUG) 
+                    opp_printf("opp_mpi_halo_exchanges", "opp_exchange_halo for dat [%s] exec_flag %d", args[n].dat->name, exec_flag);
                 opp_mpi_halo_exchange(&args[n], exec_flag);
             }
             // else

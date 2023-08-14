@@ -4,6 +4,7 @@
 #include <array>
 #include <string>
 #include <algorithm>
+#include <sstream>
 
 #ifdef ENABLE_MPI
     #include "opp_mpi.h"

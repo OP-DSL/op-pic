@@ -369,6 +369,7 @@ oppic_arg oppic_arg_dat_core(oppic_map data_map, int idx, oppic_map map, oppic_a
 
     arg.type        = "int";
     arg.acc         = acc;
+    arg.opt         = 1;
 
     return arg;
 }
@@ -388,7 +389,8 @@ oppic_arg oppic_arg_gbl_core(double *data, int dim, char const *typ, oppic_acces
     arg.map_data    = NULL;
     arg.type        = typ;
     arg.acc         = acc;
-    
+    arg.opt         = 1;
+
     return arg;
 }
 
@@ -406,7 +408,8 @@ oppic_arg oppic_arg_gbl_core(int *data, int dim, char const *typ, oppic_access a
     arg.map_data    = NULL;
     arg.type        = typ;
     arg.acc         = acc;
-    
+    arg.opt         = 1;
+
     return arg;
 }
 
@@ -426,6 +429,7 @@ oppic_arg oppic_arg_gbl_core(const bool *data, int dim, char const *typ, oppic_a
     arg.map_data    = NULL;
     arg.type        = typ;
     arg.acc         = acc;
+    arg.opt         = 1;
     
     return arg;
 }

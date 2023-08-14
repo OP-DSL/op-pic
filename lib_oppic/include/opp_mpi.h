@@ -107,17 +107,17 @@ typedef op_mpi_buffer_core *op_mpi_buffer;
 *******************************************************************************/
 struct opp_mpi_part_buffer 
 { 
-    char *buf_import;
-    int buf_import_capacity;
-    int buf_import_index;       // not used
-    char *buf_export;
-    int buf_export_capacity;    // init to -1
-    int buf_export_index;       // init to zero
+    char *buf_import = nullptr;
+    int buf_import_capacity = 0;
+    int buf_import_index = 0;       // not used
+    char *buf_export = nullptr;
+    int buf_export_capacity = 0;    // init to -1
+    int buf_export_index = 0;       // init to zero
 };
 
 struct opp_all_mpi_part_buffers 
 { 
-    int total_recv;
+    int total_recv = 0;
     std::map<int,opp_mpi_part_buffer> buffers; // rank -> opp_mpi_part_buffer
     std::map<int,int> import_counts; // rank -> count
     std::map<int,int> export_counts; // rank -> count
@@ -130,15 +130,15 @@ struct opp_all_mpi_part_buffers
 
 struct opp_particle_comm_data
 { 
-    int cell_residing_rank;
-    int local_index;
+    int cell_residing_rank = MAX_CELL_INDEX;
+    int local_index = MAX_CELL_INDEX;
 
 };
 
 struct opp_particle_move_info
 {
-    int local_particle_index;
-    int foreign_cell_index;
+    int local_particle_index = MAX_CELL_INDEX;
+    int foreign_cell_index = MAX_CELL_INDEX;
 };
 
 /** external variables **/

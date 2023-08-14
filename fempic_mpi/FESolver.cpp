@@ -312,8 +312,8 @@ void FESolver::initPetscStructures()
 /* preassembles the K matrix and "F0 vector */
 void FESolver::preAssembly(oppic_map cell_to_nodes_map, oppic_dat node_bnd_pot) 
 {
-
-    opp_printf("FESolver", "preAssembly");
+    if (OP_DEBUG)
+        opp_printf("FESolver", "preAssembly");
 
     double **K = new double*[neq]; // K will be (neq x global_neq) matrix
     for (int i=0;i<neq;i++)
@@ -735,11 +735,11 @@ void FESolver::initialzeMatrix(double **p_A)
 //*************************************************************************************************
 void FESolver::summarize(std::ostream &out) 
 {
-    opp_printf("FESolver", "FE SOLVER INFORMATION");
-    opp_printf("FESolver", "---------------------");
+    // opp_printf("FESolver", "FE SOLVER INFORMATION");
+    // opp_printf("FESolver", "---------------------");
     opp_printf("FESolver", "own neq is %d, the global neq is %d, start_eq is %d, end_eq %d -------", 
         neq, global_neq, own_start, own_end);
-    opp_printf("FESolver", "---------------------");
+    // opp_printf("FESolver", "---------------------");
 }
 
 void FESolver::enrich_cell_shape_deriv(oppic_dat cell_shape_deriv)

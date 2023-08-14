@@ -10,7 +10,7 @@ namespace opp {
 
     public:
         //*******************************************************************************
-        ParticlePacker(std::map<opp_set, std::map<int, std::vector<opp_particle_move_info>>>* partMoveData) 
+        ParticlePacker(std::map<int, std::map<int, std::vector<opp_particle_move_info>>>* partMoveData) 
             : partMoveData(partMoveData) {
 
         }
@@ -32,18 +32,18 @@ namespace opp {
                 opp_abort(std::string("partMoveData is NULL in ParticlePacker"));
             }
 
-            std::map<int, std::vector<char>>& buffersOfSet = this->buffers[set];
+            std::map<int, std::vector<char>>& buffersOfSet = this->buffers[set->index];
             // buffersOfSet.clear();
             for (auto& x : buffersOfSet) // try to keep the allocated vectors as it is, without deleting
                 x.second.clear();
 
-            if (partMoveData->at(set).size() == 0) {
+            if (partMoveData->at(set->index).size() == 0) {
                 if (OP_DEBUG) 
                     opp_printf("ParticlePacker", "Nothing to be sent for set [%s]", set->name);
                 return;
             }     
 
-            std::map<int, std::vector<opp_particle_move_info>>& moveIndicesPerSet = partMoveData->at(set);
+            std::map<int, std::vector<opp_particle_move_info>>& moveIndicesPerSet = partMoveData->at(set->index);
 
             for (auto& moveIndicesPerRank : moveIndicesPerSet) {
 
@@ -90,7 +90,7 @@ namespace opp {
         //*******************************************************************************
         inline char* getBuffer(opp_set set, int sendRank) {
 
-            auto itSet = this->buffers.find(set);
+            auto itSet = this->buffers.find(set->index);
 
             if (itSet == this->buffers.end()) {
                 opp_abort(std::string("Set not found in ParticlePacker buffers"));
@@ -164,8 +164,8 @@ namespace opp {
         }
 
     private: 
-        std::map<opp_set, std::map<int, std::vector<opp_particle_move_info>>>* partMoveData = nullptr;
-        std::map<opp_set, std::map<int, std::vector<char>>> buffers;
+        std::map<int, std::map<int, std::vector<opp_particle_move_info>>>* partMoveData = nullptr;
+        std::map<int, std::map<int, std::vector<char>>> buffers;
     };
 
 
@@ -207,7 +207,7 @@ namespace opp {
                 return;
             }
 
-            auto& globalPartMoveDataOfSet = this->globalPartMoveData[set];
+            auto& globalPartMoveDataOfSet = this->globalPartMoveData[set->index];
             std::vector<opp_particle_move_info>& vec = globalPartMoveDataOfSet[rankToBeMoved];
 
             opp_particle_move_info obj;
@@ -266,7 +266,7 @@ namespace opp {
         //*******************************************************************************
         inline void communicate(opp_set set) {
             
-            std::map<int, std::vector<opp_particle_move_info>>& rankVsPartData = globalPartMoveData[set]; 
+            std::map<int, std::vector<opp_particle_move_info>>& rankVsPartData = globalPartMoveData[set->index]; 
             this->numRemoteSendRanks = rankVsPartData.size();
             this->h_send_requests.resize(this->numRemoteSendRanks);
             this->h_send_ranks.resize(this->numRemoteSendRanks);
@@ -335,6 +335,9 @@ namespace opp {
                 partRecvBufferPerRank.resize(BytesToRecv);
             }
 
+            if (OP_DEBUG)
+                opp_printf("GlobalMove", "communicate %d", this->totalParticlesToRecv);
+
             CHECK(MPI_Waitall(this->numRemoteSendRanks, &(this->h_send_requests[0]), MPI_STATUSES_IGNORE));
 
             // (3) send and receive the particles -----------------------------------------------------------
@@ -373,7 +376,7 @@ namespace opp {
 
             // (4) Once sent, map could be cleared for the set, keep the allocations if possible -----------
 
-            for (auto& x : globalPartMoveData[set])
+            for (auto& x : globalPartMoveData[set->index])
                 x.second.clear();       
         }
 
@@ -414,8 +417,8 @@ namespace opp {
         }
     
     private:
-        // this translate to std::map<particle_set, std::map<send_rank, std::vector<opp_particle_move_info>>>
-        std::map<opp_set, std::map<int, std::vector<opp_particle_move_info>>> globalPartMoveData;
+        // this translate to std::map<particle_set_index, std::map<send_rank, std::vector<opp_particle_move_info>>>
+        std::map<int, std::map<int, std::vector<opp_particle_move_info>>> globalPartMoveData;
         MPI_Comm comm;
 
         int *recv_win_data;

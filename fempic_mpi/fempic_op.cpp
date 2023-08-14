@@ -37,7 +37,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 using namespace opp;
 
-void opp_loop_inject__InjectIons(opp_set,opp_arg,opp_arg,opp_arg,opp_arg,opp_arg,opp_arg,
+void opp_loop_inject__InjectIons(opp_set,opp_arg,opp_arg,opp_arg,opp_arg,opp_arg,opp_arg,opp_arg,
     opp_arg,opp_arg,opp_arg,opp_arg);
 void opp_loop_all_part_move__MoveToCells(opp_set,opp_arg,opp_arg,opp_arg,opp_arg,opp_arg,
     opp_arg,opp_arg,opp_arg,opp_arg,opp_arg,opp_arg,opp_arg);
@@ -125,6 +125,7 @@ int main(int argc, char **argv)
         opp_dat part_velocity = opp_decl_part_dat(particle_set, DIM,     DT_REAL, nullptr, "part_velocity");    
         opp_dat part_lc       = opp_decl_part_dat(particle_set, N_PER_C, DT_REAL, nullptr, "part_lc");
         opp_dat part_mesh_rel = opp_decl_part_dat(particle_set, ONE,     DT_INT,  nullptr, "part_mesh_rel", true);
+        opp_dat part_id       = opp_decl_part_dat(particle_set, ONE,     DT_INT,  nullptr, "part_id");
 
         opp_set dummy_part_set   = opp_decl_part_set("dummy particles", cell_set); 
         opp_dat dummy_part_rand  = opp_decl_part_dat(dummy_part_set, 2, DT_REAL, nullptr, "dummy_part_rand");
@@ -150,8 +151,11 @@ int main(int argc, char **argv)
         //opp_mover_approx = std::make_unique<CellApproximator>(node_pos, grid_spacing);
         // opp_mover_approx->generateStructMeshToCellIndexVec(cell_volume, cell_det, cell_v_cell_map);
 
+// if (opp_params->get<OPP_BOOL>("opp_global_move")) 
+{
         opp_mover = std::make_unique<ParticleMover>(grid_spacing, DIM, node_pos, cell_volume, 
                                                     cell_det, global_cell_id, cell_v_cell_map);
+}
 
         std::unique_ptr<FESolver> field_solver = std::make_unique<FESolver>(cell_v_nodes_map, 
             node_type, node_pos, node_bnd_pot, argc, argv);
@@ -192,7 +196,8 @@ opp_print_dat_to_txtfile(global_cell_id, g.c_str(), "global_cell_id.dat");
                 particle_set,                                                                           
                 opp_get_arg(part_position,                OP_WRITE),                      
                 opp_get_arg(part_velocity,                OP_WRITE),                      
-                opp_get_arg(part_mesh_rel,                OP_RW),                         
+                opp_get_arg(part_mesh_rel,                OP_RW),
+                opp_get_arg(part_id,                      OP_WRITE),
                 opp_get_arg(iface_v_cell_map,             OP_READ, OPP_Map_from_Mesh_Rel),
                 opp_get_arg(cell_ef, 0, iface_v_cell_map, OP_READ, OPP_Map_from_Mesh_Rel),
                 opp_get_arg(iface_u_norm,                 OP_READ, OPP_Map_from_Mesh_Rel),
@@ -214,24 +219,26 @@ opp_print_dat_to_txtfile(global_cell_id, g.c_str(), "global_cell_id.dat");
 // if (OPP_rank == OPP_ROOT) 
 //     opp_printf("Main", "opp_loop_all_part_move__MoveToCells iteration %d *************", OPP_main_loop_iter);
 
-// #define HOP_MULTIPLE
-#ifdef HOP_MULTIPLE
-            opp_loop_all_part_move__MoveToCells(
-                particle_set,                                                                           
-                opp_get_arg(cell_ef,                              OP_READ, OPP_Map_from_Mesh_Rel),
-                opp_get_arg(part_position,                        OP_RW),                         
-                opp_get_arg(part_velocity,                        OP_RW),                         
-                opp_get_arg(part_lc,                              OP_RW),                         
-                opp_get_arg(part_mesh_rel,                        OP_RW),                         
-                opp_get_arg(cell_volume,                          OP_READ, OPP_Map_from_Mesh_Rel),
-                opp_get_arg(cell_det,                             OP_READ, OPP_Map_from_Mesh_Rel),
-                opp_get_arg(cell_v_cell_map,                      OP_READ, OPP_Map_from_Mesh_Rel),
-                opp_get_arg(node_charge_den, 0, cell_v_nodes_map, OP_INC,  OPP_Map_from_Mesh_Rel),
-                opp_get_arg(node_charge_den, 1, cell_v_nodes_map, OP_INC,  OPP_Map_from_Mesh_Rel),
-                opp_get_arg(node_charge_den, 2, cell_v_nodes_map, OP_INC,  OPP_Map_from_Mesh_Rel),
-                opp_get_arg(node_charge_den, 3, cell_v_nodes_map, OP_INC,  OPP_Map_from_Mesh_Rel) 
-            );
-#else  // HOP_DIRECT
+// if (true) {
+
+//             opp_loop_all_part_move__MoveToCells(
+//                 particle_set,                                                                           
+//                 opp_get_arg(cell_ef,                              OP_READ, OPP_Map_from_Mesh_Rel),
+//                 opp_get_arg(part_position,                        OP_RW),                         
+//                 opp_get_arg(part_velocity,                        OP_RW),                         
+//                 opp_get_arg(part_lc,                              OP_RW),                         
+//                 opp_get_arg(part_mesh_rel,                        OP_RW),                         
+//                 opp_get_arg(cell_volume,                          OP_READ, OPP_Map_from_Mesh_Rel),
+//                 opp_get_arg(cell_det,                             OP_READ, OPP_Map_from_Mesh_Rel),
+//                 opp_get_arg(cell_v_cell_map,                      OP_READ, OPP_Map_from_Mesh_Rel),
+//                 opp_get_arg(node_charge_den, 0, cell_v_nodes_map, OP_INC,  OPP_Map_from_Mesh_Rel),
+//                 opp_get_arg(node_charge_den, 1, cell_v_nodes_map, OP_INC,  OPP_Map_from_Mesh_Rel),
+//                 opp_get_arg(node_charge_den, 2, cell_v_nodes_map, OP_INC,  OPP_Map_from_Mesh_Rel),
+//                 opp_get_arg(node_charge_den, 3, cell_v_nodes_map, OP_INC,  OPP_Map_from_Mesh_Rel) 
+//             );
+// }
+// else 
+{
                 opp_loop_all__CalculateNewPartPosVel(
                     particle_set,                                                                           
                     opp_get_arg(cell_ef,       OP_READ, OPP_Map_from_Mesh_Rel),
@@ -239,19 +246,12 @@ opp_print_dat_to_txtfile(global_cell_id, g.c_str(), "global_cell_id.dat");
                     opp_get_arg(part_velocity, OP_WRITE)
                 );
 
-                // opp_mover_approx->move(
-                //     part_position,
-                //     part_mesh_rel,
-                //     part_lc,
-                //     cell_volume, 
-                //     cell_det, 
-                //     cell_v_cell_map);
-
                 opp_mover->move(
                     particle_set, 
                     part_position,
                     part_mesh_rel,
-                    part_lc);
+                    part_lc,
+                    part_id);
 
                 opp_loop_all__DepositChargeOnNodes(
                     particle_set, 
@@ -261,12 +261,13 @@ opp_print_dat_to_txtfile(global_cell_id, g.c_str(), "global_cell_id.dat");
                     opp_get_arg(node_charge_den, 2, cell_v_nodes_map, OP_INC,  OPP_Map_from_Mesh_Rel),
                     opp_get_arg(node_charge_den, 3, cell_v_nodes_map, OP_INC,  OPP_Map_from_Mesh_Rel)
                 );
-#endif
-//             std::string f = std::string("A_") + std::to_string(OPP_rank) + "_" + std::to_string(OPP_main_loop_iter + 1);
+}
+            std::string f = std::string("A_") + std::to_string(OPP_rank) + "_" + std::to_string(OPP_main_loop_iter + 1);
 //             opp_print_dat_to_txtfile(node_charge_den, f.c_str(), "node_charge_den.dat");
 //             opp_print_dat_to_txtfile(part_position, f.c_str(), "part_position.dat");
 //             opp_print_dat_to_txtfile(part_velocity, f.c_str(), "part_velocity.dat");
 //             opp_print_dat_to_txtfile(part_mesh_rel, f.c_str(), "part_mesh_rel.dat");
+            // opp_print_dat_to_txtfile(part_id, f.c_str(), "part_id.dat");
 // #ifdef ENABLE_MPI
 //             opp_mpi_print_dat_to_txtfile(node_charge_den, f.c_str());
 // #endif
