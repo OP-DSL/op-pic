@@ -35,6 +35,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 // USER WRITTEN CODE
 //*********************************************
 
+// #define OPP_KERNEL_LOOP_UNROLL
 
 #include "fempic_ori/maths.h"
 #include "oppic_lib.h"
@@ -106,19 +107,32 @@ inline void inject_ions__kernel(
     (*part_id) = OPP_rank * 10000000 + (part_counter++);
 }
 
+//*************************************************************************************************
 inline void calculate_new_pos_vel__kernel(
     const double *cell_ef,
     double *part_pos,
     double *part_vel ) {
 
+#ifdef OPP_KERNEL_LOOP_UNROLL
+    double coefficient1 = CONST_charge / CONST_mass * (CONST_dt);
+    part_vel[0] += (coefficient1 * cell_ef[0]);                  
+    part_vel[1] += (coefficient1 * cell_ef[1]);  
+    part_vel[2] += (coefficient1 * cell_ef[2]);  
+
+    part_pos[0] += part_vel[0] * (CONST_dt); // v = u + at
+    part_pos[1] += part_vel[1] * (CONST_dt); // v = u + at
+    part_pos[2] += part_vel[2] * (CONST_dt); // v = u + at
+#else
     double coefficient1 = CONST_charge / CONST_mass * (CONST_dt);
     for (int i = 0; i < DIM; i++)
         part_vel[i] += (coefficient1 * cell_ef[i]);                  
     
     for (int i = 0; i < DIM; i++)
         part_pos[i] += part_vel[i] * (CONST_dt); // v = u + at
+#endif
 }
 
+//*************************************************************************************************
 inline void deposit_charge_on_nodes__kernel(
     const double *part_lc,
     double *node_charge_den0,
@@ -232,6 +246,31 @@ inline void compute_electric_field__kernel(
     const double *node_potential3
 )
 {
+
+#ifdef OPP_KERNEL_LOOP_UNROLL
+        double c1, c2, c3, c4;
+
+        c1 = (cell_shape_deriv[0 * DIM + 0] * (*node_potential0));
+        c2 = (cell_shape_deriv[1 * DIM + 0] * (*node_potential1));
+        c3 = (cell_shape_deriv[2 * DIM + 0] * (*node_potential2));
+        c4 = (cell_shape_deriv[3 * DIM + 0] * (*node_potential3));
+
+        cell_electric_field[0] -= (c1 + c2 + c3 + c4); 
+
+        c1 = (cell_shape_deriv[0 * DIM + 1] * (*node_potential0));
+        c2 = (cell_shape_deriv[1 * DIM + 1] * (*node_potential1));
+        c3 = (cell_shape_deriv[2 * DIM + 1] * (*node_potential2));
+        c4 = (cell_shape_deriv[3 * DIM + 1] * (*node_potential3));
+
+        cell_electric_field[0] -= (c1 + c2 + c3 + c4); 
+
+        c1 = (cell_shape_deriv[0 * DIM + 2] * (*node_potential0));
+        c2 = (cell_shape_deriv[1 * DIM + 2] * (*node_potential1));
+        c3 = (cell_shape_deriv[2 * DIM + 2] * (*node_potential2));
+        c4 = (cell_shape_deriv[3 * DIM + 2] * (*node_potential3));
+
+        cell_electric_field[2] -= (c1 + c2 + c3 + c4); 
+#else
     for (int dim = 0; dim < DIM; dim++)
     { 
         double c1 = (cell_shape_deriv[0 * DIM + dim] * (*node_potential0));
@@ -241,6 +280,7 @@ inline void compute_electric_field__kernel(
 
         cell_electric_field[dim] -= (c1 + c2 + c3 + c4);
     }    
+#endif
 }
 
 //*************************************************************************************************

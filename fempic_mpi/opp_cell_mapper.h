@@ -165,6 +165,10 @@ namespace opp {
         inline int findClosestLocalCellIndex(const size_t& structCellIdx) { 
             
             const int globalCellIndex = findClosestGlobalCellIndex(structCellIdx);
+
+            if (OPP_comm_size == 1)
+                return globalCellIndex;
+                
             return getLocalCellIndexFromGlobal(globalCellIndex);
         }
 
@@ -549,7 +553,7 @@ namespace opp {
             }
 #endif           
 
-            // printStructuredMesh("After centroid mappings");   // Up to this, perfect
+            printStructuredMesh("After centroid mappings");   // Up to this, perfect
 
             if (cellSetSizeIncHalo > 0) {
 
@@ -657,8 +661,8 @@ namespace opp {
         //*******************************************************************************
         inline void printStructuredMesh(const std::string msg, bool cellIndices = true) {
             
-            // if (!OP_DEBUG)
-            //     return;
+            if (!OP_DEBUG)
+                return;
 
 #ifdef ENABLE_MPI
             MPI_Barrier(MPI_COMM_WORLD);

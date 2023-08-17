@@ -43,6 +43,8 @@ namespace opp {
                 return;
             }     
 
+            opp_profiler->start("GblMv_Pack");
+
             std::map<int, std::vector<opp_particle_move_info>>& moveIndicesPerSet = partMoveData->at(set->index);
 
             for (auto& moveIndicesPerRank : moveIndicesPerSet) {
@@ -85,6 +87,8 @@ namespace opp {
                     opp_printf("ParticlePacker", "Packed %zu parts to send to rank %d, displacement %d", 
                         perRankBuffer.size(), send_rank, displacement);
             }
+
+            opp_profiler->end("GblMv_Pack");
         }
 
         //*******************************************************************************
@@ -119,7 +123,7 @@ namespace opp {
             if (OP_DEBUG) 
                 opp_printf("ParticlePacker", "unpack set [%s]", set->name);
 
-            opp_profiler->start("Unpack");
+            opp_profiler->start("GblMv_Unpack");
 
             if (totalParticlesToRecv > 0)
             {
@@ -157,7 +161,7 @@ namespace opp {
                 }
             }
 
-            opp_profiler->end("Unpack");
+            opp_profiler->end("GblMv_Unpack");
 
             if (OP_DEBUG) 
                 opp_printf("ParticlePacker", "Unpack END");
@@ -183,6 +187,17 @@ namespace opp {
             globalPartMoveData.clear();
 
             packer = std::make_unique<ParticlePacker>(&globalPartMoveData);
+
+            opp_profiler->reg("GblMv_WaitRanks");
+            opp_profiler->reg("GblMv_Comm");
+            opp_profiler->reg("GblMv_Finalize");
+            opp_profiler->reg("GblMv_Pack");
+            opp_profiler->reg("GblMv_Unpack");
+            opp_profiler->reg("GblMv_WaitEx1");
+            opp_profiler->reg("GblMv_WaitEx2");
+            opp_profiler->reg("GblMv_WaitEx3");
+            opp_profiler->reg("GblMv_WaitFin1");
+            opp_profiler->reg("GblMv_WaitFin2");
         }
 
         //*******************************************************************************
@@ -242,6 +257,8 @@ namespace opp {
         //*******************************************************************************
         inline void communicateParticleSendRecvRankCounts() {
            
+            opp_profiler->start("GblMv_WaitRanks");
+
             const int one[1] = {1};
             int recv[1];
 
@@ -261,11 +278,15 @@ namespace opp {
             }
 
             CHECK(MPI_Ibarrier(this->comm, &this->mpi_request));   
+
+            opp_profiler->end("GblMv_WaitRanks");
         }
 
         //*******************************************************************************
         inline void communicate(opp_set set) {
             
+            opp_profiler->start("GblMv_Comm");
+
             std::map<int, std::vector<opp_particle_move_info>>& rankVsPartData = globalPartMoveData[set->index]; 
             this->numRemoteSendRanks = rankVsPartData.size();
             this->h_send_requests.resize(this->numRemoteSendRanks);
@@ -287,7 +308,9 @@ namespace opp {
 
             communicateParticleSendRecvRankCounts();
 
+            opp_profiler->start("GblMv_WaitEx1");
             CHECK(MPI_Wait(&this->mpi_request, MPI_STATUS_IGNORE));
+            opp_profiler->end("GblMv_WaitEx1");
 
             // At this point, the current rank knows how many particles to recv
             this->numRemoteRecvRanks = this->recv_win_data[0];
@@ -313,7 +336,9 @@ namespace opp {
             this->h_recv_ranks.resize(this->numRemoteRecvRanks);
             this->h_recv_status.resize(this->numRemoteRecvRanks);
 
+            opp_profiler->start("GblMv_WaitEx2");
             CHECK(MPI_Waitall(this->numRemoteRecvRanks, &(this->h_recv_requests[0]), &(this->h_recv_status[0])));
+            opp_profiler->end("GblMv_WaitEx2");
 
             for (int rankx = 0; rankx < this->numRemoteRecvRanks; rankx++) {
 
@@ -338,7 +363,9 @@ namespace opp {
             if (OP_DEBUG)
                 opp_printf("GlobalMove", "communicate %d", this->totalParticlesToRecv);
 
+            opp_profiler->start("GblMv_WaitEx3");
             CHECK(MPI_Waitall(this->numRemoteSendRanks, &(this->h_send_requests[0]), MPI_STATUSES_IGNORE));
+            opp_profiler->end("GblMv_WaitEx3");
 
             // (3) send and receive the particles -----------------------------------------------------------
             
@@ -378,12 +405,18 @@ namespace opp {
 
             for (auto& x : globalPartMoveData[set->index])
                 x.second.clear();       
+
+            opp_profiler->end("GblMv_Comm");  
         }
 
         //*******************************************************************************
         inline int finalize(opp_set set) {
+            
+            opp_profiler->start("GblMv_Finalize");
 
+            opp_profiler->start("GblMv_WaitFin1");
             CHECK(MPI_Waitall(this->numRemoteRecvRanks, &(this->h_recv_requests[0]), &(this->h_recv_status[0])));
+            opp_profiler->end("GblMv_WaitFin1");
 
             // if (OP_DEBUG) 
             {
@@ -408,10 +441,14 @@ namespace opp {
 
             // Note : The mesh relations received will be global cell indices and need to be converted to local
 
+            opp_profiler->start("GblMv_WaitFin2");
             CHECK(MPI_Waitall(this->numRemoteSendRanks, &(this->h_send_requests[0]), MPI_STATUSES_IGNORE));
+            opp_profiler->end("GblMv_WaitFin2");
 
             // Since packer->unpack might realloc dats, need to set the correct OPP_mesh_relation_data ptr
             OPP_mesh_relation_data = ((int *)set->mesh_relation_dat->data); 
+
+            opp_profiler->end("GblMv_Finalize");
 
             return this->totalParticlesToRecv;
         }

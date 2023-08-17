@@ -12,8 +12,7 @@ INT max_iter = 250
 REAL dt       = 1e-15
 # fesolver_method {nonlinear, gaussseidel, lapack, petsc}
 STRING fesolver_method = petsc
-BOOL print_final = true
-
+BOOL check_max_values = true
 
 # Input files
 STRING global_mesh = /ext-home/zl/phd/mini-pic/examples/one_stream/coarse/mesh.dat

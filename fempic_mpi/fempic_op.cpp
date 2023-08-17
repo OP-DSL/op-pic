@@ -59,6 +59,8 @@ int main(int argc, char **argv)
     opp_init(argc, argv);
     opp_params->write(std::cout);
 
+opp_profiler->reg("ComputeDet");
+
     {
         opp_profiler->start("Setup");
 

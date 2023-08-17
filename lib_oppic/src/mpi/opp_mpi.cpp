@@ -60,7 +60,7 @@ void opp_init(int argc, char **argv)
     
     oppic_init_core(argc, argv);
 
-    opp_profiler->reg("finalize_move_core");
+    opp_profiler->reg("Mv_Finalize");
 }
 
 //*******************************************************************************
@@ -340,14 +340,13 @@ bool opp_finalize_particle_move(oppic_set set)
 
     if (OP_DEBUG) opp_printf("opp_finalize_particle_move", "Start particle set [%s]", set->name);
 
+    opp_profiler->start("Mv_Finalize");
+
     // send the counts and send the particles  
     opp_part_exchange(set);  
 
-// This profiling should be removed
-opp_profiler->start("finalize_move_core");
     // Can fill the holes here, since the communicated particles will be added at the end
     oppic_finalize_particle_move_core(set);
-opp_profiler->end("finalize_move_core");
 
     if (OP_auto_sort == 1)
     {
@@ -361,6 +360,8 @@ opp_profiler->end("finalize_move_core");
             OPP_max_comm_iteration = OPP_comm_iteration;
 
         OPP_comm_iteration = 0; // reset for the next par loop
+        
+        opp_profiler->end("Mv_Finalize");
 
         return false; // all mpi ranks do not have anything to communicate to any rank
     }
@@ -371,6 +372,8 @@ opp_profiler->end("finalize_move_core");
     OPP_iter_end   = set->size;  
 
     OPP_comm_iteration++;  
+
+    opp_profiler->end("Mv_Finalize");
 
     return true;
 }

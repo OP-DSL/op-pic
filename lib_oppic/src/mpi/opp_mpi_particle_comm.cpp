@@ -50,8 +50,8 @@ std::vector<MPI_Request> recv_req_count;
 void opp_part_mark_move(oppic_set set, int particle_index, opp_particle_comm_data& comm_data)
 {
     // if (OP_DEBUG) 
-    //     opp_printf("opp_part_mark_move", "set [%s] | particle_index %d | send_rank %d | foreign_rank_index %d", 
-    //         set->name, particle_index, comm_data.cell_residing_rank, comm_data.local_index);
+    //     opp_printf("opp_part_mark_move", "comm iter [%d] set [%s] | particle_index %d | send_rank %d | foreign_rank_index %d", 
+    //         OPP_comm_iteration, set->name, particle_index, comm_data.cell_residing_rank, comm_data.local_index);
 
     auto& part_move_data_of_set = opp_part_move_indices[set->index];
     std::vector<opp_particle_move_info>& vec = part_move_data_of_set[comm_data.cell_residing_rank];
@@ -69,7 +69,7 @@ void opp_part_pack(oppic_set set)
     if (OP_DEBUG) 
         opp_printf("opp_part_pack", "set [%s]", set->name);
 
-    opp_profiler->start("Pack");
+    opp_profiler->start("Mv_Pack");
 
     opp_all_mpi_part_buffers* send_buffers = (opp_all_mpi_part_buffers*)set->mpi_part_buffers;
 
@@ -180,7 +180,7 @@ void opp_part_pack(oppic_set set)
         move_indices_vector.clear();
     }
 
-    opp_profiler->end("Pack");
+    opp_profiler->end("Mv_Pack");
 
     if (OP_DEBUG) 
         opp_printf("opp_part_pack", "set [%s] END", set->name);
@@ -192,7 +192,7 @@ void opp_part_pack(oppic_set set)
 //     // if (OP_DEBUG) 
 //     //    opp_printf("opp_part_pack", "set [%s] | index %d | send_rank %d", set->name, index, send_rank);
 
-//     opp_profiler->start("Pack");
+//     opp_profiler->start("Mv_Pack");
 
 //     opp_all_mpi_part_buffers* send_buffers = (opp_all_mpi_part_buffers*)set->mpi_part_buffers;
 
@@ -268,7 +268,7 @@ void opp_part_pack(oppic_set set)
 //     send_rank_buffer.buf_export_index += set->particle_size;
 //     (send_buffers->export_counts)[send_rank] += 1;
 
-//     opp_profiler->end("Pack");
+//     opp_profiler->end("Mv_Pack");
 
 //     // if (OP_DEBUG) 
 //     //     opp_printf("opp_part_pack", "END send_rank %d exported count %d", send_rank, 
@@ -280,7 +280,7 @@ void opp_part_unpack(oppic_set set)
 {
     if (OP_DEBUG) opp_printf("opp_part_unpack", "set [%s]", set->name);
 
-    opp_profiler->start("Unpack");
+    opp_profiler->start("Mv_Unpack");
 
     std::vector<oppic_dat>& particle_dats = *(set->particle_dats);
     int num_particles = 0;
@@ -352,12 +352,13 @@ void opp_part_unpack(oppic_set set)
         }
     }
 
-    opp_profiler->end("Unpack");
+    opp_profiler->end("Mv_Unpack");
 
     if (OP_DEBUG) opp_printf("opp_part_unpack", "END");
 }
 
 //*******************************************************************************
+// Returns true only if another hop is required by the current rank
 bool opp_part_check_status(opp_move_var& m, int map0idx, oppic_set set, 
     int particle_index, int& remove_count, int thread) 
 {
@@ -412,7 +413,7 @@ void opp_part_exchange(oppic_set set)
 {
     if (OP_DEBUG) opp_printf("opp_part_exchange", "set [%s] - particle size [%d]", set->name, set->particle_size);
 
-    opp_profiler->start("Exchange");
+    opp_profiler->start("Mv_Exchange");
 
     opp_part_pack(set);
 
@@ -481,10 +482,14 @@ void opp_part_exchange(oppic_set set)
     }
 
     opp_profiler->addTransferSize("", opp::OPP_Particle, total_send_size, (size_t)(total_send_size / set->particle_size));
+    opp_profiler->end("Mv_Exchange");
 
+    opp_profiler->start("Mv_WaitExCnt");
     // wait for the counts to receive only from neighbours
     MPI_Waitall(neighbour_count, &recv_req_count[0], MPI_STATUSES_IGNORE);
+    opp_profiler->end("Mv_WaitExCnt");
 
+    opp_profiler->start("Mv_Exchange");
     // create/resize data structures and receive particle data from neighbours
     for (int i = 0; i < neighbour_count; i++)
     {
@@ -532,7 +537,7 @@ void opp_part_exchange(oppic_set set)
 
     opp_profiler->endMpiComm("", opp::OPP_Particle);
 
-    opp_profiler->end("Exchange");
+    opp_profiler->end("Mv_Exchange");
 
     if (OP_DEBUG) opp_printf("opp_part_exchange", "END");
 }
@@ -541,6 +546,8 @@ void opp_part_exchange(oppic_set set)
 void opp_part_wait_all(oppic_set set)
 {
     if (OP_DEBUG) opp_printf("opp_part_wait_all", "START");
+
+    opp_profiler->start("Mv_WaitAll");
 
     opp_all_mpi_part_buffers* mpi_buffers = (opp_all_mpi_part_buffers*)set->mpi_part_buffers;
 
@@ -552,8 +559,10 @@ void opp_part_wait_all(oppic_set set)
     opp_profiler->startMpiComm("", opp::OPP_Particle);
 
     // wait till all the particles from all the ranks are received
+    opp_profiler->start("Mv_WaitExRecv");
     MPI_Waitall(send_req.size(), &(send_req[0]), MPI_STATUSES_IGNORE); // &(send_status[0])); //
     MPI_Waitall(recv_req.size(), &(recv_req[0]), MPI_STATUSES_IGNORE); // &(recv_status[0])); //
+    opp_profiler->end("Mv_WaitExRecv");
 
     opp_profiler->endMpiComm("", opp::OPP_Particle); // started at opp_part_exchange()
 
@@ -563,6 +572,8 @@ void opp_part_wait_all(oppic_set set)
     // increase the particle count if required and unpack the communicated particle buffer in to separate particle dats
     opp_part_unpack(set);
 
+    opp_profiler->end("Mv_WaitAll");
+
     if (OP_DEBUG) opp_printf("opp_part_wait_all", "END");
 }
 
@@ -570,6 +581,8 @@ void opp_part_wait_all(oppic_set set)
 bool opp_part_check_all_done(oppic_set set)
 {
     if (OP_DEBUG) opp_printf("opp_part_check_all_done", "START");
+
+    opp_profiler->start("Mv_WaitDone");
 
     opp_all_mpi_part_buffers* mpi_buffers = (opp_all_mpi_part_buffers*)set->mpi_part_buffers;
     bool imported_parts = true;
@@ -605,6 +618,8 @@ bool opp_part_check_all_done(oppic_set set)
 
     free(buffer_recv);
     
+    opp_profiler->end("Mv_WaitDone");
+
     return !bool_ret;
 }
 
@@ -769,9 +784,13 @@ void opp_part_set_comm_init(oppic_set set)
 
     set->mpi_part_buffers = (void*)mpi_buffers;
 
-    opp_profiler->reg("Pack");
-    opp_profiler->reg("Exchange");
-    opp_profiler->reg("Unpack");
+    opp_profiler->reg("Mv_Pack");
+    opp_profiler->reg("Mv_Exchange");
+    opp_profiler->reg("Mv_Unpack");
+    opp_profiler->reg("Mv_WaitAll");
+    opp_profiler->reg("Mv_WaitDone");
+    opp_profiler->reg("Mv_WaitExCnt");
+    opp_profiler->reg("Mv_WaitExRecv");
 
     opp_part_move_indices.clear();
 

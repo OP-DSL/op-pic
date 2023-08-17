@@ -238,9 +238,12 @@ namespace opp {
                 const double particleCommunicationTime = this->getParticleCommunicationTime(profName, fromAllRanks);
 
                 if (fromAllRanks || m_myRank == 0) { 
-                    ss << this->adjustString(profName, 20) << "\t" << count << "\t" << elapsedTime << "\t" << averageTime; 
-                    ss << "\t" << meshTransferSize << "\t" << meshCommunicationTime;
-                    ss << "\t" << particleTransferSize << "\t" << particleTransferCount<< "\t" << particleCommunicationTime << std::endl;
+                    ss << fromAllRanks << " " << m_myRank << " " << this->adjustString(profName, 20) << "\t" << this->adjustString(std::to_string(count), 4) << "\t"; 
+                    ss << std::fixed << std::setprecision(10) << elapsedTime << "\t" << averageTime; 
+                    std::stringstream so;
+                    so << "\t" << meshTransferSize << "\t" << meshCommunicationTime;
+                    so << "\t" << particleTransferSize << "\t" << particleTransferCount<< "\t" << particleCommunicationTime << std::endl;
+                    ss << so.str();
                 }
             }
 

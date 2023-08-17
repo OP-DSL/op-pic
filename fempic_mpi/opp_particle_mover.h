@@ -25,22 +25,40 @@ namespace opp {
             const opp_dat cellDet_dat, const opp_dat global_cell_id_dat, const opp_map cellConnectivity_map)
             : gridSpacing(gridSpacing), dim(dim), cellVolume_dat(cellVolume_dat), cellDet_dat(cellDet_dat), 
               global_cell_id_dat(global_cell_id_dat), cellConnectivity_map(cellConnectivity_map) {
+            
+            opp_profiler->start("SetupMover");
 
+            useGlobalMove = opp_params->get<OPP_BOOL>("opp_global_move");
+
+            if (useGlobalMove) {
 #ifdef ENABLE_MPI
-            comm = std::make_shared<Comm>(MPI_COMM_WORLD);
-            globalMover = std::make_unique<GlobalParticleMover>(comm->comm_parent);
+                comm = std::make_shared<Comm>(MPI_COMM_WORLD);
+                globalMover = std::make_unique<GlobalParticleMover>(comm->comm_parent);
 #endif
-            boundingBox = std::make_shared<BoundingBox>(node_pos_dat, dim, comm);
+                boundingBox = std::make_shared<BoundingBox>(node_pos_dat, dim, comm);
 
+                cellMapper = std::make_shared<CellMapper>(boundingBox, gridSpacing, comm);
 
-            cellMapper = std::make_shared<CellMapper>(boundingBox, gridSpacing, comm);
+                cellMapper->generateStructMeshToGlobalCellMappings(cellVolume_dat, cellDet_dat, global_cell_id_dat, 
+                                                                    cellConnectivity_map);
 
-            cellMapper->generateStructMeshToGlobalCellMappings(cellVolume_dat, cellDet_dat, global_cell_id_dat, 
-                                                                cellConnectivity_map);
+                cellMapper->generateGlobalToLocalCellIndexMapping(global_cell_id_dat);
+            }
 
-            cellMapper->generateGlobalToLocalCellIndexMapping(global_cell_id_dat);
-        
             opp_profiler->reg("GlbToLocal");
+            opp_profiler->reg("GblMv_Move");
+            opp_profiler->reg("GblMv_AllMv");
+            opp_profiler->reg("Mv_AllMv0");
+            opp_profiler->reg("Mv_AllMv1");
+            opp_profiler->reg("Mv_AllMv2");
+            opp_profiler->reg("Mv_AllMv3");
+            opp_profiler->reg("Mv_AllMv4");
+            opp_profiler->reg("Mv_AllMv5");
+            opp_profiler->reg("Mv_AllMv6");
+            opp_profiler->reg("Mv_AllMv7");
+            opp_profiler->reg("Mv_AllMv8");
+
+            opp_profiler->end("SetupMover");
         }
 
         //*******************************************************************************
@@ -112,13 +130,14 @@ namespace opp {
 #elif defined ENABLE_MPI
 
         //*******************************************************************************
-        inline void move(opp_set set, const opp_dat pos_dat, opp_dat cellIndex_dat, opp_dat lc_dat, opp_dat part_id) { 
+        inline void move(opp_set set, const opp_dat pos_dat, opp_dat cellIndex_dat, opp_dat lc_dat, opp_dat partID_dat) { 
             
             opp_profiler->start("Move");
 
-            this->partID = part_id;
+            this->partID = partID_dat;
+            this->partCellID = cellIndex_dat;
 
-            if (OPP_main_loop_iter == 249 || X_DEBUG) {
+            if (OPP_main_loop_iter == 194 || X_DEBUG) {
                 this->markedForMove.str("");
                 this->markedForRemove.str("");
             }
@@ -143,6 +162,11 @@ namespace opp {
                         &((double*)cellDet_dat->data)[cellIdx * cellDet_dat->dim], 
                         &((int*)cellConnectivity_map->map)[cellIdx * cellConnectivity_map->dim]);
 
+                    if (OPP_main_loop_iter == 194 && ((int*)this->partID->data)[i] == 3283032) {
+                        opp_printf("HOP", "part=%d cid=%d", 
+                        ((int*)this->partID->data)[i], ((int*)this->partCellID->data)[i]);
+                    }
+
                     if (m.move_status == OPP_NEED_MOVE && (cellIdx >= set->cells_set->size)) 
                     {
                         this->markedForMove << ((int*)this->partID->data)[i] << "|" << m.move_status << " ";
@@ -154,15 +178,19 @@ namespace opp {
             // ----------------------------------------------------------------------------
             opp_init_particle_move(set, 0, nullptr);
             
-            globalMover->initGlobalMove();
+            if (useGlobalMove) {
+                
+                opp_profiler->start("GblMv_Move");
 
-            // check whether particles needs to be moved over global move routine
-            for (int i = OPP_iter_start; i < OPP_iter_end; i++) {   
-                
-                int* cellIdx = &((int*)cellIndex_dat->data)[i];
-                const opp_point* point = (const opp_point*)&(((double*)pos_dat->data)[i * 3]);
-                
-if (OPP_main_loop_iter == 249 && ((int*)this->partID->data)[i] == 3283032) { std::string c = "";
+                globalMover->initGlobalMove();
+
+                // check whether particles needs to be moved over global move routine
+                for (int i = OPP_iter_start; i < OPP_iter_end; i++) {   
+                    
+                    int* cellIdx = &((int*)cellIndex_dat->data)[i];
+                    const opp_point* point = (const opp_point*)&(((double*)pos_dat->data)[i * 3]);
+
+if (OPP_main_loop_iter == 194 && ((int*)this->partID->data)[i] == 3283032) { std::string c = "";
     int cid = ((int*)cellIndex_dat->data)[i];
     if (cid < (set->cells_set->size + set->cells_set->exec_size + set->cells_set->nonexec_size))
         c = getGlobalCellIndex(cellConnectivity_map->map[cid *4+0])+" "+getGlobalCellIndex(cellConnectivity_map->map[cid *4+1])+" "+
@@ -171,33 +199,38 @@ if (OPP_main_loop_iter == 249 && ((int*)this->partID->data)[i] == 3283032) { std
     ((int*)this->partID->data)[i], ((int*)cellIndex_dat->data)[i], point->x,point->y,point->z, c.c_str());
 }
 
-                // check for global move, and if satisfy global move criteria, then remove the particle from current rank
-                if (checkForGlobalMove(set, *point, i, *cellIdx)) {
-                    
-                    *cellIdx = MAX_CELL_INDEX;
-                    set->particle_remove_count++;
+                    // check for global move, and if satisfy global move criteria, then remove the particle from current rank
+                    if (checkForGlobalMove(set, *point, i, *cellIdx)) {
+                        
+                        *cellIdx = MAX_CELL_INDEX;
+                        set->particle_remove_count++;
 
-                    if (OPP_main_loop_iter == 249 || X_DEBUG) {
-                        this->markedForRemove << ((int*)this->partID->data)[i] << " ";
+                        if (OPP_main_loop_iter == 194 || X_DEBUG) {
+                            this->markedForRemove << ((int*)this->partID->data)[i] << " ";
+                        }
+                        
+                        continue;  
                     }
-                    
-                    continue;  
                 }
+
+                opp_profiler->end("GblMv_Move");
+
+                // if (OPP_main_loop_iter == 194 || X_DEBUG) {
+                //     opp_printf("Af Glb Move", "markedForMove \n%s", this->markedForMove.str().c_str());
+                //     opp_printf("Af Glb Move", "markedForRemove \n%s", this->markedForRemove.str().c_str());
+                //     this->markedForMove.str("");
+                // }
+
+                globalMover->communicate(set);
             }
 
-            // if (OPP_main_loop_iter == 249 || X_DEBUG) {
-            //     opp_printf("Af Glb Move", "markedForMove \n%s", this->markedForMove.str().c_str());
-            //     opp_printf("Af Glb Move", "markedForRemove \n%s", this->markedForRemove.str().c_str());
-            //     this->markedForMove.str("");
-            // }
-
-            globalMover->communicate(set);
+            opp_profiler->start("Mv_AllMv0");
 
             // ----------------------------------------------------------------------------
             // check whether particle is within cell, and if not move between cells within the MPI rank, mark for neighbour comm
             for (int i = OPP_iter_start; i < OPP_iter_end; i++) { 
 
-if (OPP_main_loop_iter == 249 && ((int*)this->partID->data)[i] == 3283032) {std::string c = "";
+if (OPP_main_loop_iter == 194 && ((int*)this->partID->data)[i] == 3283032) {std::string c = "";
     int cid = ((int*)cellIndex_dat->data)[i];
     if (cid < (set->cells_set->size + set->cells_set->exec_size + set->cells_set->nonexec_size))
         c = getGlobalCellIndex(cellConnectivity_map->map[cid *4+0])+" "+getGlobalCellIndex(cellConnectivity_map->map[cid *4+1])+" "+
@@ -207,7 +240,7 @@ if (OPP_main_loop_iter == 249 && ((int*)this->partID->data)[i] == 3283032) {std:
     ((int*)this->partID->data)[i], ((int*)cellIndex_dat->data)[i], c.c_str());
 }               
                 multihop_mover(i);
-if (OPP_main_loop_iter == 249 && ((int*)this->partID->data)[i] == 3283032) {std::string c = "";
+if (OPP_main_loop_iter == 194 && ((int*)this->partID->data)[i] == 3283032) {std::string c = "";
     int cid = ((int*)cellIndex_dat->data)[i];
     if (cid < (set->cells_set->size + set->cells_set->exec_size + set->cells_set->nonexec_size))
         c = getGlobalCellIndex(cellConnectivity_map->map[cid *4+0])+" "+getGlobalCellIndex(cellConnectivity_map->map[cid *4+1])+" "+
@@ -218,14 +251,18 @@ if (OPP_main_loop_iter == 249 && ((int*)this->partID->data)[i] == 3283032) {std:
 }
             }
 
-            // if (OPP_main_loop_iter == 249 || X_DEBUG) {
+            opp_profiler->end("Mv_AllMv0");
+
+            // if (OPP_main_loop_iter == 194 || X_DEBUG) {
             //     opp_printf("Others af glb move", "markedForMove \n%s", this->markedForMove.str().c_str());
             //     this->markedForMove.str("");
             // }
 
             // ----------------------------------------------------------------------------
             // finalize the global move routine and iterate over newly added particles and check whether they need neighbour comm
-            if (globalMover->finalize(set) > 0) {
+            if (useGlobalMove && globalMover->finalize(set) > 0) {
+                
+                opp_profiler->start("GblMv_AllMv");
 
                 opp_profiler->start("GlbToLocal");
 
@@ -247,7 +284,7 @@ if (OPP_main_loop_iter == 249 && ((int*)this->partID->data)[i] == 3283032) {std:
                 // mark for neighbour comm. Do only for the globally moved particles 
                 for (int i = (set->size - set->diff); i < set->size; i++) { 
 
-if (OPP_main_loop_iter == 249 && ((int*)this->partID->data)[i] == 3283032) {std::string c = "";
+if (OPP_main_loop_iter == 194 && ((int*)this->partID->data)[i] == 3283032) {std::string c = "";
     int cid = ((int*)cellIndex_dat->data)[i];
     if (cid < (set->cells_set->size + set->cells_set->exec_size + set->cells_set->nonexec_size))
         c = getGlobalCellIndex(cellConnectivity_map->map[cid *4+0])+" "+getGlobalCellIndex(cellConnectivity_map->map[cid *4+1])+" "+
@@ -258,7 +295,7 @@ if (OPP_main_loop_iter == 249 && ((int*)this->partID->data)[i] == 3283032) {std:
 }                       
                     multihop_mover(i);
 
-if (OPP_main_loop_iter == 249 && ((int*)this->partID->data)[i] == 3283032) {std::string c = "";
+if (OPP_main_loop_iter == 194 && ((int*)this->partID->data)[i] == 3283032) {std::string c = "";
     int cid = ((int*)cellIndex_dat->data)[i];
     if (cid < (set->cells_set->size + set->cells_set->exec_size + set->cells_set->nonexec_size))
         c = getGlobalCellIndex(cellConnectivity_map->map[cid *4+0])+" "+getGlobalCellIndex(cellConnectivity_map->map[cid *4+1])+" "+
@@ -269,7 +306,9 @@ if (OPP_main_loop_iter == 249 && ((int*)this->partID->data)[i] == 3283032) {std:
 }                   
                 }
 
-                // if (OPP_main_loop_iter == 249 || X_DEBUG) {
+                opp_profiler->end("GblMv_AllMv");
+
+                // if (OPP_main_loop_iter == 194 || X_DEBUG) {
                 //     opp_printf("Glb Moved parts", "iter %d markedForMove \n%s", OPP_comm_iteration, this->markedForMove.str().c_str());
                 //     this->markedForMove.str("");
                 // }
@@ -280,12 +319,16 @@ if (OPP_main_loop_iter == 249 && ((int*)this->partID->data)[i] == 3283032) {std:
             // then iterate over the new particles
             while (opp_finalize_particle_move(set)) {
                 
+                std::string profName = std::string("Mv_AllMv") + std::to_string(OPP_comm_iteration);
+                // opp_printf("QQQ", "profName %s", profName.c_str());
+                opp_profiler->start(profName);
+
                 opp_init_particle_move(set, 0, nullptr);
 
                 // check whether particle is within cell, and if not move between cells within the MPI rank, mark for neighbour comm
                 for (int i = OPP_iter_start; i < OPP_iter_end; i++) { 
 
-if (OPP_main_loop_iter == 249 && ((int*)this->partID->data)[i] == 3283032) {std::string c = "";
+if (OPP_main_loop_iter == 194 && ((int*)this->partID->data)[i] == 3283032) {std::string c = "";
     int cid = ((int*)cellIndex_dat->data)[i];
     if (cid < (set->cells_set->size + set->cells_set->exec_size + set->cells_set->nonexec_size))
         c = getGlobalCellIndex(cellConnectivity_map->map[cid *4+0])+" "+getGlobalCellIndex(cellConnectivity_map->map[cid *4+1])+" "+
@@ -293,10 +336,14 @@ if (OPP_main_loop_iter == 249 && ((int*)this->partID->data)[i] == 3283032) {std:
     
     opp_printf("Y6", "part=%d cid=%d [%s]", 
     ((int*)this->partID->data)[i], ((int*)cellIndex_dat->data)[i], c.c_str());
-}                       
+}      
+
+// if (i == 3283032 && OPP_main_loop_iter == 194 && OPP_comm_iteration > 4) {
+//     opp_printf("DDD", "index=%d id=%d OPP_comm_iteration %d", i, ((int*)this->partID->data)[i], OPP_comm_iteration);
+// }
                     multihop_mover(i);
 
-if (OPP_main_loop_iter == 249 && ((int*)this->partID->data)[i] == 3283032) {std::string c = "";
+if (OPP_main_loop_iter == 194 && ((int*)this->partID->data)[i] == 3283032) {std::string c = "";
     int cid = ((int*)cellIndex_dat->data)[i];
     if (cid < (set->cells_set->size + set->cells_set->exec_size + set->cells_set->nonexec_size))
         c = getGlobalCellIndex(cellConnectivity_map->map[cid *4+0])+" "+getGlobalCellIndex(cellConnectivity_map->map[cid *4+1])+" "+
@@ -307,10 +354,12 @@ if (OPP_main_loop_iter == 249 && ((int*)this->partID->data)[i] == 3283032) {std:
 }
                 }
 
-                // if (OPP_main_loop_iter == 249 || X_DEBUG) {
+                // if (OPP_main_loop_iter == 194 || X_DEBUG) {
                 //     opp_printf("OPP_comm_iteration", "iter %d markedForMove \n%s", OPP_comm_iteration, this->markedForMove.str().c_str());
                 //     this->markedForMove.str("");
                 // }
+
+                opp_profiler->end(profName);
             }
 
             opp_profiler->end("Move");
@@ -378,12 +427,13 @@ if (OPP_main_loop_iter == 249 && ((int*)this->partID->data)[i] == 3283032) {std:
         }
 
         //*******************************************************************************
+        // returns true, if the current particle needs to be removed from the rank
         inline bool checkForGlobalMove(opp_set set, const opp_point& point, const int partIndex, int& cellIdx) {
 
 #ifdef ENABLE_MPI            
             size_t structCellIdx = cellMapper->findStructuredCellIndex(point);
 
-            if (structCellIdx == MAX_CELL_INDEX) {
+            if (structCellIdx == MAX_CELL_INDEX) { // This happens when point is out of the unstructured mesh
                 if (OP_DEBUG)
                     opp_printf("GlobalMove", 
                     "Remove %d [Struct cell index invalid - strCellIdx:%zu] [%2.16lE, %2.16lE, %2.16lE]", 
@@ -397,16 +447,17 @@ if (OPP_main_loop_iter == 249 && ((int*)this->partID->data)[i] == 3283032) {std:
             // if no, move to the closest local cell
             if (structCellRank != OPP_rank) {
 
-                // Due to renumbering local cell indices will be different to global, hence do global comm with global indices
-                size_t globalCellIndex = cellMapper->findClosestGlobalCellIndex(structCellIdx);
-
                 if (structCellRank == MAX_CELL_INDEX) {
                     if (OP_DEBUG)
                         opp_printf("GlobalMove", 
                         "Remove %d [Rank invalid - strCellRank:%d gblCellIdx:%zu strCellIdx:%zu] [%2.16lE, %2.16lE, %2.16lE]", 
-                            partIndex, structCellRank, globalCellIndex, structCellIdx, point.x, point.y, point.z);
+                            partIndex, structCellRank, cellMapper->findClosestGlobalCellIndex(structCellIdx), structCellIdx, 
+                            point.x, point.y, point.z);
                     return true;
                 }
+
+                // Due to renumbering local cell indices will be different to global, hence do global comm with global indices
+                size_t globalCellIndex = cellMapper->findClosestGlobalCellIndex(structCellIdx);
 
                 if (globalCellIndex == MAX_CELL_INDEX) {
                     if (OP_DEBUG)
@@ -416,12 +467,17 @@ if (OPP_main_loop_iter == 249 && ((int*)this->partID->data)[i] == 3283032) {std:
                     return true;
                 }
 
+                // if the new rank is not the current rank, mark the particle to be sent via global comm
                 globalMover->markParticleToMove(set, partIndex, structCellRank, globalCellIndex);
 
-                if (OPP_main_loop_iter == 249 || X_DEBUG) {
+                if (OPP_main_loop_iter == 194 || X_DEBUG) {
                     this->markedForMove << ((int*)this->partID->data)[partIndex] << " ";
                 }
 
+if (OPP_main_loop_iter == 194 && ((int*)this->partID->data)[partIndex] == 3283032) {
+    opp_printf("Y Mark Glob", "part=%d cid=%d", 
+    ((int*)this->partID->data)[partIndex], ((int*)this->partCellID->data)[partIndex]);
+}
                 // if (OP_DEBUG)
                 //     opp_printf("GlobalMove", "Mark part %d [Move to rank %d gblCellIdx %d]", 
                 //         partIndex, structCellRank, globalCellIndex);
@@ -449,15 +505,17 @@ if (OPP_main_loop_iter == 249 && ((int*)this->partID->data)[i] == 3283032) {std:
         std::unique_ptr<GlobalParticleMover> globalMover;
         
         opp_dat partID = nullptr;
+        opp_dat partCellID = nullptr;
         std::stringstream markedForMove;
         std::stringstream markedForRemove;
 
-        const opp_dat cellDet_dat;
+        const double gridSpacing;
+        const int dim = 3;
         const opp_dat cellVolume_dat;
+        const opp_dat cellDet_dat;
         const opp_dat global_cell_id_dat;
         const opp_map cellConnectivity_map;
 
-        const double gridSpacing;
-        const int dim;
+        bool useGlobalMove = true;
     };
 };
