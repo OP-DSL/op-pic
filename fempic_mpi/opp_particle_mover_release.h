@@ -39,10 +39,10 @@ namespace opp {
 
                 cellMapper = std::make_shared<CellMapper>(boundingBox, gridSpacing, comm);
 
+                cellMapper->generateGlobalToLocalCellIndexMapping(global_cell_id_dat);
+
                 cellMapper->generateStructMeshToGlobalCellMappings(cellVolume_dat, cellDet_dat, global_cell_id_dat, 
                                                                     cellConnectivity_map);
-
-                cellMapper->generateGlobalToLocalCellIndexMapping(global_cell_id_dat);
             }
 
             opp_profiler->reg("GlbToLocal");
@@ -160,9 +160,9 @@ namespace opp {
             
             if (useGlobalMove) {
                 
-                opp_profiler->start("GblMv_Move");
-
                 globalMover->initGlobalMove();
+
+                opp_profiler->start("GblMv_Move");
 
                 // check whether particles needs to be moved over global move routine
                 for (int i = OPP_iter_start; i < OPP_iter_end; i++) {   
@@ -203,7 +203,7 @@ namespace opp {
                 
                 opp_profiler->start("GblMv_AllMv");
 
-                { // could remove this block if the local cell index is directly stamped in cell index field
+                if (false) { // could remove this block if the local cell index is directly stamped in cell index field
                     
                     opp_profiler->start("GlbToLocal");
 

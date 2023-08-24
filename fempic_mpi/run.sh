@@ -20,6 +20,8 @@ echo "SEQ DONE"
 export OMP_NUM_THREADS=48
 /ext-home/zl/phd/OP-PIC/fempic_new/bin/omp /ext-home/zl/phd/OP-PIC/fempic_tests/configs/coarse_3.param
 
+mpirun -np 48 valgrind --log-file=vg%p --track-origins=yes bin/mpi /ext-home/zl/phd/OP-PIC/scripts/fempic_tests/configs/coarse_5.param
+
 echo "OMP DONE"
 
 # bin/cuda /ext-home/zl/phd/OP-PIC/fempic_tests/configs/medium_1.param -vec_type cuda -mat_type aijcusparse
@@ -28,7 +30,7 @@ echo "OMP DONE"
 # watch -n 0.1 /opt/rocm-5.4.3/bin/rocm-smi
 
 # bin/cuda /ext-home/zl/phd/OP-PIC/scripts/fempic_tests/configs/coarse_5.param
-# nvprof --analysis-metrics -o nv_sh.nvvp bin/cuda /ext-home/zl/phd/OP-PIC/scripts/fempic_tests/configs/coarse_5.param
+# nvprof --analysis-metrics -o nv_dy_sh.nvvp bin/cuda /ext-home/zl/phd/OP-PIC/scripts/fempic_tests/configs/coarse_5.param
 
 
 # module load forge/arm-forge-22.1.3

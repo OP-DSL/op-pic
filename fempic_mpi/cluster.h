@@ -6,16 +6,22 @@
 #include <limits>
 #include <random>
 #include <unordered_map>
+#include <algorithm> 
+// #include "opp_mpi.h"
 
 struct Point3D {
-    double x;
-    double y;
-    double z;
+    double x = 0.0f;
+    double y = 0.0f;
+    double z = 0.0f;
 
     bool operator==(const Point3D& other) const {
         return (x == other.x) && (y == other.y) && (z == other.z);
     }
 };
+
+inline bool isEqual(const Point3D& p, const Point3D& other) {
+    return (p.x == other.x) && (p.y == other.y) && (p.z == other.z);
+}
 
 // Function to calculate the euclidean distance
 inline double euclideanDistance3D(const Point3D& p1, const Point3D& p2) {
@@ -126,6 +132,29 @@ inline std::vector<Point3D> calculateTriangleCentroids3D(const std::vector<Point
     return result;
 }
 
+inline std::vector<int> BlockCluster(const std::vector<Point3D>& points, int numClusters) {
+
+    int numPoint3Ds = (int)points.size();
+    std::vector<int> assignments; // Cluster assignments for each point
+    std::vector<int> clusterSizes(numClusters, 0);
+
+    for (int r = 0; r < OPP_comm_size; r++) {
+
+        int countForRank = opp_get_uniform_local_size(numPoint3Ds, r);
+
+        for (int i = 0; i < countForRank; i++) {
+            assignments.emplace_back(r);
+            clusterSizes[r]++;
+        }
+    }
+
+    std::string logg = "";
+    for (auto a : clusterSizes) logg += std::to_string(a) + " ";
+    opp_printf("BlockCluster SIZES", "%s", logg.c_str());
+
+    return assignments;
+}
+
 inline std::vector<int> kMeansClustering3D(const std::vector<Point3D>& points, int numClusters) {
     int numPoint3Ds = points.size();
 
@@ -136,11 +165,14 @@ inline std::vector<int> kMeansClustering3D(const std::vector<Point3D>& points, i
     }
 
     std::vector<int> assignments(numPoint3Ds, 0); // Cluster assignments for each point
+    std::vector<int> clusterSizes(numClusters, 0);
+    std::vector<Point3D> newCentroids(numClusters, {0.0, 0.0, 0.0});
 
     bool converged = false;
     while (!converged) {
-        std::vector<int> clusterSizes(numClusters, 0);
-        std::vector<Point3D> newCentroids(numClusters, {0.0, 0.0, 0.0});
+
+        std::fill(clusterSizes.begin(), clusterSizes.end(), 0);
+        std::fill(newCentroids.begin(), newCentroids.end(), Point3D());
 
         // Assign points to clusters
         for (int i = 0; i < numPoint3Ds; ++i) {
@@ -175,6 +207,10 @@ inline std::vector<int> kMeansClustering3D(const std::vector<Point3D>& points, i
         converged = (centroids == newCentroids);
         centroids = newCentroids;
     }
+
+    std::string logg = "";
+    for (auto a : clusterSizes) logg += std::to_string(a) + " ";
+    opp_printf("SIZES", "%s", logg.c_str());
 
     return assignments;
 }

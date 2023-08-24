@@ -166,10 +166,10 @@ namespace opp {
             
             const int globalCellIndex = findClosestGlobalCellIndex(structCellIdx);
 
-            if (OPP_comm_size == 1)
+            //if (OPP_comm_size == 1)
                 return globalCellIndex;
                 
-            return getLocalCellIndexFromGlobal(globalCellIndex);
+            //return getLocalCellIndexFromGlobal(globalCellIndex);
         }
 
         //*******************************************************************************
@@ -655,7 +655,18 @@ namespace opp {
             MPI_Allreduce(MPI_IN_PLACE, this->structMeshToRankMapping, globalGridSize, MPI_INT, MPI_MIN, MPI_COMM_WORLD); // comm->comm_inter
 #endif
 
-            printStructuredMesh("Final");
+            printStructuredMesh("Final With Global CID");
+
+            for (size_t i = 0; i < globalGridSize; i++) {
+                if (this->structMeshToRankMapping[i] == OPP_rank) {
+                    const int globalCID = this->structMeshToCellMapping[i];
+                    this->structMeshToCellMapping[i] = getLocalCellIndexFromGlobal(globalCID);
+                }
+            }
+
+            // TODO : For multi node MPI, get this sorted over all ranks
+
+            printStructuredMesh("Final With Local CID");
         }
 
         //*******************************************************************************

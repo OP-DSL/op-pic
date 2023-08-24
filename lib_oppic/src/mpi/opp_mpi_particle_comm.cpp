@@ -484,10 +484,11 @@ void opp_part_exchange(oppic_set set)
     opp_profiler->addTransferSize("", opp::OPP_Particle, total_send_size, (size_t)(total_send_size / set->particle_size));
     opp_profiler->end("Mv_Exchange");
 
-    opp_profiler->start("Mv_WaitExCnt");
+    std::string profName = std::string("Mv_WaitExCnt") + std::to_string(OPP_comm_iteration);
+    opp_profiler->start(profName);
     // wait for the counts to receive only from neighbours
     MPI_Waitall(neighbour_count, &recv_req_count[0], MPI_STATUSES_IGNORE);
-    opp_profiler->end("Mv_WaitExCnt");
+    opp_profiler->end(profName);
 
     opp_profiler->start("Mv_Exchange");
     // create/resize data structures and receive particle data from neighbours
@@ -559,10 +560,11 @@ void opp_part_wait_all(oppic_set set)
     opp_profiler->startMpiComm("", opp::OPP_Particle);
 
     // wait till all the particles from all the ranks are received
-    opp_profiler->start("Mv_WaitExRecv");
+    std::string profName = std::string("Mv_WaitExRecv") + std::to_string(OPP_comm_iteration);
+    opp_profiler->start(profName);
     MPI_Waitall(send_req.size(), &(send_req[0]), MPI_STATUSES_IGNORE); // &(send_status[0])); //
     MPI_Waitall(recv_req.size(), &(recv_req[0]), MPI_STATUSES_IGNORE); // &(recv_status[0])); //
-    opp_profiler->end("Mv_WaitExRecv");
+    opp_profiler->end(profName);
 
     opp_profiler->endMpiComm("", opp::OPP_Particle); // started at opp_part_exchange()
 
@@ -582,7 +584,8 @@ bool opp_part_check_all_done(oppic_set set)
 {
     if (OP_DEBUG) opp_printf("opp_part_check_all_done", "START");
 
-    opp_profiler->start("Mv_WaitDone");
+    std::string profName = std::string("Mv_WaitDone") + std::to_string(OPP_comm_iteration);
+    opp_profiler->start(profName);
 
     opp_all_mpi_part_buffers* mpi_buffers = (opp_all_mpi_part_buffers*)set->mpi_part_buffers;
     bool imported_parts = true;
@@ -618,7 +621,7 @@ bool opp_part_check_all_done(oppic_set set)
 
     free(buffer_recv);
     
-    opp_profiler->end("Mv_WaitDone");
+    opp_profiler->end(profName);
 
     return !bool_ret;
 }
@@ -788,9 +791,19 @@ void opp_part_set_comm_init(oppic_set set)
     opp_profiler->reg("Mv_Exchange");
     opp_profiler->reg("Mv_Unpack");
     opp_profiler->reg("Mv_WaitAll");
-    opp_profiler->reg("Mv_WaitDone");
-    opp_profiler->reg("Mv_WaitExCnt");
-    opp_profiler->reg("Mv_WaitExRecv");
+    // opp_profiler->reg("Mv_WaitDone");
+    // opp_profiler->reg("Mv_WaitExCnt");
+    // opp_profiler->reg("Mv_WaitExRecv");
+
+    std::string profName = "";
+    for (int i = 0; i < 10; i++) {
+        profName = std::string("Mv_WaitDone") + std::to_string(i);
+        opp_profiler->reg(profName);
+        profName = std::string("Mv_WaitExCnt") + std::to_string(i);
+        opp_profiler->reg(profName);
+        profName = std::string("Mv_WaitExRecv") + std::to_string(i);
+        opp_profiler->reg(profName);
+    }
 
     opp_part_move_indices.clear();
 

@@ -7,7 +7,7 @@
     #include "opp_comm.h"
 #endif
 
-#define TOLERENCE 1e-6
+#define TOLERENCE 1e-12
 
 namespace opp {
 

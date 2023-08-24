@@ -189,6 +189,7 @@ namespace opp {
             packer = std::make_unique<ParticlePacker>(&globalPartMoveData);
 
             opp_profiler->reg("GblMv_WaitRanks");
+            opp_profiler->reg("GblMv_Init");
             opp_profiler->reg("GblMv_Comm");
             opp_profiler->reg("GblMv_Finalize");
             opp_profiler->reg("GblMv_Pack");
@@ -234,6 +235,8 @@ namespace opp {
         //*******************************************************************************
         inline void initGlobalMove() {
             
+            opp_profiler->start("GblMv_Init");
+
             this->h_send_ranks.clear();
             this->h_send_rank_npart.clear();
             this->h_recv_ranks.clear();
@@ -252,6 +255,8 @@ namespace opp {
 
             this->recv_win_data[0] = 0;
             CHECK(MPI_Ibarrier(this->comm, &this->mpi_request));
+
+            opp_profiler->end("GblMv_Init");
         }
 
         //*******************************************************************************
