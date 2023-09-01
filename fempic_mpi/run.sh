@@ -90,3 +90,21 @@ echo "OMP DONE"
 # export LD_LIBRARY_PATH=/ext-home/zl/lib_setup/spack/opt/spack/linux-debian10-skylake_avx512/gcc-8.3.0/binutils-2.40-phaf3hafohunayotjydvol7zixq6frgr/lib:$LD_LIBRARY_PATH
 
 # scalasca -analyze mpirun -n 2 bin/mpi
+
+
+# AVON ===============================================================
+
+# module load GCC/10.3.0  OpenMPI/4.1.1
+# module load PETSc/3.15.1
+
+# export PETSC_INSTALL_PATH=/scrtp/avon/eb/software/PETSc/3.15.1-foss-2021a
+# export OPPIC_PATH=/home/dcs/csrcnj/phd/OP-PIC/lib_oppic
+
+# For MPI
+# salloc -p hmem --nodes=1 --ntasks-per-node=48 --cpus-per-task=1 --mem-per-cpu=3700 --time=03:00:00 
+
+# mpirun -np 8 bin/mpi /home/dcs/csrcnj/phd/OP-PIC/scripts/fempic_tests/configs/coarse_5.param
+
+# salloc -p compute --nodes=2 --ntasks-per-node=48 --mem-per-cpu=3700 --time=03:00:00 --job-name=csrcnj
+
+# ===============================================================

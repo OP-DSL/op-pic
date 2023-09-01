@@ -166,8 +166,8 @@ opp_profiler->reg("ComputeDet");
 
         opp_profiler->end("Setup");
 
-std::string g = std::string("X_") + std::to_string(OPP_rank);
-opp_print_dat_to_txtfile(global_cell_id, g.c_str(), "global_cell_id.dat");
+// std::string g = std::string("X_") + std::to_string(OPP_rank);
+// opp_print_dat_to_txtfile(global_cell_id, g.c_str(), "global_cell_id.dat");
 
         opp_profiler->start("MainLoop");
 

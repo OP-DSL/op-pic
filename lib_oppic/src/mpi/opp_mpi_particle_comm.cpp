@@ -82,7 +82,7 @@ void opp_part_pack(oppic_set set)
         std::vector<opp_particle_move_info>& move_indices_vector = move_indices_per_rank.second;
 
         opp_mpi_part_buffer& send_rank_buffer = send_buffers->buffers[send_rank];
-        int required_buffer_size = (move_indices_vector.size() * set->particle_size);
+        int64_t required_buffer_size = (move_indices_vector.size() * (int64_t)set->particle_size);
 
         // resize the export buffer if required
         if (send_rank_buffer.buf_export_index + required_buffer_size >= send_rank_buffer.buf_export_capacity)
@@ -141,11 +141,11 @@ void opp_part_pack(oppic_set set)
 
         // Cannot use multiple packs before sending them, if opp_part_pack() is called multiple times with PACK_SOA, 
         // the communication data will get currupted
-        int displacement = 0;
+        int64_t displacement = 0;
 
         for (auto& dat : *(set->particle_dats))
         {
-            int dat_size = dat->size;
+            int64_t dat_size = (int64_t)dat->size;
 
             if (dat->is_cell_index)
             {
@@ -172,8 +172,8 @@ void opp_part_pack(oppic_set set)
             }
         }
 
-        send_rank_buffer.buf_export_index = (int)(set->particle_size * move_indices_vector.size()); // Not used
-        (send_buffers->export_counts)[send_rank] = (int)move_indices_vector.size();
+        send_rank_buffer.buf_export_index = (int64_t)(set->particle_size * move_indices_vector.size()); // Not used
+        (send_buffers->export_counts)[send_rank] = (int64_t)move_indices_vector.size();
 
 #endif
 
@@ -283,13 +283,13 @@ void opp_part_unpack(oppic_set set)
     opp_profiler->start("Mv_Unpack");
 
     std::vector<oppic_dat>& particle_dats = *(set->particle_dats);
-    int num_particles = 0;
+    int64_t num_particles = 0;
 
     opp_all_mpi_part_buffers* recv_buffers = (opp_all_mpi_part_buffers*)set->mpi_part_buffers;
     std::vector<int>& neighbours = recv_buffers->neighbours;
 
     // count the number of particles to be received from all ranks
-    for (int i = 0; i < (int)neighbours.size(); i++)
+    for (size_t i = 0; i < neighbours.size(); i++)
     {
         int neighbour_rank = neighbours[i];
         num_particles += (recv_buffers->import_counts)[neighbour_rank];
@@ -297,22 +297,22 @@ void opp_part_unpack(oppic_set set)
 
     if (num_particles > 0)
     {
-        int particle_size = set->particle_size;
+        int64_t particle_size = set->particle_size;
 
-        if (!oppic_increase_particle_count_core(set, num_particles))
+        if (!oppic_increase_particle_count_core(set, (int)num_particles)) // TODO : change this to int64_t
         {
             opp_printf("opp_part_unpack", "Error: Failed to increase particle count of particle set [%s]", set->name);
             opp_abort("opp_part_unpack");
         }
 
-        int new_part_index = (set->size - set->diff);
+        int64_t new_part_index = (int64_t)(set->size - set->diff);
 
         for (int i = 0; i < (int)neighbours.size(); i++)
         {
             int recv_rank = neighbours[i];
 
             opp_mpi_part_buffer& receive_rank_buffer = recv_buffers->buffers[recv_rank];
-            int receive_count = recv_buffers->import_counts[recv_rank];
+            int64_t receive_count = recv_buffers->import_counts[recv_rank];
 
 #if PACK_AOS
 
@@ -336,7 +336,7 @@ void opp_part_unpack(oppic_set set)
 
 #else // PACK_SOA
 
-            int displacement = 0;
+            int64_t displacement = 0;
 
             for (auto& dat : *(set->particle_dats))
             {
@@ -444,11 +444,11 @@ void opp_part_exchange(oppic_set set)
     {
         int neighbour_rank = neighbours[i];
 
-        int& send_count = mpi_buffers->export_counts[neighbour_rank];
-        MPI_Isend(&send_count, 1, MPI_INT, neighbour_rank, MPI_COUNT_EXCHANGE, OP_MPI_WORLD, &(send_req_count[i]));
+        const int64_t& send_count = mpi_buffers->export_counts[neighbour_rank];
+        MPI_Isend((void*)&send_count, 1, MPI_INT64_T, neighbour_rank, MPI_COUNT_EXCHANGE, OP_MPI_WORLD, &(send_req_count[i]));
 
-        int& recv_count = mpi_buffers->import_counts[neighbour_rank];
-        MPI_Irecv(&recv_count, 1, MPI_INT, neighbour_rank, MPI_COUNT_EXCHANGE, OP_MPI_WORLD, &(recv_req_count[i]));
+        const int64_t& recv_count = mpi_buffers->import_counts[neighbour_rank];
+        MPI_Irecv((void*)&recv_count, 1, MPI_INT64_T, neighbour_rank, MPI_COUNT_EXCHANGE, OP_MPI_WORLD, &(recv_req_count[i]));
     }
 
     double total_send_size = 0.0;
@@ -457,7 +457,7 @@ void opp_part_exchange(oppic_set set)
     for (int i = 0; i < neighbour_count; i++)
     {
         int neighbour_rank = neighbours[i];
-        int send_size = set->particle_size * mpi_buffers->export_counts[neighbour_rank];
+        int64_t send_size = set->particle_size * mpi_buffers->export_counts[neighbour_rank];
 
         if (send_size <= 0)
         {
@@ -466,7 +466,7 @@ void opp_part_exchange(oppic_set set)
         }
         else
         {   
-            if (OP_DEBUG) opp_printf("opp_part_exchange", "sending %d particle/s (size: %d) to rank %d", 
+            if (OP_DEBUG) opp_printf("opp_part_exchange", "sending %lld particle/s (size: %lld) to rank %d", 
                 (send_size/ set->particle_size), send_size, neighbour_rank);
         }
 
@@ -495,7 +495,7 @@ void opp_part_exchange(oppic_set set)
     for (int i = 0; i < neighbour_count; i++)
     {
         int neighbour_rank = neighbours[i];
-        int recv_size = set->particle_size * mpi_buffers->import_counts[neighbour_rank];
+        int64_t recv_size = (int64_t)set->particle_size * mpi_buffers->import_counts[neighbour_rank];
         mpi_buffers->total_recv += mpi_buffers->import_counts[neighbour_rank];
 
         if (recv_size <= 0)
@@ -616,7 +616,7 @@ bool opp_part_check_all_done(oppic_set set)
     }
 
     if (OP_DEBUG) 
-        opp_printf("opp_part_check_all_done", "recv %d - %s -%s", mpi_buffers->total_recv, 
+        opp_printf("opp_part_check_all_done", "recv %lld - %s -%s", mpi_buffers->total_recv, 
             (bool_ret ? "ITER AGAIN" : "ALL DONE"), log.c_str());
 
     free(buffer_recv);

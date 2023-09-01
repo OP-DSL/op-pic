@@ -118,7 +118,7 @@ namespace opp {
 
         //*******************************************************************************
         inline void unpack(opp_set set, const std::map<int, std::vector<char>>& particleRecvBuffers,
-                            int totalParticlesToRecv, const std::vector<int>& recvRankPartCounts) {
+                            int64_t totalParticlesToRecv, const std::vector<int64_t>& recvRankPartCounts) {
 
             if (OP_DEBUG) 
                 opp_printf("ParticlePacker", "unpack set [%s]", set->name);
@@ -129,16 +129,16 @@ namespace opp {
             {
                 std::vector<oppic_dat>& particle_dats = *(set->particle_dats);
 
-                int particle_size = set->particle_size;
+                int64_t particle_size = set->particle_size;
 
-                if (!oppic_increase_particle_count_core(set, totalParticlesToRecv))
+                if (!oppic_increase_particle_count_core(set, (int)totalParticlesToRecv)) // TODO : make int to int64_t
                 {
                     opp_printf("ParticlePacker Unpack", "Error: Failed to increase particle count of particle set [%s]", 
                                 set->name);
                     opp_abort("ParticlePacker Unpack error");
                 }
 
-                int newPartIndex = (set->size - set->diff);
+                int64_t newPartIndex = (int64_t)(set->size - set->diff);
                 // int rankx = 0;
 
                 for (const auto& x : particleRecvBuffers) {
@@ -146,8 +146,8 @@ namespace opp {
                     // int recvRank = x.first;
                     const std::vector<char>& buffer = x.second;
 
-                    int recvCount = ((int)buffer.size() / particle_size) ; // recvRankPartCounts[rankx++];
-                    int displacement = 0;
+                    int64_t recvCount = ((int64_t)buffer.size() / particle_size) ; // recvRankPartCounts[rankx++];
+                    int64_t displacement = 0;
 
                     for (auto& dat : particle_dats)
                     {
@@ -302,8 +302,8 @@ namespace opp {
             for (auto& x : rankVsPartData) {
 
                 this->h_send_ranks[rankx] = x.first;
-                this->h_send_rank_npart[rankx] = x.second.size();
-                this->totalParticlesToSend += x.second.size();
+                this->h_send_rank_npart[rankx] = (int64_t)x.second.size();
+                this->totalParticlesToSend += (int64_t)x.second.size();
                 rankx++;
             }
 
@@ -328,13 +328,13 @@ namespace opp {
             // non-blocking recv of particle counts
             for (int rankx = 0; rankx < this->numRemoteRecvRanks; rankx++) {
 
-                CHECK(MPI_Irecv(&(this->h_recv_rank_npart[rankx]), 1, MPI_INT, MPI_ANY_SOURCE, 
+                CHECK(MPI_Irecv(&(this->h_recv_rank_npart[rankx]), 1, MPI_INT64_T, MPI_ANY_SOURCE, 
                     42, this->comm, &(this->h_recv_requests[rankx])));
             }
 
             // non-blocking send of particle counts
             for (int rankx = 0; rankx < this->numRemoteSendRanks; rankx++) {
-                CHECK(MPI_Isend(&this->h_send_rank_npart[rankx], 1, MPI_INT, this->h_send_ranks[rankx], 
+                CHECK(MPI_Isend(&this->h_send_rank_npart[rankx], 1, MPI_INT64_T, this->h_send_ranks[rankx], 
                     42, this->comm, &this->h_send_requests[rankx]));
             }
 
@@ -361,12 +361,12 @@ namespace opp {
                 this->totalParticlesToRecv += this->h_recv_rank_npart[rankx];
 
                 std::vector<char>& partRecvBufferPerRank = particleRecvBuffers[remote_rank];
-                size_t BytesToRecv = (size_t)this->h_recv_rank_npart[rankx] * set->particle_size;
+                int64_t BytesToRecv = this->h_recv_rank_npart[rankx] * (int64_t)set->particle_size;
                 partRecvBufferPerRank.resize(BytesToRecv);
             }
 
             if (OP_DEBUG)
-                opp_printf("GlobalMove", "communicate %d", this->totalParticlesToRecv);
+                opp_printf("GlobalMove", "communicate %lld", this->totalParticlesToRecv);
 
             opp_profiler->start("GblMv_WaitEx3");
             CHECK(MPI_Waitall(this->numRemoteSendRanks, &(this->h_send_requests[0]), MPI_STATUSES_IGNORE));
@@ -383,7 +383,7 @@ namespace opp {
                 
                 const int recvRank = this->h_recv_ranks[rankx];
                 std::vector<char>& partRecvBufferPerRank = this->particleRecvBuffers[recvRank];
-                int recvSize = (this->h_recv_rank_npart[rankx] * set->particle_size);
+                int64_t recvSize = (this->h_recv_rank_npart[rankx] * set->particle_size);
 
                 // opp_printf("Communicate", "Expected to recv %d bytes from rank %d, buffer size %zu", 
                 //     sendSize, recvRank, partRecvBufferPerRank.size());
@@ -397,7 +397,7 @@ namespace opp {
                 
                 const int sendRank = this->h_send_ranks[rankx];
                 char* sendBuffer = packer->getBuffer(set, sendRank);
-                int sendSize = (this->h_send_rank_npart[rankx] * set->particle_size);
+                int64_t sendSize = (this->h_send_rank_npart[rankx] * set->particle_size);
 
                 // opp_printf("Communicate", "Trying to send %d bytes to rank %d buffer %p", 
                 //     sendSize, sendRank, sendBuffer);
@@ -415,7 +415,7 @@ namespace opp {
         }
 
         //*******************************************************************************
-        inline int finalize(opp_set set) {
+        inline int64_t finalize(opp_set set) {
             
             opp_profiler->start("GblMv_Finalize");
 
@@ -474,14 +474,14 @@ namespace opp {
         std::vector<MPI_Status> h_recv_status;
 
         std::vector<int> h_send_ranks;
-        std::vector<int> h_send_rank_npart;
+        std::vector<int64_t> h_send_rank_npart;
         std::vector<int> h_recv_ranks;
-        std::vector<int> h_recv_rank_npart;
+        std::vector<int64_t> h_recv_rank_npart;
 
-        std::map<int, std::vector<char>> particleRecvBuffers; //std::map<int, std::pair<size_t, std::vector<char>>>
+        std::map<int, std::vector<char>> particleRecvBuffers;
 
-        int totalParticlesToSend = 0;
-        int totalParticlesToRecv = 0;
+        int64_t totalParticlesToSend = 0;
+        int64_t totalParticlesToRecv = 0;
         int numRemoteRecvRanks = 0;
         int numRemoteSendRanks = 0;
 

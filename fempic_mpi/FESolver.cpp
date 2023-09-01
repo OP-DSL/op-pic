@@ -737,8 +737,9 @@ void FESolver::summarize(std::ostream &out)
 {
     // opp_printf("FESolver", "FE SOLVER INFORMATION");
     // opp_printf("FESolver", "---------------------");
-    opp_printf("FESolver", "own neq is %d, the global neq is %d, start_eq is %d, end_eq %d -------", 
-        neq, global_neq, own_start, own_end);
+    if (OPP_LOG)
+        opp_printf("FESolver", "own neq is %d, the global neq is %d, start_eq is %d, end_eq %d -------", 
+            neq, global_neq, own_start, own_end);
     // opp_printf("FESolver", "---------------------");
 }
 

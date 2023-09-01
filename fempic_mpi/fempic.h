@@ -31,6 +31,8 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #pragma once
 
+const bool OPP_LOG = false;
+
 //*********************************************
 // USER WRITTEN CODE
 //*********************************************
@@ -560,116 +562,120 @@ inline std::shared_ptr<FieldPointers> LoadMesh()
 
 #elif defined(USE_CELL_PARTITIONING)
 
-    std::map<int, std::vector<int>> node_face_con;
 
-    for (int l=0; l < mesh->n_ifaces; l++) {
-        Face &face = volume->inlet_faces[l];
-        for (int v = 0; v < 3; v++)
-            node_face_con[face.con[v]].emplace_back(l);
-    }
+    std::vector<std::pair<int, int>> face_pairs;    // face pair (to create a square using 2 triangle faces) vector
+    std::vector<Point3D> face_centroids;            // centroids of the face pairs (should be the centroid of the square)
+    std::vector<int> cluster_assignments;
+    bool blockPartitioning = false;
 
-    std::vector<std::pair<int, int>> face_pairs;
-    std::vector<Point3D> face_centroids;
+    if (opp_params->get<OPP_STRING>("cluster") == "block") {
+        opp_printf("INIT", "Using block cluster");
+        blockPartitioning = true;
 
-    std::vector<bool> already_done(mesh->n_ifaces); // initializes with false by default
+        std::map<int, std::vector<int>> node_face_con;
 
-    for (int faceID = 0; faceID < mesh->n_ifaces; faceID++) {
+        // create a node to face connectivity mapping only for inlet face nodes
+        for (int l=0; l < mesh->n_ifaces; l++) {
+            Face &face = volume->inlet_faces[l];
+            for (int v = 0; v < 3; v++)
+                node_face_con[face.con[v]].emplace_back(l);
+        }
 
-        Face &face = volume->inlet_faces[faceID];
+        std::vector<bool> already_done(mesh->n_ifaces); // initializes with false by default
 
-        int v1,v2;
-        for (int v = 0; v < 3; v++) {
-            
-            if (already_done[faceID]) continue;
+        for (int faceID = 0; faceID < mesh->n_ifaces; faceID++) {
 
-            switch(v) {
-                case 0: v1=1; v2=2; break;
-                case 1: v1=2; v2=0; break;
-                case 2: v1=0; v2=1; break;
-            }
+            Face &face = volume->inlet_faces[faceID]; // the face of interest
 
-            for (int n = 0; n < 3; n++) {
+            int v1,v2;
+            for (int v = 0; v < 3; v++) { // iterate over the three vertices (nodes)
+                
+                if (already_done[faceID]) continue;
 
-                for (int m : node_face_con[face.con[n]]) { // m are face indices
+                switch(v) {
+                    case 0: v1=1; v2=2; break;
+                    case 1: v1=2; v2=0; break;
+                    case 2: v1=0; v2=1; break;
+                }
 
-                    if (faceID == m || already_done[m]) continue;
+                for (int n = 0; n < 3; n++) { // why? cant we use v instead of n ?
 
-                    Face &other = volume->inlet_faces[m];
+                    for (int m : node_face_con[face.con[n]]) {  // m are other face indices mapped with the node of the face of interest
 
-                    bool matches[3] = { false, false, false };
-                    int count = 0;
-                    for (int k = 0; k < 3; k++) {
-                        if (other.con[k] == face.con[v1] ||
-                            other.con[k] == face.con[v2]) {
-                                count++;
-                                matches[k]=true;
-                            }
-                    }
+                        if (faceID == m || already_done[m]) continue;
 
-                    if (count == 2) {
+                        Face &other = volume->inlet_faces[m];
 
-                        int nmatch_node = -1, nmatch_other_node = -1;
+                        bool matches[3] = { false, false, false };
+                        int count = 0;
+                        for (int k = 0; k < 3; k++) {
+                            if (other.con[k] == face.con[v1] ||
+                                other.con[k] == face.con[v2]) {
+                                    count++;
+                                    matches[k]=true;
+                                }
+                        }
 
-                        nmatch_node = face.con[v];
-                        for (int k = 0; k < 3; k++)
-                            if(!matches[k]) 
-                                nmatch_other_node = other.con[k];
-                        
-                        if ((volume->nodes[nmatch_node].pos[0] != volume->nodes[nmatch_other_node].pos[0]) &&
-                            (volume->nodes[nmatch_node].pos[1] != volume->nodes[nmatch_other_node].pos[1])) {
+                        if (count == 2) {
+
+                            int nmatch_node = -1, nmatch_other_node = -1; // non-matching nodes of both the face triangles
+
+                            nmatch_node = face.con[v];
+                            for (int k = 0; k < 3; k++)
+                                if(!matches[k]) 
+                                    nmatch_other_node = other.con[k];
                             
-                            face_pairs.push_back({faceID, m});
-                            already_done[faceID] = true;
-                            already_done[m] = true;
+                            // check whether the non-matching nodes are located diagonally (not aligning with x nor y)
+                            if ((volume->nodes[nmatch_node].pos[0] != volume->nodes[nmatch_other_node].pos[0]) &&
+                                (volume->nodes[nmatch_node].pos[1] != volume->nodes[nmatch_other_node].pos[1])) {
+                                
+                                face_pairs.push_back({faceID, m});
+                                already_done[faceID] = true;
+                                already_done[m] = true;
 
-                            Point3D centroid;
-                            centroid.x = (volume->nodes[nmatch_node].pos[0] + volume->nodes[nmatch_other_node].pos[0]) / 2;
-                            centroid.y = (volume->nodes[nmatch_node].pos[1] + volume->nodes[nmatch_other_node].pos[1]) / 2,
-                            centroid.z = 0.0f;
+                                Point3D centroid;
+                                centroid.x = (volume->nodes[nmatch_node].pos[0] + volume->nodes[nmatch_other_node].pos[0]) / 2;
+                                centroid.y = (volume->nodes[nmatch_node].pos[1] + volume->nodes[nmatch_other_node].pos[1]) / 2,
+                                centroid.z = 0.0f;
 
-                            face_centroids.push_back(centroid);
+                                face_centroids.push_back(centroid);
+                            }
                         }
                     }
                 }
             }
         }
-    }
 
-    node_face_con.clear();
-    already_done.clear();
+        node_face_con.clear();
+        already_done.clear();
 
-    std::string logg = "";
-    for (auto& x : face_pairs) {
-        logg += std::to_string(x.first) + "-" + std::to_string(x.second) + " ";
-    }
-    opp_printf("Face Pairs", "%zu | %s", face_pairs.size(), logg.c_str());
-
-    // for (int faceID=0; faceID<mesh->n_ifaces; faceID++)
-    // {
-    //     Face &face = volume->inlet_faces[faceID];
+        std::string logg = "";
+        for (auto& x : face_pairs) {
+            logg += std::to_string(x.first) + "-" + std::to_string(x.second) + " ";
+        }
+        opp_printf("Face Pairs", "%zu | %s", face_pairs.size(), logg.c_str());
         
-    //     const Point3D *node0_pos = reinterpret_cast<Point3D*>(volume->nodes[face.con[0]].pos);
-    //     const Point3D *node1_pos = reinterpret_cast<Point3D*>(volume->nodes[face.con[1]].pos);
-    //     const Point3D *node2_pos = reinterpret_cast<Point3D*>(volume->nodes[face.con[2]].pos);
-
-    //     face_centroids.push_back(getTriangleCentroid3D(*node0_pos, *node1_pos, *node2_pos));
-    // }
-    
-    std::vector<int> cluster_assignments;
-    
-    if (opp_params->get<OPP_STRING>("cluster") == "block") {
-        opp_printf("INIT", "Using block cluster");
         cluster_assignments = BlockCluster(face_centroids, OPP_comm_size);
     }
     else if (opp_params->get<OPP_STRING>("cluster") == "k-means") {
         opp_printf("INIT", "Using k-means cluster");
+
+        for (int faceID=0; faceID<mesh->n_ifaces; faceID++)
+        {
+            Face &face = volume->inlet_faces[faceID];
+            
+            const Point3D *node0_pos = reinterpret_cast<Point3D*>(volume->nodes[face.con[0]].pos);
+            const Point3D *node1_pos = reinterpret_cast<Point3D*>(volume->nodes[face.con[1]].pos);
+            const Point3D *node2_pos = reinterpret_cast<Point3D*>(volume->nodes[face.con[2]].pos);
+
+            face_centroids.push_back(getTriangleCentroid3D(*node0_pos, *node1_pos, *node2_pos));
+        }
+
         cluster_assignments = kMeansClustering3D(face_centroids, OPP_comm_size);
     }
     else {
         opp_abort("Error Cluster Type not defined");
     }
-
-    std::vector<Point3D> cluster_centroids = calculateTriangleCentroids3D(face_centroids, cluster_assignments);
 
     bool color_found = false;
     std::vector<double> rank_volume(OPP_comm_size, 0.0);
@@ -698,10 +704,14 @@ inline std::shared_ptr<FieldPointers> LoadMesh()
 
             if (isInTriangle) {
                 int id = 0;
-                // this need to change if box mesh is not used, then id = faceID
-                for ( ; id < face_pairs.size(); id++) {
-                    if (face_pairs[id].first == faceID || face_pairs[id].second == faceID)
-                        break;
+                if (blockPartitioning) {
+                    for ( ; id < (int)face_pairs.size(); id++) {
+                        if (face_pairs[id].first == faceID || face_pairs[id].second == faceID)
+                            break;
+                    }
+                }
+                else {
+                    id = faceID;
                 }
 
                 mesh->c_col[cellID] = cluster_assignments[id];    
@@ -718,8 +728,9 @@ inline std::shared_ptr<FieldPointers> LoadMesh()
     }
 
     // Print cluster assignments
-    if (OP_DEBUG)
+    if (false) // (OP_DEBUG)
     {
+        std::cout << "face_centroids : ";
         for (int i = 0; i < (int)face_centroids.size(); ++i) {
             std::cout << "[" << face_centroids[i].x << "," << face_centroids[i].y << "," << 
                 face_centroids[i].z << "], ";
@@ -727,12 +738,16 @@ inline std::shared_ptr<FieldPointers> LoadMesh()
     
         std::cout << std::endl << std::endl;
 
+        std::cout << "cluster_assignments : ";
         for (int i = 0; i < (int)cluster_assignments.size(); ++i) {
             std::cout << cluster_assignments[i] << ",";
         }
 
         std::cout << std::endl << std::endl;
+        
+        std::vector<Point3D> cluster_centroids = calculateTriangleCentroids3D(face_centroids, cluster_assignments);
 
+        std::cout << "cluster_centroids : ";
         for (int i = 0; i < (int)cluster_centroids.size(); ++i) {
             std::cout << "[" << cluster_centroids[i].x << ","<< cluster_centroids[i].y << "," << 
                 cluster_centroids[i].z << "], ";

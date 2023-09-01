@@ -108,19 +108,19 @@ typedef op_mpi_buffer_core *op_mpi_buffer;
 struct opp_mpi_part_buffer 
 { 
     char *buf_import = nullptr;
-    int buf_import_capacity = 0;
-    int buf_import_index = 0;       // not used
+    int64_t buf_import_capacity = 0;
+    int64_t buf_import_index = 0;       // not used
     char *buf_export = nullptr;
-    int buf_export_capacity = 0;    // init to -1
-    int buf_export_index = 0;       // init to zero
+    int64_t buf_export_capacity = 0;    // init to -1
+    int64_t buf_export_index = 0;       // init to zero
 };
 
 struct opp_all_mpi_part_buffers 
 { 
-    int total_recv = 0;
+    int64_t total_recv = 0;
     std::map<int,opp_mpi_part_buffer> buffers; // rank -> opp_mpi_part_buffer
-    std::map<int,int> import_counts; // rank -> count
-    std::map<int,int> export_counts; // rank -> count
+    std::map<int,int64_t> import_counts; // rank -> count
+    std::map<int,int64_t> export_counts; // rank -> count
     std::vector<MPI_Request> send_req;
     std::vector<MPI_Request> recv_req;
     // MPI_Request *r_req;
