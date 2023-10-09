@@ -301,6 +301,12 @@ namespace opp {
             int rankx = 0;
             for (auto& x : rankVsPartData) {
 
+                if (x.first >= OPP_comm_size || x.first < 0) {
+                    opp_printf("GlobalParticleMover", "ERROR locking rank %d [size %zu] from rank %d", x.first, OPP_rank, x.second.size());
+                    this->numRemoteSendRanks -= 1;
+                    continue;
+                }
+
                 this->h_send_ranks[rankx] = x.first;
                 this->h_send_rank_npart[rankx] = (int64_t)x.second.size();
                 this->totalParticlesToSend += (int64_t)x.second.size();
