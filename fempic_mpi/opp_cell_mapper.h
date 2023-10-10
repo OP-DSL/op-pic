@@ -29,24 +29,21 @@ namespace opp {
             const opp_point& minGblCoordinate = boundingBox->getGlobalMin();
             const opp_point& maxGblCoordinate = boundingBox->getGlobalMax();
 
-            // this->globalGridDims.x = std::ceil((maxGblCoordinate.x - minGblCoordinate.x) * oneOverGridSpacing);
-            // this->globalGridDims.y = std::ceil((maxGblCoordinate.y - minGblCoordinate.y) * oneOverGridSpacing);
-            // this->globalGridDims.z = std::ceil((maxGblCoordinate.z - minGblCoordinate.z) * oneOverGridSpacing);   
-
             int ax = 0, ay = 0, az = 0;
-            double x, y, z;
-            for (z = minGblCoordinate.z; z < maxGblCoordinate.z; z += this->gridSpacing) { 
-                az++; 
+
+            { // removed this and added below due to decimal point issues
+                // this->globalGridDims.x = std::ceil((maxGblCoordinate.x - minGblCoordinate.x) * oneOverGridSpacing);
+                // this->globalGridDims.y = std::ceil((maxGblCoordinate.y - minGblCoordinate.y) * oneOverGridSpacing);
+                // this->globalGridDims.z = std::ceil((maxGblCoordinate.z - minGblCoordinate.z) * oneOverGridSpacing);   
             }
-            for (y = minGblCoordinate.y; y < maxGblCoordinate.y; y += this->gridSpacing) { 
-                ay++; 
+            {
+                for (double z = minGblCoordinate.z; z < maxGblCoordinate.z; z += this->gridSpacing) az++;
+                for (double y = minGblCoordinate.y; y < maxGblCoordinate.y; y += this->gridSpacing) ay++;
+                for (double x = minGblCoordinate.x; x < maxGblCoordinate.x; x += this->gridSpacing) ax++; 
+                this->globalGridDims.x = ax + 1;
+                this->globalGridDims.y = ay + 1;
+                this->globalGridDims.z = az + 1; 
             }
-            for (x = minGblCoordinate.x; x < maxGblCoordinate.x; x += this->gridSpacing) { 
-                ax++; 
-            }
-            this->globalGridDims.x = ax + 1;
-            this->globalGridDims.y = ay + 1;
-            this->globalGridDims.z = az + 1; 
 
             if (OPP_rank == OPP_ROOT)
                 opp_printf("CellMapper", "Global Grid Size - [%d %d %d] gridSpacing [%2.10lE]", 
@@ -57,30 +54,18 @@ namespace opp {
 
             // Find the local ranks grid start indices
             ax = 0; ay = 0; az = 0;
-            for (double z = minGblCoordinate.z; (z < minLocalCoordinate.z); z += this->gridSpacing) { 
-                az++; 
-            }
-            for (double y = minGblCoordinate.y; (y < minLocalCoordinate.y); y += this->gridSpacing) { 
-                ay++; 
-            }
-            for (double x = minGblCoordinate.x; (x < minLocalCoordinate.x); x += this->gridSpacing) { 
-                ax++; 
-            }
+            for (double z = minGblCoordinate.z; (z < minLocalCoordinate.z); z += this->gridSpacing) az++;
+            for (double y = minGblCoordinate.y; (y < minLocalCoordinate.y); y += this->gridSpacing) ay++; 
+            for (double x = minGblCoordinate.x; (x < minLocalCoordinate.x); x += this->gridSpacing) ax++; 
             this->localGridStart.x = ax == 0 ? ax : (ax - 1);
             this->localGridStart.y = ay == 0 ? ay : (ay - 1);
             this->localGridStart.z = az == 0 ? az : (az - 1);         
 
             // Find the local ranks grid end indices
             ax = 0; ay = 0; az = 0;
-            for (double z = minGblCoordinate.z; (z <= maxLocalCoordinate.z); z += this->gridSpacing) { 
-                az++; 
-            }
-            for (double y = minGblCoordinate.y; (y <= maxLocalCoordinate.y); y += this->gridSpacing) { 
-                ay++; 
-            }
-            for (double x = minGblCoordinate.x; (x <= maxLocalCoordinate.x); x += this->gridSpacing) { 
-                ax++; 
-            }
+            for (double z = minGblCoordinate.z; (z <= maxLocalCoordinate.z); z += this->gridSpacing) az++; 
+            for (double y = minGblCoordinate.y; (y <= maxLocalCoordinate.y); y += this->gridSpacing) ay++; 
+            for (double x = minGblCoordinate.x; (x <= maxLocalCoordinate.x); x += this->gridSpacing) ax++; 
             this->localGridEnd.x = this->globalGridDims.x == ax ? ax : (ax + 1);
             this->localGridEnd.y = this->globalGridDims.y == ay ? ay : (ay + 1);
             this->localGridEnd.z = this->globalGridDims.z == az ? az : (az + 1);     
@@ -147,12 +132,12 @@ namespace opp {
 
         //*******************************************************************************
         // Returns the global cell index
-        inline int findClosestGlobalCellIndex(const size_t& structCellIdx) { 
+        inline int findClosestLocalCellIndex(const size_t& structCellIdx) { 
             
             // if (OP_DEBUG) 
             {
                 if (structCellIdx >= globalGridSize) {
-                    opp_printf("findClosestGlobalCellIndex", "Warning returning MAX - structCellIdx=%zu globalGridSize=%zu",
+                    opp_printf("findClosestLocalCellIndex", "Warning returning MAX - structCellIdx=%zu globalGridSize=%zu",
                         structCellIdx, globalGridSize);
                     return MAX_CELL_INDEX;
                 }
@@ -162,21 +147,10 @@ namespace opp {
         }
 
         //*******************************************************************************
-        // Returns the global cell index
-        inline int findClosestLocalCellIndex(const size_t& structCellIdx) { 
-            
-            const int globalCellIndex = findClosestGlobalCellIndex(structCellIdx);
-
-            //if (OPP_comm_size == 1)
-                return globalCellIndex;
-                
-            //return getLocalCellIndexFromGlobal(globalCellIndex);
-        }
-
-        //*******************************************************************************
         // Returns the rank of the cell
         inline int findClosestCellRank(const size_t& structCellIdx) { 
 
+#ifdef ENABLE_MPI 
             // if (OP_DEBUG) 
             {
                 if (structCellIdx >= globalGridSize) {
@@ -187,6 +161,9 @@ namespace opp {
             }
 
             return this->structMeshToRankMapping[structCellIdx];
+#else
+            return OPP_rank;
+#endif
         }
 
 // Be careful when implementing MPI
@@ -934,19 +911,13 @@ namespace opp {
 #endif
         }
 
-        // //*******************************************************************************
-        // // This might have double precision issues
-        // inline size_t getCellIndexMappingIndex(const opp_point& position) {
-
-        //     int xIndex = static_cast<int>((position.x - this->minGlbCoordinate.x) * this->oneOverGridSpacing);
-        //     int yIndex = static_cast<int>((position.y - this->minGlbCoordinate.y) * this->oneOverGridSpacing);
-        //     int zIndex = static_cast<int>((position.z - this->minGlbCoordinate.z) * this->oneOverGridSpacing);
-
-        //     return ((size_t)xIndex + (size_t)yIndex * globalGridDims.x + (size_t)zIndex * globalGridDims.x * globalGridDims.y);
-        // }
-
         //*******************************************************************************
         inline size_t getCellIndexMappingIndex(const opp_point& position) {
+
+            // int xIndex = static_cast<int>((position.x - this->minGlbCoordinate.x) * this->oneOverGridSpacing);
+            // int yIndex = static_cast<int>((position.y - this->minGlbCoordinate.y) * this->oneOverGridSpacing);
+            // int zIndex = static_cast<int>((position.z - this->minGlbCoordinate.z) * this->oneOverGridSpacing);
+
             // Perform the calculations in higher precision (double)
             double xDiff = position.x - this->minGlbCoordinate.x;
             double yDiff = position.y - this->minGlbCoordinate.y;
@@ -1013,6 +984,15 @@ namespace opp {
             return MAX_INT;
         }
 
+        //*******************************************************************************
+        inline void destroyGlobalToLocalCellIndexMapping() {
+            
+            globalToLocalCellIndexMapping.clear();
+
+            if (OPP_rank == 0)
+                opp_printf("CellMapper", "destroyGlobalToLocalCellIndexMapping");
+        }
+
     private:
         const std::shared_ptr<BoundingBox> boundingBox = nullptr;
         const double gridSpacing = 0.0;
@@ -1028,7 +1008,7 @@ namespace opp {
 
         size_t globalGridSize = 0;
         
-        int* structMeshToCellMapping = nullptr;         // This should contain mapping to global cell indices
+        int* structMeshToCellMapping = nullptr;         // This contain mapping to local cell indices
         int* structMeshToRankMapping = nullptr;
         
         MPI_Win win_structMeshToCellMapping;

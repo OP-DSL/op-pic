@@ -30,19 +30,19 @@ if [ "$(hostname)" == 'telos' ]; then
   export NV_ARCH=Volta
   export CUDA_VISIBLE_DEVICES=0
   echo $NV_ARCH $(hostname)
-  # export LD_LIBRARY_PATH=/ext-home/zl/lib_install/petsc-3.18.3-oneapi-2021.3-cuda-rel/lib:$LD_LIBRARY_PATH
-  # export PETSC_INSTALL_PATH=/ext-home/zl/lib_install/petsc-3.18.3-oneapi-2021.3-cuda-rel
-  # export LD_LIBRARY_PATH=/ext-home/zl/lib_install/petsc-3.18.2-oneapi-2021.3-release/lib:$LD_LIBRARY_PATH
-  # export PETSC_INSTALL_PATH=/ext-home/zl/lib_install/petsc-3.18.2-oneapi-2021.3-release
-  export LD_LIBRARY_PATH=/ext-home/zl/lib_install/petsc-3.18.3-oneapi-2021.3-mpi_telos/lib:$LD_LIBRARY_PATH
   export PETSC_INSTALL_PATH=/ext-home/zl/lib_install/petsc-3.18.3-oneapi-2021.3-mpi_telos
+  # export PETSC_INSTALL_PATH=/ext-home/zl/lib_install/petsc-3.18.3-oneapi-2021.3-cuda-rel
+  # export PETSC_INSTALL_PATH=/ext-home/zl/lib_install/petsc-3.18.2-oneapi-2021.3-release
+  export LD_LIBRARY_PATH=$PETSC_INSTALL_PATH/lib:$LD_LIBRARY_PATH
+
   export NVCCFLAGS_ADD='-gencode arch=compute_70,code=sm_70'
 elif [ "$(hostname)" == 'kos' ]; then
   export NV_ARCH=Pascal
   export CUDA_VISIBLE_DEVICES=0,1
   echo $NV_ARCH $(hostname)
-  export LD_LIBRARY_PATH=/ext-home/zl/lib_install/petsc-3.18.3-oneapi-2021.3-cuda-kos/lib:$LD_LIBRARY_PATH
-  export PETSC_INSTALL_PATH=/ext-home/zl/lib_install/petsc-3.18.3-oneapi-2021.3-cuda-kos
+  export PETSC_INSTALL_PATH=/ext-home/zl/lib_install/petsc-3.18.3-oneapi-2021.3-mpi_kos
+  # export PETSC_INSTALL_PATH=/ext-home/zl/lib_install/petsc-3.18.3-oneapi-2021.3-cuda-kos
+  export LD_LIBRARY_PATH=$PETSC_INSTALL_PATH/lib:$LD_LIBRARY_PATH
   export NVCCFLAGS_ADD='-gencode arch=compute_60,code=sm_60'
 elif [ "$(hostname)" == 'amos' ]; then
   echo AMD $(hostname)
