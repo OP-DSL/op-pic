@@ -46,6 +46,11 @@ void opp_loop_all__ComputeElectricField(opp_set,opp_arg,opp_arg,opp_arg,opp_arg,
 void opp_loop_all__CalculateNewPartPosVel(opp_set,opp_arg,opp_arg,opp_arg);
 void opp_loop_all__DepositChargeOnNodes(opp_set,opp_arg,opp_arg,opp_arg,opp_arg,opp_arg);
 
+void move(opp_set set, const opp_dat pos_dat, opp_dat cellIndex_dat, opp_dat lc_datparticle_set, 
+    opp_dat cell_volume, opp_dat cell_det, opp_map cell_v_cell_map);
+void initializeParticleMover(const double gridSpacing, int dim, const opp_dat node_pos_dat, 
+    const opp_dat cellVolume_dat, const opp_dat cellDet_dat, const opp_dat global_cell_id_dat);
+
 //*********************************************MAIN****************************************************
 int main(int argc, char **argv) 
 {
@@ -65,7 +70,7 @@ opp_profiler->reg("ComputeDet");
         opp_profiler->start("Setup");
 
         //std::unique_ptr<CellApproximator> opp_mover_approx;
-        std::unique_ptr<ParticleMover> opp_mover;
+        // std::unique_ptr<ParticleMover> opp_mover;
 
         double plasma_den   = opp_params->get<OPP_REAL>("plasma_den");
         double dt           = opp_params->get<OPP_REAL>("dt");
@@ -150,14 +155,7 @@ opp_profiler->reg("ComputeDet");
         
         int n_parts_to_inject = InitializeInjectDistributions(iface_dist, iface_area, dummy_part_rand);
 
-        //opp_mover_approx = std::make_unique<CellApproximator>(node_pos, grid_spacing);
-        // opp_mover_approx->generateStructMeshToCellIndexVec(cell_volume, cell_det, cell_v_cell_map);
-
-// if (opp_params->get<OPP_BOOL>("opp_global_move")) 
-{
-        opp_mover = std::make_unique<ParticleMover>(grid_spacing, DIM, node_pos, cell_volume, 
-                                                    cell_det, global_cell_id, cell_v_cell_map);
-}
+        initializeParticleMover(grid_spacing, DIM, node_pos, cell_volume, cell_det, global_cell_id);
 
         std::unique_ptr<FESolver> field_solver = std::make_unique<FESolver>(cell_v_nodes_map, 
             node_type, node_pos, node_bnd_pot, argc, argv);
@@ -248,12 +246,14 @@ opp_profiler->reg("ComputeDet");
                     opp_get_arg(part_velocity, OP_WRITE)
                 );
 
-                opp_mover->move(
+                move(
                     particle_set, 
                     part_position,
                     part_mesh_rel,
                     part_lc,
-                    part_id);
+                    cell_volume,
+                    cell_det,
+                    cell_v_cell_map);
 
                 opp_loop_all__DepositChargeOnNodes(
                     particle_set, 

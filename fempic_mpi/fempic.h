@@ -41,19 +41,16 @@ const bool OPP_LOG = false;
 //     #define ENABLE_MPI
 // #endif
 
-#include "opp_particle_mover.h"
-// extern std::unique_ptr<opp::ParticleMover> opp_mover; 
-
 #include <oppic_lib.h>
 #ifdef ENABLE_MPI
     #include <opp_mpi.h>
+    #include "cluster.h"
 #endif
 
 #include "fempic_ori/meshes.h"
 #include "fempic_ori/particles.h"
 #include "fempic_ori/maths.h"
 #include "FESolver.h"
-#include "cluster.h"
 
 #define USE_RAND_FILE
 #define USE_CELL_PARTITIONING
@@ -457,6 +454,7 @@ inline std::shared_ptr<FieldPointers> LoadMesh()
         }
     }
 
+#ifdef ENABLE_MPI 
 #if defined(USE_NODE_PARTITIONING)
 
     // Cluster iface centroids and assign nodes to the rank on the major particle movement axis z
@@ -723,6 +721,7 @@ inline std::shared_ptr<FieldPointers> LoadMesh()
             opp_printf("Setup", "Error... Couldnt find colour for cell ,[%lf,%lf]", c_pos.x, c_pos.y);
         }   
     }
+#endif
 
     // Print cluster assignments
     if (false) // (OP_DEBUG)

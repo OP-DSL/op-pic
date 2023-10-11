@@ -35,6 +35,8 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "../fempic.h"
 
+using namespace opp;
+
 //****************************************
 double CONST_spwt = 0, CONST_ion_velocity = 0, CONST_dt = 0, CONST_plasma_den = 0, CONST_mass = 0, CONST_charge = 0;
 
@@ -486,3 +488,329 @@ void opp_loop_all__ComputeElectricField(
 }
 
 //*************************************************************************************************
+
+
+inline void generateStructMeshToGlobalCellMappings(opp_set cells_set, const opp_dat global_cell_id_dat, 
+        const opp_dat cellVolume_dat, const opp_dat cellDet_dat) { 
+
+    // if (OP_DEBUG) 
+    if (OPP_rank == 0)            
+        opp_printf("FUNC", "generateStructMeshToGlobalCellMappings cells [%s] start global grid dimensions %d %d %d",
+            cells_set->name, cellMapper->globalGridDims.x, cellMapper->globalGridDims.y, cellMapper->globalGridDims.z);
+
+    const int cellSetSizeIncHalo = cells_set->size + cells_set->exec_size + cells_set->nonexec_size;
+    if (cellSetSizeIncHalo <= 0) {
+        opp_printf("FUNC", "Error... cellSetSizeIncHalo <= 0 for set %s, Terminating...",
+            cells_set->name);
+        opp_abort("Error... FUNC cellSetSizeIncHalo <= 0");
+    }
+
+    double x = 0.0, y = 0.0, z = 0.0;
+    double lc[4];
+    std::map<size_t, opp_point> removedCoordinates;
+    const opp_point& minGlbCoordinate = boundingBox->getGlobalMin();
+    const opp_point& maxCoordinate = boundingBox->getLocalMax(); // required for GET_VERT
+
+    auto all_cell_checker = [&](const opp_point& point, int& cellIndex) { 
+        bool isInside;           
+        for (int ci = 0; ci < cells_set->size; ci++) {
+            isPointInCellKernel( 
+                            isInside,
+                            (const double*)&point, 
+                            lc,
+                            &((double*)cellVolume_dat->data)[ci * cellVolume_dat->dim], 
+                            &((double*)cellDet_dat->data)[ci * cellDet_dat->dim]);
+            if (isInside) {       
+                cellIndex = ci;
+                break;
+            }
+        }
+    };
+
+    // auto neighbour_cell_checker = [&](const opp_point& point, int& cellIndex) {
+    //     opp_move_status m;
+    //     cellIndex = cells_set->size / 2;
+    //     do {
+    //         m = getCellIndexKernel(
+    //             (const double*)&point, 
+    //             &cellIndex,
+    //             lc,
+    //             &((double*)cellVolume_dat->data)[cellIndex], 
+    //             &((double*)cellDet_dat->data)[cellIndex * cellDet_dat->dim], 
+    //             &((int*)cellConnectivity_map->map)[cellIndex * cellConnectivity_map->dim]);
+    //     } while (m == OPP_NEED_MOVE && cellIndex < cellSetSizeIncHalo); 
+    // };
+
+    cellMapper->createStructMeshMappingArrays();
+
+    // Step 1 : Get the centroids of the structured mesh cells and try to relate them to unstructured mesh cell indices
+    for (int dz = cellMapper->localGridStart.z; dz < cellMapper->localGridEnd.z; dz++) {
+        
+        z = minGlbCoordinate.z + dz * cellMapper->gridSpacing;
+        
+        for (int dy = cellMapper->localGridStart.y; dy < cellMapper->localGridEnd.y; dy++) {
+            
+            y = minGlbCoordinate.y + dy * cellMapper->gridSpacing;
+            
+            for (int dx = cellMapper->localGridStart.x; dx < cellMapper->localGridEnd.x; dx++) {
+                
+                x = minGlbCoordinate.x + dx * cellMapper->gridSpacing;
+                
+                size_t index = (size_t)(dx + dy * cellMapper->globalGridDims.x + 
+                    dz * cellMapper->globalGridDims.x * cellMapper->globalGridDims.y);
+                
+                const opp_point centroid = cellMapper->getCentroidOfBox(opp_point(x, y ,z));
+
+                int cellIndex = MAX_CELL_INDEX;
+
+                all_cell_checker(centroid, cellIndex); // Find in which cell this centroid lies
+
+                if (cellIndex == MAX_CELL_INDEX) {
+                    removedCoordinates.insert(std::make_pair(index, opp_point(x, y ,z)));
+                    continue;
+                }
+
+                if (cellIndex < cells_set->size) { // write only if the structured cell belong to the current MPI rank
+                    
+                    cellMapper->enrichStructuredMesh(index, ((int*)global_cell_id_dat->data)[cellIndex], OPP_rank);
+                } 
+            }
+        }
+    }
+
+#ifdef ENABLE_MPI
+    // Step 2 : For MPI, get the inter-node values reduced to the structured mesh
+
+    cellMapper->reduceInterNodeMappings(1);
+
+    // The marked structured cells from this rank might be filled by another rank, so if already filled, no need to recalculate from current rank
+    for (auto it = removedCoordinates.begin(); it != removedCoordinates.end(); ) {
+
+        size_t removedIndex = it->first;
+        
+        if (cellMapper->structMeshToRankMapping[removedIndex] != MAX_CELL_INDEX) {
+
+            it = removedCoordinates.erase(it); // This structured index is already written by another rank
+            // opp_printf("FUNC", "Already written %d to struct index %zu", this->structMeshToRankMapping[removedIndex], removedIndex);
+        } else {
+            ++it; 
+        }
+    }
+
+    cellMapper->waitBarrier();
+    
+    // Step 3 : Iterate over all the NEED_REMOVE points, try to check whether atleast one vertex of the structured mesh can be within 
+    //          an unstructured mesh cell. If multiple are found, get the minimum cell index to match with MPI
+    for (auto& p : removedCoordinates) {
+
+        size_t index = p.first;
+        double& x = p.second.x;
+        double& y = p.second.y;
+        double& z = p.second.z;
+            
+        // still no one has claimed that this cell belongs to it
+
+        const double gs = cellMapper->gridSpacing;
+        int mostSuitableCellIndex = MAX_CELL_INDEX, mostSuitableGblCellIndex = MAX_CELL_INDEX;
+
+        std::array<opp_point,8> vertices = {
+            opp_point(GET_VERT(x,x),    GET_VERT(y,y),    GET_VERT(z,z)),
+            opp_point(GET_VERT(x,x),    GET_VERT(y,y+gs), GET_VERT(z,z)),
+            opp_point(GET_VERT(x,x),    GET_VERT(y,y+gs), GET_VERT(z,z+gs)),
+            opp_point(GET_VERT(x,x),    GET_VERT(y,y),    GET_VERT(z,z+gs)),
+            opp_point(GET_VERT(x,x+gs), GET_VERT(y,y),    GET_VERT(z,z)),
+            opp_point(GET_VERT(x,x+gs), GET_VERT(y,y+gs), GET_VERT(z,z)),
+            opp_point(GET_VERT(x,x+gs), GET_VERT(y,y),    GET_VERT(z,z+gs)),
+            opp_point(GET_VERT(x,x+gs), GET_VERT(y,y+gs), GET_VERT(z,z+gs)),
+        };
+
+        for (const auto& point : vertices) {
+
+            int cellIndex = MAX_CELL_INDEX;
+
+            all_cell_checker(point, cellIndex);
+
+            if (cellIndex != MAX_CELL_INDEX && (cellIndex < cellSetSizeIncHalo)) { 
+
+                int gblCellIndex = ((int*)global_cell_id_dat->data)[cellIndex];
+
+                if (mostSuitableGblCellIndex > gblCellIndex) {
+                    mostSuitableGblCellIndex = gblCellIndex;
+                    mostSuitableCellIndex = cellIndex;
+                }
+            }
+        }    
+
+        cellMapper->lockWindows();
+
+        int alreadyAvailGblCellIndex = cellMapper->structMeshToCellMapping[index];
+
+        // Allow neighbours to write on-behalf of the current rank, to reduce issues
+        if (mostSuitableGblCellIndex != MAX_CELL_INDEX && mostSuitableGblCellIndex < alreadyAvailGblCellIndex && 
+            (mostSuitableCellIndex < cells_set->size)) {
+            
+            cellMapper->enrichStructuredMesh(index, mostSuitableGblCellIndex, OPP_rank);       
+        }
+
+        cellMapper->unlockWindows();
+    }
+
+    // Step 4 : For MPI, get the inter-node values reduced to the structured mesh
+    cellMapper->reduceInterNodeMappings(2);
+    
+    cellMapper->convertToLocalMappings(global_cell_id_dat);
+    
+#endif
+
+    // if (OP_DEBUG) 
+    if (OPP_rank == 0)
+        opp_printf("FUNC", "generateStructMeshToGlobalCellMappings end");
+}
+
+
+
+
+//*******************************************************************************
+void initializeParticleMover(const double gridSpacing, int dim, const opp_dat node_pos_dat, 
+    const opp_dat cellVolume_dat, const opp_dat cellDet_dat, const opp_dat global_cell_id_dat) {
+    
+    opp_profiler->start("SetupMover");
+
+    useGlobalMove = opp_params->get<OPP_BOOL>("opp_global_move");
+
+    if (useGlobalMove) {
+        
+#ifdef ENABLE_MPI
+        comm = std::make_shared<Comm>(MPI_COMM_WORLD);
+        globalMover = std::make_unique<GlobalParticleMover>(comm->comm_parent);
+#endif
+        boundingBox = std::make_shared<BoundingBox>(node_pos_dat, dim, comm);
+
+        cellMapper = std::make_shared<CellMapper>(boundingBox, gridSpacing, comm);
+
+        generateStructMeshToGlobalCellMappings(cellVolume_dat->set, global_cell_id_dat, 
+            cellVolume_dat, cellDet_dat);
+    }
+
+    opp_profiler->reg("GlbToLocal");
+    opp_profiler->reg("GblMv_Move");
+    opp_profiler->reg("GblMv_AllMv");
+    for (int i = 0; i < 10; i++) {
+        std::string profName = std::string("Mv_AllMv") + std::to_string(i);
+        opp_profiler->reg(profName);
+    }
+
+    opp_profiler->end("SetupMover");
+}
+
+
+//*******************************************************************************
+void move(opp_set set, const opp_dat pos_dat, opp_dat cellIndex_dat, opp_dat lc_dat, 
+    opp_dat cellVolume_dat, opp_dat cellDet_dat, opp_map cellConnectivity_map) { 
+    
+    opp_profiler->start("Move");
+
+    // this->partCellID = cellIndex_dat;
+
+    // lambda function for multi hop particle movement
+    auto multihop_mover = [&](const int i) {
+
+        int& cellIdx = ((int*)cellIndex_dat->data)[i];
+
+        if (cellIdx == MAX_CELL_INDEX) {
+            return;
+        }
+
+        opp_move_var m;
+
+        do {
+            m.move_status = getCellIndexKernel(
+                &((const double*)pos_dat->data)[i * 3], 
+                &((int*)cellIndex_dat->data)[i],
+                &((double*)lc_dat->data)[i * 4],
+                &((double*)cellVolume_dat->data)[cellIdx], 
+                &((double*)cellDet_dat->data)[cellIdx * 16],        // 16 -> cellDet_dat->dim
+                &((int*)cellConnectivity_map->map)[cellIdx * 4]);   // 4 -> cellConnectivity_map->dim
+
+        } while (opp_part_check_status(m, cellIdx, set, i, set->particle_remove_count));
+    };
+
+    // ----------------------------------------------------------------------------
+    opp_init_particle_move(set, 0, nullptr);
+    
+    if (useGlobalMove) {
+        
+        globalMover->initGlobalMove();
+
+        opp_profiler->start("GblMv_Move");
+
+        // check whether particles needs to be moved over global move routine
+        for (int i = OPP_iter_start; i < OPP_iter_end; i++) {   
+            
+            int* cellIdx = &((int*)cellIndex_dat->data)[i];
+            const opp_point* point = (const opp_point*)&(((double*)pos_dat->data)[i * 3]);
+
+            // check for global move, and if satisfy global move criteria, then remove the particle from current rank
+            if (opp_part_checkForGlobalMove(set, *point, i, *cellIdx)) {
+                
+                *cellIdx = MAX_CELL_INDEX;
+                set->particle_remove_count++;
+                
+                continue;  
+            }
+        }
+
+        opp_profiler->end("GblMv_Move");
+
+        globalMover->communicate(set);
+    }
+
+    opp_profiler->start("Mv_AllMv0");
+
+    // ----------------------------------------------------------------------------
+    // check whether all particles not marked for global comm is within cell, 
+    // and if not mark to move between cells within the MPI rank, mark for neighbour comm
+    for (int i = OPP_iter_start; i < OPP_iter_end; i++) { 
+        
+        multihop_mover(i);
+    }
+
+    opp_profiler->end("Mv_AllMv0");
+
+    // ----------------------------------------------------------------------------
+    // finalize the global move routine and iterate over newly added particles and check whether they need neighbour comm
+    if (useGlobalMove && globalMover->finalize(set) > 0) {
+        
+        opp_profiler->start("GblMv_AllMv");
+
+        // check whether the new particle is within cell, and if not move between cells within the MPI rank, 
+        // mark for neighbour comm. Do only for the globally moved particles 
+        for (int i = (set->size - set->diff); i < set->size; i++) { 
+                
+            multihop_mover(i);                 
+        }
+
+        opp_profiler->end("GblMv_AllMv");
+    }
+
+    // ----------------------------------------------------------------------------
+    // Do neighbour communication and if atleast one particle is received by the currect rank, 
+    // then iterate over the newly added particles
+    while (opp_finalize_particle_move(set)) {
+        
+        std::string profName = std::string("Mv_AllMv") + std::to_string(OPP_comm_iteration);
+        opp_profiler->start(profName);
+        
+        opp_init_particle_move(set, 0, nullptr);
+
+        // check whether particle is within cell, and if not move between cells within the MPI rank, mark for neighbour comm
+        for (int i = OPP_iter_start; i < OPP_iter_end; i++) { 
+            
+            multihop_mover(i);
+        }
+
+        opp_profiler->end(profName);
+    }
+
+    opp_profiler->end("Move");
+}

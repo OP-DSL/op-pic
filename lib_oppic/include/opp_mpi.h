@@ -36,7 +36,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <oppic_lib.h>
 #include <cmath>
 #include <sys/queue.h>
-
+#include "opp_defs.h"
 
 
 /** extern variables for halo creation and exchange**/
@@ -132,7 +132,6 @@ struct opp_particle_comm_data
 { 
     int cell_residing_rank = MAX_CELL_INDEX;
     int local_index = MAX_CELL_INDEX;
-
 };
 
 struct opp_particle_move_info
@@ -367,3 +366,180 @@ bool is_double_indirect_reduction(oppic_arg& arg);
 
 void print_dat_to_txtfile_mpi(op_dat dat, const char *file_name);
 void opp_mpi_print_dat_to_txtfile(op_dat dat, const char *file_name);
+
+namespace opp {
+
+    //*******************************************************************************
+    class Comm {
+
+    public:    
+        Comm(MPI_Comm comm_parent);;
+        ~Comm();
+
+    public:
+        /// Parent (i.e. global for the simulation) MPI communicator.
+        MPI_Comm comm_parent;
+        /// Communicator between one rank on each shared memory region.
+        MPI_Comm comm_inter;
+        /// Communicator between the ranks in a shared memory region.
+        MPI_Comm comm_intra;
+        /// MPI rank in the parent communicator.
+        int rank_parent = -1;
+        /// MPI rank in the inter shared memory region communicator.
+        int rank_inter = -1;
+        /// MPI rank within the shared memory region communicator.
+        int rank_intra = -1;
+        /// Size of the parent communicator.
+        int size_parent = -1;
+        /// Size of the inter shared memory communicator.
+        int size_inter = -1;
+        /// Size of the intra shared memory communicator.
+        int size_intra = -1;
+    };
+
+    //*******************************************************************************
+    class BoundingBox {
+
+    public:
+        BoundingBox(int dim, opp_point minCoordinate, opp_point maxCoordinate, const std::shared_ptr<Comm> comm = nullptr);
+        BoundingBox(const opp_dat node_pos_dat, int dim, const std::shared_ptr<Comm> comm = nullptr);
+        ~BoundingBox();
+
+        const opp_point& getLocalMin() const;
+        const opp_point& getLocalMax() const;
+        const opp_point& getGlobalMin() const;
+        const opp_point& getGlobalMax() const;
+        bool isCoordinateInBoundingBox(const opp_point& point);
+        bool isCoordinateInGlobalBoundingBox(const opp_point& point);
+
+    private:
+        void generateGlobalBoundingBox(int dim, int count, const std::shared_ptr<Comm> comm);
+
+        std::array<opp_point,2> boundingBox; // index 0 is min, index 1 is max
+        std::array<opp_point,2> globalBoundingBox; // index 0 is min, index 1 is max
+    };
+
+    //*******************************************************************************
+    class ParticlePacker {
+
+    public:
+        ParticlePacker(std::map<int, std::map<int, std::vector<opp_particle_move_info>>>* partMoveData);
+        ~ParticlePacker();
+        void pack(opp_set set);
+        char* getBuffer(opp_set set, int sendRank);
+        void unpack(opp_set set, const std::map<int, std::vector<char>>& particleRecvBuffers,
+                            int64_t totalParticlesToRecv, const std::vector<int64_t>& recvRankPartCounts);
+
+    private: 
+        std::map<int, std::map<int, std::vector<opp_particle_move_info>>>* partMoveData = nullptr;
+        std::map<int, std::map<int, std::vector<char>>> buffers;
+    };
+
+
+    //*******************************************************************************
+    class GlobalParticleMover {
+
+    public:
+        GlobalParticleMover(MPI_Comm comm);
+        ~GlobalParticleMover();
+        
+        void markParticleToMove(oppic_set set, int partIndex, int rankToBeMoved, int finalGlobalCellIndex);
+        void initGlobalMove();
+        void communicateParticleSendRecvRankCounts();
+        void communicate(opp_set set);
+        int64_t finalize(opp_set set);
+    
+    private:
+        // this translate to std::map<particle_set_index, std::map<send_rank, std::vector<opp_particle_move_info>>>
+        std::map<int, std::map<int, std::vector<opp_particle_move_info>>> globalPartMoveData;
+        MPI_Comm comm;
+
+        int *recv_win_data;
+        MPI_Win recv_win;
+        MPI_Request mpi_request;
+
+        std::vector<MPI_Request> h_send_requests;
+        std::vector<MPI_Request> h_recv_requests;
+        std::vector<MPI_Request> h_send_data_requests;
+        std::vector<MPI_Request> h_recv_data_requests;
+        std::vector<MPI_Status> h_recv_status;
+
+        std::vector<int> h_send_ranks;
+        std::vector<int64_t> h_send_rank_npart;
+        std::vector<int> h_recv_ranks;
+        std::vector<int64_t> h_recv_rank_npart;
+
+        std::map<int, std::vector<char>> particleRecvBuffers;
+
+        int64_t totalParticlesToSend = 0;
+        int64_t totalParticlesToRecv = 0;
+        int numRemoteRecvRanks = 0;
+        int numRemoteSendRanks = 0;
+
+        std::unique_ptr<ParticlePacker> packer;
+    };
+
+    //*******************************************************************************
+    class GlobalToLocalCellIndexMapper {
+    
+    public:
+        //*******************************************************************************
+        // This will contain mappings for halo indices too
+        GlobalToLocalCellIndexMapper(const opp_dat global_cell_id_dat);
+        virtual ~GlobalToLocalCellIndexMapper();
+
+        int map(const int globalIndex);
+        
+    private:
+        std::map<int,int> globalToLocalCellIndexMap;
+    };
+
+    //*******************************************************************************
+    class CellMapper {
+    
+    public:
+        CellMapper(const std::shared_ptr<BoundingBox> boundingBox, const double gridSpacing, 
+            const std::shared_ptr<Comm> comm = nullptr);
+        ~CellMapper();
+
+        opp_point getCentroidOfBox(const opp_point& coordinate);
+        size_t findStructuredCellIndex(const opp_point& position);
+        int findClosestCellIndex(const size_t& structCellIdx);
+        int findClosestCellRank(const size_t& structCellIdx);
+        void reduceInterNodeMappings(int callID);
+        void convertToLocalMappings(const opp_dat global_cell_id_dat);
+        void enrichStructuredMesh(const int index, const int cell_index, const int rank = 0);
+        void printStructuredMesh(const std::string msg, int *array, size_t size, bool printToFile = true);
+        void createStructMeshMappingArrays();
+        void waitBarrier();
+        void lockWindows();
+        void unlockWindows();
+
+    // private:
+        const std::shared_ptr<BoundingBox> boundingBox = nullptr;
+        const double gridSpacing = 0.0;
+        const double oneOverGridSpacing = 0.0;
+        const opp_point& minGlbCoordinate;  
+        const std::shared_ptr<Comm> comm = nullptr;
+
+        opp_ipoint globalGridDims;
+        opp_ipoint localGridStart, localGridEnd;
+
+        size_t globalGridSize = 0;
+        
+        int* structMeshToCellMapping = nullptr;         // This contain mapping to local cell indices
+        int* structMeshToRankMapping = nullptr;         // This contain mapping to residing mpi rank
+        
+        MPI_Win win_structMeshToCellMapping;
+        MPI_Win win_structMeshToRankMapping;
+    };
+};
+
+// returns true, if the current particle needs to be removed from the rank
+bool opp_part_checkForGlobalMove(opp_set set, const opp_point& point, const int partIndex, int& cellIdx);
+
+extern std::shared_ptr<opp::BoundingBox> boundingBox;
+extern std::shared_ptr<opp::CellMapper> cellMapper;
+extern std::shared_ptr<opp::Comm> comm;
+extern std::unique_ptr<opp::GlobalParticleMover> globalMover;
+extern bool useGlobalMove;

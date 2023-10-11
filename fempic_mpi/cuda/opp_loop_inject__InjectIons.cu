@@ -141,6 +141,7 @@ void opp_loop_inject__InjectIons(
     opp_arg arg0,     // part_position,
     opp_arg arg1,     // part_velocity,
     opp_arg arg2,     // part_cell_connectivity,
+    opp_arg arg_unused,     // part_id
     opp_arg arg3,     // iface to cell map
     opp_arg arg4,     // cell_ef,
     opp_arg arg5,     // iface_u,
