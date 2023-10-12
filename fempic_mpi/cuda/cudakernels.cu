@@ -93,8 +93,7 @@ void opp_decl_const_impl(int dim, int size, char* data, const char* name)
 #include "opp_loop_all__CalculateNewPartPosVel.cu"
 
 // //*************************************************************************************************
-// include the mover...
-// #include "opp_loop_all__CalculateNewPartPosVel.cu"
+#include "opp_loop_all_part__Move.cu"
 
 //*************************************************************************************************
 #include "opp_loop_all__DepositChargeOnNodes.cu"

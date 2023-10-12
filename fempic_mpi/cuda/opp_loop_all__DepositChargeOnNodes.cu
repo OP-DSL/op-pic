@@ -71,6 +71,8 @@ __global__ void opp_cuda_all_DepNodeCharge(
 {
     int tid = threadIdx.x + blockIdx.x * blockDim.x;
 
+    // TODO : Use shared memory to make this faster
+    
     if (tid + start < end) 
     {
         int n = tid + start;
