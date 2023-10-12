@@ -46,12 +46,6 @@ std::map<int, std::map<int, std::vector<opp_particle_move_info>>> opp_part_move_
 std::vector<MPI_Request> send_req_count;
 std::vector<MPI_Request> recv_req_count;
 
-std::shared_ptr<opp::BoundingBox> boundingBox;
-std::shared_ptr<opp::CellMapper> cellMapper;
-std::shared_ptr<opp::Comm> comm;
-std::unique_ptr<opp::GlobalParticleMover> globalMover;
-bool useGlobalMove = true;
-
 //*******************************************************************************
 void opp_part_mark_move(oppic_set set, int particle_index, opp_particle_comm_data& comm_data)
 {
@@ -860,6 +854,7 @@ bool opp_part_checkForGlobalMove(opp_set set, const opp_point& point, const int 
             opp_printf("opp_part_checkForGlobalMove", 
             "Remove %d [Struct cell index invalid - strCellIdx:%zu] [%2.16lE, %2.16lE, %2.16lE]", 
                 partIndex, structCellIdx, point.x, point.y, point.z);
+        cellIdx = MAX_CELL_INDEX;
         return true;
     }
 
@@ -875,6 +870,7 @@ bool opp_part_checkForGlobalMove(opp_set set, const opp_point& point, const int 
                 "Remove %d [Rank invalid - strCellRank:%d loclCellIdx:%zu strCellIdx:%zu] [%2.16lE, %2.16lE, %2.16lE]", 
                     partIndex, structCellRank, cellMapper->findClosestCellIndex(structCellIdx), structCellIdx, 
                     point.x, point.y, point.z);
+            cellIdx = MAX_CELL_INDEX;
             return true;
         }
 
@@ -886,6 +882,7 @@ bool opp_part_checkForGlobalMove(opp_set set, const opp_point& point, const int 
                 opp_printf("opp_part_checkForGlobalMove", 
                 "Remove %d [CellIdx invalid - strCellRank:%d loclCellIdx:%zu strCellIdx:%zu] [%2.16lE, %2.16lE, %2.16lE]", 
                     partIndex, structCellRank, globalCellIndex, structCellIdx, point.x, point.y, point.z);
+            cellIdx = MAX_CELL_INDEX;
             return true;
         }
 
@@ -895,7 +892,7 @@ bool opp_part_checkForGlobalMove(opp_set set, const opp_point& point, const int 
         // if (OP_DEBUG)
         //     opp_printf("opp_part_checkForGlobalMove", "Mark part %d [Move to rank %d gblCellIdx %d]", 
         //         partIndex, structCellRank, globalCellIndex);
-        
+        cellIdx = MAX_CELL_INDEX;
         return true;
     }
     else {

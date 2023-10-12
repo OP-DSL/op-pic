@@ -114,8 +114,6 @@ void opp_mpi_halo_wait_all(int nargs, oppic_arg *args);
 
 void opp_mpi_set_dirtybit(int nargs, oppic_arg *args);
 
-void opp_abort(std::string s = "");
-
 opp_move_var opp_get_move_var(int thread = 0);
 
 bool opp_part_check_status(opp_move_var& m, int map0idx, oppic_set set, int particle_index, int& remove_count, int thread = 0);

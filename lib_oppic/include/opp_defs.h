@@ -6,18 +6,24 @@
 #include <algorithm>
 #include <sstream>
 #include <fstream>
+#include <vector>
+#include <map>
+#include <iostream>
+#include <cstring>
+#include <inttypes.h>
+#include <stdio.h>
+#include <stdarg.h>
+#include <memory>
 
 #ifdef ENABLE_MPI
-    #include "opp_mpi.h"
+    namespace opp {
+        class Comm;
+        class GlobalParticleMover;
+    };
 #else
     #define Comm int
-    #define MPI_Win int
     #define GlobalParticleMover int
 #endif
-
-#ifdef USE_OMP
-#include <omp.h>
-#endif        
 
 constexpr double MAX_REAL = std::numeric_limits<double>::max();
 constexpr double MIN_REAL = std::numeric_limits<double>::min();
@@ -34,6 +40,8 @@ constexpr int MIN_INT = std::numeric_limits<int>::min();
     else {                                                          \
         centroid.K = (coordinate.K + maxCoordinate.K) * 0.5;        \
     }                                                               \
+
+#define CHECK(cmd) { int err = cmd; if (err != MPI_SUCCESS) opp_abort(std::to_string(err)); }
 
 struct opp_point {
     opp_point(double _x, double _y, double _z) {
@@ -60,7 +68,3 @@ struct opp_ipoint {
     int y = 0;
     int z = 0;
 };
-
-// void opp_abort(const std::string& s);
-
-#define CHECK(cmd) { int err = cmd; /* if (err != MPI_SUCCESS) opp_abort(std::to_string(err)); */ }

@@ -36,8 +36,6 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <oppic_lib.h>
 #include <cmath>
 #include <sys/queue.h>
-#include "opp_defs.h"
-
 
 /** extern variables for halo creation and exchange**/
 extern MPI_Comm OP_MPI_WORLD;
@@ -398,28 +396,6 @@ namespace opp {
     };
 
     //*******************************************************************************
-    class BoundingBox {
-
-    public:
-        BoundingBox(int dim, opp_point minCoordinate, opp_point maxCoordinate, const std::shared_ptr<Comm> comm = nullptr);
-        BoundingBox(const opp_dat node_pos_dat, int dim, const std::shared_ptr<Comm> comm = nullptr);
-        ~BoundingBox();
-
-        const opp_point& getLocalMin() const;
-        const opp_point& getLocalMax() const;
-        const opp_point& getGlobalMin() const;
-        const opp_point& getGlobalMax() const;
-        bool isCoordinateInBoundingBox(const opp_point& point);
-        bool isCoordinateInGlobalBoundingBox(const opp_point& point);
-
-    private:
-        void generateGlobalBoundingBox(int dim, int count, const std::shared_ptr<Comm> comm);
-
-        std::array<opp_point,2> boundingBox; // index 0 is min, index 1 is max
-        std::array<opp_point,2> globalBoundingBox; // index 0 is min, index 1 is max
-    };
-
-    //*******************************************************************************
     class ParticlePacker {
 
     public:
@@ -478,68 +454,7 @@ namespace opp {
 
         std::unique_ptr<ParticlePacker> packer;
     };
-
-    //*******************************************************************************
-    class GlobalToLocalCellIndexMapper {
-    
-    public:
-        //*******************************************************************************
-        // This will contain mappings for halo indices too
-        GlobalToLocalCellIndexMapper(const opp_dat global_cell_id_dat);
-        virtual ~GlobalToLocalCellIndexMapper();
-
-        int map(const int globalIndex);
-        
-    private:
-        std::map<int,int> globalToLocalCellIndexMap;
-    };
-
-    //*******************************************************************************
-    class CellMapper {
-    
-    public:
-        CellMapper(const std::shared_ptr<BoundingBox> boundingBox, const double gridSpacing, 
-            const std::shared_ptr<Comm> comm = nullptr);
-        ~CellMapper();
-
-        opp_point getCentroidOfBox(const opp_point& coordinate);
-        size_t findStructuredCellIndex(const opp_point& position);
-        int findClosestCellIndex(const size_t& structCellIdx);
-        int findClosestCellRank(const size_t& structCellIdx);
-        void reduceInterNodeMappings(int callID);
-        void convertToLocalMappings(const opp_dat global_cell_id_dat);
-        void enrichStructuredMesh(const int index, const int cell_index, const int rank = 0);
-        void printStructuredMesh(const std::string msg, int *array, size_t size, bool printToFile = true);
-        void createStructMeshMappingArrays();
-        void waitBarrier();
-        void lockWindows();
-        void unlockWindows();
-
-    // private:
-        const std::shared_ptr<BoundingBox> boundingBox = nullptr;
-        const double gridSpacing = 0.0;
-        const double oneOverGridSpacing = 0.0;
-        const opp_point& minGlbCoordinate;  
-        const std::shared_ptr<Comm> comm = nullptr;
-
-        opp_ipoint globalGridDims;
-        opp_ipoint localGridStart, localGridEnd;
-
-        size_t globalGridSize = 0;
-        
-        int* structMeshToCellMapping = nullptr;         // This contain mapping to local cell indices
-        int* structMeshToRankMapping = nullptr;         // This contain mapping to residing mpi rank
-        
-        MPI_Win win_structMeshToCellMapping;
-        MPI_Win win_structMeshToRankMapping;
-    };
 };
 
 // returns true, if the current particle needs to be removed from the rank
 bool opp_part_checkForGlobalMove(opp_set set, const opp_point& point, const int partIndex, int& cellIdx);
-
-extern std::shared_ptr<opp::BoundingBox> boundingBox;
-extern std::shared_ptr<opp::CellMapper> cellMapper;
-extern std::shared_ptr<opp::Comm> comm;
-extern std::unique_ptr<opp::GlobalParticleMover> globalMover;
-extern bool useGlobalMove;

@@ -487,9 +487,11 @@ void opp_loop_all__ComputeElectricField(
     opp_profiler->end("ComputeElectricField");
 }
 
+
+
+
+
 //*************************************************************************************************
-
-
 inline void generateStructMeshToGlobalCellMappings(opp_set cells_set, const opp_dat global_cell_id_dat, 
         const opp_dat cellVolume_dat, const opp_dat cellDet_dat) { 
 
@@ -598,7 +600,8 @@ inline void generateStructMeshToGlobalCellMappings(opp_set cells_set, const opp_
     }
 
     cellMapper->waitBarrier();
-    
+#endif
+
     // Step 3 : Iterate over all the NEED_REMOVE points, try to check whether atleast one vertex of the structured mesh can be within 
     //          an unstructured mesh cell. If multiple are found, get the minimum cell index to match with MPI
     for (auto& p : removedCoordinates) {
@@ -655,11 +658,12 @@ inline void generateStructMeshToGlobalCellMappings(opp_set cells_set, const opp_
         cellMapper->unlockWindows();
     }
 
+#ifdef ENABLE_MPI
     // Step 4 : For MPI, get the inter-node values reduced to the structured mesh
     cellMapper->reduceInterNodeMappings(2);
     
+    // Step 5 : For MPI, convert the global cell coordinates to rank local coordinates for increased performance
     cellMapper->convertToLocalMappings(global_cell_id_dat);
-    
 #endif
 
     // if (OP_DEBUG) 
@@ -710,8 +714,6 @@ void move(opp_set set, const opp_dat pos_dat, opp_dat cellIndex_dat, opp_dat lc_
     
     opp_profiler->start("Move");
 
-    // this->partCellID = cellIndex_dat;
-
     // lambda function for multi hop particle movement
     auto multihop_mover = [&](const int i) {
 
@@ -753,9 +755,7 @@ void move(opp_set set, const opp_dat pos_dat, opp_dat cellIndex_dat, opp_dat lc_
             // check for global move, and if satisfy global move criteria, then remove the particle from current rank
             if (opp_part_checkForGlobalMove(set, *point, i, *cellIdx)) {
                 
-                *cellIdx = MAX_CELL_INDEX;
                 set->particle_remove_count++;
-                
                 continue;  
             }
         }
