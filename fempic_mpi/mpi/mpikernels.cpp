@@ -709,15 +709,35 @@ void initializeParticleMover(const double gridSpacing, int dim, const opp_dat no
 
 
 //*******************************************************************************
-void move(opp_set set, const opp_dat pos_dat, opp_dat cellIndex_dat, opp_dat lc_dat, 
-    opp_dat cellVolume_dat, opp_dat cellDet_dat, opp_map cellConnectivity_map) { 
-    
+void opp_particle_mover__Move(
+    opp_set set,  // particle_set,
+    opp_arg arg0, // part_position,   
+    opp_arg arg1, // part_mesh_rel,   
+    opp_arg arg2, // part_lc,         
+    opp_arg arg3, // cell_volume,     
+    opp_arg arg4, // cell_det,        
+    opp_arg arg5  // cell_v_cell_map
+) 
+{
+    if (FP_DEBUG) opp_printf("FEMPIC", "move set_size %d diff %d", 
+        set->size, set->diff);
+
     opp_profiler->start("Move");
+
+    const int nargs = 6;
+    opp_arg args[nargs];
+
+    args[0] = std::move(arg0);
+    args[1] = std::move(arg1);
+    args[2] = std::move(arg2);
+    args[3] = std::move(arg3);
+    args[4] = std::move(arg4);
+    args[5] = std::move(arg5);
 
     // lambda function for multi hop particle movement
     auto multihop_mover = [&](const int i) {
 
-        int& cellIdx = ((int*)cellIndex_dat->data)[i];
+        int& cellIdx = ((int*)args[1].data)[i];
 
         if (cellIdx == MAX_CELL_INDEX) {
             return;
@@ -727,12 +747,12 @@ void move(opp_set set, const opp_dat pos_dat, opp_dat cellIndex_dat, opp_dat lc_
 
         do {
             m.move_status = getCellIndexKernel(
-                &((const double*)pos_dat->data)[i * 3], 
-                &((int*)cellIndex_dat->data)[i],
-                &((double*)lc_dat->data)[i * 4],
-                &((double*)cellVolume_dat->data)[cellIdx], 
-                &((double*)cellDet_dat->data)[cellIdx * 16],        // 16 -> cellDet_dat->dim
-                &((int*)cellConnectivity_map->map)[cellIdx * 4]);   // 4 -> cellConnectivity_map->dim
+                &((const double*) args[0].data)[i * args[0].dim], 
+                &((int*)          args[1].data)[i],
+                &((double*)       args[2].data)[i * args[2].dim],
+                &((const double*) args[3].data)[cellIdx], 
+                &((const double*) args[4].data)[cellIdx * args[4].dim],   // 16 -> cellDet_dat->dim
+                &((const int*)    args[5].data)[cellIdx * args[5].dim]);   // 4 -> cellConnectivity_map->dim
 
         } while (opp_part_check_status(m, cellIdx, set, i, set->particle_remove_count));
     };
@@ -749,8 +769,8 @@ void move(opp_set set, const opp_dat pos_dat, opp_dat cellIndex_dat, opp_dat lc_
         // check whether particles needs to be moved over global move routine
         for (int i = OPP_iter_start; i < OPP_iter_end; i++) {   
             
-            int* cellIdx = &((int*)cellIndex_dat->data)[i];
-            const opp_point* point = (const opp_point*)&(((double*)pos_dat->data)[i * 3]);
+            int* cellIdx = &((int*)args[1].data)[i];
+            const opp_point* point = (const opp_point*)&(((double*)args[0].data)[i * args[0].dim]);
 
             // check for global move, and if satisfy global move criteria, then remove the particle from current rank
             if (opp_part_checkForGlobalMove(set, *point, i, *cellIdx)) {
@@ -811,6 +831,8 @@ void move(opp_set set, const opp_dat pos_dat, opp_dat cellIndex_dat, opp_dat lc_
 
         opp_profiler->end(profName);
     }
+
+    opp_mpi_set_dirtybit(nargs, args);
 
     opp_profiler->end("Move");
 }

@@ -45,9 +45,8 @@ void opp_loop_all__ComputeNodeChargeDensity(opp_set,opp_arg,opp_arg);
 void opp_loop_all__ComputeElectricField(opp_set,opp_arg,opp_arg,opp_arg,opp_arg,opp_arg,opp_arg);
 void opp_loop_all__CalculateNewPartPosVel(opp_set,opp_arg,opp_arg,opp_arg);
 void opp_loop_all__DepositChargeOnNodes(opp_set,opp_arg,opp_arg,opp_arg,opp_arg,opp_arg);
+void opp_particle_mover__Move(opp_set,opp_arg,opp_arg,opp_arg,opp_arg,opp_arg,opp_arg);
 
-void move(opp_set set, const opp_dat pos_dat, opp_dat cellIndex_dat, opp_dat lc_datparticle_set, 
-    opp_dat cell_volume, opp_dat cell_det, opp_map cell_v_cell_map);
 void initializeParticleMover(const double gridSpacing, int dim, const opp_dat node_pos_dat, 
     const opp_dat cellVolume_dat, const opp_dat cellDet_dat, const opp_dat global_cell_id_dat);
 
@@ -246,14 +245,15 @@ opp_profiler->reg("ComputeDet");
                     opp_get_arg(part_velocity, OP_WRITE)
                 );
 
-                move(
-                    particle_set, 
-                    part_position,
-                    part_mesh_rel,
-                    part_lc,
-                    cell_volume,
-                    cell_det,
-                    cell_v_cell_map);
+                opp_particle_mover__Move(
+                    particle_set,
+                    opp_get_arg(part_position,   OP_READ),
+                    opp_get_arg(part_mesh_rel,   OP_RW),
+                    opp_get_arg(part_lc,         OP_WRITE),
+                    opp_get_arg(cell_volume,     OP_READ, OPP_Map_from_Mesh_Rel),
+                    opp_get_arg(cell_det,        OP_READ, OPP_Map_from_Mesh_Rel),
+                    opp_get_arg(cell_v_cell_map, OP_READ, OPP_Map_from_Mesh_Rel)
+                );
 
                 opp_loop_all__DepositChargeOnNodes(
                     particle_set, 

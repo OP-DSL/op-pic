@@ -502,17 +502,31 @@ void initializeParticleMover(const double gridSpacing, int dim, const opp_dat no
 }
 
 //*******************************************************************************
-void move(opp_set set, const opp_dat pos_dat, opp_dat cellIndex_dat, opp_dat lc_dat, 
-    opp_dat cellVolume_dat, opp_dat cellDet_dat, opp_map cellConnectivity_map) { 
-            
-    opp_profiler->start("Move");
-
+void opp_particle_mover__Move(
+    opp_set set,  // particle_set,
+    opp_arg arg0, // part_position,   
+    opp_arg arg1, // part_mesh_rel,   
+    opp_arg arg2, // part_lc,         
+    opp_arg arg3, // cell_volume,     
+    opp_arg arg4, // cell_det,        
+    opp_arg arg5  // cell_v_cell_map
+) 
+{
     if (FP_DEBUG) opp_printf("FEMPIC", "move set_size %d diff %d", 
         set->size, set->diff);
 
-    const double* pos = (const double*)pos_dat->data;
-    int* cellIndex = (int*)cellIndex_dat->data;
-    double* lc = (double*)lc_dat->data;
+    opp_profiler->start("Move");
+
+    const int nargs = 6;
+    opp_arg args[nargs];
+
+    args[0] = std::move(arg0);
+    args[1] = std::move(arg1);
+    args[2] = std::move(arg2);
+    args[3] = std::move(arg3);
+    args[4] = std::move(arg4);
+    args[5] = std::move(arg5);
+
     int size = set->size;
     int cellIdx = MAX_CELL_INDEX;
 
@@ -522,7 +536,7 @@ void move(opp_set set, const opp_dat pos_dat, opp_dat cellIndex_dat, opp_dat lc_
         
         if (useGlobalMove) {
 
-            opp_point* point = (opp_point*)&(pos[i * 3]);
+            const opp_point* point = (const opp_point*)&(((double*)args[0].data)[i * args[0].dim]);
             
             // Since SEQ use global indices, we can simply use findClosestGlobalCellIndex
             size_t structCellIdx = cellMapper->findStructuredCellIndex(*point);
@@ -532,13 +546,13 @@ void move(opp_set set, const opp_dat pos_dat, opp_dat cellIndex_dat, opp_dat lc_
                     "Remove %d [Struct cell index invalid - strCellIdx:%zu] [%2.16lE, %2.16lE, %2.16lE]", 
                         i, structCellIdx, point->x, point->y, point->z);
 
-                cellIndex[i] = MAX_CELL_INDEX;
+                ((int*)args[1].data)[i] = MAX_CELL_INDEX;
                 set->particle_remove_count++;
                 continue;
             }
 
-            cellIndex[i] = cellMapper->findClosestCellIndex(structCellIdx);           
-            if (cellIndex[i] == MAX_CELL_INDEX) { // Particle is outside the mesh, need to remove
+            ((int*)args[1].data)[i] = cellMapper->findClosestCellIndex(structCellIdx);           
+            if (((int*)args[1].data)[i] == MAX_CELL_INDEX) { // Particle is outside the mesh, need to remove
 
                 set->particle_remove_count++;
                 continue;
@@ -548,15 +562,15 @@ void move(opp_set set, const opp_dat pos_dat, opp_dat cellIndex_dat, opp_dat lc_
         opp_move_var m;
 
         do {
-            cellIdx = cellIndex[i];
+            cellIdx = ((int*)args[1].data)[i];
 
             m.move_status = getCellIndexKernel(
-                &((const double*)pos)[i * 3], 
-                &((int*)cellIndex)[i],
-                &((double*)lc)[i * 4],
-                &((double*)cellVolume_dat->data)[cellIdx], 
-                &((double*)cellDet_dat->data)[cellIdx * cellDet_dat->dim], 
-                &((int*)cellConnectivity_map->map)[cellIdx * cellConnectivity_map->dim]);
+                &((const double*) args[0].data)[i * args[0].dim], 
+                &((int*)          args[1].data)[i],
+                &((double*)       args[2].data)[i * args[2].dim],
+                &((double*)       args[3].data)[cellIdx], 
+                &((double*)       args[4].data)[cellIdx * args[4].dim], 
+                &((int*)          args[5].data)[cellIdx * args[5].dim]);
 
         } while (opp_part_check_status(m, cellIdx, set, i, set->particle_remove_count));
     }

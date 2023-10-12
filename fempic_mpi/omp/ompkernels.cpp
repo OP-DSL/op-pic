@@ -545,18 +545,32 @@ void initializeParticleMover(const double gridSpacing, int dim, const opp_dat no
 }
 
 //*******************************************************************************
-void move(opp_set set, const opp_dat pos_dat, opp_dat cellIndex_dat, opp_dat lc_dat, 
-    opp_dat cellVolume_dat, opp_dat cellDet_dat, opp_map cellConnectivity_map) { 
-            
-    opp_profiler->start("Move");
-
+void opp_particle_mover__Move(
+    opp_set set,  // particle_set,
+    opp_arg arg0, // part_position,   
+    opp_arg arg1, // part_mesh_rel,   
+    opp_arg arg2, // part_lc,         
+    opp_arg arg3, // cell_volume,     
+    opp_arg arg4, // cell_det,        
+    opp_arg arg5  // cell_v_cell_map
+) 
+{
     if (FP_DEBUG) opp_printf("FEMPIC", "move set_size %d diff %d", 
         set->size, set->diff);
 
-    const double* pos = (const double*)pos_dat->data;
-    int* cellIndex = (int*)cellIndex_dat->data;
-    double* lc = (double*)lc_dat->data;
-    int set_size = set->size;
+    opp_profiler->start("Move");
+
+    const int nargs = 6;
+    opp_arg args[nargs];
+
+    args[0] = std::move(arg0);
+    args[1] = std::move(arg1);
+    args[2] = std::move(arg2);
+    args[3] = std::move(arg3);
+    args[4] = std::move(arg4);
+    args[5] = std::move(arg5);
+
+    int size = set->size;
     int cellIdx = MAX_CELL_INDEX;
 
     opp_init_particle_move(set, 0, nullptr);
@@ -566,14 +580,14 @@ void move(opp_set set, const opp_dat pos_dat, opp_dat cellIndex_dat, opp_dat lc_
     #pragma omp parallel for
     for (int thr = 0; thr < nthreads; thr++)
     {
-        size_t start  = ((size_t)set_size * thr) / nthreads;
-        size_t finish = ((size_t)set_size * (thr+1)) / nthreads;
+        size_t start  = ((size_t)size * thr) / nthreads;
+        size_t finish = ((size_t)size * (thr+1)) / nthreads;
 
         for (size_t i = start; i < finish; i++)
         {  
             if (useGlobalMove) {
 
-                opp_point* point = (opp_point*)&(pos[i * 3]);
+                const opp_point* point = (const opp_point*)&(((double*)args[0].data)[i * args[0].dim]);
                 
                 // Since SEQ use global indices, we can simply use findClosestGlobalCellIndex
                 size_t structCellIdx = cellMapper->findStructuredCellIndex(*point);
@@ -583,13 +597,13 @@ void move(opp_set set, const opp_dat pos_dat, opp_dat cellIndex_dat, opp_dat lc_
                         "Remove %d [Struct cell index invalid - strCellIdx:%zu] [%2.16lE, %2.16lE, %2.16lE]", 
                             i, structCellIdx, point->x, point->y, point->z);
 
-                    cellIndex[i] = MAX_CELL_INDEX;
+                    ((int*)args[1].data)[i] = MAX_CELL_INDEX;
                     part_remove_count_per_thr[thr] += 1;
                     continue;
                 }
 
-                cellIndex[i] = cellMapper->findClosestCellIndex(structCellIdx);           
-                if (cellIndex[i] == MAX_CELL_INDEX) { // Particle is outside the mesh, need to remove
+                ((int*)args[1].data)[i] = cellMapper->findClosestCellIndex(structCellIdx);           
+                if (((int*)args[1].data)[i] == MAX_CELL_INDEX) { // Particle is outside the mesh, need to remove
 
                     part_remove_count_per_thr[thr] += 1;
                     continue;
@@ -599,15 +613,15 @@ void move(opp_set set, const opp_dat pos_dat, opp_dat cellIndex_dat, opp_dat lc_
             opp_move_var m;
 
             do {
-                cellIdx = cellIndex[i];
+                cellIdx = ((int*)args[1].data)[i];
 
                 m.move_status = getCellIndexKernel(
-                    &((const double*)pos)[i * 3], 
-                    &((int*)cellIndex)[i],
-                    &((double*)lc)[i * 4],
-                    &((double*)cellVolume_dat->data)[cellIdx], 
-                    &((double*)cellDet_dat->data)[cellIdx * 16], 
-                    &((int*)cellConnectivity_map->map)[cellIdx * 4]);
+                    &((const double*) args[0].data)[i * args[0].dim], 
+                    &((int*)          args[1].data)[i],
+                    &((double*)       args[2].data)[i * args[2].dim],
+                    &((double*)       args[3].data)[cellIdx], 
+                    &((double*)       args[4].data)[cellIdx * args[4].dim], 
+                    &((int*)          args[5].data)[cellIdx * args[5].dim]);
 
             } while (opp_part_check_status(m, cellIdx, set, i, thr, thr));
         }
