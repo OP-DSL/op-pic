@@ -411,7 +411,7 @@ int p = 0, err = 0;
         }
     }
 
-// Step 3 : Iterate over all the NEED_REMOVE points, try to check whether atleast one vertex of the structured mesh can be within 
+    // Step 3 : Iterate over all the NEED_REMOVE points, try to check whether atleast one vertex of the structured mesh can be within 
     //          an unstructured mesh cell. If multiple are found, get the minimum cell index to match with MPI
     for (auto& p : removedCoordinates) {
 

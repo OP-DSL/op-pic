@@ -35,6 +35,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <oppic_lib.h>
 #include <omp.h>
 
+extern std::vector<int> part_remove_count_per_thr;
 
 // TODO : May need to write with array capcity and realloc always if partticle dats are used
 template <class T> 
