@@ -325,7 +325,24 @@ void opp_init_particle_move(oppic_set set, int nargs, oppic_arg *args)
     cutilSafeCall(cudaMemcpy(set->particle_remove_count_d, &(set->particle_remove_count), sizeof(int), 
                     cudaMemcpyHostToDevice));
 
-    // printf("REF NEED TO IMPLEMENT...\n");
+    if (OPP_comm_iteration == 0)
+    {
+        OPP_iter_start = 0;
+        OPP_iter_end   = set->size;          
+    }
+    else
+    {
+        // need to change the arg data since particle communication could change the pointer in realloc dat->data
+        for (int i = 0; i < nargs; i++)
+        {
+            if (args[i].argtype == OP_ARG_DAT && args[i].dat->set->is_particle)
+            {
+                args[i].data = args[i].dat->data;
+            }
+        }
+    }
+
+    OPP_mesh_relation_data = ((int *)set->mesh_relation_dat->data); 
 }
 
 //****************************************
@@ -334,6 +351,8 @@ void particle_sort_cuda(oppic_set set, bool hole_filling);
 //****************************************
 bool opp_finalize_particle_move(oppic_set set)
 { 
+
+    cutilSafeCall(cudaDeviceSynchronize());
 
     cutilSafeCall(cudaMemcpy(&(set->particle_remove_count), set->particle_remove_count_d, 
                     sizeof(int), cudaMemcpyDeviceToHost));
@@ -364,7 +383,7 @@ bool opp_finalize_particle_move(oppic_set set)
         particle_sort_cuda(set, true);
     }
 
-    return true;
+    return false;
 }
 
 //****************************************

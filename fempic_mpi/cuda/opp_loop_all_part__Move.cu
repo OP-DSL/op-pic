@@ -229,10 +229,7 @@ void opp_particle_mover__Move(
     args[4]  = std::move(arg4);
     args[5]  = std::move(arg5);
     
-    opp_init_particle_move(set, nargs, args);
-
     int set_size = opp_mpi_halo_exchanges_grouped(set, nargs, args, Device_GPU);
-    opp_profiler->start("MoveToCells1");
     if (set_size > 0) 
     {
         move_stride_OPP_HOST_0 = args[0].dat->set->set_capacity;
@@ -245,37 +242,32 @@ void opp_particle_mover__Move(
         cudaMemcpyToSymbol(move_stride_OPP_CUDA_4, &move_stride_OPP_HOST_4, sizeof(int));
         cudaMemcpyToSymbol(move_stride_OPP_CUDA_5, &move_stride_OPP_HOST_5, sizeof(int));
 
-        int start = 0;
-        int end   = set->size;
+        do {
 
-        if (end - start > 0) 
-        {
-            int nthread = OPP_gpu_threads_per_block;
-            int nblocks = (end - start - 1) / nthread + 1;
+            opp_init_particle_move(set, nargs, args);
 
-            opp_cuda_all_MoveToCells<<<nblocks, nthread>>>(
-                (int *)           set->mesh_relation_dat->data_d,
-                (const double *)  args[0].data_d,                   // part_position,   
-                (int *)           args[1].data_d,                   // part_mesh_rel,   
-                (double *)        args[2].data_d,                   // part_lc,         
-                (const double *)  args[3].data_d,                   // cell_volume,     
-                (const double *)  args[4].data_d,                   // cell_det,        
-                (const int *)     args[5].data_d,                   // cell_v_cell_map
-                (int *)           set->particle_remove_count_d,
-                start, 
-                end);
-        }
+            if (OPP_iter_end - OPP_iter_start > 0) 
+            {
+                int nthread = OPP_gpu_threads_per_block;
+                int nblocks = (OPP_iter_end - OPP_iter_start - 1) / nthread + 1;
+
+                opp_cuda_all_MoveToCells<<<nblocks, nthread>>>(
+                    (int *)           set->mesh_relation_dat->data_d,
+                    (const double *)  args[0].data_d,                   // part_position,   
+                    (int *)           args[1].data_d,                   // part_mesh_rel,   
+                    (double *)        args[2].data_d,                   // part_lc,         
+                    (const double *)  args[3].data_d,                   // cell_volume,     
+                    (const double *)  args[4].data_d,                   // cell_det,        
+                    (const int *)     args[5].data_d,                   // cell_v_cell_map
+                    (int *)           set->particle_remove_count_d,
+                    OPP_iter_start, 
+                    OPP_iter_end);
+            }
+
+        } while (opp_finalize_particle_move(set));
     }
 
-    cutilSafeCall(cudaDeviceSynchronize());
-    opp_profiler->end("MoveToCells1");
-
-    opp_profiler->start("finalize_move");
-    opp_finalize_particle_move(set);
-    opp_profiler->end("finalize_move");
-
     opp_mpi_set_dirtybit_grouped(nargs, args, Device_GPU);
-    cutilSafeCall(cudaDeviceSynchronize());
 
     opp_profiler->end("MoveToCells");
 }

@@ -63,11 +63,13 @@ void opp_init_double_indirect_reductions(int nargs, oppic_arg *args)
                         else if (strcmp(args[n].dat->type, "int") == 0)
                             reset_values = (char*)opp_zero_int16;
                         else
-                            opp_printf("opp_init_double_indirect_reductions", "Error: Datatype [%s] dat [%s] not implemented",
+                            opp_printf("opp_init_double_indirect_reductions", 
+                                "Error: Datatype [%s] dat [%s] not implemented",
                                 args[n].dat->type, args[n].dat->name);
                         break;
                     default:
-                        opp_printf("opp_init_double_indirect_reductions", "Error: Reduction of dat [%s] operator not implemented",
+                        opp_printf("opp_init_double_indirect_reductions", 
+                            "Error: Reduction of dat [%s] operator not implemented",
                             args[n].dat->name);
                         return;
                 }
@@ -201,8 +203,8 @@ void opp_complete_double_indirect_reductions(oppic_dat dat)
 {
     if (dat->reduc_comm == OPP_Reduc_NO_Comm)
     {
-        if (OP_DEBUG) opp_printf("opp_complete_double_indirect_reductions", "No reduction communication in flight for  dat %s", 
-            dat->name);
+        if (OP_DEBUG) opp_printf("opp_complete_double_indirect_reductions", 
+                        "No reduction communication in flight for  dat %s", dat->name);
         return;
     }
 
@@ -257,8 +259,8 @@ void opp_complete_double_indirect_reductions(oppic_dat dat)
         } 
         else
         {
-            opp_printf("opp_complete_double_indirect_reductions", "Error: Reduction for data type [%s] not implemented", 
-                dat->type);
+            opp_printf("opp_complete_double_indirect_reductions", 
+                "Error: Reduction for data type [%s] not implemented", dat->type);
             return;
         } 
 

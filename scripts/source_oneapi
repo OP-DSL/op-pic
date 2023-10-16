@@ -40,8 +40,8 @@ elif [ "$(hostname)" == 'kos' ]; then
   export NV_ARCH=Pascal
   export CUDA_VISIBLE_DEVICES=0,1
   echo $NV_ARCH $(hostname)
-  export PETSC_INSTALL_PATH=/ext-home/zl/lib_install/petsc-3.18.3-oneapi-2021.3-mpi_kos
-  # export PETSC_INSTALL_PATH=/ext-home/zl/lib_install/petsc-3.18.3-oneapi-2021.3-cuda-kos
+  # export PETSC_INSTALL_PATH=/ext-home/zl/lib_install/petsc-3.18.3-oneapi-2021.3-mpi_kos
+  export PETSC_INSTALL_PATH=/ext-home/zl/lib_install/petsc-3.18.3-oneapi-2021.3-cuda-kos
   export LD_LIBRARY_PATH=$PETSC_INSTALL_PATH/lib:$LD_LIBRARY_PATH
   export NVCCFLAGS_ADD='-gencode arch=compute_60,code=sm_60'
 elif [ "$(hostname)" == 'amos' ]; then
@@ -55,6 +55,8 @@ elif [ "$(hostname)" == 'amos' ]; then
 else
   echo The machine not configured, PETSC_INSTALL_PATH and some other variables may be missing!
 fi
+
+echo "petsc lib linked is - " $PETSC_INSTALL_PATH
 
 export OPPIC_PATH=/ext-home/zl/phd/OP-PIC/lib_oppic
 
