@@ -32,7 +32,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <oppic_lib_core.h>
 
-#ifdef ENABLE_MPI
+#ifdef USE_MPI
     #include <opp_mpi.h>
 #endif
 
@@ -59,6 +59,7 @@ int OPP_main_loop_iter              = 0;
 int OPP_gpu_threads_per_block       = OPP_DEFAULT_GPU_THREADS_PER_BLOCK;
 size_t OPP_gpu_shared_mem_per_block = -1;
 int *OPP_mesh_relation_data         = nullptr;
+int *OPP_mesh_relation_data_d       = nullptr;
 
 std::unique_ptr<opp::Params> opp_params;
 std::unique_ptr<opp::Profiler> opp_profiler;
@@ -341,7 +342,7 @@ oppic_arg oppic_arg_dat_core(oppic_dat dat, int idx, oppic_map map, int dim, con
     arg.dim         = dim;
     arg.idx         = idx;
     
-    arg.size        = ((dat == NULL) ? -1 : dat->size);
+    arg.size        = ((map == NULL) ? -1 : map->from->size + map->from->exec_size + map->from->nonexec_size);
     arg.data        = ((dat == NULL) ? NULL : dat->data);
     arg.data_d      = ((dat == NULL) ? NULL : dat->data_d);
     arg.map_data    = ((idx == -1 || idx == -2) ? NULL : map->map);
@@ -373,7 +374,7 @@ oppic_arg oppic_arg_dat_core(oppic_map data_map, int idx, oppic_map map, oppic_a
     arg.dim         = data_map->dim;
     arg.idx         = idx;
     
-    arg.size        = data_map->from->size;
+    arg.size        = data_map->from->size + data_map->from->exec_size + data_map->from->nonexec_size;
     arg.data        = (char*)data_map->map;
     arg.data_d      = (char*)data_map->map_d;
     arg.map_data    = ((map == NULL) ? NULL : map->map);
@@ -1206,7 +1207,47 @@ bool opp_inc_part_count_with_distribution_core(oppic_set set, int num_parts_to_i
     return true;
 }
 
+//****************************************
+// Set Dirty::Device, making HOST data to be clean
+void opp_set_dirtybit(int nargs, oppic_arg *args) 
+{
+    for (int n = 0; n < nargs; n++) 
+    {
+        if ((args[n].opt == 1) && (args[n].argtype == OP_ARG_DAT) &&
+            (args[n].acc == OP_INC || args[n].acc == OP_WRITE ||
+            args[n].acc == OP_RW)) 
+        {
+            if (OP_DEBUG) opp_printf("opp_set_dirtybit", "Setting Dirty::Device| %s", args[n].dat->name);
+            args[n].dat->dirty_hd = Dirty::Device;
+            if (!args[n].dat->set->is_particle)
+                args[n].dat->dirtybit = 1;
+        }
+    }
+}
 
+//****************************************
+// Set Dirty::Host, making DEVICE data to be clean
+void opp_set_dirtybit_cuda(int nargs, oppic_arg *args) 
+{
+    for (int n = 0; n < nargs; n++) 
+    {
+        if ((args[n].opt == 1) && (args[n].argtype == OP_ARG_DAT) &&
+            (args[n].acc == OP_INC || args[n].acc == OP_WRITE ||
+            args[n].acc == OP_RW)) 
+        {
+            if (OP_DEBUG) opp_printf("opp_set_dirtybit_cuda", "Setting Dirty::Host| %s", args[n].dat->name);          
+            args[n].dat->dirty_hd = Dirty::Host;
+            if (!args[n].dat->set->is_particle)
+                args[n].dat->dirtybit = 1;
+        }
+    }
+}
+
+//****************************************
+void opp_set_dirtybit_grouped(int nargs, oppic_arg *args, DeviceType device)
+{
+    return (device == Device_CPU) ? opp_set_dirtybit(nargs, args) : opp_set_dirtybit_cuda(nargs, args);
+}
 
 
 
@@ -1279,7 +1320,7 @@ BoundingBox::BoundingBox(const opp_dat node_pos_dat, int dim, const std::shared_
 //*******************************************************************************
 void BoundingBox::generateGlobalBoundingBox(int dim, int count, const std::shared_ptr<Comm> comm) {
 
-#ifdef ENABLE_MPI
+#ifdef USE_MPI
 
     const double* localMin = reinterpret_cast<const double*>(&(this->boundingBox[0]));
     double* globalMin = reinterpret_cast<double*>(&(this->globalBoundingBox[0]));    
@@ -1470,7 +1511,7 @@ CellMapper::CellMapper(const std::shared_ptr<BoundingBox> boundingBox, const dou
 //*******************************************************************************
 CellMapper::~CellMapper() { 
 
-#ifdef ENABLE_MPI
+#ifdef USE_MPI
     CHECK(MPI_Win_free(&this->win_structMeshToCellMapping))
     this->structMeshToCellMapping = nullptr;
 
@@ -1559,7 +1600,7 @@ int CellMapper::findClosestCellIndex(const size_t& structCellIdx) {
 // Returns the rank of the cell
 int CellMapper::findClosestCellRank(const size_t& structCellIdx) { 
 
-#ifdef ENABLE_MPI 
+#ifdef USE_MPI 
     if (OP_DEBUG) 
     {
         if (structCellIdx >= globalGridSize) {
@@ -1578,7 +1619,7 @@ int CellMapper::findClosestCellRank(const size_t& structCellIdx) {
 //*******************************************************************************
 void CellMapper::reduceInterNodeMappings(int callID) {
 
-#ifdef ENABLE_MPI
+#ifdef USE_MPI
     waitBarrier();
 
     if (comm->rank_intra == 0) { // comm->size_intra > 1 && 
@@ -1820,7 +1861,7 @@ void CellMapper::convertToLocalMappings(const opp_dat global_cell_id_dat) {
 
     GlobalToLocalCellIndexMapper globalToLocalCellIndexMapper(global_cell_id_dat);
 
-#ifdef ENABLE_MPI
+#ifdef USE_MPI
     if (comm->rank_intra == 0) {
         
         CHECK(MPI_Win_lock(MPI_LOCK_EXCLUSIVE, 0, 0, this->win_structMeshToCellMapping));
@@ -1858,7 +1899,7 @@ void CellMapper::convertToLocalMappings(const opp_dat global_cell_id_dat) {
         }
     }
 
-#ifdef ENABLE_MPI
+#ifdef USE_MPI
     MPI_Barrier(MPI_COMM_WORLD);
 
     if (comm->rank_intra == 0) {
@@ -1876,7 +1917,7 @@ void CellMapper::convertToLocalMappings(const opp_dat global_cell_id_dat) {
 //*******************************************************************************
 void CellMapper::enrichStructuredMesh(const int index, const int cell_index, const int rank) {
 
-#ifdef ENABLE_MPI
+#ifdef USE_MPI
     MPI_Put(&cell_index, 1, MPI_INT, 0, index, 1, MPI_INT, this->win_structMeshToCellMapping);
     MPI_Put(&rank, 1, MPI_INT, 0, index, 1, MPI_INT, this->win_structMeshToRankMapping);
 #else
@@ -1937,7 +1978,7 @@ void CellMapper::createStructMeshMappingArrays() {
 
     globalGridSize = (size_t)(globalGridDims.x * globalGridDims.y * globalGridDims.z);
 
-#ifdef ENABLE_MPI
+#ifdef USE_MPI
 
     MPI_Barrier(MPI_COMM_WORLD);
 
@@ -2006,7 +2047,7 @@ void CellMapper::createStructMeshMappingArrays() {
 //*******************************************************************************
 void CellMapper::waitBarrier() {
 
-#ifdef ENABLE_MPI
+#ifdef USE_MPI
     MPI_Barrier(MPI_COMM_WORLD);
     MPI_Win_fence(0, this->win_structMeshToCellMapping); 
     MPI_Win_fence(0, this->win_structMeshToRankMapping); 
@@ -2016,7 +2057,7 @@ void CellMapper::waitBarrier() {
 //*******************************************************************************
 void CellMapper::lockWindows() {
 
-#ifdef ENABLE_MPI
+#ifdef USE_MPI
     CHECK(MPI_Win_lock(MPI_LOCK_EXCLUSIVE, 0, 0, this->win_structMeshToCellMapping));
     CHECK(MPI_Win_lock(MPI_LOCK_EXCLUSIVE, 0, 0, this->win_structMeshToRankMapping));
 #endif
@@ -2025,7 +2066,7 @@ void CellMapper::lockWindows() {
 
 void CellMapper::unlockWindows() {
 
-#ifdef ENABLE_MPI
+#ifdef USE_MPI
     CHECK(MPI_Win_unlock(0, this->win_structMeshToCellMapping));
     CHECK(MPI_Win_unlock(0, this->win_structMeshToRankMapping));
 #endif

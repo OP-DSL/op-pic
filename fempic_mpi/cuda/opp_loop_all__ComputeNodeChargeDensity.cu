@@ -85,6 +85,7 @@ void opp_loop_all__ComputeNodeChargeDensity(
     args[1] = std::move(arg1);
 
     int set_size = opp_mpi_halo_exchanges_grouped(set, nargs, args, Device_GPU);
+    opp_mpi_halo_wait_all(nargs, args);
     if (set_size > 0) 
     {
         int start = 0;
@@ -102,7 +103,7 @@ void opp_loop_all__ComputeNodeChargeDensity(
                 end);
         } 
 
-        opp_mpi_set_dirtybit_grouped(nargs, args, Device_GPU);
+        opp_set_dirtybit_grouped(nargs, args, Device_GPU);
         cutilSafeCall(cudaDeviceSynchronize());       
     }
 

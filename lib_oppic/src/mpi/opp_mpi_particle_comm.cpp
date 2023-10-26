@@ -571,9 +571,6 @@ void opp_part_wait_all(oppic_set set)
     send_req.clear();
     recv_req.clear();
 
-    // increase the particle count if required and unpack the communicated particle buffer in to separate particle dats
-    opp_part_unpack(set);
-
     opp_profiler->end("Mv_WaitAll");
 
     if (OP_DEBUG) opp_printf("opp_part_wait_all", "END");

@@ -559,7 +559,7 @@ void opp_reset_dat(oppic_dat dat, char* val, opp_reset reset)
 }
 
 //****************************************
-void opp_mpi_set_dirtybit(int nargs, oppic_arg *args) 
+void opp_set_dirtybit(int nargs, oppic_arg *args) 
 {
     for (int n = 0; n < nargs; n++) 
     {

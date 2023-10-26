@@ -172,6 +172,7 @@ void opp_loop_inject__InjectIons(
     args[9] = std::move(arg9);
 
     int set_size = opp_mpi_halo_exchanges_grouped(set, nargs, args, Device_GPU);
+    opp_mpi_halo_wait_all(nargs, args);
     if (set_size > 0) 
     {
         injectIons_stride_OPP_HOST_0 = args[0].dat->set->set_capacity;
@@ -220,7 +221,7 @@ void opp_loop_inject__InjectIons(
         }
     }
 
-    opp_mpi_set_dirtybit_grouped(nargs, args, Device_GPU);
+    opp_set_dirtybit_grouped(nargs, args, Device_GPU);
     cutilSafeCall(cudaDeviceSynchronize());
 
     opp_profiler->end("InjectIons");

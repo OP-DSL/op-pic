@@ -324,6 +324,12 @@ void oppic_dump_dat_core(oppic_dat data);
 
 void opp_abort(std::string s = "");
 
+/*******************************************************************************/
+void opp_set_dirtybit(int nargs, oppic_arg *args);
+void opp_set_dirtybit_cuda(int nargs, oppic_arg *args);
+void opp_set_dirtybit_grouped(int nargs, oppic_arg *args, DeviceType device);
+/*******************************************************************************/
+
 //*************************************************************************************************
 
 extern int OP_hybrid_gpu;
@@ -339,6 +345,7 @@ extern int OPP_max_comm_iteration;
 extern int OPP_iter_start;
 extern int OPP_iter_end;
 extern int *OPP_mesh_relation_data;
+extern int *OPP_mesh_relation_data_d;
 extern int OPP_main_loop_iter;
 extern int OPP_gpu_threads_per_block;
 extern size_t OPP_gpu_shared_mem_per_block;
@@ -490,7 +497,7 @@ namespace opp {
         int* structMeshToCellMapping = nullptr;         // This contain mapping to local cell indices
         int* structMeshToRankMapping = nullptr;         // This contain mapping to residing mpi rank
 
-#ifdef ENABLE_MPI        
+#ifdef USE_MPI        
         MPI_Win win_structMeshToCellMapping;
         MPI_Win win_structMeshToRankMapping;
 #endif
@@ -501,7 +508,7 @@ extern std::shared_ptr<opp::BoundingBox> boundingBox;
 extern std::shared_ptr<opp::CellMapper> cellMapper;
 extern bool useGlobalMove;
 
-#ifdef ENABLE_MPI 
+#ifdef USE_MPI 
     extern std::shared_ptr<opp::Comm> comm;
     extern std::unique_ptr<opp::GlobalParticleMover> globalMover;
 #else

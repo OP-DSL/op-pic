@@ -108,16 +108,16 @@ void oppic_dump_dat(oppic_dat data);
 
 void opp_reset_dat(oppic_dat dat, char* val, opp_reset reset = OPP_Reset_All);
 
-int opp_mpi_halo_exchanges(oppic_set set, int nargs, oppic_arg *args);
-
-void opp_mpi_halo_wait_all(int nargs, oppic_arg *args);
-
-void opp_mpi_set_dirtybit(int nargs, oppic_arg *args);
-
 opp_move_var opp_get_move_var(int thread = 0);
 
 bool opp_part_check_status(opp_move_var& m, int map0idx, oppic_set set, int particle_index, int& remove_count, int thread = 0);
 
+bool is_double_indirect_reduction(oppic_arg& arg);
 void opp_init_double_indirect_reductions(int nargs, oppic_arg *args);
 void opp_exchange_double_indirect_reductions(int nargs, oppic_arg *args) ;
 void opp_complete_double_indirect_reductions(int nargs, oppic_arg *args);
+
+int opp_mpi_halo_exchanges_grouped(oppic_set set, int nargs, oppic_arg *args, DeviceType device);
+int opp_mpi_halo_exchanges(oppic_set set, int nargs, oppic_arg *args);
+void opp_mpi_halo_exchange(oppic_arg *arg, int exec_flag);
+void opp_mpi_halo_wait_all(int nargs, oppic_arg *args);

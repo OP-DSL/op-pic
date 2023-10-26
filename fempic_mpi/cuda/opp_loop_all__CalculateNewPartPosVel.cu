@@ -84,6 +84,14 @@ __global__ void opp_cuda_all_CalcPosVel(
             (dir_arg1 + n),
             (dir_arg2 + n)
         );
+
+// printf("n %d ci %d ef %2.20lE %2.20lE %2.20lE p %2.20lE %2.20lE %2.20lE v %2.20lE %2.20lE %2.20lE\n",
+//     n, map0idx, 
+//     ind_arg0[map0idx], ind_arg0[map0idx + calc_pos_vel_stride_OPP_CUDA_0], ind_arg0[map0idx + 2*calc_pos_vel_stride_OPP_CUDA_0], 
+//     dir_arg1[n], dir_arg1[n + calc_pos_vel_stride_OPP_CUDA_1], dir_arg1[n + 2*calc_pos_vel_stride_OPP_CUDA_1],
+//     dir_arg2[n], dir_arg2[n + calc_pos_vel_stride_OPP_CUDA_2], dir_arg2[n + 2*calc_pos_vel_stride_OPP_CUDA_2]
+//     );
+
     }
 }
 
@@ -108,6 +116,7 @@ void opp_loop_all__CalculateNewPartPosVel(
     args[2]  = std::move(arg2);
 
     int set_size = opp_mpi_halo_exchanges_grouped(set, nargs, args, Device_GPU);
+    opp_mpi_halo_wait_all(nargs, args);
     if (set_size > 0) 
     {
         calc_pos_vel_stride_OPP_HOST_0 = args[0].dat->set->set_capacity;
@@ -136,7 +145,7 @@ void opp_loop_all__CalculateNewPartPosVel(
         }
     }
 
-    opp_mpi_set_dirtybit_grouped(nargs, args, Device_GPU);
+    opp_set_dirtybit_grouped(nargs, args, Device_GPU);
     cutilSafeCall(cudaDeviceSynchronize());
 
     opp_profiler->end("CalcPosVel");

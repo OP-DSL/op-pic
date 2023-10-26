@@ -282,6 +282,7 @@
 //     opp_init_particle_move(set, nargs, args);
 
 //     int set_size = opp_mpi_halo_exchanges_grouped(set, nargs, args, Device_GPU);
+//      opp_mpi_halo_wait_all(nargs, args);
 //     opp_profiler->start("MoveToCells1");
 //     if (set_size > 0) 
 //     {
@@ -348,7 +349,7 @@
 //     opp_finalize_particle_move(set);
 //     opp_profiler->end("finalize_move");
 
-//     opp_mpi_set_dirtybit_grouped(nargs, args, Device_GPU);
+//     opp_set_dirtybit_grouped(nargs, args, Device_GPU);
 //     cutilSafeCall(cudaDeviceSynchronize());
 
 //     opp_profiler->end("MoveToCells");
@@ -636,6 +637,7 @@ void opp_loop_all_part_move__MoveToCells(
     opp_init_particle_move(set, nargs, args);
 
     int set_size = opp_mpi_halo_exchanges_grouped(set, nargs, args, Device_GPU);
+    opp_mpi_halo_wait_all(nargs, args);
     opp_profiler->start("MoveToCells1");
     if (set_size > 0) 
     {
@@ -714,7 +716,7 @@ void opp_loop_all_part_move__MoveToCells(
     opp_finalize_particle_move(set);
     opp_profiler->end("finalize_move");
 
-    opp_mpi_set_dirtybit_grouped(nargs, args, Device_GPU);
+    opp_set_dirtybit_grouped(nargs, args, Device_GPU);
     cutilSafeCall(cudaDeviceSynchronize());
 
     opp_profiler->end("MoveToCells");

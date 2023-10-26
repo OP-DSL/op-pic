@@ -192,7 +192,7 @@ void FESolver::initID(oppic_dat node_type_dat) // relation from node indices to 
         }
     }
 
-#ifdef ENABLE_MPI
+#ifdef USE_MPI
     // send all the ID values of the export non-exec halos
     // (send the values by adding by own_start and making the values negative)
     // receive all ID values of the import non exec halos and 
@@ -247,7 +247,7 @@ void FESolver::initPetscStructures()
     MatSetSizes(Jmat, neq, neq, PETSC_DETERMINE, PETSC_DETERMINE);
     MatSetSizes(Kmat, neq, neq, PETSC_DETERMINE, PETSC_DETERMINE);
 
-#ifndef ENABLE_MPI
+#ifndef USE_MPI
     MatSetType(Jmat, MATSEQAIJ);
     MatSetType(Kmat, MATSEQAIJ);
 
@@ -524,7 +524,7 @@ void FESolver::computePhi(oppic_arg arg0, oppic_arg arg1, oppic_arg arg2)
 
     args[1].idx = 2; // HACK to forcefully make halos to download
 
-    opp_mpi_halo_exchanges(arg1.dat->set, nargs, args);
+    opp_mpi_halo_exchanges_grouped(arg1.dat->set, nargs, args, Device_CPU);
     opp_mpi_halo_wait_all(nargs, args);
 
     if (false) // incase if we want to print current ranks node_charge_density including halos
@@ -566,7 +566,7 @@ void FESolver::computePhi(oppic_arg arg0, oppic_arg arg1, oppic_arg arg2)
             node_potential[n] += d[A];
     }
 
-    opp_mpi_set_dirtybit(nargs, args);
+    opp_set_dirtybit(nargs, args);
 
     opp_profiler->end("ComputePhi");
 
@@ -700,7 +700,7 @@ void FESolver::initialzeMatrix(double **p_A)
                                     off_diag_max_fields : local_off_diag_max_fields;  
         }
 
-#ifndef ENABLE_MPI
+#ifndef USE_MPI
         MatSeqAIJSetPreallocation(Kmat, diag_max_fields, nullptr);
         MatSeqAIJSetPreallocation(Jmat, diag_max_fields, nullptr);
 #else
@@ -765,11 +765,11 @@ void FESolver::enrich_cell_shape_deriv(oppic_dat cell_shape_deriv)
         }
     }
 
-#ifdef ENABLE_MPI
+#ifdef USE_MPI
     cell_shape_deriv->dirtybit = 1;
     oppic_arg arg0 = opp_get_arg(cell_shape_deriv, OP_RW);
     arg0.idx = 2; // HACK
-    opp_mpi_halo_exchanges(cell_shape_deriv->set, 1, &arg0);  
+    opp_mpi_halo_exchanges_grouped(cell_shape_deriv->set, 1, &arg0, Device_CPU);  
     opp_mpi_halo_wait_all(1, &arg0);
 #endif
 
@@ -912,8 +912,8 @@ void FESolver::sanityCheck()
     }      
     
     if (OP_DEBUG) 
-        opp_printf("FESolver::FESolver", "j_gm %d, j_gn %d, k_gm %d, k_gn %d, j_row_start %d, \
-            j_row_end %d, k_row_start %d, k_row_end %d", 
+        opp_printf("FESolver::FESolver", 
+            "j_gm %d, j_gn %d, k_gm %d, k_gn %d, j_row_start %d, j_row_end %d, k_row_start %d, k_row_end %d", 
             j_gm, j_gn, k_gm, k_gn, j_row_start, j_row_end, k_row_start, k_row_end);
 }
 

@@ -139,10 +139,10 @@ void opp_exchange_double_indirect_reductions(oppic_dat dat, opp_reduc_comm reduc
     { 
         int send_rank    = imp_nonexec_list->ranks[i];
         char* send_buf   = &(dat->data[init + imp_nonexec_list->disps[i] * dat->size]);
-        int send_size    = dat->size * imp_nonexec_list->sizes[i];
+        size_t send_size    = (size_t)dat->size * imp_nonexec_list->sizes[i];
         MPI_Request* req = &(reduc_buf->s_req[reduc_buf->s_num_req++]);
 
-        if (OP_DEBUG) opp_printf("opp_exchange_double_indirect_reductions", "SEND SIZE %d", send_size);
+        if (OP_DEBUG) opp_printf("opp_exchange_double_indirect_reductions", "SEND SIZE %zu bytes", send_size);
 
         MPI_Isend(send_buf, send_size, MPI_CHAR, send_rank, dat->index, OP_MPI_WORLD, req);
 
@@ -156,10 +156,10 @@ void opp_exchange_double_indirect_reductions(oppic_dat dat, opp_reduc_comm reduc
     {
         int recv_rank    = exp_nonexec_list->ranks[i];
         char* recv_buf   = &(reduc_buf->buf_nonexec[exp_nonexec_list->disps[i] * dat->size]);
-        int recv_size    = dat->size * exp_nonexec_list->sizes[i];
+        size_t recv_size    = (size_t)dat->size * exp_nonexec_list->sizes[i];
         MPI_Request* req = &(reduc_buf->r_req[reduc_buf->r_num_req++]);
 
-        if (OP_DEBUG) opp_printf("opp_exchange_double_indirect_reductions", "RECEIVE SIZE %d", recv_size);
+        if (OP_DEBUG) opp_printf("opp_exchange_double_indirect_reductions", "RECEIVE SIZE %zu bytes", recv_size);
 
         MPI_Irecv(recv_buf, recv_size, MPI_CHAR, recv_rank, dat->index, OP_MPI_WORLD, req);
     }

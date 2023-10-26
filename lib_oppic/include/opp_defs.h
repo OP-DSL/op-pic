@@ -15,7 +15,7 @@
 #include <stdarg.h>
 #include <memory>
 
-#ifdef ENABLE_MPI
+#ifdef USE_MPI
     namespace opp {
         class Comm;
         class GlobalParticleMover;

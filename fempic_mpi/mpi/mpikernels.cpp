@@ -122,7 +122,7 @@ void opp_loop_inject__InjectIons(
         }
     }
 
-    opp_mpi_set_dirtybit(nargs, args);
+    opp_set_dirtybit(nargs, args);
 
     opp_profiler->end("InjectIons");
 }
@@ -163,9 +163,16 @@ void opp_loop_all__CalculateNewPartPosVel(
             &((double*) arg1.data)[i * arg1.dim],        // part_pos,
             &((double*) arg2.data)[i * arg2.dim]         // part_vel,
         );
+    
+    // printf("n %d ci %d ef %2.20lE %2.20lE %2.20lE p %2.20lE %2.20lE %2.20lE v %2.20lE %2.20lE %2.20lE\n",
+    // i, map0idx, 
+    // ((double*) arg0.data)[map0idx * arg0.dim], ((double*) arg0.data)[map0idx * arg0.dim+1], ((double*) arg0.data)[map0idx * arg0.dim+2], 
+    // ((double*) arg1.data)[i * arg1.dim], ((double*) arg1.data)[i * arg1.dim+1], ((double*) arg1.data)[i * arg1.dim+2],
+    // ((double*) arg2.data)[i * arg2.dim], ((double*) arg2.data)[i * arg2.dim+1], ((double*) arg2.data)[i * arg2.dim+2]
+    // );
     }
 
-    opp_mpi_set_dirtybit(nargs, args);
+    opp_set_dirtybit(nargs, args);
 
     opp_profiler->end("CalcPosVel");    
 }
@@ -213,6 +220,9 @@ void opp_loop_all__DepositChargeOnNodes(
         const int map3idx = arg1.map_data[map0idx * arg1.map->dim + 2];
         const int map4idx = arg1.map_data[map0idx * arg1.map->dim + 3];
 
+// printf("n %d ci %d c_to_n %d %d %d %d\n",
+//     i, map0idx, map1idx,map2idx,map3idx,map4idx);
+
         deposit_charge_on_nodes__kernel(
             &((const double*) arg0.data)[i * arg0.dim],      // part_lc,
             &((double*) arg1.data)[map1idx],                 // node_charge_den0,
@@ -226,7 +236,7 @@ void opp_loop_all__DepositChargeOnNodes(
 
     opp_complete_double_indirect_reductions(nargs, args);
 
-    opp_mpi_set_dirtybit(nargs, args);
+    opp_set_dirtybit(nargs, args);
 
     opp_profiler->end("DepCharge");   
 }
@@ -372,7 +382,7 @@ void opp_loop_all_part_move__MoveToCells(
     // TODO : can this be added to opp_mpi_halo_exchanges, to complete before the next usage?
     opp_complete_double_indirect_reductions(nargs, args);
 
-    opp_mpi_set_dirtybit(nargs, args);
+    opp_set_dirtybit(nargs, args);
 
 #ifdef DEBUG_INTERNAL // ----------------------------------------------------------------------------
     std::chrono::duration<double> total_diff   = std::chrono::system_clock::now() - total_start;
@@ -423,7 +433,7 @@ void opp_loop_all__ComputeNodeChargeDensity(
         }
     }  
 
-    opp_mpi_set_dirtybit(nargs, args);
+    opp_set_dirtybit(nargs, args);
 
     opp_profiler->end("ComputeNodeChargeDensity");
 }
@@ -471,6 +481,9 @@ void opp_loop_all__ComputeElectricField(
             const int map3idx = args[2].map_data[i * args[2].map->dim + 2];
             const int map4idx = args[2].map_data[i * args[2].map->dim + 3];
 
+// printf("ci %d c_to_n %d %d %d %d\n",
+//     i, map1idx,map2idx,map3idx,map4idx);
+
             compute_electric_field__kernel(
                 &((double*)args[0].data)[i * args[0].dim],    // cell_electric_field
                 &((double*)args[1].data)[i * args[1].dim],    // cell_shape_deriv
@@ -482,7 +495,7 @@ void opp_loop_all__ComputeElectricField(
         } 
     }  
 
-    opp_mpi_set_dirtybit(nargs, args);
+    opp_set_dirtybit(nargs, args);
 
     opp_profiler->end("ComputeElectricField");
 }
@@ -580,7 +593,7 @@ inline void generateStructMeshToGlobalCellMappings(opp_set cells_set, const opp_
         }
     }
 
-#ifdef ENABLE_MPI
+#ifdef USE_MPI
     // Step 2 : For MPI, get the inter-node values reduced to the structured mesh
 
     cellMapper->reduceInterNodeMappings(1);
@@ -658,7 +671,7 @@ inline void generateStructMeshToGlobalCellMappings(opp_set cells_set, const opp_
         cellMapper->unlockWindows();
     }
 
-#ifdef ENABLE_MPI
+#ifdef USE_MPI
     // Step 4 : For MPI, get the inter-node values reduced to the structured mesh
     cellMapper->reduceInterNodeMappings(2);
     
@@ -684,7 +697,7 @@ void initializeParticleMover(const double gridSpacing, int dim, const opp_dat no
 
     if (useGlobalMove) {
         
-#ifdef ENABLE_MPI
+#ifdef USE_MPI
         comm = std::make_shared<Comm>(MPI_COMM_WORLD);
         globalMover = std::make_unique<GlobalParticleMover>(comm->comm_parent);
 #endif
@@ -746,6 +759,15 @@ void opp_particle_mover__Move(
         opp_move_var m;
 
         do {
+
+// if (i < 50)
+// printf("n %d ci %d cv %2.20lE p %2.20lE %2.20lE %2.20lE cd %2.20lE %2.20lE %2.20lE %2.20lE m %d %d %d %d\n",
+//     i, cellIdx, ((const double*) args[3].data)[cellIdx],
+//     ((const double*) args[0].data)[i * args[0].dim],((const double*) args[0].data)[i * args[0].dim+1],((const double*) args[0].data)[i * args[0].dim+2],
+//     ((const double*) args[4].data)[cellIdx * args[4].dim],((const double*) args[4].data)[cellIdx * args[4].dim+1],((const double*) args[4].data)[cellIdx * args[4].dim+2],((const double*) args[4].data)[cellIdx * args[4].dim+3],
+//     ((const int*)    args[5].data)[cellIdx * args[5].dim],((const int*)    args[5].data)[cellIdx * args[5].dim+1],((const int*)    args[5].data)[cellIdx * args[5].dim+2],((const int*)    args[5].data)[cellIdx * args[5].dim+3]
+//     );
+
             m.move_status = getCellIndexKernel(
                 &((const double*) args[0].data)[i * args[0].dim], 
                 &((int*)          args[1].data)[i],
@@ -832,7 +854,7 @@ void opp_particle_mover__Move(
         opp_profiler->end(profName);
     }
 
-    opp_mpi_set_dirtybit(nargs, args);
+    opp_set_dirtybit(nargs, args);
 
     opp_profiler->end("Move");
 }

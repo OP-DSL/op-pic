@@ -155,6 +155,44 @@ __device__ void move_all_particles_to_cell__kernel(
     }
 }
 
+//*******************************************************************************
+// Returns true only if another hop is required by the current rank
+__device__ bool opp_part_check_status_cuda(opp_move_var& m, int* map0idx, int particle_index, 
+                                                int& remove_count, char* need_remove_flags) 
+{
+    m.iteration_one = false;
+
+    if (m.move_status == OPP_MOVE_DONE)
+    {
+//printf("Y");
+        return false;
+    }
+    else if (m.move_status == OPP_NEED_REMOVE)
+    {
+//printf("U");
+        *map0idx = MAX_CELL_INDEX;
+        atomicAdd(&remove_count, 1);
+
+        return false;
+    }
+    else if (*map0idx >= OPP_cells_set_size_d)
+    {
+//printf("V%d_%d|", *map0idx, OPP_cells_set_size_d);
+        // map0idx cell is not owned by the current mpi rank (it is in the import exec halo region), need to communicate
+        
+        need_remove_flags[particle_index] = 1;
+        
+        // Needs to be removed from the current rank, bdw particle packing will be done just prior exchange and removal
+        m.move_status = OPP_NEED_REMOVE; 
+        atomicAdd(&remove_count, 1);
+
+        return false;
+    }
+//printf("L");
+    // map0idx is an own cell and m.move_status == OPP_NEED_MOVE
+    return true;
+}
+
 // CUDA kernel function
 //*************************************************************************************************
 __global__ void opp_cuda_all_MoveToCells(
@@ -166,6 +204,7 @@ __global__ void opp_cuda_all_MoveToCells(
     const double *__restrict ind_arg4,      // cell_det,
     const int *__restrict ind_arg5,         // cell_connectivity,
     int *__restrict particle_remove_count,
+    char *__restrict need_remove_flags,
     int start,
     int end) 
 {
@@ -176,29 +215,33 @@ __global__ void opp_cuda_all_MoveToCells(
         int n = tid + start;
 
         opp_move_var m;
+        int* map0idx = nullptr; //MAX_CELL_INDEX;
 
         do
         {
-            int map0idx = dir_arg1[n];
+            map0idx = &(dir_arg1[n]);
             // int map0idx = d_cell_index[n]; // TODO : I dont know why this isn't working ??? 
             // dir_arg2 and d_cell_index has same pointer values, but this get stuck!
 
+// if (n < 50)
+// printf("n %d ci %d cv %2.20lE p %2.20lE %2.20lE %2.20lE cd %2.20lE %2.20lE %2.20lE %2.20lE m %d %d %d %d\n",
+//     n, *map0idx, ind_arg3[*map0idx],
+//     dir_arg0[n], dir_arg0[n + move_stride_OPP_CUDA_0], dir_arg0[n + 2*move_stride_OPP_CUDA_0],
+//     ind_arg4[*map0idx], ind_arg4[*map0idx + move_stride_OPP_CUDA_4], ind_arg4[*map0idx + 2*move_stride_OPP_CUDA_4], ind_arg4[*map0idx + 3*move_stride_OPP_CUDA_4],
+//     ind_arg5[*map0idx], ind_arg5[*map0idx + move_stride_OPP_CUDA_5], ind_arg5[*map0idx + 2*move_stride_OPP_CUDA_5], ind_arg5[*map0idx + 3*move_stride_OPP_CUDA_5]
+//     );
             move_all_particles_to_cell__kernel(
                 (m),
                 (dir_arg0 + n),         // part_pos,
                 (dir_arg1 + n),         // cell_index,
                 (dir_arg2 + n),         // part_lc,
-                (ind_arg3 + map0idx),   // cell_volume,
-                (ind_arg4 + map0idx),   // cell_det,
-                (ind_arg5 + map0idx)    // cell_connectivity,
+                (ind_arg3 + *map0idx),   // cell_volume,
+                (ind_arg4 + *map0idx),   // cell_det,
+                (ind_arg5 + *map0idx)    // cell_connectivity,
             );                
 
-        } while (m.move_status == (int)OPP_NEED_MOVE);
-
-        if (m.move_status == OPP_NEED_REMOVE) 
-        {
-            atomicAdd(particle_remove_count, 1);
-        }
+        } while (opp_part_check_status_cuda(m, map0idx, n, 
+                        *particle_remove_count, need_remove_flags));
     }
 }
 
@@ -229,25 +272,35 @@ void opp_particle_mover__Move(
     args[4]  = std::move(arg4);
     args[5]  = std::move(arg5);
     
-    int set_size = opp_mpi_halo_exchanges_grouped(set, nargs, args, Device_GPU);
+    int set_size = opp_mpi_halo_exchanges_grouped(set, nargs, args, Device_GPU); 
+if (OP_DEBUG) opp_printf("MOVE", "1");
+    opp_mpi_halo_wait_all(nargs, args);
+if (OP_DEBUG) opp_printf("MOVE", "2");
     if (set_size > 0) 
     {
-        move_stride_OPP_HOST_0 = args[0].dat->set->set_capacity;
-        move_stride_OPP_HOST_2 = args[2].dat->set->set_capacity;
-        move_stride_OPP_HOST_4 = args[4].dat->set->set_capacity; 
-        move_stride_OPP_HOST_5 = args[5].size;
-
-        cudaMemcpyToSymbol(move_stride_OPP_CUDA_0, &move_stride_OPP_HOST_0, sizeof(int));
-        cudaMemcpyToSymbol(move_stride_OPP_CUDA_2, &move_stride_OPP_HOST_2, sizeof(int));
-        cudaMemcpyToSymbol(move_stride_OPP_CUDA_4, &move_stride_OPP_HOST_4, sizeof(int));
-        cudaMemcpyToSymbol(move_stride_OPP_CUDA_5, &move_stride_OPP_HOST_5, sizeof(int));
-
         do {
+if (OP_DEBUG) opp_printf("MOVE", "3");
+            move_stride_OPP_HOST_0 = args[0].dat->set->set_capacity;
+            move_stride_OPP_HOST_2 = args[2].dat->set->set_capacity;
+            move_stride_OPP_HOST_4 = args[4].dat->set->set_capacity; 
+            move_stride_OPP_HOST_5 = args[5].size;
+            OPP_cells_set_size = set->cells_set->size; 
+if (OP_DEBUG) opp_printf("MOVE", "3 OPP_cells_set_size %d", OPP_cells_set_size);            
+            cudaMemcpyToSymbol(OPP_cells_set_size_d, &OPP_cells_set_size, sizeof(int));
+            cudaMemcpyToSymbol(move_stride_OPP_CUDA_0, &move_stride_OPP_HOST_0, sizeof(int));
+            cudaMemcpyToSymbol(move_stride_OPP_CUDA_2, &move_stride_OPP_HOST_2, sizeof(int));
+            cudaMemcpyToSymbol(move_stride_OPP_CUDA_4, &move_stride_OPP_HOST_4, sizeof(int));
+            cudaMemcpyToSymbol(move_stride_OPP_CUDA_5, &move_stride_OPP_HOST_5, sizeof(int));
+if (OP_DEBUG) opp_printf("MOVE", "4");
+int iter = 1;
 
             opp_init_particle_move(set, nargs, args);
 
             if (OPP_iter_end - OPP_iter_start > 0) 
             {
+
+if (OP_DEBUG) opp_printf("MOVE", "iter %d start %d end %d", iter++, OPP_iter_start, OPP_iter_end);
+
                 int nthread = OPP_gpu_threads_per_block;
                 int nblocks = (OPP_iter_end - OPP_iter_start - 1) / nthread + 1;
 
@@ -260,14 +313,16 @@ void opp_particle_mover__Move(
                     (const double *)  args[4].data_d,                   // cell_det,        
                     (const int *)     args[5].data_d,                   // cell_v_cell_map
                     (int *)           set->particle_remove_count_d,
+                    (char*)           OPP_need_remove_flags_d,
                     OPP_iter_start, 
                     OPP_iter_end);
             }
 
-        } while (opp_finalize_particle_move(set));
+        } while (opp_finalize_particle_move(set)); 
+if (OP_DEBUG) opp_printf("MOVE", "5");
     }
-
-    opp_mpi_set_dirtybit_grouped(nargs, args, Device_GPU);
+if (OP_DEBUG) opp_printf("MOVE", "6");
+    opp_set_dirtybit_grouped(nargs, args, Device_GPU);
 
     opp_profiler->end("MoveToCells");
 }

@@ -84,6 +84,9 @@ __global__ void opp_cuda_all_DepNodeCharge(
         const int map3idx = oppDat1Map[map0idx + dep_charge_stride_OPP_CUDA_1 * 2];
         const int map4idx = oppDat1Map[map0idx + dep_charge_stride_OPP_CUDA_1 * 3];
 
+// printf("n %d ci %d c_to_n %d %d %d %d\n",
+//     n, map0idx, map1idx,map2idx,map3idx,map4idx);
+
         dep_node_charge__kernel_gpu(
             (dir_arg0 + n),
             (ind_arg1 + map1idx),
@@ -119,11 +122,16 @@ void opp_loop_all__DepositChargeOnNodes(
     args[4]  = std::move(arg4);
 
     int set_size = opp_mpi_halo_exchanges_grouped(set, nargs, args, Device_GPU);
+    opp_mpi_halo_wait_all(nargs, args);
+
+    opp_init_double_indirect_reductions_cuda(nargs, args);
+
     if (set_size > 0) 
     {
         dep_charge_stride_OPP_HOST_0 = args[0].dat->set->set_capacity;
-        dep_charge_stride_OPP_HOST_1 = args[1].map->from->size;
+        dep_charge_stride_OPP_HOST_1 = args[1].size;
 
+// opp_printf("AAAA", "dep_charge_stride_OPP_HOST_1=%d set_size=%d exec=%d nexec=%d", dep_charge_stride_OPP_HOST_1, args[1].map->from->size, args[1].map->from->exec_size, args[1].map->from->nonexec_size);
         cudaMemcpyToSymbol(dep_charge_stride_OPP_CUDA_0, &dep_charge_stride_OPP_HOST_0, sizeof(int));
         cudaMemcpyToSymbol(dep_charge_stride_OPP_CUDA_1, &dep_charge_stride_OPP_HOST_1, sizeof(int));
 
@@ -148,7 +156,11 @@ void opp_loop_all__DepositChargeOnNodes(
         }
     }
 
-    opp_mpi_set_dirtybit_grouped(nargs, args, Device_GPU);
+    opp_exchange_double_indirect_reductions_cuda(nargs, args);
+
+    opp_complete_double_indirect_reductions_cuda(nargs, args);
+
+    opp_set_dirtybit_grouped(nargs, args, Device_GPU);
     cutilSafeCall(cudaDeviceSynchronize());
 
     opp_profiler->end("DepCharge");

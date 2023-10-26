@@ -31,14 +31,19 @@ OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-#include <opp_mpi.h>
+#include <opp_cuda.h>
 
 /*******************************************************************************
  * Main MPI halo creation routine
  *******************************************************************************/
 void opp_halo_create() 
 {
+#ifdef USE_MPI
     __opp_halo_create();
+    
+    // The device arrays are dirty at this point, but opp_partition() routine calling this
+    // makes all device arrays clean
+#endif
 }
 
 /*******************************************************************************
@@ -46,15 +51,9 @@ void opp_halo_create()
 *******************************************************************************/
 void opp_halo_destroy() 
 {
+#ifdef USE_MPI
     __opp_halo_destroy();
-}
-
-/*******************************************************************************
- * Routine to start exchanging halos for the args
-*******************************************************************************/
-int opp_mpi_halo_exchanges_grouped(oppic_set set, int nargs, oppic_arg *args, DeviceType device)
-{
-    return opp_mpi_halo_exchanges(set, nargs, args); // Halo exchange only for mesh dats
+#endif
 }
 
 /*******************************************************************************
@@ -62,9 +61,12 @@ int opp_mpi_halo_exchanges_grouped(oppic_set set, int nargs, oppic_arg *args, De
 *******************************************************************************/
 int opp_mpi_halo_exchanges(oppic_set set, int nargs, oppic_arg *args) 
 {
+
     if (OP_DEBUG) opp_printf("opp_mpi_halo_exchanges", "START");
 
     int size = set->size;
+
+#ifdef USE_MPI
     bool direct_flag = true;
 
     // check if this is a direct loop
@@ -74,9 +76,14 @@ int opp_mpi_halo_exchanges(oppic_set set, int nargs, oppic_arg *args)
 
     // return set size if it is a direct loop
     if (direct_flag)
+    {
+        if (OP_DEBUG) opp_printf("opp_mpi_halo_exchanges", "This is a direct loop");
         return size;
+    }   
 
-    // not a direct loop ...
+    if (OP_DEBUG) 
+        opp_printf("opp_mpi_halo_exchanges", "This is a in-direct loop");
+
     int exec_flag = 0;
     for (int n = 0; n < nargs; n++) 
     {
@@ -106,26 +113,87 @@ int opp_mpi_halo_exchanges(oppic_set set, int nargs, oppic_arg *args)
                 if (OP_DEBUG) 
                     opp_printf("opp_mpi_halo_exchanges", "opp_exchange_halo for dat [%s] exec_flag %d", 
                         args[n].dat->name, exec_flag);
-                opp_mpi_halo_exchange(&args[n], exec_flag);
+                __opp_mpi_host_halo_exchange(&args[n], exec_flag);
             }
         }
     }  
+#endif
 
     return size;
 }
 
+// if multiple of halo exchanges are done for different kernels at once, this may get currupted
+DeviceType opp_current_device = Device_CPU;
+
 /*******************************************************************************
- * Routine to exchange MPI halos of the arg
+ * Routine to start exchanging halos for the args
 *******************************************************************************/
-void opp_mpi_halo_exchange(oppic_arg *arg, int exec_flag)
+int opp_mpi_halo_exchanges_grouped(oppic_set set, int nargs, oppic_arg *args, DeviceType device)
 {
-    __opp_mpi_host_halo_exchange(arg, exec_flag);
+    opp_current_device = device;
+
+    for (int n = 0; n < nargs; n++)
+    {
+        bool already_done = false;
+
+        // Check if dat reduction was already done within these args
+        for (int m = 0; m < n; m++) 
+        {
+            if (args[n].dat == args[m].dat)
+                already_done = true;
+        }
+
+        if (!already_done && args[n].opt && args[n].argtype == OP_ARG_DAT && args[n].dat->dirty_hd == Dirty::Host && 
+            (!args[n].dat->set->is_particle || opp_current_device == Device_CPU)) 
+        {
+            oppic_download_dat(args[n].dat);
+        }
+    }
+
+#ifdef USE_MPI
+    return opp_mpi_halo_exchanges(set, nargs, args); // Halo exchange only for mesh dats
+#else
+    return set->size;
+#endif
 }
 
 /*******************************************************************************
- * Routine to wait for all the MPI halo exchanges to complete
+ * Routine to complete exchanging halos for the args
 *******************************************************************************/
 void opp_mpi_halo_wait_all(int nargs, oppic_arg *args)
 {
-    __opp_mpi_host_halo_wait_all(nargs, args);
+#ifdef USE_MPI
+    // Finish the halo exchange
+    __opp_mpi_host_halo_wait_all(nargs, args); // Halo exchange only for mesh dats
+#endif
+
+    for (int n = 0; n < nargs; n++)
+    { 
+        bool already_done = false;
+
+        // Check if dat reduction was already done within these args
+        for (int m = 0; m < n; m++) 
+        {
+            if (args[n].dat == args[m].dat)
+                already_done = true;
+        }
+
+        if (!already_done && args[n].opt && args[n].argtype == OP_ARG_DAT && opp_current_device == Device_GPU &&
+                (args[n].dat->dirty_hd == Dirty::Device || !args[n].dat->set->is_particle)) 
+        { 
+            oppic_upload_dat(args[n].dat); // TODO : ideally need to upload only the halo regions               
+        }
+    }        
+
+    for (int n = 0; n < nargs; n++) // This is wrong - change
+    { 
+        if (args[n].opt && args[n].argtype == OP_ARG_DAT && !args[n].dat->set->is_particle) 
+        {
+            if (opp_current_device == Device_CPU) 
+                args[n].dat->dirty_hd = Dirty::Device;
+            else
+                args[n].dat->dirty_hd = Dirty::NotDirty;
+        }
+    }
 }
+

@@ -145,7 +145,7 @@ opp_profiler->reg("ComputeDet");
 
         m->DeleteValues();
 
-    #ifdef ENABLE_MPI
+    #ifdef USE_MPI
         // opp_partition(std::string("PARMETIS_KWAY"), cell_set, cell_v_nodes_map);
         // opp_partition(std::string("PARMETIS_GEOM"), iface_set, nullptr, iface_n_pos);
         // opp_partition(std::string("EXTERNAL"), node_set, nullptr, node_colors);
@@ -237,6 +237,8 @@ opp_profiler->reg("ComputeDet");
 //             );
 // }
 // else 
+std::string f = std::string("F_") + std::to_string(OPP_rank) + std::string("l_") + std::to_string(OPP_main_loop_iter);
+
 {
                 opp_loop_all__CalculateNewPartPosVel(
                     particle_set,                                                                           
@@ -244,6 +246,13 @@ opp_profiler->reg("ComputeDet");
                     opp_get_arg(part_position, OP_WRITE),                         
                     opp_get_arg(part_velocity, OP_WRITE)
                 );
+
+// opp_print_dat_to_txtfile(part_position, f.c_str(), "part_position.dat");
+// opp_print_dat_to_txtfile(part_velocity, f.c_str(), "part_velocity.dat");
+// opp_print_dat_to_txtfile(cell_volume, f.c_str(), "cell_volume.dat");
+// opp_print_dat_to_txtfile(cell_det, f.c_str(), "cell_det.dat");
+// opp_print_map_to_txtfile(cell_v_cell_map, f.c_str(), "cell_v_cell_map.map");
+// opp_print_map_to_txtfile(cell_v_nodes_map  , f.c_str(), "cell_v_nodes_map.dat");
 
                 opp_particle_mover__Move(
                     particle_set,
@@ -255,6 +264,12 @@ opp_profiler->reg("ComputeDet");
                     opp_get_arg(cell_v_cell_map, OP_READ, OPP_Map_from_Mesh_Rel)
                 );
 
+// opp_print_dat_to_txtfile(part_mesh_rel, f.c_str(), "AM_part_mesh_rel.dat");
+// opp_print_dat_to_txtfile(part_lc, f.c_str(), "AM_part_lc.dat");
+// opp_print_dat_to_txtfile(part_position, f.c_str(), "AM_part_position.dat");
+// opp_print_dat_to_txtfile(part_velocity, f.c_str(), "AM_part_velocity.dat");
+// opp_print_dat_to_txtfile(node_charge_den, f.c_str(), "AM_node_charge_den.dat");
+
                 opp_loop_all__DepositChargeOnNodes(
                     particle_set, 
                     opp_get_arg(part_lc,                              OP_READ),
@@ -264,13 +279,13 @@ opp_profiler->reg("ComputeDet");
                     opp_get_arg(node_charge_den, 3, cell_v_nodes_map, OP_INC,  OPP_Map_from_Mesh_Rel)
                 );
 }
-            std::string f = std::string("A_") + std::to_string(OPP_rank) + "_" + std::to_string(OPP_main_loop_iter + 1);
-//             opp_print_dat_to_txtfile(node_charge_den, f.c_str(), "node_charge_den.dat");
+            // std::string f = std::string("A_") + std::to_string(OPP_rank) + "_" + std::to_string(OPP_main_loop_iter + 1);
+            // opp_print_dat_to_txtfile(node_charge_den, f.c_str(), "AD_node_charge_den.dat");
 //             opp_print_dat_to_txtfile(part_position, f.c_str(), "part_position.dat");
 //             opp_print_dat_to_txtfile(part_velocity, f.c_str(), "part_velocity.dat");
 //             opp_print_dat_to_txtfile(part_mesh_rel, f.c_str(), "part_mesh_rel.dat");
             // opp_print_dat_to_txtfile(part_id, f.c_str(), "part_id.dat");
-// #ifdef ENABLE_MPI
+// #ifdef USE_MPI
 //             opp_mpi_print_dat_to_txtfile(node_charge_den, f.c_str());
 // #endif
 // MPI_Barrier(OP_MPI_WORLD);
@@ -283,6 +298,10 @@ opp_profiler->reg("ComputeDet");
                 opp_get_arg(node_volume,      OP_READ)
             );
 
+// opp_print_dat_to_txtfile(node_charge_den, f.c_str(), "node_charge_den.dat");
+
+            // opp_print_dat_to_txtfile(node_charge_den, f.c_str(), "AC_node_charge_den.dat");
+
 // MPI_Barrier(OP_MPI_WORLD);
 // if (OPP_rank == OPP_ROOT) 
 //     opp_printf("Main", "field_solver->computePhi iteration %d *************", OPP_main_loop_iter);
@@ -292,6 +311,8 @@ opp_profiler->reg("ComputeDet");
                 opp_get_arg(node_charge_den, OP_READ),
                 opp_get_arg(node_bnd_pot,    OP_READ)
             );
+
+// opp_print_dat_to_txtfile(node_potential, f.c_str(), "node_potential.dat");
 
 // MPI_Barrier(OP_MPI_WORLD);
 // if (OPP_rank == OPP_ROOT) 
@@ -314,6 +335,8 @@ opp_profiler->reg("ComputeDet");
                 opp_get_arg(node_potential, 2, cell_v_nodes_map, OP_READ),
                 opp_get_arg(node_potential, 3, cell_v_nodes_map, OP_READ) 
             );
+
+// opp_print_dat_to_txtfile(cell_ef, f.c_str(), "cell_ef.dat");
 
             if (opp_params->get<OPP_BOOL>("print_final"))
             {

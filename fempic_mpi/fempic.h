@@ -37,12 +37,12 @@ const bool OPP_LOG = false;
 // USER WRITTEN CODE
 //*********************************************
 
-// #ifndef ENABLE_MPI
-//     #define ENABLE_MPI
+// #ifndef USE_MPI
+//     #define USE_MPI
 // #endif
 
 #include <oppic_lib.h>
-#ifdef ENABLE_MPI
+#ifdef USE_MPI
     #include <opp_mpi.h>
     #include "cluster.h"
 #endif
@@ -283,7 +283,7 @@ inline int InitializeInjectDistributions(oppic_dat if_dist_dat, oppic_dat if_are
         }
     }
 
-#ifdef ENABLE_MPI
+#ifdef USE_MPI
     // Load the whole file and bradcast
     // TODO : We can reduce communications by sending only the required size
     MPI_Bcast(&total_size, 1, MPI_INT, OPP_ROOT, MPI_COMM_WORLD);
@@ -305,7 +305,7 @@ inline int InitializeInjectDistributions(oppic_dat if_dist_dat, oppic_dat if_are
         fclose(fp);
     }
 
-#ifdef ENABLE_MPI
+#ifdef USE_MPI
     // Load the whole file and bradcast
     // TODO : We can reduce communications by sending only the required size
     MPI_Bcast(dist, total_size, MPI_DOUBLE, OPP_ROOT, MPI_COMM_WORLD);
@@ -454,7 +454,7 @@ inline std::shared_ptr<FieldPointers> LoadMesh()
         }
     }
 
-#ifdef ENABLE_MPI 
+#ifdef USE_MPI 
 #if defined(USE_NODE_PARTITIONING)
 
     // Cluster iface centroids and assign nodes to the rank on the major particle movement axis z
@@ -806,7 +806,7 @@ inline void print_per_cell_particle_counts(oppic_dat c_part_count, oppic_dat par
         ((int *)c_part_count->data)[c_index] += 1;
     }
 
-#ifdef ENABLE_MPI
+#ifdef USE_MPI
     opp_mpi_print_dat_to_txtfile(c_part_count, "c_part_count.dat");
 #else
     opp_print_dat_to_txtfile(c_part_count, "", "c_part_count.dat");
@@ -829,7 +829,7 @@ inline std::string get_global_level_log(oppic_dat n_charge_density, oppic_dat n_
         if (abs(((double*)n_potential->data)[n]) > max_phi) max_phi = abs(((double*)n_potential->data)[n]);   
     }
 
-#ifdef ENABLE_MPI
+#ifdef USE_MPI
     MPI_Reduce(&max_den, &global_max_den, 1, MPI_DOUBLE, MPI_MAX, OPP_ROOT, MPI_COMM_WORLD);
     MPI_Reduce(&max_phi, &global_max_phi, 1, MPI_DOUBLE, MPI_MAX, OPP_ROOT, MPI_COMM_WORLD);
     MPI_Reduce(&local_part_count, &global_part_size, 1, MPI_INT, MPI_SUM, OPP_ROOT, MPI_COMM_WORLD);
@@ -857,7 +857,7 @@ inline std::string get_global_level_log(oppic_dat n_charge_density, oppic_dat n_
 //*************************************************************************************************
 inline void DistributeMeshOverRanks(std::shared_ptr<FieldPointers>& g_m, std::shared_ptr<FieldPointers>& m)
 { 
-#ifdef ENABLE_MPI
+#ifdef USE_MPI
     MPI_Bcast(&(g_m->n_nodes), 1, MPI_INT, OPP_ROOT, MPI_COMM_WORLD);
     MPI_Bcast(&(g_m->n_cells), 1, MPI_INT, OPP_ROOT, MPI_COMM_WORLD);
     MPI_Bcast(&(g_m->n_ifaces), 1, MPI_INT, OPP_ROOT, MPI_COMM_WORLD);

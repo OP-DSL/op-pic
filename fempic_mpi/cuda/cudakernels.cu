@@ -35,7 +35,10 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 
 #include "../fempic.h"
-#include <oppic_cuda.h>
+#include <opp_cuda.h>
+
+__constant__ int OPP_cells_set_size_d;
+int OPP_cells_set_size;
 
 // TODO : This should be removed - only for testing
 double CONST_spwt = 0, CONST_ion_velocity = 0, CONST_dt = 0, CONST_plasma_den = 0, CONST_mass = 0, CONST_charge = 0;

@@ -50,6 +50,10 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <thrust/generate.h>
 #include <thrust/random.h>
 
+#ifdef USE_MPI
+    #include <opp_mpi_core.h>
+#endif
+
 #define cutilSafeCall(err) __cudaSafeCall(err, __FILE__, __LINE__)
 #define cutilCheckMsg(msg) __cutilCheckMsg(msg, __FILE__, __LINE__)
 
@@ -59,6 +63,7 @@ extern int* opp_saved_mesh_relation_d;
 extern size_t opp_saved_mesh_relation_size;
 extern thrust::device_vector<int> cellIdx_dv;
 extern thrust::device_vector<int> i_dv;
+extern char *OPP_need_remove_flags_d;
 
 //*************************************************************************************************
 
@@ -71,18 +76,31 @@ void oppic_cuda_exit();
 
 void cutilDeviceInit(int argc, char **argv);
 
-void oppic_upload_dat(oppic_dat dat);
+void oppic_upload_dat(opp_dat dat);
+void oppic_upload_map(opp_map map, bool create_new = false);
 
-void oppic_download_dat(oppic_dat dat);
+void oppic_download_dat(opp_dat dat);
 
-void oppic_download_particle_set(oppic_set particles_set);
+void oppic_download_particle_set(opp_set particles_set, bool force_download = false);
 
-void oppic_upload_particle_set(oppic_set particles_set, bool realloc = false);
+void oppic_upload_particle_set(opp_set particles_set, bool realloc = false);
 
-int opp_mpi_halo_exchanges_grouped(oppic_set set, int nargs, oppic_arg *args, 
-    DeviceType device);
+/*******************************************************************************/
 
-void opp_mpi_set_dirtybit_grouped(int nargs, oppic_arg *args, DeviceType device);
+void opp_halo_create();
+void opp_halo_destroy();
+
+/*******************************************************************************/
+
+void opp_init_double_indirect_reductions_cuda(int nargs, oppic_arg *args);
+void opp_exchange_double_indirect_reductions_cuda(int nargs, oppic_arg *args) ;
+void opp_complete_double_indirect_reductions_cuda(int nargs, oppic_arg *args);
+
+/*******************************************************************************/
+
+
+void print_dat_to_txtfile_mpi(op_dat dat, const char *file_name);
+void opp_mpi_print_dat_to_txtfile(op_dat dat, const char *file_name);
 
 void print_last_cuda_error();
 

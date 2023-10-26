@@ -30,7 +30,7 @@ OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-#include <oppic_cuda.h>
+#include <opp_cuda.h>
 
 int* opp_saved_mesh_relation_d = nullptr;
 size_t opp_saved_mesh_relation_size = 0;
@@ -93,6 +93,7 @@ void opp_inc_part_count_with_distribution(opp_set particles_set,
     args1[1] = opp_get_arg(mesh_rel_dat, OP_WRITE);
 
     int set_size = opp_mpi_halo_exchanges_grouped(particles_set, nargs1, args1, Device_GPU);
+    opp_mpi_halo_wait_all(nargs1, args1);
     if (set_size > 0) 
     {
         int start     = 0;
@@ -171,7 +172,7 @@ void opp_inc_part_count_with_distribution(opp_set particles_set,
         }
     }
 
-    opp_mpi_set_dirtybit_grouped(nargs1, args1, Device_GPU);
+    opp_set_dirtybit_grouped(nargs1, args1, Device_GPU);
     cutilSafeCall(cudaDeviceSynchronize());
 
     opp_profiler->end("IncPartCountWithDistribution");

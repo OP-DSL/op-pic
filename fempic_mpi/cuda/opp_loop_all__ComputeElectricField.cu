@@ -36,9 +36,11 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 __constant__ int computeEF_stride_OPP_CUDA_0;
 __constant__ int computeEF_stride_OPP_CUDA_1;
+__constant__ int computeEF_stride_OPP_CUDA_2_MAP;
 
 int computeEF_stride_OPP_HOST_0 = -1;
 int computeEF_stride_OPP_HOST_1 = -1;
+int computeEF_stride_OPP_HOST_2_MAP = -1;
 
 //user function
 //*************************************************************************************************
@@ -78,8 +80,7 @@ __global__ void opp_cuda_ComputeElectricField(
     const double *__restrict ind_arg4,
     const double *__restrict ind_arg5,
     int start,
-    int end,
-    int set_size) 
+    int end) 
 {
     int tid = threadIdx.x + blockIdx.x * blockDim.x;
 
@@ -87,10 +88,13 @@ __global__ void opp_cuda_ComputeElectricField(
     {
         int n = tid + start;
 
-        const int map1idx = opDat2Map[n + set_size * 0];
-        const int map2idx = opDat2Map[n + set_size * 1];
-        const int map3idx = opDat2Map[n + set_size * 2];
-        const int map4idx = opDat2Map[n + set_size * 3];
+        const int map1idx = opDat2Map[n + computeEF_stride_OPP_CUDA_2_MAP * 0];
+        const int map2idx = opDat2Map[n + computeEF_stride_OPP_CUDA_2_MAP * 1];
+        const int map3idx = opDat2Map[n + computeEF_stride_OPP_CUDA_2_MAP * 2];
+        const int map4idx = opDat2Map[n + computeEF_stride_OPP_CUDA_2_MAP * 3];
+
+// printf("ci %d c_to_n %d %d %d %d\n",
+//     n, map1idx,map2idx,map3idx,map4idx);
 
         //user-supplied kernel call
         compute_electric_field__kernel_gpu(
@@ -131,13 +135,17 @@ void opp_loop_all__ComputeElectricField(
     args[5] = std::move(arg5);
 
     int set_size = opp_mpi_halo_exchanges_grouped(set, nargs, args, Device_GPU);
+    opp_mpi_halo_wait_all(nargs, args);
     if (set_size > 0) 
     {
         computeEF_stride_OPP_HOST_0 = args[0].dat->set->set_capacity;
         computeEF_stride_OPP_HOST_1 = args[1].dat->set->set_capacity;
-
+        computeEF_stride_OPP_HOST_2_MAP = args[2].size;
+if (OP_DEBUG) opp_printf("AAAA", "computeEF_stride_OPP_HOST_2_MAP=%d set_size=%d exec=%d nexec=%d", computeEF_stride_OPP_HOST_2_MAP, args[2].map->from->size, args[2].map->from->exec_size, args[2].map->from->nonexec_size);
+ 
         cudaMemcpyToSymbol(computeEF_stride_OPP_CUDA_0, &computeEF_stride_OPP_HOST_0, sizeof(int));
         cudaMemcpyToSymbol(computeEF_stride_OPP_CUDA_1, &computeEF_stride_OPP_HOST_1, sizeof(int));
+        cudaMemcpyToSymbol(computeEF_stride_OPP_CUDA_2_MAP, &computeEF_stride_OPP_HOST_2_MAP, sizeof(int));
 
         int start = 0;
         int end   = set->size;
@@ -156,12 +164,11 @@ void opp_loop_all__ComputeElectricField(
                 (double *)  args[4].data_d,
                 (double *)  args[5].data_d,
                 start, 
-                end,
-                arg2.map->from->size);
+                end);
         }
     }
 
-    opp_mpi_set_dirtybit_grouped(nargs, args, Device_GPU);
+    opp_set_dirtybit_grouped(nargs, args, Device_GPU);
     cutilSafeCall(cudaDeviceSynchronize());
 
     opp_profiler->end("ComputeElectricField");   

@@ -128,19 +128,25 @@ mpi_test: mklib
 		 $(CPP) $(CPPFLAGS) -c mpi/mpikernels.cpp -o $(OBJ)/mpikernels.o $(ALL_INC)
 	     $(CPP) $(CPPFLAGS) -o $(BIN)/mpi $(OBJ)/fempic_test.o $(OBJ)/meshes.o $(OBJ)/particles.o $(OBJ)/maths.o $(OBJ)/mpikernels.o $(OBJ)/FESolver.o  -loppic_mpi $(ALL_INC) $(ALL_LIBS)
 
-mpi: mklib
-	     $(MPICPP) $(CPPFLAGS) -DENABLE_MPI -c fempic_op.cpp -o $(OBJ)/fempic_op.o $(ALL_INC)
-		 $(MPICPP) $(CPPFLAGS) -DENABLE_MPI -c fempic_ori/meshes.cpp -o $(OBJ)/meshes.o $(ALL_INC)
-	     $(MPICPP) $(CPPFLAGS) -DENABLE_MPI -c fempic_ori/particles.cpp -o $(OBJ)/particles.o $(ALL_INC)
-		 $(MPICPP) $(CPPFLAGS) -DENABLE_MPI -c fempic_ori/maths.cpp -o $(OBJ)/maths.o $(ALL_INC)
-		 $(MPICPP) $(CPPFLAGS) -DENABLE_MPI -c FESolver.cpp -o $(OBJ)/FESolver.o $(ALL_INC)		 
-		 $(MPICPP) $(CPPFLAGS) -DENABLE_MPI -c mpi/mpikernels.cpp -o $(OBJ)/mpikernels.o $(ALL_INC)
-	     $(MPICPP) $(CPPFLAGS) -DENABLE_MPI -o $(BIN)/mpi $(OBJ)/fempic_op.o $(OBJ)/meshes.o $(OBJ)/particles.o $(OBJ)/maths.o $(OBJ)/mpikernels.o $(OBJ)/FESolver.o  -loppic_mpi $(ALL_INC) $(ALL_LIBS) 
+mpi_common: mklib
+	     $(MPICPP) $(CPPFLAGS) -DUSE_MPI -c fempic_op.cpp -o $(OBJ)/fempic_op.o $(ALL_INC)
+		 $(MPICPP) $(CPPFLAGS) -DUSE_MPI -c fempic_ori/meshes.cpp -o $(OBJ)/meshes.o $(ALL_INC)
+	     $(MPICPP) $(CPPFLAGS) -DUSE_MPI -c fempic_ori/particles.cpp -o $(OBJ)/particles.o $(ALL_INC)
+		 $(MPICPP) $(CPPFLAGS) -DUSE_MPI -c fempic_ori/maths.cpp -o $(OBJ)/maths.o $(ALL_INC)
+		 $(MPICPP) $(CPPFLAGS) -DUSE_MPI -c FESolver.cpp -o $(OBJ)/FESolver.o $(ALL_INC)		 
+
+mpi: mpi_common
+		 $(MPICPP) $(CPPFLAGS) -DUSE_MPI -c mpi/mpikernels.cpp -o $(OBJ)/mpikernels.o $(ALL_INC)
+	     $(MPICPP) $(CPPFLAGS) -DUSE_MPI -o $(BIN)/mpi $(OBJ)/fempic_op.o $(OBJ)/meshes.o $(OBJ)/particles.o $(OBJ)/maths.o $(OBJ)/mpikernels.o $(OBJ)/FESolver.o  -loppic_mpi $(ALL_INC) $(ALL_LIBS) 
 
 cuda: common
 		 $(NVCC) $(NVCCFLAGS) -c cuda/cudakernels.cu -o $(OBJ)/cudakernels.o $(ALL_INC) $(CUDA_INC)
-	     $(CPP) $(CPPFLAGS) -o $(BIN)/cuda $(OBJ)/fempic_op.o $(OBJ)/meshes.o $(OBJ)/particles.o $(OBJ)/maths.o $(OBJ)/cudakernels.o $(OBJ)/FESolver.o $(ALL_INC) $(CUDA_INC) $(ALL_LIBS) $(CUDA_LIB) -loppic_cuda
+	     $(CPP) $(CPPFLAGS) -o $(BIN)/cuda $(OBJ)/fempic_op.o $(OBJ)/meshes.o $(OBJ)/particles.o $(OBJ)/maths.o $(OBJ)/cudakernels.o $(OBJ)/FESolver.o $(ALL_INC) $(CUDA_INC) $(ALL_LIBS) $(CUDA_LIB) -lopp_cuda
 
+cuda_mpi: mpi_common
+		 $(NVCC) $(NVCCFLAGS) -DUSE_MPI -c cuda/cudakernels.cu -o $(OBJ)/cudakernels.o $(ALL_INC) $(CUDA_INC)
+	     $(MPICPP) $(CPPFLAGS) -DUSE_MPI -o $(BIN)/cuda_mpi $(OBJ)/fempic_op.o $(OBJ)/meshes.o $(OBJ)/particles.o $(OBJ)/maths.o $(OBJ)/cudakernels.o $(OBJ)/FESolver.o $(ALL_INC) $(CUDA_INC) $(ALL_LIBS) $(CUDA_LIB) -lopp_cuda_mpi
+	
 hip: mklib
 		 $(HIPCC) $(HIPCCFLAGS) -c hip/hipkernels.cpp -o $(OBJ)/hipkernels.o $(ALL_INC) $(HIP_INC)
 	     $(HIPCC) $(HIPCCFLAGS) -c fempic_op.cpp -o $(OBJ)/fempic_op.o $(ALL_INC)
