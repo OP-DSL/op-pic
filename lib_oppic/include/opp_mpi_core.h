@@ -133,7 +133,7 @@ struct opp_particle_comm_data
 
 struct opp_particle_move_info
 {
-    int local_particle_index = MAX_CELL_INDEX;
+    int local_index = MAX_CELL_INDEX;
     int foreign_cell_index = MAX_CELL_INDEX;
 };
 
@@ -164,6 +164,7 @@ extern part *OP_part_list;
 extern int **orig_part_range;
 
 extern std::map<oppic_set, std::map<int, opp_particle_comm_data>> opp_part_comm_neighbour_data; 
+extern std::map<int, std::map<int, std::vector<opp_particle_move_info>>> opp_part_move_indices;
 
 /*******************************************************************************
 * Data Type to hold sliding planes info

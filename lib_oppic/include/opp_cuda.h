@@ -117,71 +117,71 @@ void sort_dat_according_to_index_double(oppic_dat dat, const thrust::device_vect
     int set_capacity, int size);
 
 template <class T> 
-void copy_according_to_index(thrust::device_vector<T>* dat_dv, thrust::device_vector<T>* sorted_dat_dv, 
-    const thrust::device_vector<int>& new_idx_dv, int set_capacity, int size, int dimension)
+void copy_according_to_index(thrust::device_vector<T>* in_dat_dv, thrust::device_vector<T>* out_dat_dv, 
+    const thrust::device_vector<int>& new_idx_dv, int in_capacity, int out_capacity, int size, int dimension)
 {
     switch (dimension)
     {
         case 1:
             thrust::copy_n(thrust::make_permutation_iterator(
                 thrust::make_zip_iterator(
-                    thrust::make_tuple(dat_dv->begin())
+                    thrust::make_tuple(in_dat_dv->begin())
                 ), 
                 new_idx_dv.begin()), 
                 size, 
                 thrust::make_zip_iterator(
-                    thrust::make_tuple(sorted_dat_dv->begin())));
+                    thrust::make_tuple(out_dat_dv->begin())));
             break;
         case 2:
             thrust::copy_n(thrust::make_permutation_iterator(
                 thrust::make_zip_iterator(
                     thrust::make_tuple(
-                        dat_dv->begin(), 
-                        (dat_dv->begin() + set_capacity)
+                        in_dat_dv->begin(), 
+                        (in_dat_dv->begin() + in_capacity)
                     )
                 ), 
                 new_idx_dv.begin()), 
                 size, 
                 thrust::make_zip_iterator(
                     thrust::make_tuple(
-                        sorted_dat_dv->begin(), 
-                        (sorted_dat_dv->begin() + set_capacity))));
+                        out_dat_dv->begin(), 
+                        (out_dat_dv->begin() + out_capacity))));
             break;
         case 3:
             thrust::copy_n(thrust::make_permutation_iterator(
                 thrust::make_zip_iterator(
                     thrust::make_tuple(
-                        dat_dv->begin(), 
-                        (dat_dv->begin() + set_capacity), 
-                        (dat_dv->begin() + (2 * set_capacity))
+                        in_dat_dv->begin(), 
+                        (in_dat_dv->begin() + in_capacity), 
+                        (in_dat_dv->begin() + (2 * in_capacity))
                     )
                 ), 
                 new_idx_dv.begin()), 
                 size, 
                 thrust::make_zip_iterator(
                     thrust::make_tuple(
-                        sorted_dat_dv->begin(), 
-                        (sorted_dat_dv->begin() + set_capacity), 
-                        (sorted_dat_dv->begin() + (2 * set_capacity)))));
+                        out_dat_dv->begin(), 
+                        (out_dat_dv->begin() + out_capacity), 
+                        (out_dat_dv->begin() + (2 * out_capacity)))));
             break;
         case 4:
             thrust::copy_n(thrust::make_permutation_iterator(
                 thrust::make_zip_iterator(
                     thrust::make_tuple(
-                        dat_dv->begin(), 
-                        (dat_dv->begin() + set_capacity), 
-                        (dat_dv->begin() + (2 * set_capacity)), 
-                        (dat_dv->begin() + (3 * set_capacity))
+                        in_dat_dv->begin(), 
+                        (in_dat_dv->begin() + in_capacity), 
+                        (in_dat_dv->begin() + (2 * in_capacity)), 
+                        (in_dat_dv->begin() + (3 * in_capacity))
                     )
                 ), 
                 new_idx_dv.begin()), 
                 size, 
                 thrust::make_zip_iterator(
                     thrust::make_tuple(
-                        sorted_dat_dv->begin(), 
-                        (sorted_dat_dv->begin() + set_capacity), 
-                        (sorted_dat_dv->begin() + (2 * set_capacity)), 
-                        (sorted_dat_dv->begin() + (3 * set_capacity)))));
+                        out_dat_dv->begin(), 
+                        (out_dat_dv->begin() + out_capacity), 
+                        (out_dat_dv->begin() + (2 * out_capacity)), 
+                        (out_dat_dv->begin() + (3 * out_capacity)))));
             break;
         default:
             std::cerr << "particle_sort_cuda not implemented for dim " << dimension << std::endl;

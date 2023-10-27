@@ -130,7 +130,8 @@ void sort_dat_according_to_index_int(oppic_dat dat, const thrust::device_vector<
     thrust::device_vector<int>* dat_dv = dat->thrust_int;
     thrust::device_vector<int>* sorted_dat_dv = dat->thrust_int_sort;
 
-    copy_according_to_index<int>(dat_dv, sorted_dat_dv, new_idx_dv, set_capacity, size, dat->dim);
+    copy_according_to_index<int>(dat_dv, sorted_dat_dv, new_idx_dv, 
+                                    set_capacity, set_capacity, size, dat->dim);
 
     thrust::device_vector<int>* tmp = dat->thrust_int;
     dat->thrust_int = dat->thrust_int_sort;
@@ -146,7 +147,8 @@ void sort_dat_according_to_index_double(oppic_dat dat, const thrust::device_vect
     thrust::device_vector<double>* dat_dv = dat->thrust_real;
     thrust::device_vector<double>* sorted_dat_dv = dat->thrust_real_sort;
 
-    copy_according_to_index<double>(dat_dv, sorted_dat_dv, new_idx_dv, set_capacity, size, dat->dim);
+    copy_according_to_index<double>(dat_dv, sorted_dat_dv, new_idx_dv, 
+                                        set_capacity, set_capacity, size, dat->dim);
 
     thrust::device_vector<double>* tmp = dat->thrust_real;
     dat->thrust_real = dat->thrust_real_sort;

@@ -30,13 +30,8 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
 #include <opp_cuda.h>
+#include "opp_particle_comm.cu"
 #include "opp_increase_part_count.cu"
-
-void opp_part_unpack_cuda(oppic_set set);
-
-std::vector<char> OPP_need_remove_flags;
-char *OPP_need_remove_flags_d;
-int OPP_need_remove_flags_size = 0;
 
 //****************************************
 void opp_init(int argc, char **argv)
@@ -346,9 +341,6 @@ void oppic_increase_particle_count(oppic_set part_set, const int num_particles_t
 // opp_inc_part_count_with_distribution() is in opp_increase_part_count.cu
 
 //****************************************
-void particle_sort_cuda(oppic_set set, bool hole_filling);
-
-//****************************************
 void oppic_particle_sort(oppic_set set)
 { 
     particle_sort_cuda(set, false);
@@ -382,206 +374,16 @@ void oppic_print_map_to_txtfile(oppic_map map, const char *file_name_prefix, con
 }
 
 //****************************************
-void opp_init_particle_move(oppic_set set, int nargs, oppic_arg *args)
-{ 
-
-    oppic_init_particle_move_core(set);
-
-    cutilSafeCall(cudaMemcpy(set->particle_remove_count_d, &(set->particle_remove_count), sizeof(int), 
-                    cudaMemcpyHostToDevice));
-
-    if (set->size >= OPP_need_remove_flags_size)
-    {
-        if (OPP_need_remove_flags_d != NULL) 
-            cutilSafeCall(cudaFree(OPP_need_remove_flags_d));
-        
-        OPP_need_remove_flags_size = set->size;
-        cutilSafeCall(cudaMalloc(&OPP_need_remove_flags_d, OPP_need_remove_flags_size * sizeof(char)));
-    }
-
-    cutilSafeCall(cudaMemset(OPP_need_remove_flags_d, 0, OPP_need_remove_flags_size));
-
-    if (OPP_comm_iteration == 0)
-    {
-        OPP_iter_start = 0;
-        OPP_iter_end   = set->size;          
-    }
-    else
-    {
-        // need to change the arg data since particle communication could change the pointer in realloc dat->data
-        for (int i = 0; i < nargs; i++)
-        {
-            if (args[i].argtype == OP_ARG_DAT && args[i].dat->set->is_particle)
-            {
-                args[i].data = args[i].dat->data;
-                args[i].data_d = args[i].dat->data_d;
-                if (OP_DEBUG) opp_printf("SSSS", "dat %s %p", args[i].dat->name, args[i].dat->data_d);
-            }
-        }
-    }
-
-    OPP_mesh_relation_data = ((int *)set->mesh_relation_dat->data); 
-    OPP_mesh_relation_data_d = ((int *)set->mesh_relation_dat->data_d); 
-}
-
-//****************************************
-void opp_pack_marked_particles_to_move(opp_set set)
-{
-#ifdef USE_MPI
-
-    OPP_need_remove_flags.resize(OPP_need_remove_flags_size, 0);
-if (OP_DEBUG) opp_printf("CHECK", "allocating OPP_need_remove_flags with size %d %zu", 
-                OPP_need_remove_flags_size, OPP_need_remove_flags.size());
-
-    cutilSafeCall(cudaMemcpy((char*)&(OPP_need_remove_flags[0]), OPP_need_remove_flags_d, 
-        sizeof(char) * OPP_need_remove_flags_size, cudaMemcpyDeviceToHost));
-
-if (OP_DEBUG) opp_printf("PPPPPPPPP", "SSSSSS");
-int p = 0;
-for (size_t particle_index = 0; particle_index < OPP_need_remove_flags.size(); particle_index++)
-{
-    if (OPP_need_remove_flags[particle_index] == 1)
-        p++;
-}
-if (OP_DEBUG) opp_printf("PPPPPPPPP", 
-                "FLAG All %d Move %d", OPP_need_remove_flags.size(), p);
-
-    int flagged = 0;
-
-    for (size_t particle_index = 0; particle_index < OPP_need_remove_flags.size(); particle_index++)
-    {
-        if (OPP_need_remove_flags[particle_index] == 1)
-        { flagged++;
-            std::map<int, opp_particle_comm_data>& set_part_com_data = opp_part_comm_neighbour_data[set];
-            
-            int map0idx = OPP_mesh_relation_data[particle_index];
-
-            auto it = set_part_com_data.find(map0idx);
-            if (it == set_part_com_data.end())
-            {
-                opp_printf("opp_pack_marked_particles_to_move", 
-                    "Error: cell %d cannot be found in opp_part_comm_neighbour_data map", map0idx);
-                return; // unlikely, need exit(-1) to abort instead!
-            }
-
-            opp_particle_comm_data& comm_data = it->second;
-
-            opp_part_mark_move(set, particle_index, comm_data);
-
-            // This particle is already packed, hence needs to be removed from the current rank
-            OPP_mesh_relation_data[particle_index] = MAX_CELL_INDEX;
-        }
-    }
-
-if (OP_DEBUG) opp_printf("opp_pack_marked_particles_to_move", 
-                "FLAG All %d Move %d", OPP_need_remove_flags.size(), flagged);
-
-    // This is because hole filling/ sorting is done on the device arrays
-    oppic_upload_dat(set->mesh_relation_dat);
-#endif
-}
-
-//****************************************
-// TODO: ZAM: Need to convert to receive mpi particles //****************************************//****************************************//****************************************
-bool opp_finalize_particle_move(oppic_set set)
-{ 
-    opp_profiler->start("Mv_Finalize");
-
-    cutilSafeCall(cudaDeviceSynchronize());
-
-    cutilSafeCall(cudaMemcpy(&(set->particle_remove_count), set->particle_remove_count_d, 
-                    sizeof(int), cudaMemcpyDeviceToHost));
-
-    const int particle_remove_count = set->particle_remove_count;
-
-    if (OP_DEBUG) 
-        opp_printf("oppic_finalize_particle_move", "set [%s][%d] with particle_remove_count [%d]", 
-            set->name, set->size, particle_remove_count);
-
-// 1. keep track of whether atleast one need mpi comm [WRONG] I might not require to send to others, but some one might try to send to me 
-// 2. if yes, download dats from device and use opp_part_exchange (in this particle will get copied so we can override the space)
-// 3. do the below, oppic_particle_sort or particle_sort_cuda
-// 4. check whether all mpi ranks are done and if yes, return false
-// 5. if no, wait for all to complete and copy only the received particles to the device buffer (may need to write another path and to expand device array sizes)
-// 6. set new start and ends and return true
-
-#ifdef USE_MPI
-        // if (set->need_mpi_part_comms)
-        {
-            oppic_download_particle_set(set, true); // can avoid unnecessary calls with a flag, but need to implement it
-        }
-
-        // pack particles
-        opp_pack_marked_particles_to_move(set);
-
-        // send the counts and send the particles  
-        opp_part_exchange(set); 
-#endif
-
-    if (particle_remove_count > 0)
-    {
-        set->size -= particle_remove_count;
-
-        if (OP_auto_sort == 1)
-        {
-            if (OP_DEBUG) 
-                opp_printf("oppic_finalize_particle_move", "auto sorting particle set [%s]", 
-                set->name);
-            oppic_particle_sort(set);
-        }
-        else
-        {
-            particle_sort_cuda(set, true); // Does only hole filling
-        }
-    }
-
-#ifdef USE_MPI
-    if (opp_part_check_all_done(set))
-    {
-        if (OPP_max_comm_iteration < OPP_comm_iteration)
-            OPP_max_comm_iteration = OPP_comm_iteration;
-
-        OPP_comm_iteration = 0; // reset for the next par loop
-        
-        opp_profiler->end("Mv_Finalize");
-
-        return false; // all mpi ranks do not have anything to communicate to any rank
-    }
-
-    // Since we didn't hole fill host, host will be dirty but we only use the correct newly added parts
-    // mark host as dirty
-
-    opp_part_wait_all(set); // wait till all the particles are communicated
-
-    // increase the particle count if required and unpack the communicated particle buffer 
-    // in to separate particle dats
-
-    if (OP_DEBUG)
-        opp_printf("opp_finalize_particle_move", "set [%s] size prior unpack %d", set->name, set->size);
-
-    opp_part_unpack_cuda(set);    
-
-    OPP_iter_start = set->size - set->diff;
-    OPP_iter_end   = set->size;  
-
-    OPP_comm_iteration++;  
-
-    opp_profiler->end("Mv_Finalize");
-
-    return true;
-#else
-    return false;
-#endif
-}
-
-//****************************************
 // Set the complete dat to zero (upto array capacity)
 void opp_reset_dat(oppic_dat dat, char* val, opp_reset reset)
 {
-    if (OP_DEBUG) opp_printf("oppic_reset_dat", "dat [%s]", dat->name);
+    if (OP_DEBUG) 
+        opp_printf("oppic_reset_dat", "dat [%s] dim [%d] dat size [%d] set size [%d] set capacity [%d]", 
+            dat->name, dat->dim, dat->size, dat->set->size, dat->set->set_capacity);
 
-    int start = -1, end = -1;
+    int start = 0, end = dat->set->size;
 
+#ifdef USE_MPI
     opp_get_start_end(dat->set, reset, start, end);
 
     size_t element_size = dat->size / dat->dim;
@@ -590,17 +392,17 @@ void opp_reset_dat(oppic_dat dat, char* val, opp_reset reset)
     { 
         size_t data_d_offset = (i * dat->set->set_capacity + start) * element_size;
 
-if (OP_DEBUG) opp_printf("KKK", "Working on dat %s dim %lld bytes_to_copy_per_dim %zu %p data_d_offset %zu", 
+        if (OP_DEBUG) 
+            opp_printf("oppic_reset_dat", "dat %s dim %lld bytes_to_copy_per_dim %zu %p offset %zu", 
                 dat->name, i, (end - start) * element_size, dat->data_d, data_d_offset);
 
         cutilSafeCall(cudaMemset((dat->data_d + data_d_offset), 0, (end - start) * element_size));  
     }
+#else
+    cutilSafeCall(cudaMemset((double*)(dat->data_d), 0, dat->size * dat->set->set_capacity));
+#endif
 
     cutilSafeCall(cudaDeviceSynchronize());
-
-    // int set_size = dat->set->set_capacity;
-
-    // cutilSafeCall(cudaMemset((double*)(dat->data_d), 0, dat->size * set_size));
 
     dat->dirty_hd = Dirty::Host;
     dat->dirtybit = 1;
@@ -798,10 +600,83 @@ void oppic_download_particle_set(oppic_set particles_set, bool force_download)
     }  
 }
 
+//*******************************************************************************
 
+//****************************************
+void opp_init_double_indirect_reductions_cuda(int nargs, oppic_arg *args)
+{
+    opp_init_double_indirect_reductions(nargs, args);
+}
+
+//****************************************
+void opp_exchange_double_indirect_reductions_cuda(int nargs, oppic_arg *args)
+{
+    if (OP_DEBUG) opp_printf("opp_exchange_double_indirect_reductions_cuda", "ALL START");
+
+    cutilSafeCall(cudaDeviceSynchronize());
+
+    for (int n = 0; n < nargs; n++) 
+    {
+        bool already_done = false;
+
+        // check if the dat is mapped with double indirect mapping
+        if (is_double_indirect_reduction(args[n]))
+        {
+            // Check if dat reduction was already done within these args
+            for (int m = 0; m < n; m++) 
+            {
+                if (args[n].dat == args[m].dat)
+                    already_done = true;
+            }
+
+            if (!already_done)
+            {
+                oppic_download_dat(args[n].dat);
+            }
+        }
+    }
+
+    opp_exchange_double_indirect_reductions(nargs, args);
+
+    if (OP_DEBUG) opp_printf("opp_exchange_double_indirect_reductions_cuda", "ALL END");
+}
+
+//****************************************
+void opp_complete_double_indirect_reductions_cuda(int nargs, oppic_arg *args)
+{
+    if (OP_DEBUG) opp_printf("opp_complete_double_indirect_reductions_cuda", "ALL START");
+
+    opp_complete_double_indirect_reductions(nargs, args);
+
+    for (int n = 0; n < nargs; n++) 
+    {
+        bool already_done = false;
+
+        // check if the dat is mapped with double indirect mapping
+        if (is_double_indirect_reduction(args[n]))
+        {
+            // Check if dat reduction was already done within these args
+            for (int m = 0; m < n; m++) 
+            {
+                if (args[n].dat == args[m].dat)
+                    already_done = true;
+            }
+
+            if (!already_done)
+            {
+                oppic_upload_dat(args[n].dat);
+            }
+        }
+    }  
+
+    if (OP_DEBUG) opp_printf("opp_complete_double_indirect_reductions_cuda", "ALL END");  
+}
+
+//****************************************
 
 // **************************************** UTILITY FUNCTIONS ****************************************
 
+//****************************************
 void __cudaSafeCall(cudaError_t err, const char *file, const int line) 
 {
     if (cudaSuccess != err) 
@@ -812,6 +687,7 @@ void __cudaSafeCall(cudaError_t err, const char *file, const int line)
     }
 }
 
+//****************************************
 void __cutilCheckMsg(const char *errorMessage, const char *file, const int line) 
 {
     cudaError_t err = cudaGetLastError();
@@ -823,7 +699,7 @@ void __cutilCheckMsg(const char *errorMessage, const char *file, const int line)
     }
 }
 
-
+//****************************************
 void oppic_cpHostToDevice(void **data_d, void **data_h, int copy_size, int alloc_size, bool create_new) 
 {
     if (create_new)
@@ -836,6 +712,7 @@ void oppic_cpHostToDevice(void **data_d, void **data_h, int copy_size, int alloc
     cutilSafeCall(cudaDeviceSynchronize());
 }
 
+//****************************************
 void oppic_create_device_arrays(oppic_dat dat, bool create_new)
 {
     if (OP_DEBUG) opp_printf("oppic_create_device_arrays", "%s %s", dat->name, dat->type);
@@ -887,6 +764,7 @@ void oppic_create_device_arrays(oppic_dat dat, bool create_new)
                         dat->name, dat->data_d, temp_char_d, dat->set->set_capacity * dat->dim);
 }
 
+//****************************************
 void cutilDeviceInit(int argc, char **argv) 
 {
     (void)argc;
@@ -899,7 +777,7 @@ void cutilDeviceInit(int argc, char **argv)
         opp_printf("cutilDeviceInit", "cutil error: no devices supporting CUDA");
         opp_abort();
     }
-    if (deviceCount > OPP_comm_size) 
+    if (deviceCount < OPP_comm_size) 
     {
         opp_printf("cutilDeviceInit", "cutil error: device count %d vs mpi world size %d", 
             deviceCount, OPP_comm_size);
@@ -938,195 +816,11 @@ void cutilDeviceInit(int argc, char **argv)
     }
 }
 
+//****************************************
 void print_last_cuda_error()
 {
     printf("ANY CUDA ERRORS? %s\n", cudaGetErrorString(cudaGetLastError()));
 }
-
-//*******************************************************************************
-void opp_part_unpack_cuda(oppic_set set)
-{
-    if (OP_DEBUG) opp_printf("opp_part_unpack_cuda", "set [%s]", set->name);
-
-    opp_profiler->start("Mv_Unpack");
-
-    std::vector<oppic_dat>& particle_dats = *(set->particle_dats);
-    int64_t num_new_particles = 0;
-
-    opp_all_mpi_part_buffers* recv_buffers = (opp_all_mpi_part_buffers*)set->mpi_part_buffers;
-    std::vector<int>& neighbours = recv_buffers->neighbours;
-
-    // count the number of particles to be received from all ranks
-    for (size_t i = 0; i < neighbours.size(); i++)
-    {
-        int neighbour_rank = neighbours[i];
-        num_new_particles += (recv_buffers->import_counts)[neighbour_rank];
-    }
-
-    if (num_new_particles > 0)
-    {
-        int64_t new_part_index = (int64_t)(set->size);
-
-        oppic_increase_particle_count(set, (int)num_new_particles);
-
-if (OP_DEBUG) opp_printf("opp_part_unpack_cuda", "oppic_increase_particle_count DONE set [%s] num_new_particles [%d] new_part_index %lld", 
-                set->name, num_new_particles, new_part_index);
-
-        std::vector<char*> temp_data_vec;
-        for (size_t d = 0; d < particle_dats.size(); d++)
-        {
-            opp_dat dat = particle_dats[d];
-            char *temp_data = (char *)malloc(dat->size * num_new_particles * sizeof(char));
-            temp_data_vec.push_back(temp_data);
-if (OP_DEBUG) opp_printf("GGGGG", "name %s %zu %p -- size %d", dat->name, dat->size * num_new_particles * sizeof(char), temp_data, dat->size);            
-        }
-
-        int tot_recv_count = 0;
-        for (int i = 0; i < (int)neighbours.size(); i++)
-        {
-            int recv_rank = neighbours[i];
-
-            opp_mpi_part_buffer& receive_rank_buffer = recv_buffers->buffers[recv_rank];
-
-            int64_t receive_count = recv_buffers->import_counts[recv_rank];
-            int64_t displacement = 0;
-
-            for (size_t d = 0; d < particle_dats.size(); d++)
-            {
-                opp_dat dat = particle_dats[d];
-                char *temp_data = temp_data_vec[d];
-
-                int element_size = dat->size / dat->dim;
-
-                for (int i = 0; i < dat->dim; i++) 
-                {
-                    for (int64_t j = 0; j < receive_count; j++) 
-                    {
-                        int64_t tmp_index = element_size * i * num_new_particles + element_size * (j + tot_recv_count);
-                        int64_t recv_index = displacement + dat->size * j + element_size * i;
-
-                        for (int c = 0; c < element_size; c++) 
-                        {
-                            temp_data[tmp_index + c] = receive_rank_buffer.buf_import[recv_index + c];
-                        }
-                    }
-                }
-
-                displacement += dat->size * receive_count;               
-            }
-
-            tot_recv_count += receive_count;
-        }
-
-        // copy to device
-        for (size_t d = 0; d < particle_dats.size(); d++)
-        {
-            opp_dat dat = particle_dats[d];
-            char *temp_data = temp_data_vec[d];
-
-            size_t bytes_to_copy_per_dim = num_new_particles * dat->size / dat->dim;
-            int element_size = dat->size / dat->dim;
-if (OP_DEBUG) opp_printf("XXX", "Working on dat %s %p", dat->name, temp_data);
-            for (int64_t i = 0; i < dat->dim; i++) 
-            {
-            
-                size_t data_d_offset = new_part_index * element_size + i * set->set_capacity * element_size;
-                size_t data_h_offset = i * num_new_particles * element_size;
-
-if (OP_DEBUG) print_last_cuda_error();
-if (OP_DEBUG) opp_printf("XXX", "set capacity %d total bytes %zu dat size %d dat dim %d -- set size %d", 
-                dat->set->set_capacity, (size_t)dat->size * dat->set->set_capacity, dat->size, dat->dim, set->size);
-if (OP_DEBUG) opp_printf("XXX", "Working on dat %s dim %lld bytes_to_copy_per_dim %zu %p data_d_offset %zu data_h_offset %zu", 
-                dat->name, i, bytes_to_copy_per_dim, dat->data_d, data_d_offset, data_h_offset);
-    
-                cutilSafeCall(cudaMemcpy((dat->data_d + data_d_offset), (temp_data + data_h_offset), 
-                                    bytes_to_copy_per_dim, cudaMemcpyHostToDevice));       
-            }
-        }
-
-        cutilSafeCall(cudaDeviceSynchronize());
-
-        for (auto& char_ptr : temp_data_vec)
-            free(char_ptr);
-        temp_data_vec.clear();
-    }
-
-    opp_profiler->end("Mv_Unpack");
-
-    if (OP_DEBUG) opp_printf("opp_part_unpack_cuda", "END");    
-}
-
-
-//*******************************************************************************
-
-void opp_init_double_indirect_reductions_cuda(int nargs, oppic_arg *args)
-{
-    opp_init_double_indirect_reductions(nargs, args);
-}
-
-void opp_exchange_double_indirect_reductions_cuda(int nargs, oppic_arg *args)
-{
-    if (OP_DEBUG) opp_printf("opp_exchange_double_indirect_reductions_cuda", "ALL START");
-
-    cutilSafeCall(cudaDeviceSynchronize());
-
-    for (int n = 0; n < nargs; n++) 
-    {
-        bool already_done = false;
-
-        // check if the dat is mapped with double indirect mapping
-        if (is_double_indirect_reduction(args[n]))
-        {
-            // Check if dat reduction was already done within these args
-            for (int m = 0; m < n; m++) 
-            {
-                if (args[n].dat == args[m].dat)
-                    already_done = true;
-            }
-
-            if (!already_done)
-            {
-                oppic_download_dat(args[n].dat);
-            }
-        }
-    }
-
-    opp_exchange_double_indirect_reductions(nargs, args);
-
-    if (OP_DEBUG) opp_printf("opp_exchange_double_indirect_reductions_cuda", "ALL END");
-}
-
-void opp_complete_double_indirect_reductions_cuda(int nargs, oppic_arg *args)
-{
-    if (OP_DEBUG) opp_printf("opp_complete_double_indirect_reductions_cuda", "ALL START");
-
-    opp_complete_double_indirect_reductions(nargs, args);
-
-    for (int n = 0; n < nargs; n++) 
-    {
-        bool already_done = false;
-
-        // check if the dat is mapped with double indirect mapping
-        if (is_double_indirect_reduction(args[n]))
-        {
-            // Check if dat reduction was already done within these args
-            for (int m = 0; m < n; m++) 
-            {
-                if (args[n].dat == args[m].dat)
-                    already_done = true;
-            }
-
-            if (!already_done)
-            {
-                oppic_upload_dat(args[n].dat);
-            }
-        }
-    }  
-
-    if (OP_DEBUG) opp_printf("opp_complete_double_indirect_reductions_cuda", "ALL END");  
-}
-
-
 
 
 
@@ -1150,69 +844,126 @@ void opp_complete_double_indirect_reductions_cuda(int nargs, oppic_arg *args)
 
 //****************************************
 // HOST->DEVICE
-void oppic_upload_particle_set(oppic_set particles_set, bool realloc)
-{ 
+// void oppic_upload_particle_set(oppic_set particles_set, bool realloc)
+// { 
 
-    if (OP_DEBUG) printf("\toppic_upload_particle_set set [%s]\n", particles_set->name);
+//     if (OP_DEBUG) printf("\toppic_upload_particle_set set [%s]\n", particles_set->name);
 
-    for (oppic_dat& current_dat : *(particles_set->particle_dats))
-    {
-        if (realloc)
-        {
-            // TODO : CONVERT TO THRUST VECTORS, WILL BREAK IF NOT 
-            if (current_dat->data_d != NULL) 
-                cutilSafeCall(cudaFree(current_dat->data_d));
+//     for (oppic_dat& current_dat : *(particles_set->particle_dats))
+//     {
+//         if (realloc)
+//         {
+//             // TODO : CONVERT TO THRUST VECTORS, WILL BREAK IF NOT 
+//             if (current_dat->data_d != NULL) 
+//                 cutilSafeCall(cudaFree(current_dat->data_d));
 
-            cutilSafeCall(cudaMalloc(&(current_dat->data_d), particles_set->set_capacity * current_dat->size));
-        }
+//             cutilSafeCall(cudaMalloc(&(current_dat->data_d), particles_set->set_capacity * current_dat->size));
+//         }
 
-        oppic_upload_dat(current_dat);
-    }  
-}
+//         oppic_upload_dat(current_dat);
+//     }  
+// }
 
 
-// TODO: Try to do this in cuda
-// make cell index of the particle to be removed as int_max,
-// sort all arrays
-// make sizes changed instead of resizing
-// Could do this inside device itself
-//****************************************
-void oppic_finalize_particle_move_cuda(oppic_set set)
-{
-    cutilSafeCall(cudaMemcpy(set->particle_statuses, set->particle_statuses_d, set->size * sizeof(int), 
-                                cudaMemcpyDeviceToHost));
+// // TODO: Try to do this in cuda
+// // make cell index of the particle to be removed as int_max,
+// // sort all arrays
+// // make sizes changed instead of resizing
+// // Could do this inside device itself
+// //****************************************
+// void oppic_finalize_particle_move_cuda(oppic_set set)
+// {
+//     cutilSafeCall(cudaMemcpy(set->particle_statuses, set->particle_statuses_d, set->size * sizeof(int), 
+//                                 cudaMemcpyDeviceToHost));
 
-    set->particle_remove_count = 0;
+//     set->particle_remove_count = 0;
 
-    for (int j = 0; j < set->size; j++)
-    {
-        if (set->particle_statuses[j] == OPP_NEED_REMOVE)
-        {
-            (set->particle_remove_count)++; // Could use a device variable and use atomicAdds inside device code
-        }
-    }   
+//     for (int j = 0; j < set->size; j++)
+//     {
+//         if (set->particle_statuses[j] == OPP_NEED_REMOVE)
+//         {
+//             (set->particle_remove_count)++; // Could use a device variable and use atomicAdds inside device code
+//         }
+//     }   
 
-    if (OP_DEBUG) printf("\toppic_finalize_particle_move_cuda set [%s] with particle_remove_count [%d]\n", 
-                    set->name, set->particle_remove_count);
+//     if (OP_DEBUG) printf("\toppic_finalize_particle_move_cuda set [%s] with particle_remove_count [%d]\n", 
+//                     set->name, set->particle_remove_count);
 
-    if (set->particle_remove_count <= 0)
-    {
-        cutilSafeCall(cudaFree(set->particle_statuses_d));
-        set->particle_statuses_d = NULL;
-        return;
-    }
+//     if (set->particle_remove_count <= 0)
+//     {
+//         cutilSafeCall(cudaFree(set->particle_statuses_d));
+//         set->particle_statuses_d = NULL;
+//         return;
+//     }
 
-    oppic_download_particle_set(set); // TODO : Find a better way
+//     oppic_download_particle_set(set); // TODO : Find a better way
 
-    oppic_finalize_particle_move_core(set);
+//     oppic_finalize_particle_move_core(set);
 
-    oppic_upload_particle_set(set, true /* realloc the device pointers */);
+//     oppic_upload_particle_set(set, true /* realloc the device pointers */);
 
-    cutilSafeCall(cudaFree(set->particle_statuses_d));
-    set->particle_statuses_d = NULL;
+//     cutilSafeCall(cudaFree(set->particle_statuses_d));
+//     set->particle_statuses_d = NULL;
 
-    if (OP_DEBUG) printf("\toppic_finalize_particle_move_cuda set [%s] with new size [%d]\n", 
-                    set->name, set->size);
-}
+//     if (OP_DEBUG) printf("\toppic_finalize_particle_move_cuda set [%s] with new size [%d]\n", 
+//                     set->name, set->size);
+// }
+
+// //****************************************
+// void opp_pack_marked_particles_to_move(opp_set set)
+// {
+// #ifdef USE_MPI
+
+//     OPP_need_remove_flags.resize(OPP_need_remove_flags_size, 0);
+// if (OP_DEBUG) opp_printf("CHECK", "allocating OPP_need_remove_flags with size %d %zu", 
+//                 OPP_need_remove_flags_size, OPP_need_remove_flags.size());
+
+//     cutilSafeCall(cudaMemcpy((char*)&(OPP_need_remove_flags[0]), OPP_need_remove_flags_d, 
+//         sizeof(char) * OPP_need_remove_flags_size, cudaMemcpyDeviceToHost));
+
+// if (OP_DEBUG) opp_printf("PPPPPPPPP", "SSSSSS");
+// int p = 0;
+// for (size_t particle_index = 0; particle_index < OPP_need_remove_flags.size(); particle_index++)
+// {
+//     if (OPP_need_remove_flags[particle_index] == 1)
+//         p++;
+// }
+// if (OP_DEBUG) opp_printf("PPPPPPPPP", 
+//                 "FLAG All %d Move %d", OPP_need_remove_flags.size(), p);
+
+//     int flagged = 0;
+
+//     for (size_t particle_index = 0; particle_index < OPP_need_remove_flags.size(); particle_index++)
+//     {
+//         if (OPP_need_remove_flags[particle_index] == 1)
+//         { flagged++;
+//             std::map<int, opp_particle_comm_data>& set_part_com_data = opp_part_comm_neighbour_data[set];
+            
+//             int map0idx = OPP_mesh_relation_data[particle_index];
+
+//             auto it = set_part_com_data.find(map0idx);
+//             if (it == set_part_com_data.end())
+//             {
+//                 opp_printf("opp_pack_marked_particles_to_move", 
+//                     "Error: cell %d cannot be found in opp_part_comm_neighbour_data map", map0idx);
+//                 return; // unlikely, need exit(-1) to abort instead!
+//             }
+
+//             opp_particle_comm_data& comm_data = it->second;
+
+//             opp_part_mark_move(set, particle_index, comm_data);
+
+//             // This particle is already packed, hence needs to be removed from the current rank
+//             OPP_mesh_relation_data[particle_index] = MAX_CELL_INDEX;
+//         }
+//     }
+
+// if (OP_DEBUG) opp_printf("opp_pack_marked_particles_to_move", 
+//                 "FLAG All %d Move %d", OPP_need_remove_flags.size(), flagged);
+
+//     // This is because hole filling/ sorting is done on the device arrays
+//     oppic_upload_dat(set->mesh_relation_dat);
+// #endif
+// }
 
 // **************************************** ***************** ****************************************

@@ -33,6 +33,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <opp_mpi.h>
 
 opp_move_var move_var;
+void opp_part_pack(oppic_set set);
 void opp_part_unpack(oppic_set set);
 
 
@@ -315,6 +316,8 @@ bool opp_finalize_particle_move(oppic_set set)
 
     opp_profiler->start("Mv_Finalize");
 
+    opp_part_pack(set);
+    
     // send the counts and send the particles  
     opp_part_exchange(set);  
 

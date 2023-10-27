@@ -57,7 +57,7 @@ void opp_part_mark_move(oppic_set set, int particle_index, opp_particle_comm_dat
     std::vector<opp_particle_move_info>& vec = part_move_data_of_set[comm_data.cell_residing_rank];
 
     opp_particle_move_info obj;
-    obj.local_particle_index = particle_index;
+    obj.local_index = particle_index;
     obj.foreign_cell_index = comm_data.local_index;
 
     vec.push_back(obj);
@@ -127,7 +127,7 @@ void opp_part_pack(oppic_set set)
                 {
                     // copy the dat value to the send buffer
                     memcpy(&(send_rank_buffer.buf_export[send_rank_buffer.buf_export_index + displacement]), 
-                        &(dat->data[part.local_particle_index * dat->size]), dat->size);
+                        &(dat->data[part.local_index * dat->size]), dat->size);
                 }
 
                 displacement += dat->size;
@@ -165,7 +165,7 @@ void opp_part_pack(oppic_set set)
                 {
                     // copy the dat value to the send buffer
                     memcpy(&(send_rank_buffer.buf_export[send_rank_buffer.buf_export_index + displacement]), 
-                        &(dat->data[part.local_particle_index * dat->size]), dat->size);
+                        &(dat->data[part.local_index * dat->size]), dat->size);
                     
                     displacement += dat_size;
                 }                
@@ -414,8 +414,6 @@ void opp_part_exchange(oppic_set set)
     if (OP_DEBUG) opp_printf("opp_part_exchange", "set [%s] - particle size [%d]", set->name, set->particle_size);
 
     opp_profiler->start("Mv_Exchange");
-
-    opp_part_pack(set);
 
     opp_all_mpi_part_buffers* mpi_buffers = (opp_all_mpi_part_buffers*)set->mpi_part_buffers;
 
@@ -973,7 +971,7 @@ void ParticlePacker::pack(opp_set set) {
 
                     // copy the dat value to the send buffer
                     memcpy(&(perRankBuffer[displacement]), 
-                        &(dat->data[part.local_particle_index * dat->size]), dat->size);
+                        &(dat->data[part.local_index * dat->size]), dat->size);
                     displacement += dat_size;
                 }                
             }
@@ -1114,7 +1112,7 @@ inline void GlobalParticleMover::markParticleToMove(oppic_set set, int partIndex
     std::vector<opp_particle_move_info>& vec = globalPartMoveDataOfSet[rankToBeMoved];
 
     opp_particle_move_info obj;
-    obj.local_particle_index = partIndex;
+    obj.local_index = partIndex;
     obj.foreign_cell_index = finalGlobalCellIndex;
     vec.push_back(obj);
 }

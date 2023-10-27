@@ -558,30 +558,8 @@ void opp_reset_dat(oppic_dat dat, char* val, opp_reset reset)
     }
 }
 
-//****************************************
-void opp_set_dirtybit(int nargs, oppic_arg *args) 
+int opp_mpi_halo_exchanges_grouped(oppic_set set, int nargs, oppic_arg *args, DeviceType device) 
 {
-    for (int n = 0; n < nargs; n++) 
-    {
-        if ((args[n].opt == 1) && (args[n].argtype == OP_ARG_DAT) &&
-            (args[n].acc == OP_INC || args[n].acc == OP_WRITE ||
-            args[n].acc == OP_RW)) 
-        {
-            args[n].dat->dirty_hd = Dirty::Device;
-        }
-    }
-}
-
-//****************************************
-int opp_mpi_halo_exchanges(oppic_set set, int nargs, oppic_arg *args) 
-{
-    // for (int n = 0; n < nargs; n++)
-    // {
-    //     if (args[n].opt && args[n].argtype == OP_ARG_DAT && args[n].dat->dirty_hd == Dirty::Host) 
-    //     {
-    //         op_download_dat(args[n].dat);
-    //     }
-    // }
     return set->size;
 }
 
