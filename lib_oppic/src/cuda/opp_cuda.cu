@@ -568,7 +568,7 @@ void oppic_upload_map(opp_map map, bool create_new)
         }
     }
 
-    int copy_size = map->dim * set_size * sizeof(int);
+    size_t copy_size = map->dim * set_size * sizeof(int);
     oppic_cpHostToDevice((void **)&(map->map_d), (void **)&(temp_map), copy_size, copy_size, create_new);
     free(temp_map);
 }
@@ -700,7 +700,7 @@ void __cutilCheckMsg(const char *errorMessage, const char *file, const int line)
 }
 
 //****************************************
-void oppic_cpHostToDevice(void **data_d, void **data_h, int copy_size, int alloc_size, bool create_new) 
+void oppic_cpHostToDevice(void **data_d, void **data_h, size_t copy_size, size_t alloc_size, bool create_new) 
 {
     if (create_new)
     {

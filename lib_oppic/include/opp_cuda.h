@@ -104,7 +104,7 @@ void opp_mpi_print_dat_to_txtfile(op_dat dat, const char *file_name);
 
 void print_last_cuda_error();
 
-void oppic_cpHostToDevice(void **data_d, void **data_h, int copy_size, int alloc_size = 0, 
+void oppic_cpHostToDevice(void **data_d, void **data_h, size_t copy_size, size_t alloc_size = 0, 
     bool create_new = false);
 
 void oppic_create_device_arrays(oppic_dat dat, bool create_new = false);

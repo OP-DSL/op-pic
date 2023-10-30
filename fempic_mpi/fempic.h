@@ -644,11 +644,11 @@ inline std::shared_ptr<FieldPointers> LoadMesh()
         node_face_con.clear();
         already_done.clear();
 
-        std::string logg = "";
-        for (auto& x : face_pairs) {
-            logg += std::to_string(x.first) + "-" + std::to_string(x.second) + " ";
-        }
-        opp_printf("Face Pairs", "%zu | %s", face_pairs.size(), logg.c_str());
+        // std::string logg = "";
+        // for (auto& x : face_pairs) {
+        //     logg += std::to_string(x.first) + "-" + std::to_string(x.second) + " ";
+        // }
+        // opp_printf("Face Pairs", "%zu | %s", face_pairs.size(), logg.c_str());
         
         cluster_assignments = BlockCluster(face_centroids, OPP_comm_size);
     }

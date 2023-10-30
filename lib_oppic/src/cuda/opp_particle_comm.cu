@@ -203,21 +203,42 @@ void opp_part_pack_cuda(opp_set set)
 #ifdef USE_MPI
     opp_profiler->start("Mv_Pack");
 
+//opp_profiler->start("Mv_Pack_resize");
     OPP_need_remove_flags.resize(OPP_need_remove_flags_size, 0);
+//opp_profiler->end("Mv_Pack_resize");
 
+//opp_profiler->start("Mv_Pack_d_to_h");
     cutilSafeCall(cudaMemcpy((char*)&(OPP_need_remove_flags[0]), OPP_need_remove_flags_d, 
                     OPP_need_remove_flags_size, cudaMemcpyDeviceToHost));
+//opp_profiler->end("Mv_Pack_d_to_h");
 
+//opp_profiler->start("Mv_Pack_gather");
     // gather the particle indices to be sent
     thrust::host_vector<int> send_indices_hv;
-    for (size_t index = 0; index < OPP_need_remove_flags.size(); index++)
+    // for (size_t index = 0; index < OPP_need_remove_flags.size(); index++) {
+    //     if (OPP_need_remove_flags[index] == 1) {
+    //         send_indices_hv.push_back(index);
+    //     }
+    // }
+    auto findIfPredicate = [](char value) { return value == 1; };
+    auto findIfBegin = std::find_if(OPP_need_remove_flags.begin(), OPP_need_remove_flags.end(), findIfPredicate);
+    auto findIfEnd = OPP_need_remove_flags.end();
+    while (findIfBegin != findIfEnd) 
     {
-        if (OPP_need_remove_flags[index] == 1) {
-            send_indices_hv.push_back(index);
-        }
+        send_indices_hv.push_back(std::distance(OPP_need_remove_flags.begin(), findIfBegin));
+        findIfBegin = std::find_if(std::next(findIfBegin), findIfEnd, findIfPredicate);
     }
-    thrust::device_vector<int> send_indices_dv(send_indices_hv);
+
+//opp_profiler->end("Mv_Pack_gather");
+
     int part_send_count = (int)send_indices_hv.size();
+    if (part_send_count <= 0) 
+    {
+        opp_profiler->end("Mv_Pack");
+        return;
+    }
+
+    thrust::device_vector<int> send_indices_dv(send_indices_hv);
 
     // copy the cell indices of the particles to be sent
     thrust::device_vector<int> send_part_cell_idx_dv(part_send_count);

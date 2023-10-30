@@ -271,38 +271,46 @@ void opp_particle_mover__Move(
     args[3]  = std::move(arg3);
     args[4]  = std::move(arg4);
     args[5]  = std::move(arg5);
-    
+
+opp_profiler->start("FMv_halo_exchanges");    
     int set_size = opp_mpi_halo_exchanges_grouped(set, nargs, args, Device_GPU); 
-if (OP_DEBUG) opp_printf("MOVE", "1");
+opp_profiler->end("FMv_halo_exchanges");
+
+opp_profiler->start("FMv_halo_wait");
     opp_mpi_halo_wait_all(nargs, args);
-if (OP_DEBUG) opp_printf("MOVE", "2");
+opp_profiler->end("FMv_halo_wait");
+
     if (set_size > 0) 
     {
         do {
-if (OP_DEBUG) opp_printf("MOVE", "3");
+
             move_stride_OPP_HOST_0 = args[0].dat->set->set_capacity;
             move_stride_OPP_HOST_2 = args[2].dat->set->set_capacity;
             move_stride_OPP_HOST_4 = args[4].dat->set->set_capacity; 
             move_stride_OPP_HOST_5 = args[5].size;
             OPP_cells_set_size = set->cells_set->size; 
-if (OP_DEBUG) opp_printf("MOVE", "3 OPP_cells_set_size %d", OPP_cells_set_size);            
+         
             cudaMemcpyToSymbol(OPP_cells_set_size_d, &OPP_cells_set_size, sizeof(int));
             cudaMemcpyToSymbol(move_stride_OPP_CUDA_0, &move_stride_OPP_HOST_0, sizeof(int));
             cudaMemcpyToSymbol(move_stride_OPP_CUDA_2, &move_stride_OPP_HOST_2, sizeof(int));
             cudaMemcpyToSymbol(move_stride_OPP_CUDA_4, &move_stride_OPP_HOST_4, sizeof(int));
             cudaMemcpyToSymbol(move_stride_OPP_CUDA_5, &move_stride_OPP_HOST_5, sizeof(int));
-if (OP_DEBUG) opp_printf("MOVE", "4");
-int iter = 1;
 
+opp_profiler->start("FMv_init_part");
             opp_init_particle_move(set, nargs, args);
+opp_profiler->end("FMv_init_part");
 
             if (OPP_iter_end - OPP_iter_start > 0) 
             {
 
-if (OP_DEBUG) opp_printf("MOVE", "iter %d start %d end %d", iter++, OPP_iter_start, OPP_iter_end);
+                if (OP_DEBUG) 
+                    opp_printf("MOVE", "iter %d start %d end %d", OPP_comm_iteration, OPP_iter_start, OPP_iter_end);
 
                 int nthread = OPP_gpu_threads_per_block;
                 int nblocks = (OPP_iter_end - OPP_iter_start - 1) / nthread + 1;
+
+                cutilSafeCall(cudaDeviceSynchronize());
+                opp_profiler->start("FMv_OnlyMoveKernel");
 
                 opp_cuda_all_MoveToCells<<<nblocks, nthread>>>(
                     (int *)           set->mesh_relation_dat->data_d,
@@ -316,12 +324,17 @@ if (OP_DEBUG) opp_printf("MOVE", "iter %d start %d end %d", iter++, OPP_iter_sta
                     (char*)           OPP_need_remove_flags_d,
                     OPP_iter_start, 
                     OPP_iter_end);
+
+                cutilSafeCall(cudaDeviceSynchronize());
+                opp_profiler->end("FMv_OnlyMoveKernel");
+
+                set->diff = 0;
             }
 
         } while (opp_finalize_particle_move(set)); 
-if (OP_DEBUG) opp_printf("MOVE", "5");
+
     }
-if (OP_DEBUG) opp_printf("MOVE", "6");
+
     opp_set_dirtybit_grouped(nargs, args, Device_GPU);
 
     opp_profiler->end("MoveToCells");
