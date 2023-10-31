@@ -142,7 +142,18 @@ void oppic_cuda_exit()
     i_dv.clear();
     i_dv.shrink_to_fit();
 
-    cutilSafeCall(cudaFree(OPP_need_remove_flags_d));
+    OPP_thrust_move_indices_d.clear();
+    OPP_thrust_move_indices_d.shrink_to_fit();
+
+    if (OPP_need_remove_flags_d != nullptr)
+    {
+        cutilSafeCall(cudaFree(OPP_need_remove_flags_d));
+    }
+
+    if (OPP_move_count_d != nullptr)
+    {
+        cutilSafeCall(cudaFree(OPP_move_count_d));
+    } 
 }
 
 //****************************************

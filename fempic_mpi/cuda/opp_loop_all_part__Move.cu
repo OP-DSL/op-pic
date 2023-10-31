@@ -158,7 +158,7 @@ __device__ void move_all_particles_to_cell__kernel(
 //*******************************************************************************
 // Returns true only if another hop is required by the current rank
 __device__ bool opp_part_check_status_cuda(opp_move_var& m, int* map0idx, int particle_index, 
-                                                int& remove_count, char* need_remove_flags) 
+                    int& remove_count, int *move_indices, int *move_count) 
 {
     m.iteration_one = false;
 
@@ -179,9 +179,9 @@ __device__ bool opp_part_check_status_cuda(opp_move_var& m, int* map0idx, int pa
     {
 //printf("V%d_%d|", *map0idx, OPP_cells_set_size_d);
         // map0idx cell is not owned by the current mpi rank (it is in the import exec halo region), need to communicate
-        
-        need_remove_flags[particle_index] = 1;
-        
+        int moveArrayIndex = atomicAdd(move_count, 1);
+        move_indices[moveArrayIndex] = particle_index;
+
         // Needs to be removed from the current rank, bdw particle packing will be done just prior exchange and removal
         m.move_status = OPP_NEED_REMOVE; 
         atomicAdd(&remove_count, 1);
@@ -204,7 +204,8 @@ __global__ void opp_cuda_all_MoveToCells(
     const double *__restrict ind_arg4,      // cell_det,
     const int *__restrict ind_arg5,         // cell_connectivity,
     int *__restrict particle_remove_count,
-    char *__restrict need_remove_flags,
+    int *__restrict move_indices,
+    int *__restrict move_count,
     int start,
     int end) 
 {
@@ -241,7 +242,7 @@ __global__ void opp_cuda_all_MoveToCells(
             );                
 
         } while (opp_part_check_status_cuda(m, map0idx, n, 
-                        *particle_remove_count, need_remove_flags));
+                        *particle_remove_count, move_indices, move_count));
     }
 }
 
@@ -321,7 +322,8 @@ opp_profiler->end("FMv_init_part");
                     (const double *)  args[4].data_d,                   // cell_det,        
                     (const int *)     args[5].data_d,                   // cell_v_cell_map
                     (int *)           set->particle_remove_count_d,
-                    (char*)           OPP_need_remove_flags_d,
+                    (int*)            OPP_move_indices_d,
+                    (int*)            OPP_move_count_d,
                     OPP_iter_start, 
                     OPP_iter_end);
 

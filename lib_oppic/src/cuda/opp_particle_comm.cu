@@ -39,8 +39,16 @@ void opp_part_unpack_cuda(oppic_set set);
 void particle_sort_cuda(oppic_set set, bool hole_filling);
 
 std::vector<char> OPP_need_remove_flags;
-char *OPP_need_remove_flags_d;
+char *OPP_need_remove_flags_d = nullptr;
 int OPP_need_remove_flags_size = 0;
+
+thrust::host_vector<int> OPP_thrust_move_indices_h;
+thrust::device_vector<int> OPP_thrust_move_indices_d;
+int *OPP_move_indices_d = nullptr;
+int *OPP_move_count_d = nullptr;
+int OPP_move_count_h = 0;
+
+// int OPP_move_indices_capacity = 0;
 
 struct CopyMaxCellIndexFunctor {
     int* B;
@@ -52,6 +60,13 @@ struct CopyMaxCellIndexFunctor {
     }
 };
 
+__global__ void setArrayToMaxCID(int* array, int size) {
+    int tid = blockIdx.x * blockDim.x + threadIdx.x;
+    if (tid < size) {
+        array[tid] = MAX_CELL_INDEX;
+    }
+}
+
 //*******************************************************************************
 void opp_init_particle_move(oppic_set set, int nargs, oppic_arg *args)
 { 
@@ -61,16 +76,36 @@ void opp_init_particle_move(oppic_set set, int nargs, oppic_arg *args)
     cutilSafeCall(cudaMemcpy(set->particle_remove_count_d, &(set->particle_remove_count), sizeof(int), 
                     cudaMemcpyHostToDevice));
 
-    if (set->size >= OPP_need_remove_flags_size)
-    {
-        if (OPP_need_remove_flags_d != NULL) 
-            cutilSafeCall(cudaFree(OPP_need_remove_flags_d));
+    // if (set->size >= OPP_need_remove_flags_size)
+    // {
+    //     if (OPP_need_remove_flags_d != NULL) 
+    //         cutilSafeCall(cudaFree(OPP_need_remove_flags_d));
         
-        OPP_need_remove_flags_size = set->size;
-        cutilSafeCall(cudaMalloc(&OPP_need_remove_flags_d, OPP_need_remove_flags_size * sizeof(char)));
+    //     OPP_need_remove_flags_size = set->size;
+    //     cutilSafeCall(cudaMalloc(&OPP_need_remove_flags_d, OPP_need_remove_flags_size * sizeof(char)));
+    // }
+
+    // cutilSafeCall(cudaMemset(OPP_need_remove_flags_d, 0, OPP_need_remove_flags_size));
+
+    if (set->size > (int)OPP_thrust_move_indices_d.size())
+    {     
+        OPP_thrust_move_indices_d.resize(set->size);
+        OPP_thrust_move_indices_h.resize(set->size);
+
+        OPP_move_indices_d = (int*)thrust::raw_pointer_cast(OPP_thrust_move_indices_d.data());
+
+        if (OPP_move_count_d == nullptr) {
+            cutilSafeCall(cudaMalloc(&OPP_move_count_d, sizeof(int)));
+        }
     }
 
-    cutilSafeCall(cudaMemset(OPP_need_remove_flags_d, 0, OPP_need_remove_flags_size));
+    OPP_move_count_h = 0;
+    cutilSafeCall(cudaMemcpy(OPP_move_count_d, &OPP_move_count_h, sizeof(int), cudaMemcpyHostToDevice));
+
+    // TODO : redundant - remove below
+    // init the array to MAX_CELL_INDEX
+    // const int blocksPerGrid = (size - 1) / OPP_gpu_threads_per_block + 1;
+    // setArrayToMaxCID<<<blocksPerGrid, OPP_gpu_threads_per_block>>>(OPP_move_indices_d, set->size);
 
     if (OPP_comm_iteration == 0)
     {
@@ -109,14 +144,18 @@ bool opp_finalize_particle_move(oppic_set set)
 
     cutilSafeCall(cudaDeviceSynchronize());
 
+    OPP_move_count_h = 0;
+    cutilSafeCall(cudaMemcpy(&OPP_move_count_h, OPP_move_count_d, sizeof(int), 
+        cudaMemcpyDeviceToHost));
+
     cutilSafeCall(cudaMemcpy(&(set->particle_remove_count), set->particle_remove_count_d, 
                     sizeof(int), cudaMemcpyDeviceToHost));
 
     const int particle_remove_count = set->particle_remove_count;
 
     if (OP_DEBUG) 
-        opp_printf("oppic_finalize_particle_move", "set [%s][%d] with particle_remove_count [%d]", 
-            set->name, set->size, particle_remove_count);
+        opp_printf("oppic_finalize_particle_move", "set [%s][%d] remove_count [%d] move count [%d]", 
+            set->name, set->size, particle_remove_count, OPP_move_count_h);
 
 #ifdef USE_MPI
     // At this stage, particles of device is clean
@@ -204,53 +243,63 @@ void opp_part_pack_cuda(opp_set set)
     opp_profiler->start("Mv_Pack");
 
 //opp_profiler->start("Mv_Pack_resize");
-    OPP_need_remove_flags.resize(OPP_need_remove_flags_size, 0);
+    // OPP_need_remove_flags.resize(OPP_need_remove_flags_size, 0);
 //opp_profiler->end("Mv_Pack_resize");
 
 //opp_profiler->start("Mv_Pack_d_to_h");
-    cutilSafeCall(cudaMemcpy((char*)&(OPP_need_remove_flags[0]), OPP_need_remove_flags_d, 
-                    OPP_need_remove_flags_size, cudaMemcpyDeviceToHost));
+    // cutilSafeCall(cudaMemcpy((char*)&(OPP_need_remove_flags[0]), OPP_need_remove_flags_d, 
+    //                 OPP_need_remove_flags_size, cudaMemcpyDeviceToHost));
 //opp_profiler->end("Mv_Pack_d_to_h");
 
 //opp_profiler->start("Mv_Pack_gather");
     // gather the particle indices to be sent
-    thrust::host_vector<int> send_indices_hv;
+    // thrust::host_vector<int> send_indices_hv;
     // for (size_t index = 0; index < OPP_need_remove_flags.size(); index++) {
     //     if (OPP_need_remove_flags[index] == 1) {
     //         send_indices_hv.push_back(index);
     //     }
     // }
-    auto findIfPredicate = [](char value) { return value == 1; };
-    auto findIfBegin = std::find_if(OPP_need_remove_flags.begin(), OPP_need_remove_flags.end(), findIfPredicate);
-    auto findIfEnd = OPP_need_remove_flags.end();
-    while (findIfBegin != findIfEnd) 
-    {
-        send_indices_hv.push_back(std::distance(OPP_need_remove_flags.begin(), findIfBegin));
-        findIfBegin = std::find_if(std::next(findIfBegin), findIfEnd, findIfPredicate);
-    }
+    // auto findIfPredicate = [](char value) { return value == 1; };
+    // auto findIfBegin = std::find_if(OPP_need_remove_flags.begin(), OPP_need_remove_flags.end(), findIfPredicate);
+    // auto findIfEnd = OPP_need_remove_flags.end();
+    // while (findIfBegin != findIfEnd) 
+    // {
+    //     send_indices_hv.push_back(std::distance(OPP_need_remove_flags.begin(), findIfBegin));
+    //     findIfBegin = std::find_if(std::next(findIfBegin), findIfEnd, findIfPredicate);
+    // }
 
 //opp_profiler->end("Mv_Pack_gather");
 
-    int part_send_count = (int)send_indices_hv.size();
-    if (part_send_count <= 0) 
+    // int part_send_count = (int)send_indices_hv.size();
+    if (OPP_move_count_h <= 0) 
     {
         opp_profiler->end("Mv_Pack");
         return;
     }
 
-    thrust::device_vector<int> send_indices_dv(send_indices_hv);
+    thrust::sort(OPP_thrust_move_indices_d.begin(), 
+        OPP_thrust_move_indices_d.begin() + OPP_move_count_h);
+
+    // thrust::device_vector<int> send_indices_dv(send_indices_hv);
+    thrust::copy(OPP_thrust_move_indices_d.begin(), 
+        OPP_thrust_move_indices_d.begin() + OPP_move_count_h, OPP_thrust_move_indices_h.begin());
+    
+    // std::string loggg = std::to_string(OPP_move_count_h) + " | ";
+    // for (int k = 0; k < OPP_move_count_h; k++)
+    //     loggg += std::to_string(OPP_thrust_move_indices_h[k]) + std::string(" ");
+    // opp_printf("opp_part_pack_cuda", "Part indices : %s", loggg.c_str());
 
     // copy the cell indices of the particles to be sent
-    thrust::device_vector<int> send_part_cell_idx_dv(part_send_count);
+    thrust::device_vector<int> send_part_cell_idx_dv(OPP_move_count_h);
     copy_according_to_index(set->mesh_relation_dat->thrust_int, &send_part_cell_idx_dv, 
-        send_indices_dv, -1, -1, part_send_count, 1);
+        OPP_thrust_move_indices_d, -1, -1, OPP_move_count_h, 1);
     thrust::host_vector<int> send_part_cell_idx_hv(send_part_cell_idx_dv);
 
     // enrich the particles to communicate with the correct external cell index and mpi rank
     std::map<int, opp_particle_comm_data>& set_part_com_data = opp_part_comm_neighbour_data[set];
-    for (size_t index = 0; index < send_indices_hv.size(); index++)
+    for (int index = 0; index < OPP_move_count_h; index++)
     {
-        int particle_index = send_indices_hv[index];
+        int particle_index = OPP_thrust_move_indices_h[index];
         int map0idx = send_part_cell_idx_hv[index];
 
         auto it = set_part_com_data.find(map0idx);
@@ -273,25 +322,25 @@ void opp_part_pack_cuda(opp_set set)
 
         for (auto& dat : *(set->particle_dats)) 
         {
-            size_t bytes_to_copy = (part_send_count * dat->size);
+            size_t bytes_to_copy = (OPP_move_count_h * dat->size);
             
             auto& move_dat_data = move_dat_data_map[dat->index];
             move_dat_data.resize(bytes_to_copy);
 
             if (strcmp(dat->type, "double") == 0)
             {
-                temp_real_dv.resize(part_send_count * dat->dim);
-                copy_according_to_index(dat->thrust_real, &temp_real_dv, send_indices_dv, 
-                    dat->set->set_capacity, part_send_count, part_send_count, dat->dim);
+                temp_real_dv.resize(OPP_move_count_h * dat->dim);
+                copy_according_to_index(dat->thrust_real, &temp_real_dv, OPP_thrust_move_indices_d, 
+                    dat->set->set_capacity, OPP_move_count_h, OPP_move_count_h, dat->dim);
                 
                 cudaMemcpy(move_dat_data.data(), thrust::raw_pointer_cast(&temp_real_dv[0]), 
                     bytes_to_copy, cudaMemcpyDeviceToHost);
             }
             else if (strcmp(dat->type, "int") == 0)
             {
-                temp_int_dv.resize(part_send_count * dat->dim);
-                copy_according_to_index(dat->thrust_int, &temp_int_dv, send_indices_dv, 
-                    dat->set->set_capacity, part_send_count, part_send_count, dat->dim);
+                temp_int_dv.resize(OPP_move_count_h * dat->dim);
+                copy_according_to_index(dat->thrust_int, &temp_int_dv, OPP_thrust_move_indices_d, 
+                    dat->set->set_capacity, OPP_move_count_h, OPP_move_count_h, dat->dim);
                 
                 cudaMemcpy(move_dat_data.data(), thrust::raw_pointer_cast(&temp_int_dv[0]), 
                     bytes_to_copy, cudaMemcpyDeviceToHost);
@@ -370,7 +419,7 @@ void opp_part_pack_cuda(opp_set set)
                     {
                         // copy the multi dimensional dat value to the send buffer
                         memcpy(&(send_rank_buffer.buf_export[send_rank_buffer.buf_export_index + displacement]), 
-                            &(move_dat_data[(d * part_send_count + move_info.local_index) * element_size]), 
+                            &(move_dat_data[(d * OPP_move_count_h + move_info.local_index) * element_size]), 
                             element_size);
                         
                         displacement += element_size;
@@ -387,7 +436,8 @@ void opp_part_pack_cuda(opp_set set)
 
     // This particle is already packed, hence needs to be removed from the current rank
     CopyMaxCellIndexFunctor copyMaxCellIndexFunctor((int*)set->mesh_relation_dat->data_d);
-    thrust::for_each(send_indices_dv.begin(), send_indices_dv.end(), copyMaxCellIndexFunctor);
+    thrust::for_each(OPP_thrust_move_indices_d.begin(), OPP_thrust_move_indices_d.begin() + OPP_move_count_h, 
+        copyMaxCellIndexFunctor);
 
     opp_profiler->end("Mv_Pack");
 #endif

@@ -65,6 +65,10 @@ extern thrust::device_vector<int> cellIdx_dv;
 extern thrust::device_vector<int> i_dv;
 extern char *OPP_need_remove_flags_d;
 
+extern int *OPP_move_indices_d;
+extern int *OPP_move_count_d;
+extern thrust::device_vector<int> OPP_thrust_move_indices_d;
+
 //*************************************************************************************************
 
 void __cudaSafeCall(cudaError_t err, const char *file, const int line);
