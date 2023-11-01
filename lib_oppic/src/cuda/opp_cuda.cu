@@ -617,12 +617,16 @@ void oppic_download_particle_set(oppic_set particles_set, bool force_download)
 //****************************************
 void opp_init_double_indirect_reductions_cuda(int nargs, oppic_arg *args)
 {
+#ifdef USE_MPI
     opp_init_double_indirect_reductions(nargs, args);
+#endif
 }
 
 //****************************************
 void opp_exchange_double_indirect_reductions_cuda(int nargs, oppic_arg *args)
 {
+#ifdef USE_MPI
+
     if (OP_DEBUG) opp_printf("opp_exchange_double_indirect_reductions_cuda", "ALL START");
 
     cutilSafeCall(cudaDeviceSynchronize());
@@ -651,11 +655,13 @@ void opp_exchange_double_indirect_reductions_cuda(int nargs, oppic_arg *args)
     opp_exchange_double_indirect_reductions(nargs, args);
 
     if (OP_DEBUG) opp_printf("opp_exchange_double_indirect_reductions_cuda", "ALL END");
+#endif
 }
 
 //****************************************
 void opp_complete_double_indirect_reductions_cuda(int nargs, oppic_arg *args)
 {
+#ifdef USE_MPI
     if (OP_DEBUG) opp_printf("opp_complete_double_indirect_reductions_cuda", "ALL START");
 
     opp_complete_double_indirect_reductions(nargs, args);
@@ -682,6 +688,7 @@ void opp_complete_double_indirect_reductions_cuda(int nargs, oppic_arg *args)
     }  
 
     if (OP_DEBUG) opp_printf("opp_complete_double_indirect_reductions_cuda", "ALL END");  
+#endif
 }
 
 //****************************************
