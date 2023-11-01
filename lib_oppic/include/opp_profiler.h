@@ -77,8 +77,9 @@ namespace opp {
         *  @param 
         */ 
         inline void reg(std::string profName) {
-            ProfilerData profData = m_elapsedTimeMap[profName];  
+            // ProfilerData profData = m_elapsedTimeMap[profName];  
 
+            m_elapsedTimeMap[profName] = ProfilerData();
             // m_elapsedTimeMap.insert(std::make_pair(profName, ProfilerData()));
             // Do nothing
         }

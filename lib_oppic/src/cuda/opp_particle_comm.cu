@@ -242,23 +242,6 @@ void opp_part_pack_cuda(opp_set set)
 #ifdef USE_MPI
     opp_profiler->start("Mv_Pack");
 
-//opp_profiler->start("Mv_Pack_resize");
-    // OPP_need_remove_flags.resize(OPP_need_remove_flags_size, 0);
-//opp_profiler->end("Mv_Pack_resize");
-
-//opp_profiler->start("Mv_Pack_d_to_h");
-    // cutilSafeCall(cudaMemcpy((char*)&(OPP_need_remove_flags[0]), OPP_need_remove_flags_d, 
-    //                 OPP_need_remove_flags_size, cudaMemcpyDeviceToHost));
-//opp_profiler->end("Mv_Pack_d_to_h");
-
-//opp_profiler->start("Mv_Pack_gather");
-    // gather the particle indices to be sent
-    // thrust::host_vector<int> send_indices_hv;
-    // for (size_t index = 0; index < OPP_need_remove_flags.size(); index++) {
-    //     if (OPP_need_remove_flags[index] == 1) {
-    //         send_indices_hv.push_back(index);
-    //     }
-    // }
     // auto findIfPredicate = [](char value) { return value == 1; };
     // auto findIfBegin = std::find_if(OPP_need_remove_flags.begin(), OPP_need_remove_flags.end(), findIfPredicate);
     // auto findIfEnd = OPP_need_remove_flags.end();
@@ -268,19 +251,16 @@ void opp_part_pack_cuda(opp_set set)
     //     findIfBegin = std::find_if(std::next(findIfBegin), findIfEnd, findIfPredicate);
     // }
 
-//opp_profiler->end("Mv_Pack_gather");
-
-    // int part_send_count = (int)send_indices_hv.size();
     if (OPP_move_count_h <= 0) 
     {
         opp_profiler->end("Mv_Pack");
         return;
     }
 
+    // Since cuda kernel threads are not synced, there could be a random order in OPP_thrust_move_indices_d
     thrust::sort(OPP_thrust_move_indices_d.begin(), 
         OPP_thrust_move_indices_d.begin() + OPP_move_count_h);
 
-    // thrust::device_vector<int> send_indices_dv(send_indices_hv);
     thrust::copy(OPP_thrust_move_indices_d.begin(), 
         OPP_thrust_move_indices_d.begin() + OPP_move_count_h, OPP_thrust_move_indices_h.begin());
     
@@ -310,7 +290,7 @@ void opp_part_pack_cuda(opp_set set)
             return; // unlikely, need opp_abort() instead!
         }
 
-        opp_part_mark_move(set, index, it->second);
+        opp_part_mark_move(set, index, it->second); // it->second is the local cell index in foreign rank
     }
 
     std::map<int, std::vector<char>> move_dat_data_map;

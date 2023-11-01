@@ -165,7 +165,9 @@ opp_profiler->reg("ComputeDet");
 
 // std::string g = std::string("X_") + std::to_string(OPP_rank);
 // opp_print_dat_to_txtfile(global_cell_id, g.c_str(), "global_cell_id.dat");
-
+#ifdef USE_MPI
+        MPI_Barrier(MPI_COMM_WORLD);
+#endif
         opp_profiler->start("MainLoop");
 
 // MPI_Barrier(OP_MPI_WORLD);

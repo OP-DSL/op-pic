@@ -7,7 +7,7 @@ LIB = lib
 OBJ = obj
 BIN = bin
 # scorep-mpiicpc  -qopt-report=2 -qopt-report-phase=vec -xHOST          --generate-line-info  -fsanitize=address -lasan
-CPP        = icc
+CPP        = g++
 MPICPP	   = mpicxx
 NVCC       = nvcc
 HIPCC      = hipcc

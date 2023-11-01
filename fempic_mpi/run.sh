@@ -94,11 +94,12 @@ echo "OMP DONE"
 
 # AVON ===============================================================
 
-# module load GCC/10.3.0  OpenMPI/4.1.1
-# module load PETSc/3.15.1
-
-# export PETSC_INSTALL_PATH=/scrtp/avon/eb/software/PETSc/3.15.1-foss-2021a
-# export OPPIC_PATH=/home/dcs/csrcnj/phd/OP-PIC/lib_oppic
+module load GCC/10.3.0  OpenMPI/4.1.1
+module load PETSc/3.15.1
+export PETSC_INSTALL_PATH=/scrtp/avon/eb/software/PETSc/3.15.1-foss-2021a
+export OPPIC_PATH=/home/dcs/csrcnj/phd/OP-PIC/lib_oppic
+export NVCCFLAGS_ADD='-gencode arch=compute_75,code=sm_75'
+module load CUDA
 
 # For MPI
 # salloc -p hmem --nodes=1 --ntasks-per-node=48 --cpus-per-task=1 --mem-per-cpu=3700 --time=03:00:00 
@@ -106,5 +107,19 @@ echo "OMP DONE"
 # mpirun -np 8 bin/mpi /home/dcs/csrcnj/phd/OP-PIC/scripts/fempic_tests/configs/coarse_5.param
 
 # salloc -p compute --nodes=2 --ntasks-per-node=48 --mem-per-cpu=3700 --time=03:00:00 --job-name=csrcnj
+salloc -p gpu --nodes=1 --ntasks-per-node=48 --mem-per-cpu=3700 --gres=gpu:quadro_rtx_6000:3 --time=06:00:00 --job-name=csrcnj
+
+mpirun -np 2 bin/cuda_mpi /home/dcs/csrcnj/phd/OP-PIC/scripts/fempic_tests/configs/coarse_2.param
+
+mpirun -np 12 -hostfile hosts bin/cuda_mpi /home/dcs/csrcnj/phd/OP-PIC/scripts/fempic_tests/configs/coarse_2.param
+
+# ===============================================================
+
+# BEDE ===============================================================
+
+module load gcc/12.2 openmpi/4.0.5 cuda/12.0.1 openblas/0.3.10
+export PETSC_INSTALL_PATH=/users/csrcnl/lib_install/petsc-3.20.1_rel
+export OPPIC_PATH=/users/csrcnl/phd/OP-PIC/lib_oppic
+export NVCCFLAGS_ADD='-gencode arch=compute_70,code=sm_70'
 
 # ===============================================================

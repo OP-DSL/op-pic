@@ -282,7 +282,6 @@ void opp_part_unpack(oppic_set set)
 
     opp_profiler->start("Mv_Unpack");
 
-    std::vector<oppic_dat>& particle_dats = *(set->particle_dats);
     int64_t num_particles = 0;
 
     opp_all_mpi_part_buffers* recv_buffers = (opp_all_mpi_part_buffers*)set->mpi_part_buffers;
@@ -315,6 +314,7 @@ void opp_part_unpack(oppic_set set)
             int64_t receive_count = recv_buffers->import_counts[recv_rank];
 
 #if PACK_AOS
+            std::vector<oppic_dat>& particle_dats = *(set->particle_dats);
 
             // unpack the received buffer from rank 'recv_rank' in to particle dats
             for (int part = 0; part < receive_count; part++)

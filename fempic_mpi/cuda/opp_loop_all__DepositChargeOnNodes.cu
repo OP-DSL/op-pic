@@ -40,6 +40,13 @@ int dep_charge_stride_OPP_HOST_1 = -1;
 __constant__ int dep_charge_stride_OPP_CUDA_0;
 __constant__ int dep_charge_stride_OPP_CUDA_1;
 
+/* // Uncomment For Shared memory 
+int dep_charge_stride_OPP_HOST_1_SH = -1;
+__constant__ int dep_charge_stride_OPP_CUDA_1_SH;
+__constant__ bool use_shared_OPP_CUDA = false;
+__constant__ int gpu_threads_per_block_OPP_CUDA;
+*/
+
 //user function
 //*************************************************************************************************
 __device__ void dep_node_charge__kernel_gpu(
@@ -71,8 +78,19 @@ __global__ void opp_cuda_all_DepNodeCharge(
 {
     int tid = threadIdx.x + blockIdx.x * blockDim.x;
 
-    // TODO : Use shared memory to make this faster
+    double* k_arg1 = ind_arg1;
     
+    /* // Uncomment For Shared memory 
+    extern __shared__ double shared_arg1[];
+    if (use_shared_OPP_CUDA)
+    {
+        for (int i = threadIdx.x; i < dep_charge_stride_OPP_CUDA_1_SH; i+=gpu_threads_per_block_OPP_CUDA) 
+            shared_arg1[i] = 0;
+        __syncthreads();
+
+        k_arg1 = shared_arg1;
+    } */
+
     if (tid + start < end) 
     {
         int n = tid + start;
@@ -84,17 +102,26 @@ __global__ void opp_cuda_all_DepNodeCharge(
         const int map3idx = oppDat1Map[map0idx + dep_charge_stride_OPP_CUDA_1 * 2];
         const int map4idx = oppDat1Map[map0idx + dep_charge_stride_OPP_CUDA_1 * 3];
 
-// printf("n %d ci %d c_to_n %d %d %d %d\n",
-//     n, map0idx, map1idx,map2idx,map3idx,map4idx);
-
         dep_node_charge__kernel_gpu(
             (dir_arg0 + n),
-            (ind_arg1 + map1idx),
-            (ind_arg2 + map2idx),
-            (ind_arg3 + map3idx),
-            (ind_arg4 + map4idx)
+            (k_arg1 + map1idx),
+            (k_arg1 + map2idx),
+            (k_arg1 + map3idx),
+            (k_arg1 + map4idx)
         );
     }
+
+    /* // Uncomment For Shared memory 
+    __syncthreads();
+
+    if (use_shared_OPP_CUDA)
+    {
+        for (int i = threadIdx.x; i < dep_charge_stride_OPP_CUDA_1_SH; i+=gpu_threads_per_block_OPP_CUDA) 
+        {
+            atomicAdd(&(ind_arg1[i]), shared_arg1[i]);
+        }
+        __syncthreads();
+    } */
 }
 
 void opp_loop_all__DepositChargeOnNodes(
@@ -124,14 +151,15 @@ void opp_loop_all__DepositChargeOnNodes(
     int set_size = opp_mpi_halo_exchanges_grouped(set, nargs, args, Device_GPU);
     opp_mpi_halo_wait_all(nargs, args);
 
+#ifdef USE_MPI
     opp_init_double_indirect_reductions_cuda(nargs, args);
+#endif
 
     if (set_size > 0) 
     {
         dep_charge_stride_OPP_HOST_0 = args[0].dat->set->set_capacity;
         dep_charge_stride_OPP_HOST_1 = args[1].size;
 
-// opp_printf("AAAA", "dep_charge_stride_OPP_HOST_1=%d set_size=%d exec=%d nexec=%d", dep_charge_stride_OPP_HOST_1, args[1].map->from->size, args[1].map->from->exec_size, args[1].map->from->nonexec_size);
         cudaMemcpyToSymbol(dep_charge_stride_OPP_CUDA_0, &dep_charge_stride_OPP_HOST_0, sizeof(int));
         cudaMemcpyToSymbol(dep_charge_stride_OPP_CUDA_1, &dep_charge_stride_OPP_HOST_1, sizeof(int));
 
@@ -142,8 +170,38 @@ void opp_loop_all__DepositChargeOnNodes(
         {
             int nthread = OPP_gpu_threads_per_block;
             int nblocks = (end - start - 1) / nthread + 1;
+            size_t shared_mem = 0;
 
-            opp_cuda_all_DepNodeCharge <<<nblocks, nthread>>> (
+            /* // Uncomment For Shared memory 
+            dep_charge_stride_OPP_HOST_1_SH = args[1].dat->set->size + args[1].dat->set->exec_size + 
+                                                args[1].dat->set->nonexec_size;
+            cudaMemcpyToSymbol(dep_charge_stride_OPP_CUDA_1_SH, &dep_charge_stride_OPP_HOST_1_SH, sizeof(int));
+            cudaMemcpyToSymbol(gpu_threads_per_block_OPP_CUDA, &OPP_gpu_threads_per_block, sizeof(int));
+
+            shared_mem += args[1].dat->size * dep_charge_stride_OPP_HOST_1_SH;
+
+            if (shared_mem > OPP_gpu_shared_mem_per_block) 
+            {
+                bool use_shared = false;
+                cudaMemcpyToSymbol(use_shared_OPP_CUDA, &use_shared, sizeof(bool));
+                shared_mem = 1;
+                
+                if (FP_DEBUG) 
+                    opp_printf("FEMPIC", "MoveToCells Not using shared mem [avail: %zu, need: %zu]", 
+                        OPP_gpu_shared_mem_per_block, shared_mem);
+            }
+            else
+            {
+                bool use_shared = true;
+                cudaMemcpyToSymbol(use_shared_OPP_CUDA, &use_shared, sizeof(bool));
+
+                if (FP_DEBUG) 
+                    opp_printf("FEMPIC", "MoveToCells Using shared mem [avail: %zu, need: %zu]", 
+                        OPP_gpu_shared_mem_per_block, shared_mem);
+            }
+            */
+
+            opp_cuda_all_DepNodeCharge <<<nblocks, nthread, shared_mem>>> (
                 (int *)     set->mesh_relation_dat->data_d,
                 (double *)  args[0].data_d,
                 (double *)  args[1].data_d,
@@ -156,9 +214,10 @@ void opp_loop_all__DepositChargeOnNodes(
         }
     }
 
+#ifdef USE_MPI
     opp_exchange_double_indirect_reductions_cuda(nargs, args);
-
     opp_complete_double_indirect_reductions_cuda(nargs, args);
+#endif
 
     opp_set_dirtybit_grouped(nargs, args, Device_GPU);
     cutilSafeCall(cudaDeviceSynchronize());

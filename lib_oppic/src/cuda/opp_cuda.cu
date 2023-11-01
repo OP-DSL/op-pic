@@ -30,6 +30,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
 #include <opp_cuda.h>
+#include <unistd.h>
 #include "opp_particle_comm.cu"
 #include "opp_increase_part_count.cu"
 
@@ -788,15 +789,16 @@ void cutilDeviceInit(int argc, char **argv)
         opp_printf("cutilDeviceInit", "cutil error: no devices supporting CUDA");
         opp_abort();
     }
-    if (deviceCount < OPP_comm_size) 
+
+    char hostname[256];
+    if (gethostname(hostname, sizeof(hostname)) != 0) 
     {
-        opp_printf("cutilDeviceInit", "cutil error: device count %d vs mpi world size %d", 
-            deviceCount, OPP_comm_size);
+        opp_printf("cutilDeviceInit", "Failed to get hostname of MPI rank %d", OPP_rank);
         opp_abort();
     }
 
     // Test we have access to a device
-    cudaError_t err = cudaSetDevice(OPP_rank);
+    cudaError_t err = cudaSetDevice(OPP_rank % deviceCount);
     if (err == cudaSuccess) 
     {
         float *test;
@@ -817,8 +819,8 @@ void cutilDeviceInit(int argc, char **argv)
         cudaGetDevice(&deviceId);
         cudaDeviceProp deviceProp;
         cutilSafeCall(cudaGetDeviceProperties(&deviceProp, deviceId));
-        opp_printf("cutilDeviceInit", "Rank [%d] using CUDA device: %d %s\n", 
-            OPP_rank, deviceId, deviceProp.name);
+        opp_printf("cutilDeviceInit", "Rank [%d] using CUDA device: %d %s on host %s", 
+            OPP_rank, deviceId, deviceProp.name, hostname);
     } 
     else 
     {
