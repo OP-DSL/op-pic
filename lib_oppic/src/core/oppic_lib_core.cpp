@@ -515,7 +515,7 @@ bool oppic_increase_particle_count_core(oppic_set part_set, const int num_parts_
     size_t new_part_set_capacity = part_set->size + num_parts_to_insert * OP_part_alloc_mult;
     bool return_flag = true;
 
-    if (OP_DEBUG)
+    if (OP_DEBUG) //  || part_set->size != 0
         opp_printf("opp_increase_particle_count_core", "new_set_capacity %zu set_size %d num_dats_in_set %d", 
             new_part_set_capacity, part_set->size, part_set->particle_dats->size());
 

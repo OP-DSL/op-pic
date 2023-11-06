@@ -363,7 +363,8 @@ void opp_print_dat_to_txtfile(oppic_dat dat, const char *file_name_prefix, const
 {
     if (OP_DEBUG) opp_printf("opp_print_dat_to_txtfile", "writing file [%s]", file_name_suffix);
 
-    if (dat->dirty_hd == Dirty::Host) oppic_download_dat(dat);
+    if (dat->dirty_hd == Dirty::Host) 
+        oppic_download_dat(dat);
 
     std::string prefix = std::string(file_name_prefix) + "_c";
     oppic_print_dat_to_txtfile_core(dat, prefix.c_str(), file_name_suffix);

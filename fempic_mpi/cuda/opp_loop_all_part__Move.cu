@@ -257,7 +257,7 @@ void opp_particle_mover__Move(
     opp_arg arg5        // cell_v_cell_map
 ) 
 { 
-    
+
     if (FP_DEBUG) opp_printf("FEMPIC", "opp_particle_mover__Move set_size %d diff %d", 
         set->size, set->diff);
 
@@ -330,7 +330,6 @@ opp_profiler->end("FMv_init_part");
                 cutilSafeCall(cudaDeviceSynchronize());
                 opp_profiler->end("FMv_OnlyMoveKernel");
 
-                set->diff = 0;
             }
 
         } while (opp_finalize_particle_move(set)); 

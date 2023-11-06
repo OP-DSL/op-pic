@@ -115,80 +115,105 @@ void oppic_create_device_arrays(oppic_dat dat, bool create_new = false);
 
 void oppic_finalize_particle_move_cuda(oppic_set set);
 
-void sort_dat_according_to_index_int(oppic_dat dat, const thrust::device_vector<int>& new_idx_dv, 
-    int set_capacity, int size);
-void sort_dat_according_to_index_double(oppic_dat dat, const thrust::device_vector<int>& new_idx_dv, 
-    int set_capacity, int size);
+/*******************************************************************************/
 
+void sort_dat_according_to_index_int(oppic_dat dat, const thrust::device_vector<int>& new_idx_dv, 
+    int set_capacity, int size, bool hole_filling, int out_start_idx);
+void sort_dat_according_to_index_double(oppic_dat dat, const thrust::device_vector<int>& new_idx_dv, 
+    int set_capacity, int size, bool hole_filling, int out_start_idx);
+
+/*
+This function arranges the multi dimensional values in input array to output array according to the indices provided
+    in_dat_dv - Input array with correct values
+    out_dat_dv - Output array to have the sorted values
+    new_idx_dv - indices of the input array to be arranged in the output array
+    in_capacity - capacity of the input array (useful for multi dimensional dats)
+    out_capacity - capacity of the output array (useful for multi dimensional dats)
+    in_offset - start offset if the input array
+    out_offset - start offset if the output array
+    size - number of dat elements to arrange (usually this is the size of new_idx_dv)
+    dimension - dimension of the dat
+*/
 template <class T> 
 void copy_according_to_index(thrust::device_vector<T>* in_dat_dv, thrust::device_vector<T>* out_dat_dv, 
-    const thrust::device_vector<int>& new_idx_dv, int in_capacity, int out_capacity, int size, int dimension)
+    const thrust::device_vector<int>& new_idx_dv, int in_capacity, int out_capacity, int in_offset, int out_offset, 
+    int size, int dimension)
 {
     switch (dimension)
     {
         case 1:
             thrust::copy_n(thrust::make_permutation_iterator(
                 thrust::make_zip_iterator(
-                    thrust::make_tuple(in_dat_dv->begin())
+                    thrust::make_tuple(in_dat_dv->begin() + in_offset)
                 ), 
                 new_idx_dv.begin()), 
                 size, 
                 thrust::make_zip_iterator(
-                    thrust::make_tuple(out_dat_dv->begin())));
+                    thrust::make_tuple(out_dat_dv->begin() + out_offset)));
             break;
         case 2:
             thrust::copy_n(thrust::make_permutation_iterator(
                 thrust::make_zip_iterator(
                     thrust::make_tuple(
-                        in_dat_dv->begin(), 
-                        (in_dat_dv->begin() + in_capacity)
+                        in_dat_dv->begin() + in_offset, 
+                        (in_dat_dv->begin() + in_offset + in_capacity)
                     )
                 ), 
                 new_idx_dv.begin()), 
                 size, 
                 thrust::make_zip_iterator(
                     thrust::make_tuple(
-                        out_dat_dv->begin(), 
-                        (out_dat_dv->begin() + out_capacity))));
+                        out_dat_dv->begin() + out_offset, 
+                        (out_dat_dv->begin() + out_offset + out_capacity))));
             break;
         case 3:
             thrust::copy_n(thrust::make_permutation_iterator(
                 thrust::make_zip_iterator(
                     thrust::make_tuple(
-                        in_dat_dv->begin(), 
-                        (in_dat_dv->begin() + in_capacity), 
-                        (in_dat_dv->begin() + (2 * in_capacity))
+                        in_dat_dv->begin() + in_offset, 
+                        (in_dat_dv->begin() + in_offset + in_capacity), 
+                        (in_dat_dv->begin() + in_offset + (2 * in_capacity))
                     )
                 ), 
                 new_idx_dv.begin()), 
                 size, 
                 thrust::make_zip_iterator(
                     thrust::make_tuple(
-                        out_dat_dv->begin(), 
-                        (out_dat_dv->begin() + out_capacity), 
-                        (out_dat_dv->begin() + (2 * out_capacity)))));
+                        out_dat_dv->begin() + out_offset, 
+                        (out_dat_dv->begin() + out_offset + out_capacity), 
+                        (out_dat_dv->begin() + out_offset + (2 * out_capacity)))));
             break;
         case 4:
             thrust::copy_n(thrust::make_permutation_iterator(
                 thrust::make_zip_iterator(
                     thrust::make_tuple(
-                        in_dat_dv->begin(), 
-                        (in_dat_dv->begin() + in_capacity), 
-                        (in_dat_dv->begin() + (2 * in_capacity)), 
-                        (in_dat_dv->begin() + (3 * in_capacity))
+                        in_dat_dv->begin() + in_offset, 
+                        (in_dat_dv->begin() + in_offset + in_capacity), 
+                        (in_dat_dv->begin() + in_offset + (2 * in_capacity)), 
+                        (in_dat_dv->begin() + in_offset + (3 * in_capacity))
                     )
                 ), 
                 new_idx_dv.begin()), 
                 size, 
                 thrust::make_zip_iterator(
                     thrust::make_tuple(
-                        out_dat_dv->begin(), 
-                        (out_dat_dv->begin() + out_capacity), 
-                        (out_dat_dv->begin() + (2 * out_capacity)), 
-                        (out_dat_dv->begin() + (3 * out_capacity)))));
+                        out_dat_dv->begin() + out_offset, 
+                        (out_dat_dv->begin() + out_offset + out_capacity), 
+                        (out_dat_dv->begin() + out_offset + (2 * out_capacity)), 
+                        (out_dat_dv->begin() + out_offset + (3 * out_capacity)))));
             break;
         default:
             std::cerr << "particle_sort_cuda not implemented for dim " << dimension << std::endl;
             exit(-1);
     }
 }
+
+template <class T> 
+void copy_according_to_index(thrust::device_vector<T>* in_dat_dv, thrust::device_vector<T>* out_dat_dv, 
+    const thrust::device_vector<int>& new_idx_dv, int in_capacity, int out_capacity, int size, int dimension)
+{
+    copy_according_to_index<T>(in_dat_dv, out_dat_dv, new_idx_dv, in_capacity, out_capacity, 
+        0, 0, size, dimension);
+}
+
+/*******************************************************************************/

@@ -93,10 +93,10 @@ void opp_loop_all__ComputeNodeChargeDensity(
 
         if (end - start > 0) 
         {
-            int nthreads = OPP_gpu_threads_per_block;
-            int nblocks  = (end - start - 1) / nthreads + 1;
+            int nthread = OPP_gpu_threads_per_block;
+            int nblocks  = (end - start - 1) / nthread + 1;
 
-            opp_cuda_ComputeNodeChargeDensity <<<nblocks, nthreads>>> (
+            opp_cuda_ComputeNodeChargeDensity <<<nblocks, nthread>>> (
                 (double *)  args[0].data_d,
                 (double *)  args[1].data_d,
                 start, 

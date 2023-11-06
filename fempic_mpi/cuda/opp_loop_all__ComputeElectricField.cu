@@ -141,8 +141,7 @@ void opp_loop_all__ComputeElectricField(
         computeEF_stride_OPP_HOST_0 = args[0].dat->set->set_capacity;
         computeEF_stride_OPP_HOST_1 = args[1].dat->set->set_capacity;
         computeEF_stride_OPP_HOST_2_MAP = args[2].size;
-if (OP_DEBUG) opp_printf("AAAA", "computeEF_stride_OPP_HOST_2_MAP=%d set_size=%d exec=%d nexec=%d", computeEF_stride_OPP_HOST_2_MAP, args[2].map->from->size, args[2].map->from->exec_size, args[2].map->from->nonexec_size);
- 
+
         cudaMemcpyToSymbol(computeEF_stride_OPP_CUDA_0, &computeEF_stride_OPP_HOST_0, sizeof(int));
         cudaMemcpyToSymbol(computeEF_stride_OPP_CUDA_1, &computeEF_stride_OPP_HOST_1, sizeof(int));
         cudaMemcpyToSymbol(computeEF_stride_OPP_CUDA_2_MAP, &computeEF_stride_OPP_HOST_2_MAP, sizeof(int));
@@ -152,10 +151,10 @@ if (OP_DEBUG) opp_printf("AAAA", "computeEF_stride_OPP_HOST_2_MAP=%d set_size=%d
 
         if (end - start > 0) 
         {
-            int nthreads = OPP_gpu_threads_per_block;
-            int nblocks = (end - start - 1) / nthreads + 1;
+            int nthread = OPP_gpu_threads_per_block;
+            int nblocks = (end - start - 1) / nthread + 1;
 
-            opp_cuda_ComputeElectricField <<<nblocks, nthreads>>> (
+            opp_cuda_ComputeElectricField <<<nblocks, nthread>>> (
                 (double *)  args[0].data_d,
                 (double *)  args[1].data_d,       
                 (double *)  args[2].data_d,

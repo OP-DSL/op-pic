@@ -151,11 +151,9 @@ bool opp_finalize_particle_move(oppic_set set)
     cutilSafeCall(cudaMemcpy(&(set->particle_remove_count), set->particle_remove_count_d, 
                     sizeof(int), cudaMemcpyDeviceToHost));
 
-    const int particle_remove_count = set->particle_remove_count;
-
-    if (OP_DEBUG) 
+    if (OP_DEBUG) //  || OPP_comm_iteration != 0
         opp_printf("oppic_finalize_particle_move", "set [%s][%d] remove_count [%d] move count [%d]", 
-            set->name, set->size, particle_remove_count, OPP_move_count_h);
+            set->name, set->size, set->particle_remove_count, OPP_move_count_h);
 
 #ifdef USE_MPI
     // At this stage, particles of device is clean
@@ -173,9 +171,9 @@ bool opp_finalize_particle_move(oppic_set set)
 #endif
 
     opp_profiler->start("Mv_F_fill");
-    if (particle_remove_count > 0)
+    if (set->particle_remove_count > 0)
     {
-        set->size -= particle_remove_count;
+        set->size -= set->particle_remove_count;
 
         if (OP_auto_sort == 1)
         {

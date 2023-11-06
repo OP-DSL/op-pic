@@ -53,8 +53,15 @@ std::string getTimeStr();
 //********************************************************************************
 inline char *copy_str(char const *src) 
 {
-    char *dest = (char *)malloc((strlen(src) + 1) * sizeof(char));
-    return strncpy(dest, src, (strlen(src) + 1));
+    size_t src_len = strlen(src); // Calculate the actual length of src
+    size_t dest_len = (src_len > 100) ? 100 : src_len; // Limit the destination length to 100 characters
+
+    char *dest = (char *)malloc((dest_len + 1) * sizeof(char));
+    if (dest) {
+        memcpy(dest, src, dest_len);
+        dest[dest_len] = '\0'; // Ensure the destination string is null-terminated
+    }
+    return dest;
 }
 
 //********************************************************************************

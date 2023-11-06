@@ -296,8 +296,6 @@ void opp_part_unpack(oppic_set set)
 
     if (num_particles > 0)
     {
-        int64_t particle_size = set->particle_size;
-
         if (!oppic_increase_particle_count_core(set, (int)num_particles)) // TODO : change this to int64_t
         {
             opp_printf("opp_part_unpack", "Error: Failed to increase particle count of particle set [%s]", set->name);
@@ -315,6 +313,7 @@ void opp_part_unpack(oppic_set set)
 
 #if PACK_AOS
             std::vector<oppic_dat>& particle_dats = *(set->particle_dats);
+            int64_t particle_size = set->particle_size;
 
             // unpack the received buffer from rank 'recv_rank' in to particle dats
             for (int part = 0; part < receive_count; part++)
