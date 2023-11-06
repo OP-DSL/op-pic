@@ -96,10 +96,10 @@ echo "OMP DONE"
 
 module load GCC/10.3.0  OpenMPI/4.1.1
 module load PETSc/3.15.1
+module load CUDA
 export PETSC_INSTALL_PATH=/scrtp/avon/eb/software/PETSc/3.15.1-foss-2021a
 export OPPIC_PATH=/home/dcs/csrcnj/phd/OP-PIC/lib_oppic
 export NVCCFLAGS_ADD='-gencode arch=compute_75,code=sm_75'
-module load CUDA
 
 # For MPI
 # salloc -p hmem --nodes=1 --ntasks-per-node=48 --cpus-per-task=1 --mem-per-cpu=3700 --time=03:00:00 
@@ -121,5 +121,8 @@ module load gcc/12.2 openmpi/4.0.5 cuda/12.0.1 openblas/0.3.10
 export PETSC_INSTALL_PATH=/users/csrcnl/lib_install/petsc-3.20.1_rel
 export OPPIC_PATH=/users/csrcnl/phd/OP-PIC/lib_oppic
 export NVCCFLAGS_ADD='-gencode arch=compute_70,code=sm_70'
+export LD_LIBRARY_PATH=/users/csrcnl/lib_install/petsc-3.20.1_rel/lib:$LD_LIBRARY_PATH
+
+salloc --partition=gpu --nodes=1 --ntasks-per-node=8 --gres=gpu:1 --time=1:0:0 --account=bdyrk17 --job-name=csrcnl
 
 # ===============================================================

@@ -109,7 +109,7 @@ inline void inject_ions__kernel(
     }
 
     (*part_cell_connectivity) = (*cell_id);
-    (*part_id) = OPP_rank * 10000000 + (part_counter++);
+    // (*part_id) = OPP_rank * 10000000 + (part_counter++);
 }
 
 //*************************************************************************************************
