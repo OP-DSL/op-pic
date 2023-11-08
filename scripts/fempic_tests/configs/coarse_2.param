@@ -1,6 +1,7 @@
 # System parameters
-REAL plasma_den     = 4.7e16
-# REAL plasma_den     = 7e17
+# REAL plasma_den     = 4.7e16 REAL plasma_den     = 0.97e18 1.033e18
+REAL plasma_den     = 1.00e18
+# REAL plasma_den     = 3.30e17
 REAL ion_velocity   = 1e8
 REAL electron_temperature = 2e8
 REAL wall_potential = 10000000
@@ -15,24 +16,32 @@ STRING fesolver_method = petsc
 BOOL check_max_values = true
 
 # Input files
-STRING global_mesh = /ext-home/zl/phd/box_mesh_gen/48000/mesh.dat
-STRING inlet_mesh  = /ext-home/zl/phd/box_mesh_gen/48000/inlet.dat
-STRING wall_mesh   = /ext-home/zl/phd/box_mesh_gen/48000/wall.dat
+# STRING global_mesh = /ext-home/zl/phd/box_mesh_gen/48000/mesh.dat
+# STRING inlet_mesh  = /ext-home/zl/phd/box_mesh_gen/48000/inlet.dat
+# STRING wall_mesh   = /ext-home/zl/phd/box_mesh_gen/48000/wall.dat 32400 96000
 
-STRING rand_file   = /ext-home/zl/phd/mini-pic/examples/one_stream/coarse/random_100k.dat
+# STRING rand_file   = /ext-home/zl/phd/mini-pic/examples/one_stream/coarse/random_100k.dat
+
+STRING global_mesh = /home/dcs/csrcnj/phd/box_mesh_gen/32400/mesh.dat
+STRING inlet_mesh  = /home/dcs/csrcnj/phd/box_mesh_gen/32400/inlet.dat
+STRING wall_mesh   = /home/dcs/csrcnj/phd/box_mesh_gen/32400/wall.dat
+
+STRING rand_file   = /home/dcs/csrcnj/phd/box_mesh_gen/random_100k.dat
 
 BOOL invert_normals = false
 
 BOOL opp_auto_sort          = false
-INT opp_allocation_multiple = 10
-INT opp_threads_per_block   = 64
+INT opp_allocation_multiple = 11
+INT opp_threads_per_block   = 1024
 
 BOOL opp_profile_all        = false
 
 REAL grid_spacing  = 25e-6
 BOOL print_final = true
 
-BOOL opp_global_move = true
+BOOL opp_global_move = false
 
 # block k-means
 STRING cluster = block
+
+STRING hdf_filename = /home/dcs/csrcnj/phd/OP-PIC/fempic_mpi/box_32400.hdf5

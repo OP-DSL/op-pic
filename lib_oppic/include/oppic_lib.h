@@ -106,6 +106,8 @@ void opp_print_map_to_txtfile(oppic_map map, const char *file_name_prefix, const
 
 void oppic_dump_dat(oppic_dat data);
 
+opp_dat opp_fetch_data(opp_dat dat);
+
 void opp_reset_dat(oppic_dat dat, char* val, opp_reset reset = OPP_Reset_All);
 
 opp_move_var opp_get_move_var(int thread = 0);

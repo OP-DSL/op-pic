@@ -384,12 +384,16 @@ void opp_reset_dat(oppic_dat dat, char* val, opp_reset reset)
 //*******************************************************************************
 void opp_partition(std::string lib_name, op_set prime_set, op_map prime_map, op_dat data)
 {
+    opp_profiler->start("opp_partition");
+
     // remove all negative mappings and copy the first mapping of the current element for all negative mappings
     opp_sanitize_all_maps();
 
     opp_partition_core(lib_name, prime_set, prime_map, data);
 
     opp_desanitize_all_maps();
+
+    opp_profiler->end("opp_partition");
 }
 
 //*******************************************************************************
@@ -421,3 +425,13 @@ opp_move_var opp_get_move_var(int thread)
     return move_var; // passing the object for now :(
 }
 
+//*******************************************************************************
+opp_dat opp_fetch_data(opp_dat dat) {
+    if (dat->set->is_particle) {
+        opp_printf("opp_fetch_data", "Error Cannot rearrange particle dats");
+        opp_abort();
+    }
+
+    // rearrange data backe to original order in mpi
+    return opp_mpi_get_data(dat);
+}

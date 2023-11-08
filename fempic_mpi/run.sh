@@ -97,6 +97,7 @@ echo "OMP DONE"
 module load GCC/10.3.0  OpenMPI/4.1.1
 module load PETSc/3.15.1
 module load CUDA
+module load HDF5/1.12.1
 export PETSC_INSTALL_PATH=/scrtp/avon/eb/software/PETSc/3.15.1-foss-2021a
 export OPPIC_PATH=/home/dcs/csrcnj/phd/OP-PIC/lib_oppic
 export NVCCFLAGS_ADD='-gencode arch=compute_75,code=sm_75'

@@ -75,6 +75,25 @@ inline void calculate_injection_distribution(
     (*particle_distribution) = (*injected_total);
 }
 
+//*************************************************************************************************
+inline void init_boundary_potential(
+    const int *node_type, 
+    double *n_bnd_pot
+)
+{
+    switch (*node_type)
+    {
+        case 2: // INLET: 
+            *n_bnd_pot = 0; 
+            break;     
+        case 3: // FIXED: 
+            *n_bnd_pot = -1 * CONST_wall_potential; 
+            break;
+        default: // NORMAL or OPEN
+            *n_bnd_pot = 0; /*default*/
+    }
+}
+
 int part_counter = 0;
 
 //*************************************************************************************************

@@ -333,6 +333,7 @@ void opp_set_dirtybit_grouped(int nargs, oppic_arg *args, DeviceType device);
 //*************************************************************************************************
 
 extern int OP_hybrid_gpu;
+extern double OP_hybrid_balance;
 extern int OP_maps_base_index;
 extern int OP_auto_soa;
 extern int OP_part_alloc_mult;

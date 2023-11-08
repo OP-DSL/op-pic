@@ -102,3 +102,7 @@ double rnd();
 void reset_seed();
 
 double* get_dandom_distriution(int count, int dim);
+
+int file_exist(char const *filename);
+
+bool opp_type_equivalence(const char *a, const char *b);

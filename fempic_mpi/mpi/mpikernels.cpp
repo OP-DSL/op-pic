@@ -33,26 +33,66 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 // AUTO GENERATED CODE
 //*********************************************
 
-#include "../fempic.h"
+#include "../fempic_defs.h"
 
 using namespace opp;
 
 //****************************************
-double CONST_spwt = 0, CONST_ion_velocity = 0, CONST_dt = 0, CONST_plasma_den = 0, CONST_mass = 0, CONST_charge = 0;
+double CONST_spwt = 0, CONST_ion_velocity = 0, CONST_dt = 0, CONST_plasma_den = 0, CONST_mass = 0, CONST_charge = 0, CONST_wall_potential = 0;
 
 void opp_decl_const_impl(int dim, int size, char* data, const char* name)
 {
-    if (!strcmp(name,"CONST_spwt"))              CONST_spwt = *((double*)data);
-    else if (!strcmp(name,"CONST_ion_velocity")) CONST_ion_velocity = *((double*)data);
-    else if (!strcmp(name,"CONST_dt"))           CONST_dt = *((double*)data);
-    else if (!strcmp(name,"CONST_plasma_den"))   CONST_plasma_den = *((double*)data);
-    else if (!strcmp(name,"CONST_mass"))         CONST_mass = *((double*)data);
-    else if (!strcmp(name,"CONST_charge"))       CONST_charge = *((double*)data);
+    if (!strcmp(name,"CONST_spwt"))                CONST_spwt = *((double*)data);
+    else if (!strcmp(name,"CONST_ion_velocity"))   CONST_ion_velocity = *((double*)data);
+    else if (!strcmp(name,"CONST_dt"))             CONST_dt = *((double*)data);
+    else if (!strcmp(name,"CONST_plasma_den"))     CONST_plasma_den = *((double*)data);
+    else if (!strcmp(name,"CONST_mass"))           CONST_mass = *((double*)data);
+    else if (!strcmp(name,"CONST_charge"))         CONST_charge = *((double*)data);
+    else if (!strcmp(name,"CONST_wall_potential")) CONST_wall_potential = *((double*)data);
     else std::cerr << "error: unknown const name" << std::endl;
 }
 //****************************************
 
 #include "../kernels.h"
+
+//*************************************************************************************************
+void opp_loop_all__InitBndPotential(
+    opp_set set,      // nodes_set
+    opp_arg arg0,     // node_type,
+    opp_arg arg1      // node_bnd_pot,
+)
+{ 
+
+    if (FP_DEBUG) 
+        opp_printf("FEMPIC", "opp_loop_all__InitBndPotential set_size %d diff %d", 
+            set->size, set->diff);
+    
+    opp_profiler->start("InitBndPot");
+
+    const int nargs = 2;
+    opp_arg args[nargs];
+
+    args[0] = std::move(arg0);
+    args[1] = std::move(arg1);
+
+    int set_size = opp_mpi_halo_exchanges(set, nargs, args);
+    opp_mpi_halo_wait_all(nargs, args);  
+
+    if (set_size > 0) 
+    {
+        for (int i = 0; i < set->size; i++)
+        {    
+            init_boundary_potential(
+                &((int*) args[0].data)[i * args[0].dim],     // node_type,
+                &((double*) args[1].data)[i * args[1].dim]   // node_bnd_pot,
+            );
+        }
+    }
+
+    opp_set_dirtybit(nargs, args);
+
+    opp_profiler->end("InitBndPot");
+}
 
 //*************************************************************************************************
 void opp_loop_inject__InjectIons(
@@ -67,7 +107,7 @@ void opp_loop_inject__InjectIons(
     opp_arg arg7,     // iface_v,
     opp_arg arg8,     // iface_normal,
     opp_arg arg9,     // iface_node_pos
-    opp_arg arg10      // dummy_part_random
+    opp_arg arg10     // dummy_part_random
 )
 { 
 
@@ -117,7 +157,7 @@ void opp_loop_inject__InjectIons(
                 &((double*) args[7].data)[map0idx * args[7].dim],             // iface_v,
                 &((double*) args[8].data)[map0idx * args[8].dim],             // iface_normal,
                 &((double*) args[9].data)[map0idx * args[9].dim],             // iface_node_pos
-                &((double*) args[10].data)[i * args[10].dim]                    // dummy_part_random
+                &((double*) args[10].data)[i * args[10].dim]                  // dummy_part_random
             );
         }
     }

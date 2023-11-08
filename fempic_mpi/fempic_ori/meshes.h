@@ -19,7 +19,12 @@
 #include "particles.h"
 
 /*node type*/
-enum NodeType {NORMAL,OPEN,INLET,FIXED};
+enum NodeType {
+    NORMAL=0,
+    OPEN=1,
+    INLET=2,
+    FIXED=3
+};
 
 /*definition of a node*/
 struct Node {

@@ -52,8 +52,9 @@ PETSC ?= 1
 ifeq ($(PETSC), 1)
 	CPPFLAGS   += -DUSE_PETSC
 	NVCCFLAGS += -DUSE_PETSC
-	PETSC_INC  = -I$(PETSC_INSTALL_PATH)/include
-	PETSC_LIB  = -L$(PETSC_INSTALL_PATH)/lib -lpetsc
+#	PETSC_INC  = -I$(PETSC_INSTALL_PATH)/include
+#	PETSC_LIB  = -L$(PETSC_INSTALL_PATH)/lib -lpetsc
+	PETSC_LIB  = -lpetsc
 endif
 
 CUDA ?= 1
@@ -73,10 +74,10 @@ ifeq ($(PARMETIS), 1)
 	ALL_INC  += -DHAVE_PARMETIS
 endif
 
-ALL_INC    += -I$(OPPIC_PATH)/include $(PETSC_INC) -I/ext-home/zl/lib/inclide
-ALL_LIBS   += -L$(OPPIC_PATH)/lib -L/ext-home/zl/lib/lib $(PETSC_LIB) 
+ALL_INC    += -I$(OPPIC_PATH)/include $(PETSC_INC)
+ALL_LIBS   += -L$(OPPIC_PATH)/lib $(PETSC_LIB) 
 
-
+# -L/ext-home/zl/lib/lib 
 
 .PHONY: clean mklib
 
@@ -128,16 +129,22 @@ mpi_test: mklib
 		 $(CPP) $(CPPFLAGS) -c mpi/mpikernels.cpp -o $(OBJ)/mpikernels.o $(ALL_INC)
 	     $(CPP) $(CPPFLAGS) -o $(BIN)/mpi $(OBJ)/fempic_test.o $(OBJ)/meshes.o $(OBJ)/particles.o $(OBJ)/maths.o $(OBJ)/mpikernels.o $(OBJ)/FESolver.o  -loppic_mpi $(ALL_INC) $(ALL_LIBS)
 
-mpi_common: mklib
-	     $(MPICPP) $(CPPFLAGS) -DUSE_MPI -c fempic_op.cpp -o $(OBJ)/fempic_op.o $(ALL_INC)
+mpi_common: mklib   
 		 $(MPICPP) $(CPPFLAGS) -DUSE_MPI -c fempic_ori/meshes.cpp -o $(OBJ)/meshes.o $(ALL_INC)
 	     $(MPICPP) $(CPPFLAGS) -DUSE_MPI -c fempic_ori/particles.cpp -o $(OBJ)/particles.o $(ALL_INC)
 		 $(MPICPP) $(CPPFLAGS) -DUSE_MPI -c fempic_ori/maths.cpp -o $(OBJ)/maths.o $(ALL_INC)
 		 $(MPICPP) $(CPPFLAGS) -DUSE_MPI -c FESolver.cpp -o $(OBJ)/FESolver.o $(ALL_INC)		 
 
 mpi: mpi_common
+		 $(MPICPP) $(CPPFLAGS) -DUSE_MPI -c fempic_op.cpp -o $(OBJ)/fempic_op.o $(ALL_INC)
 		 $(MPICPP) $(CPPFLAGS) -DUSE_MPI -c mpi/mpikernels.cpp -o $(OBJ)/mpikernels.o $(ALL_INC)
 	     $(MPICPP) $(CPPFLAGS) -DUSE_MPI -o $(BIN)/mpi $(OBJ)/fempic_op.o $(OBJ)/meshes.o $(OBJ)/particles.o $(OBJ)/maths.o $(OBJ)/mpikernels.o $(OBJ)/FESolver.o  -loppic_mpi $(ALL_INC) $(ALL_LIBS) 
+
+mpi_hdf5: mpi_common
+		 $(MPICPP) $(CPPFLAGS) -DUSE_MPI -c fempic_op_hdf5.cpp -o $(OBJ)/fempic_op_hdf5.o $(ALL_INC)
+		 $(MPICPP) $(CPPFLAGS) -DUSE_MPI -c mpi/mpikernels.cpp -o $(OBJ)/mpikernels.o $(ALL_INC)
+		 $(MPICPP) $(CPPFLAGS) -DUSE_MPI -c opp_mpi_hdf5.cpp -o $(OBJ)/opp_mpi_hdf5.o $(ALL_INC)
+	     $(MPICPP) $(CPPFLAGS) -DUSE_MPI -o $(BIN)/mpi_hdf5 $(OBJ)/fempic_op_hdf5.o $(OBJ)/opp_mpi_hdf5.o $(OBJ)/meshes.o $(OBJ)/particles.o $(OBJ)/maths.o $(OBJ)/mpikernels.o $(OBJ)/FESolver.o  -loppic_mpi $(ALL_INC) $(ALL_LIBS) -lhdf5
 
 cuda: common
 		 $(NVCC) $(NVCCFLAGS) -c cuda/cudakernels.cu -o $(OBJ)/cudakernels.o $(ALL_INC) $(CUDA_INC)
@@ -155,6 +162,14 @@ hip: mklib
 		 $(HIPCC) $(HIPCCFLAGS) -c fempic_ori/maths.cpp -o $(OBJ)/maths.o $(ALL_INC)
 		 $(HIPCC) $(HIPCCFLAGS) -c FESolver.cpp -o $(OBJ)/FESolver.o $(ALL_INC)
 	     $(HIPCC) $(HIPCCFLAGS) -o $(BIN)/hip $(OBJ)/fempic_op.o $(OBJ)/meshes.o $(OBJ)/particles.o $(OBJ)/maths.o $(OBJ)/hipkernels.o $(OBJ)/FESolver.o $(ALL_INC) $(HIP_INC) $(ALL_LIBS) $(HIP_LIB) -loppic_hip
+
+mpi_hdf5_conv: mklib
+		 $(MPICPP) $(CPPFLAGS) -DUSE_MPI -c fempic_convert_hdf5.cpp -o $(OBJ)/fempic_convert_hdf5.o $(ALL_INC)
+		 $(MPICPP) $(CPPFLAGS) -DUSE_MPI -c opp_mpi_hdf5.cpp -o $(OBJ)/opp_mpi_hdf5.o $(ALL_INC)
+	     $(MPICPP) $(CPPFLAGS) -DUSE_MPI -c fempic_ori/meshes.cpp -o $(OBJ)/meshes.o $(ALL_INC)
+	     $(MPICPP) $(CPPFLAGS) -DUSE_MPI -c fempic_ori/particles.cpp -o $(OBJ)/particles.o $(ALL_INC)
+		 $(MPICPP) $(CPPFLAGS) -DUSE_MPI -c fempic_ori/maths.cpp -o $(OBJ)/maths.o $(ALL_INC)
+		 $(MPICPP) $(CPPFLAGS) -DUSE_MPI -o $(BIN)/mpi_hdf5_conv $(OBJ)/fempic_convert_hdf5.o $(OBJ)/meshes.o $(OBJ)/particles.o $(OBJ)/maths.o $(OBJ)/opp_mpi_hdf5.o -loppic_mpi $(ALL_INC) $(ALL_LIBS) -lhdf5
 
 clean: 
 	     rm -f *.o *.d *.a

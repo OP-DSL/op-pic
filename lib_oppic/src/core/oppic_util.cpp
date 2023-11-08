@@ -379,3 +379,46 @@ void reset_seed()
 }
 
 //********************************************************************************
+/*******************************************************************************
+* Check if a file exists
+*******************************************************************************/
+int file_exist(char const *filename) {
+    struct stat buffer;
+    return (stat(filename, &buffer) == 0);
+}
+
+const char *doubles[] = {"double", "double:soa", "real(8)", "double precision"};
+const char *floats[] = {"float", "float:soa", "real(4)", "real"};
+const char *ints[] = {"int", "int:soa", "integer(4)", "integer"};
+
+bool opp_type_equivalence(const char *a, const char *b) {
+
+    for (int i = 0; i < 4; i++) {
+        if (strcmp(a, doubles[i]) == 0) {
+            for (int j = 0; j < 4; j++) {
+                if (strcmp(b, doubles[j]) == 0) {
+                return true;
+                }
+            }
+        }
+    }
+    for (int i = 0; i < 4; i++) {
+        if (strcmp(a, floats[i]) == 0) {
+            for (int j = 0; j < 4; j++) {
+                if (strcmp(b, floats[j]) == 0) {
+                    return true;
+                }
+            }
+        }
+    }
+    for (int i = 0; i < 4; i++) {
+        if (strcmp(a, ints[i]) == 0) {
+            for (int j = 0; j < 4; j++) {
+                if (strcmp(b, ints[j]) == 0) {
+                    return true;
+                }
+            }
+        }
+    }
+    return false;
+}

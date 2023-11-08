@@ -452,18 +452,35 @@ void opp_partition(std::string lib_name, op_set prime_set, op_map prime_map, op_
 }
 
 //*******************************************************************************
+opp_dat opp_fetch_data(opp_dat dat) {
+
+    if (dat->set->is_particle) {
+        opp_printf("opp_fetch_data", "Error Cannot rearrange particle dats");
+        opp_abort();
+    }
+
+    if (dat->dirty_hd == Dirty::Host) 
+        oppic_download_dat(dat);
+
+#ifdef USE_MPI
+    // rearrange data backe to original order in mpi
+    return opp_mpi_get_data(dat);
+#else
+    return dat;
+#endif
+}
+
+
+//*******************************************************************************
 void opp_mpi_print_dat_to_txtfile(op_dat dat, const char *file_name) 
 {
     cutilSafeCall(cudaDeviceSynchronize());
 #ifdef USE_MPI
     const std::string prefixed_file_name = std::string("mpi_files/MPI_") + 
                                             std::to_string(OPP_comm_size) + std::string("_") + file_name;
-    
-    if (dat->dirty_hd == Dirty::Host) 
-        oppic_download_dat(dat);
 
     // rearrange data back to original order in mpi
-    opp_dat temp = opp_mpi_get_data(dat);
+    opp_dat temp = opp_fetch_data(dat);
     
     print_dat_to_txtfile_mpi(temp, prefixed_file_name.c_str());
 
@@ -842,7 +859,6 @@ void print_last_cuda_error()
 {
     printf("ANY CUDA ERRORS? %s\n", cudaGetErrorString(cudaGetLastError()));
 }
-
 
 
 

@@ -7,7 +7,8 @@
 #include <random>
 #include <unordered_map>
 #include <algorithm> 
-// #include "opp_mpi.h"
+
+namespace opp {
 
 struct Point3D {
     double x = 0.0f;
@@ -148,9 +149,9 @@ inline std::vector<int> BlockCluster(const std::vector<Point3D>& points, int num
         }
     }
 
-    std::string logg = "";
-    for (auto a : clusterSizes) logg += std::to_string(a) + " ";
-    opp_printf("BlockCluster SIZES", "%s", logg.c_str());
+    // std::string logg = "";
+    // for (auto a : clusterSizes) logg += std::to_string(a) + " ";
+    // printf("BlockCluster SIZES %s", logg.c_str());
 
     return assignments;
 }
@@ -210,7 +211,7 @@ inline std::vector<int> kMeansClustering3D(const std::vector<Point3D>& points, i
 
     std::string logg = "";
     for (auto a : clusterSizes) logg += std::to_string(a) + " ";
-    opp_printf("SIZES", "%s", logg.c_str());
+    printf("SIZES %s", logg.c_str());
 
     return assignments;
 }
@@ -238,3 +239,5 @@ inline double calculateTetraVolume(const Point3D& p1, const Point3D& p2,
     
     return volume;
 }
+
+};
