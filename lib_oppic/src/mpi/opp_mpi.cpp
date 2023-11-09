@@ -53,7 +53,8 @@ void opp_init(int argc, char **argv)
     MPI_Comm_rank(OP_MPI_WORLD, &OPP_rank);
     MPI_Comm_size(OP_MPI_WORLD, &OPP_comm_size);
 
-    if (OP_DEBUG) opp_printf("oppic_init", "");
+    if (OPP_rank == OPP_ROOT) 
+        opp_printf("oppic_init", "initialized with %d MPI ranks", OPP_comm_size);
     
     oppic_init_core(argc, argv);
 

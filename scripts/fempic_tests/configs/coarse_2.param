@@ -44,4 +44,4 @@ BOOL opp_global_move = false
 # block k-means
 STRING cluster = block
 
-STRING hdf_filename = /home/dcs/csrcnj/phd/OP-PIC/fempic_mpi/box_32400.hdf5
+STRING hdf_filename = /home/dcs/csrcnj/phd/box_mesh_gen/hdf5/box_32400.hdf5

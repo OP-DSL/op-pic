@@ -260,6 +260,8 @@ int main(int argc, char **argv)
                 print_per_cell_particle_counts(cell_colors, part_mesh_rel); // cell_colors will reset
         }
 
+        if (OPP_rank == OPP_ROOT) opp_printf("Main", "Main loop completed after %d iterations ****", max_iter);
+
         opp_profiler->end("MainLoop");
     }
 

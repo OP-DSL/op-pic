@@ -925,7 +925,7 @@ void __opp_halo_create()
         MPI_Reduce(&set->size, &max_size, 1, MPI_INT, MPI_MAX, OPP_ROOT,
                 OP_MPI_WORLD);
 
-        if (my_rank == OPP_ROOT) 
+        if (OP_DEBUG && my_rank == OPP_ROOT) 
         {
             opp_printf("opp_halo_create", "Num of %8s (avg | min | max)", set->name);
             opp_printf("opp_halo_create", "total elems         %10d %10d %10d", 
@@ -944,7 +944,7 @@ void __opp_halo_create()
         MPI_Reduce(&set->core_size, &max_size, 1, MPI_INT, MPI_MAX, OPP_ROOT,
                 OP_MPI_WORLD);
 
-        if (my_rank == OPP_ROOT) 
+        if (OP_DEBUG && my_rank == OPP_ROOT) 
         {
             opp_printf("opp_halo_create", "core elems         %10d %10d %10d", 
                 avg_size / comm_size, min_size, max_size);
@@ -961,7 +961,7 @@ void __opp_halo_create()
         MPI_Reduce(&OP_import_exec_list[set->index]->size, &max_size, 1, MPI_INT,
                 MPI_MAX, OPP_ROOT, OP_MPI_WORLD);
 
-        if (my_rank == OPP_ROOT) 
+        if (OP_DEBUG && my_rank == OPP_ROOT) 
         {
             opp_printf("opp_halo_create", "exec halo elems     %10d %10d %10d", 
                 avg_size / comm_size, min_size, max_size);
@@ -978,7 +978,7 @@ void __opp_halo_create()
         MPI_Reduce(&OP_import_nonexec_list[set->index]->size, &max_size, 1, MPI_INT,
                 MPI_MAX, OPP_ROOT, OP_MPI_WORLD);
 
-        if (my_rank == OPP_ROOT) 
+        if (OP_DEBUG && my_rank == OPP_ROOT) 
         {
             opp_printf("opp_halo_create", "non-exec halo elems %10d %10d %10d", 
                 avg_size / comm_size, min_size, max_size);
@@ -986,7 +986,7 @@ void __opp_halo_create()
         avg_size = 0;
         min_size = 0;
         max_size = 0;
-        if (my_rank == OPP_ROOT) 
+        if (OP_DEBUG && my_rank == OPP_ROOT) 
         {
             opp_printf("opp_halo_create", "-------------------------------------");
         }
@@ -1009,7 +1009,7 @@ void __opp_halo_create()
         MPI_Reduce(&OP_import_exec_list[set->index]->ranks_size, &max_size, 1,
                 MPI_INT, MPI_MAX, OPP_ROOT, OP_MPI_WORLD);
 
-        if (my_rank == OPP_ROOT) 
+        if (OP_DEBUG && my_rank == OPP_ROOT) 
         {
             opp_printf("opp_halo_create", "MPI neighbors for exchanging %8s (avg | min | max)", 
                 set->name);
@@ -1028,7 +1028,7 @@ void __opp_halo_create()
         MPI_Reduce(&OP_import_nonexec_list[set->index]->ranks_size, &max_size, 1,
                 MPI_INT, MPI_MAX, OPP_ROOT, OP_MPI_WORLD);
 
-        if (my_rank == OPP_ROOT) 
+        if (OP_DEBUG && my_rank == OPP_ROOT) 
         {
             opp_printf("opp_halo_create", "non-exec halo elems %4d %4d %4d", 
                 avg_size / comm_size, min_size, max_size);
@@ -1036,7 +1036,7 @@ void __opp_halo_create()
         avg_size = 0;
         min_size = 0;
         max_size = 0;
-        if (my_rank == OPP_ROOT) {
+        if (OP_DEBUG && my_rank == OPP_ROOT) {
             opp_printf("opp_halo_create", "-------------------------------------");
         }
     }
@@ -1066,7 +1066,7 @@ void __opp_halo_create()
     MPI_Reduce(&tot_halo_size, &avg_halo_size, 1, MPI_INT, MPI_SUM, OPP_ROOT, OP_MPI_WORLD);
 
     // print performance results
-    if (my_rank == OPP_ROOT) 
+    if (OP_DEBUG && my_rank == OPP_ROOT) 
     {
         opp_printf("opp_halo_create", "Max total halo creation time = %lf", max_time);
         opp_printf("opp_halo_create", "Average (worst case) Halo size = %d Bytes", 

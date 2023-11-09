@@ -228,6 +228,9 @@ namespace opp {
 
             for (const auto& entry : m_elapsedTimeMap) {
                 const std::string& profName = entry.first;
+
+                // if (m_myRank == 0) printf("PROFILER ... Evaluating profile [%s]\n", profName.c_str());
+
                 const size_t count = this->getMaxCallCount(profName, fromAllRanks); //entry.second.count;
 
                 const double elapsedTime = this->getMaxElapsedTime(profName, fromAllRanks);

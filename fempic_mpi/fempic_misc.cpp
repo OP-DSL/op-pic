@@ -159,7 +159,7 @@ inline int InitializeInjectDistributions(oppic_dat if_dist_dat, oppic_dat if_are
     dummy_random->dirty_hd = Dirty::Device; // To make GPU versions to download updated data!
     if_dist_dat->dirty_hd = Dirty::Device; // To make GPU versions to download updated data!
     
-    opp_printf("InitializeInjectDistributions", "total_inject_count %d", total_inject_count);
+    if (OP_DEBUG) opp_printf("InitializeInjectDistributions", "total_inject_count %d", total_inject_count);
 
     return total_inject_count;
 }
@@ -259,7 +259,7 @@ inline void genColoursForBlockPartition(opp_dat cell_colours, opp_dat cell_centr
     std::map<int, std::vector<int>> node_face_con;
 
     // Gather iface_v_node_map and iface_n_pos to ROOT rank
-    if (OPP_rank == 0) {
+    if (OPP_rank == OPP_ROOT) {
         
         int index = 0;
         recv_requests.resize(OPP_comm_size *2);
@@ -374,24 +374,54 @@ inline void genColoursForBlockPartition(opp_dat cell_colours, opp_dat cell_centr
     }
 
     // Distribute face node positions and face rank assignments over all ranks
-    std::vector<MPI_Request> send_requests(OPP_comm_size * 2);
     if (OPP_rank == OPP_ROOT) {
-        for (int rank = 1; rank < OPP_comm_size; rank++) {
-            MPI_Isend(g_if_npos_dat.data(), g_iface_size * N_PER_IF * DIM, MPI_DOUBLE, rank,
-                1000, MPI_COMM_WORLD, &(send_requests[rank * 2]));
 
-            MPI_Isend(g_face_rank_assignments.data(), g_iface_size, MPI_INT, rank,
-                2000, MPI_COMM_WORLD, &(send_requests[rank*2+1]));
+        for (int rank = 1; rank < OPP_comm_size; rank++) {
+
+            MPI_Send(g_if_npos_dat.data(), g_iface_size * N_PER_IF * DIM, MPI_DOUBLE, rank,
+                1000, MPI_COMM_WORLD);
+
+            MPI_Send(g_face_rank_assignments.data(), g_iface_size, MPI_INT, rank,
+                2000, MPI_COMM_WORLD);
         }
     }
     else {
+        MPI_Status status1, status2;
+
         MPI_Recv(g_if_npos_dat.data(), g_iface_size * N_PER_IF * DIM, MPI_DOUBLE, 0, 1000, 
-            MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+            MPI_COMM_WORLD, &status1);
 
         MPI_Recv(g_face_rank_assignments.data(), g_iface_size, MPI_INT, 0, 2000, 
-            MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+            MPI_COMM_WORLD, &status2);
+        
+        int count;
+        MPI_Get_count(&status1, MPI_CHAR, &count);  
+        if ((size_t)count != g_iface_size * N_PER_IF * DIM * sizeof(double)) {
+            opp_printf("ERROR", "g_if_npos_dat received count %d, expected %zu", 
+                count, g_iface_size * N_PER_IF * DIM * sizeof(double));
+            opp_abort();
+        }
+        MPI_Get_count(&status2, MPI_CHAR, &count);  
+        if ((size_t)count != g_iface_size * sizeof(int)) {
+            opp_printf("ERROR", "g_face_rank_assignments received count %d, expected %zu", 
+                count, g_iface_size * sizeof(int));
+            opp_abort();
+        }
+
+        int error_code;
+        MPI_Error_class(status1.MPI_ERROR, &error_code);
+        if (error_code != MPI_SUCCESS) {
+            opp_printf("ERROR", "ERROR in g_if_npos_dat");
+            opp_abort();
+        }
+        MPI_Error_class(status2.MPI_ERROR, &error_code);
+        if (error_code != MPI_SUCCESS) {
+            opp_printf("ERROR", "ERROR in g_face_rank_assignments");
+            opp_abort();
+        }      
     }
 
+    // Assign the cell colours according to its centroid position relative to inlet faces
     bool color_found = false;
     int error_count = 0;
     for (int cellID=0; cellID<cell_centroids->set->size; cellID++)
@@ -419,9 +449,6 @@ inline void genColoursForBlockPartition(opp_dat cell_colours, opp_dat cell_centr
             error_count++;
         }   
     }
-
-    // wait to complete MPI comms before exiting, because all sent data structures will get destroyed when exiting
-    MPI_Waitall(send_requests.size(), send_requests.data(), MPI_STATUS_IGNORE);
 
     opp_profiler->end("genColsForPart");
 

@@ -312,7 +312,8 @@ void FESolver::initPetscStructures()
 void FESolver::preAssembly(oppic_map cell_to_nodes_map, oppic_dat node_bnd_pot) 
 {
     if (OP_DEBUG)
-        opp_printf("FESolver", "preAssembly");
+        opp_printf("FESolver", "preAssembly global_neq %d neq %d n_elements_inc_halo %d", 
+            global_neq, neq, n_elements_inc_halo);
 
     double **K = new double*[neq]; // K will be (neq x global_neq) matrix
     for (int i=0;i<neq;i++)

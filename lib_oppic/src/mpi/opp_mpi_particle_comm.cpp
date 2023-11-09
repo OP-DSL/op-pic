@@ -766,8 +766,9 @@ void opp_part_set_comm_init(oppic_set set)
         if (std::find(mpi_buffers->neighbours.begin(), mpi_buffers->neighbours.end(), neighbour_rank) 
                         == mpi_buffers->neighbours.end())
         {
-            opp_printf("opp_part_set_comm_init", "UNLIKELY, %d is on export list, but not on import list of set %s", 
-                neighbour_rank, set->name); 
+            if (OP_DEBUG)
+                opp_printf("opp_part_set_comm_init", "UNLIKELY, %d is on export list, but not on import list of set %s", 
+                    neighbour_rank, set->name); 
             mpi_buffers->neighbours.push_back(neighbour_rank);
         }
 
@@ -790,7 +791,7 @@ void opp_part_set_comm_init(oppic_set set)
     // opp_profiler->reg("Mv_WaitExRecv");
 
     std::string profName = "";
-    for (int i = 0; i < 10; i++) {
+    for (int i = 0; i < 5; i++) {
         profName = std::string("Mv_WaitDone") + std::to_string(i);
         opp_profiler->reg(profName);
         profName = std::string("Mv_WaitExCnt") + std::to_string(i);

@@ -273,6 +273,8 @@ int main(int argc, char **argv)
 
         if (OP_DEBUG)
             print_per_cell_particle_counts(cell_colors, part_mesh_rel); // cell_colors will reset
+        
+        if (OPP_rank == OPP_ROOT) opp_printf("Main", "Main loop completed after %d iterations ****", max_iter);
     }
 
     opp_exit();
@@ -285,3 +287,9 @@ int main(int argc, char **argv)
 // opp_print_map_to_txtfile(cell_v_nodes_map  , f.c_str(), "cell_v_nodes_map.dat");
 // opp_print_dat_to_txtfile(node_charge_den, f.c_str(), "node_charge_den.dat");
 // opp_mpi_print_dat_to_txtfile(cell_shape_deriv, "cell_shape_deriv.dat");
+
+// std::string f = std::string("F_") + std::to_string(OPP_rank);
+// if (OPP_rank < 10) opp_print_dat_to_txtfile(cell_colors, f.c_str(), "cell_colors_BEFORE.dat");
+// opp_reset_dat(cell_colors, (char*)opp_zero_int16);
+// genColoursForBlockPartition(cell_colors, cell_centroids, iface_n_pos, iface_v_node_map);
+// if (OPP_rank < 10) opp_print_dat_to_txtfile(cell_colors, f.c_str(), "cell_colors_AFTER.dat");
