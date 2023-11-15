@@ -31,7 +31,7 @@ struct Node {
     Node(double x, double y, double z) {pos[0]=x;pos[1]=y;pos[2]=z;type=NORMAL;}
     double pos[3];    /*node position*/
     NodeType type;
-    double volume;    /*node volume*/
+    double volume = 0;    /*node volume*/
 };
 
 /*definition of a tetrahedron*/
@@ -44,7 +44,8 @@ struct Tetra {
     double alpha[4], beta[4], gamma[4], delta[4];
 
     /*cell connectivity*/
-    int cell_con[4];    /*index corresponds to the face opposite the i-th node*/
+    int cell_con[4] = { -1, -1, -1, -1 };    /*index corresponds to the face opposite the i-th node*/
+    bool initDone = false;
 };
 
 /* Definition of a triangle for the intlet faces*/
@@ -54,7 +55,7 @@ struct Face {
     double area;
     double u[3];
     double v[3];
-    int cell_con;
+    int cell_con = -1;
     double normal[3];
 };
 

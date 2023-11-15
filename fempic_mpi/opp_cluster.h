@@ -137,6 +137,8 @@ inline std::vector<int> BlockCluster(const std::vector<Point3D>& points, int num
 
     int numPoint3Ds = (int)points.size();
     std::vector<int> assignments; // Cluster assignments for each point
+
+#ifdef USE_MPI
     std::vector<int> clusterSizes(numClusters, 0);
 
     for (int r = 0; r < OPP_comm_size; r++) {
@@ -148,6 +150,7 @@ inline std::vector<int> BlockCluster(const std::vector<Point3D>& points, int num
             clusterSizes[r]++;
         }
     }
+#endif
 
     // std::string logg = "";
     // for (auto a : clusterSizes) logg += std::to_string(a) + " ";

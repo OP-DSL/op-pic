@@ -89,21 +89,20 @@ void opp_part_pack(oppic_set set)
         {
             if (send_rank_buffer.buf_export == nullptr)
             {
-                send_rank_buffer.buf_export_capacity  = OPP_mpi_part_alloc_mult * required_buffer_size;
+                send_rank_buffer.buf_export_capacity  = required_buffer_size;
                 send_rank_buffer.buf_export_index     = 0;
                 send_rank_buffer.buf_export           = (char *)malloc(send_rank_buffer.buf_export_capacity);
 
-                // opp_printf("opp_part_pack", "alloc buf_export capacity %d", send_rank_buffer.buf_export_capacity);
+                // opp_printf("opp_part_pack", "alloc buf_export capacity %" PRId64, send_rank_buffer.buf_export_capacity);
             }
             else 
             {
                 // Assume that there are some particles left already, increase capacity beyond buf_export_index
-                send_rank_buffer.buf_export_capacity  = send_rank_buffer.buf_export_index + 
-                                                                        OPP_mpi_part_alloc_mult * required_buffer_size;
+                send_rank_buffer.buf_export_capacity  = send_rank_buffer.buf_export_index + required_buffer_size;
                 send_rank_buffer.buf_export           = (char *)realloc(send_rank_buffer.buf_export, 
                                                                         send_rank_buffer.buf_export_capacity);
                 
-                // opp_printf("opp_part_pack", "realloc buf_export capacity %d", send_rank_buffer.buf_export_capacity);
+                // opp_printf("opp_part_pack", "realloc buf_export capacity %" PRId64, send_rank_buffer.buf_export_capacity);
             }        
         }
 
@@ -508,12 +507,12 @@ void opp_part_exchange(oppic_set set)
         {
             if (recv_buffer.buf_import == nullptr)
             {
-                recv_buffer.buf_import_capacity  = OPP_mpi_part_alloc_mult * recv_size;           
+                recv_buffer.buf_import_capacity  = recv_size;           
                 recv_buffer.buf_import           = (char *)malloc(recv_buffer.buf_import_capacity);          
             }
             else
             {
-                recv_buffer.buf_import_capacity += OPP_mpi_part_alloc_mult * recv_size;
+                recv_buffer.buf_import_capacity += recv_size;
                 recv_buffer.buf_import           = (char *)realloc(recv_buffer.buf_import, recv_buffer.buf_import_capacity);
             }
         }
@@ -538,6 +537,33 @@ void opp_part_exchange(oppic_set set)
     opp_profiler->end("Mv_Exchange");
 
     if (OP_DEBUG) opp_printf("opp_part_exchange", "END");
+}
+
+//*******************************************************************************
+void cleanSendRecvBuffers(oppic_set set) 
+{
+    opp_all_mpi_part_buffers* mpi_buffers = (opp_all_mpi_part_buffers*)set->mpi_part_buffers;
+
+    for (auto it = mpi_buffers->buffers.begin(); it != mpi_buffers->buffers.end(); it++)
+    {
+        opp_mpi_part_buffer& buffer = it->second;
+
+        if (buffer.buf_import != nullptr)
+        {
+            buffer.buf_import_capacity = -1;  
+            buffer.buf_import_index = 0;         
+            free(buffer.buf_import);
+            buffer.buf_import = nullptr; 
+        }
+
+        if (buffer.buf_export != nullptr)
+        {
+            buffer.buf_export_capacity = -1;
+            buffer.buf_export_index = 0;
+            free(buffer.buf_export);
+            buffer.buf_export = nullptr;
+        }
+    }
 }
 
 //*******************************************************************************

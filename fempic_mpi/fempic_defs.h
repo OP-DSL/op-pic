@@ -38,8 +38,8 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <oppic_lib.h>
 #ifdef USE_MPI
     #include <opp_mpi.h>
-    #include "opp_cluster.h"
 #endif
+#include "opp_cluster.h"
 
 #ifdef DEBUG_LOG
     #define FP_DEBUG true

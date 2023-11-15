@@ -53,3 +53,5 @@ void opp_mpi_print_dat_to_txtfile(op_dat dat, const char *file_name);
 
 // returns true, if the current particle needs to be removed from the rank
 bool opp_part_checkForGlobalMove(opp_set set, const opp_point& point, const int partIndex, int& cellIdx);
+
+void cleanSendRecvBuffers(oppic_set set);

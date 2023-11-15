@@ -138,7 +138,7 @@ inline void calculate_new_pos_vel__kernel(
     double *part_vel ) {
 
 #ifdef OPP_KERNEL_LOOP_UNROLL
-    double coefficient1 = CONST_charge / CONST_mass * (CONST_dt);
+    const double coefficient1 = CONST_charge / CONST_mass * (CONST_dt);
     part_vel[0] += (coefficient1 * cell_ef[0]);                  
     part_vel[1] += (coefficient1 * cell_ef[1]);  
     part_vel[2] += (coefficient1 * cell_ef[2]);  
@@ -147,12 +147,13 @@ inline void calculate_new_pos_vel__kernel(
     part_pos[1] += part_vel[1] * (CONST_dt); // v = u + at
     part_pos[2] += part_vel[2] * (CONST_dt); // v = u + at
 #else
-    double coefficient1 = CONST_charge / CONST_mass * (CONST_dt);
-    for (int i = 0; i < KERNEL_DIM; i++)
-        part_vel[i] += (coefficient1 * cell_ef[i]);                  
-    
-    for (int i = 0; i < KERNEL_DIM; i++)
-        part_pos[i] += part_vel[i] * (CONST_dt); // v = u + at
+    const double coefficient1 = CONST_charge / CONST_mass * (CONST_dt);
+    for (int i = 0; i < KERNEL_DIM; i++) {
+        part_vel[i] += (coefficient1 * cell_ef[i]);   
+        part_pos[i] += part_vel[i] * (CONST_dt);                
+    }
+    // for (int i = 0; i < KERNEL_DIM; i++)
+    //     part_pos[i] += part_vel[i] * (CONST_dt); // v = u + at
 #endif
 }
 

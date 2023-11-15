@@ -349,6 +349,8 @@ bool opp_finalize_particle_move(oppic_set set)
     // in to separate particle dats
     opp_part_unpack(set);
 
+    // cleanSendRecvBuffers(set);
+
     OPP_iter_start = set->size - set->diff;
     OPP_iter_end   = set->size;  
 

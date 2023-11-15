@@ -35,12 +35,12 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 
 #include "oppic_seq.h"
-#include "../fempic.h"
+#include "../fempic_defs.h"
 
 using namespace opp;
 
 //****************************************
-double CONST_spwt = 0, CONST_ion_velocity = 0, CONST_dt = 0, CONST_plasma_den = 0, CONST_mass = 0, CONST_charge = 0;
+double CONST_spwt = 0, CONST_ion_velocity = 0, CONST_dt = 0, CONST_plasma_den = 0, CONST_mass = 0, CONST_charge = 0, CONST_wall_potential = 0;
 void opp_decl_const_impl(int dim, int size, char* data, const char* name)
 {
     if (!strcmp(name,"CONST_spwt"))              CONST_spwt = *((double*)data);
@@ -49,11 +49,37 @@ void opp_decl_const_impl(int dim, int size, char* data, const char* name)
     else if (!strcmp(name,"CONST_plasma_den"))   CONST_plasma_den = *((double*)data);
     else if (!strcmp(name,"CONST_mass"))         CONST_mass = *((double*)data);
     else if (!strcmp(name,"CONST_charge"))       CONST_charge = *((double*)data);
+    else if (!strcmp(name,"CONST_wall_potential")) CONST_wall_potential = *((double*)data);
     else std::cerr << "error: unknown const name" << std::endl;
 }
 //****************************************
 
 #include "../kernels.h"
+
+//*************************************************************************************************
+void opp_loop_all__InitBndPotential(
+    opp_set set,      // nodes_set
+    opp_arg arg0,     // node_type,
+    opp_arg arg1      // node_bnd_pot,
+)
+{ 
+
+    if (FP_DEBUG) 
+        opp_printf("FEMPIC", "opp_loop_all__InitBndPotential set_size %d diff %d", 
+            set->size, set->diff);
+    
+    opp_profiler->start("InitBndPot");
+
+    for (int i = 0; i < set->size; i++)
+    {    
+        init_boundary_potential(
+            &((int*) arg0.data)[i * arg0.dim],     // node_type,
+            &((double*) arg1.data)[i * arg1.dim]   // node_bnd_pot,
+        );
+    }
+
+    opp_profiler->end("InitBndPot");
+}
 
 //*************************************************************************************************
 void opp_loop_inject__InjectIons(

@@ -78,11 +78,11 @@ public:
     void summarize(std::ostream &out);  
 
 protected:
-    void addKe(double** K, int e, double ke[4][4]);
+    void addKe(std::map<int, std::map<int, double>>& sparse_K, int e, double ke[4][4]);
     void addFe(Vec *Fvec, int e, double fe[4]);
     double evalNa(int a, double xi, double eta, double zeta);
     void getNax(double nx[3], int e, int a);
-    void initialzeMatrix(double **p_A);
+    void initialzeMatrix(std::map<int, std::map<int, double>>& sparse_K);
     void computeNX(oppic_dat node_pos, oppic_map cell_to_nodes_map);
     void sanityCheck();
     void initID(oppic_dat node_type_dat);
@@ -90,27 +90,28 @@ protected:
 
     Method fesolver_method = Method::Petsc;
 
-    int *ID;        /*ID[n]=A*/
-    int **LM;       /*LM[e][a] location matrix */
-    double ***NX;   /*NX[e][a] is a dNa/dx [3] vector*/
-    int neq;        /*number of unknowns/equations*/
-    double *detJ;     /* determinant of the jacobian x_xi */
+    int *node_to_eq_map  = nullptr;        /*node_to_eq_map[n]=A*/
+    int **LM  = nullptr;                    /*LM[e][a] location matrix */
+    double ***NX  = nullptr;                /*NX[e][a] is a dNa/dx [3] vector*/
+    
+    double *detJ = nullptr;     /* determinant of the jacobian x_xi */
 
-    double n0;
-    double phi0;
-    double kTe;
-    double wall_potential;
+    const double n0 = 0.0;
+    const double phi0 = 0.0;
+    const double kTe = 0.0;
+    const double wall_potential = 0.0;
 
-    double *d;        /* d[neq] is the solution from the linear solver */  
+    double *d = nullptr;        /* d[neq] is the solution from the linear solver */  
 
-    int n_nodes_set = 0;
-    int n_nodes_inc_halo = 0; 
-    int n_elements_set = 0;
-    int n_elements_inc_halo = 0;
+    const int n_nodes_set = 0;
+    const int n_nodes_inc_halo = 0; 
+    const int n_elements_set = 0;
+    const int n_elements_inc_halo = 0;
 
+    int neq = 0;        /*number of unknowns/equations*/
+    int global_neq = 0;
     int own_start = 0;
     int own_end = 0;
-    int global_neq = 0;
 
     /*quadrature points*/
     double l[2];

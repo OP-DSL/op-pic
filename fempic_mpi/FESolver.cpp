@@ -48,26 +48,22 @@ FESolver::FESolver(
     oppic_dat node_type_dat, 
     oppic_dat node_pos_dat,
     oppic_dat node_bnd_pot_dat,
-    int argc, char **argv) 
+    int argc, char **argv) :
+        n0(opp_params->get<OPP_REAL>("plasma_den")),
+        kTe(Kb * opp_params->get<OPP_REAL>("electron_temperature")),
+        wall_potential(-(opp_params->get<OPP_REAL>("wall_potential"))),
+        n_nodes_set(node_type_dat->set->size),
+        n_nodes_inc_halo(node_type_dat->set->size + node_type_dat->set->exec_size + node_type_dat->set->nonexec_size),
+        n_elements_set(cell_to_nodes_map->from->size),
+        n_elements_inc_halo(cell_to_nodes_map->from->size + cell_to_nodes_map->from->exec_size)
 {
     if (OP_DEBUG) opp_printf("FESolver", "FESolver");
-
-    phi0           = 0;
-    n0             = opp_params->get<OPP_REAL>("plasma_den");
-    kTe            = Kb * opp_params->get<OPP_REAL>("electron_temperature");
-    wall_potential = -(opp_params->get<OPP_REAL>("wall_potential"));
-    neq            = 0; /*count number of unknowns*/
 
     if      (opp_params->get<OPP_STRING>("fesolver_method") == "nonlinear") fesolver_method = NonLinear;
     else if (opp_params->get<OPP_STRING>("fesolver_method") == "gaussseidel") fesolver_method = GaussSeidel;
     else if (opp_params->get<OPP_STRING>("fesolver_method") == "lapack") fesolver_method = Lapack;
     else if (opp_params->get<OPP_STRING>("fesolver_method") == "petsc") fesolver_method = Petsc;  
     
-    n_nodes_set         = node_type_dat->set->size;
-    n_nodes_inc_halo    = node_type_dat->set->size + node_type_dat->set->exec_size + node_type_dat->set->nonexec_size;
-    n_elements_set      = cell_to_nodes_map->from->size;
-    n_elements_inc_halo = cell_to_nodes_map->from->size + cell_to_nodes_map->from->exec_size; 
-
     // opp_printf("FESolver", "n_nodes_set %d | n_nodes_inc_halo %d | n_elements_set %d | n_elements_inc_halo %d", 
     //     n_nodes_set, n_nodes_inc_halo, n_elements_set, n_elements_inc_halo);
 
@@ -76,7 +72,7 @@ FESolver::FESolver(
         if (((int*)node_type_dat->data)[i] == NORMAL || ((int*)node_type_dat->data)[i] == OPEN) 
             neq++;
 
-    ID = new int[n_nodes_inc_halo];
+    node_to_eq_map = new int[n_nodes_inc_halo];
    
     LM = new int*[n_elements_inc_halo]; /*allocate location matrix, n_elements*4 */
     for (int e = 0; e < n_elements_inc_halo; e++) 
@@ -112,7 +108,7 @@ FESolver::FESolver(
         for (int a=0;a<4;a++)    /*tetrahedra*/ 
         {
             int node_idx = cell_to_nodes_map->map[e * cell_to_nodes_map->dim + a];
-            LM[e][a] = ID[node_idx]; 
+            LM[e][a] = node_to_eq_map[node_idx]; 
         }
     }
 
@@ -151,7 +147,7 @@ FESolver::~FESolver()
 
     delete[] LM;
     delete[] NX;
-    delete[] ID;
+    delete[] node_to_eq_map;
     delete[] d;
     delete[] detJ;
 
@@ -182,20 +178,20 @@ void FESolver::initID(oppic_dat node_type_dat) // relation from node indices to 
         if (n < n_nodes_set && 
             (((int*)node_type_dat->data)[n] == NORMAL || ((int*)node_type_dat->data)[n] == OPEN))
         {
-            ID[n]=P;
+            node_to_eq_map[n]=P;
             P++;
         }
         else 
         {
-            ID[n]=INT_MIN;    /* dirichlet node or for halo region, until updated by MPI comm */
+            node_to_eq_map[n]=INT_MIN;    /* dirichlet node or for halo region, until updated by MPI comm */
         }
     }
 
 #ifdef USE_MPI
-    // send all the ID values of the export non-exec halos
+    // send all the node_to_eq_map values of the export non-exec halos
     // (send the values by adding by own_start and making the values negative)
-    // receive all ID values of the import non exec halos and 
-    // assign the values to the correct indices of ID array
+    // receive all node_to_eq_map values of the import non exec halos and 
+    // assign the values to the correct indices of node_to_eq_map array
 
     halo_list exp_nonexec_list = OP_export_nonexec_list[node_type_dat->set->index];
     halo_list imp_nonexec_list = OP_import_nonexec_list[node_type_dat->set->index];
@@ -208,7 +204,7 @@ void FESolver::initID(oppic_dat node_type_dat) // relation from node indices to 
         for (int j = 0; j < exp_nonexec_list->sizes[i]; j++) 
         {
             int index = exp_nonexec_list->disps[i] + j;           
-            send_buffer[index] = ID[exp_nonexec_list->list[index]];
+            send_buffer[index] = node_to_eq_map[exp_nonexec_list->list[index]];
 
             if (send_buffer[index] != INT_MIN)
                 send_buffer[index] = -1 * (send_buffer[index] + own_start);
@@ -226,7 +222,7 @@ void FESolver::initID(oppic_dat node_type_dat) // relation from node indices to 
     {
         // opp_printf("SEND", "count=%d from rank %d", imp_nonexec_list->sizes[i], imp_nonexec_list->ranks[i]);
 
-        MPI_Recv(&(ID[nonexec_init + imp_nonexec_list->disps[i]]), imp_nonexec_list->sizes[i], MPI_INT,
+        MPI_Recv(&(node_to_eq_map[nonexec_init + imp_nonexec_list->disps[i]]), imp_nonexec_list->sizes[i], MPI_INT,
             imp_nonexec_list->ranks[i], 11, OP_MPI_WORLD, MPI_STATUS_IGNORE);
     }
 
@@ -315,14 +311,16 @@ void FESolver::preAssembly(oppic_map cell_to_nodes_map, oppic_dat node_bnd_pot)
         opp_printf("FESolver", "preAssembly global_neq %d neq %d n_elements_inc_halo %d", 
             global_neq, neq, n_elements_inc_halo);
 
-    double **K = new double*[neq]; // K will be (neq x global_neq) matrix
-    for (int i=0;i<neq;i++)
-    {
-        K[i] = new double[global_neq];
+    std::map<int, std::map<int, double>> sparse_K;
+
+    // double **K = new double*[neq]; // K will be (neq x global_neq) matrix
+    // for (int i=0;i<neq;i++)
+    // {
+    //     K[i] = new double[global_neq];
         
-        for (int j=0;j<global_neq;j++) 
-            K[i][j] = 0;
-    }
+    //     for (int j=0;j<global_neq;j++) 
+    //         K[i][j] = 0;
+    // }
 
     for (int e = 0; e < n_elements_inc_halo; e++) 
     {
@@ -350,7 +348,7 @@ void FESolver::preAssembly(oppic_map cell_to_nodes_map, oppic_dat node_bnd_pot)
                         }
             }
 
-        addKe(K, e,ke);
+        addKe(sparse_K, e,ke);
    
         double fe[4]; /*force vector*/
 
@@ -376,7 +374,7 @@ void FESolver::preAssembly(oppic_map cell_to_nodes_map, oppic_dat node_bnd_pot)
 
     VecAssemblyBegin(F0vec); VecAssemblyEnd(F0vec);
 
-    initialzeMatrix(K);
+    initialzeMatrix(sparse_K);
 
     // double scalar1 = 1 / SCALLING;
     double scalar2 = 1 / (SCALLING * SCALLING); 
@@ -384,9 +382,10 @@ void FESolver::preAssembly(oppic_map cell_to_nodes_map, oppic_dat node_bnd_pot)
     VecScale(F0vec, scalar2);   // downscalling since NX is scalled to avoid precision issues
     MatScale(Kmat, scalar2);    // downscalling since NX is scalled to avoid precision issues
 
-    for (int i=0;i<neq;i++) 
-        delete[] K[i];
-    delete[] K;
+    sparse_K.clear();
+    // for (int i=0;i<neq;i++) 
+    //     delete[] K[i];
+    // delete[] K;
 }
 
 //*************************************************************************************************
@@ -396,7 +395,7 @@ void FESolver::buildF1Vector(double *ion_den)
 
     for (int n = 0; n < n_nodes_inc_halo; n++) 
     {
-        int A = ID[n];
+        int A = node_to_eq_map[n];
         if (A<0) continue;    /*skip known nodes*/
         f[A] = (QE/EPS0)*((ion_den[n]) + n0*exp((d[A]-phi0)/kTe));
     }
@@ -561,7 +560,7 @@ void FESolver::computePhi(oppic_arg arg0, oppic_arg arg1, oppic_arg arg2)
     {
         node_potential[n] = node_bnd_pot[n]; /*zero on non-g nodes*/
 
-        int A=ID[n];
+        int A=node_to_eq_map[n];
         if (A>=0)           /*is this a non-boundary node?*/
             node_potential[n] += d[A];
     }
@@ -660,7 +659,7 @@ bool FESolver::linearSolve(double *ion_den)
 }
 
 //*************************************************************************************************
-void FESolver::initialzeMatrix(double **p_A)
+void FESolver::initialzeMatrix(std::map<int, std::map<int, double>>& sparse_K)
 {
     if (OP_DEBUG) opp_printf("FESolver", "initialzeMatrix START");
 
@@ -673,10 +672,18 @@ void FESolver::initialzeMatrix(double **p_A)
             std::vector<int> tempVec;
             int local_diag_max_fields = 0, local_off_diag_max_fields = 0;
             
+            std::map<int, double>& K_sparse_row = sparse_K[i-own_start];
+
             for (int j=0; j<global_neq; j++) // iterate all columns
-            {    
+            {   
+                double value = 0.0;
+                auto it = K_sparse_row.find(j);
+                if (it != K_sparse_row.end()) {
+                    value = it->second;
+                }
+
                 // significant ones and all diagonals         
-                if ((std::abs(p_A[i-own_start][j]) > 1e-12) || (i == j)) 
+                if ((std::abs(value) > 1e-12) || (i == j)) 
                 {
                     tempVec.push_back(j); 
 
@@ -716,7 +723,7 @@ void FESolver::initialzeMatrix(double **p_A)
     for (int i=own_start; i<own_end; i++)
     {
         for (int j=0; j<matCol[i-own_start]; j++) 
-            matIndexValues[i-own_start][j] = p_A[i-own_start][matIndex[i-own_start][j]];
+            matIndexValues[i-own_start][j] = sparse_K[i-own_start][matIndex[i-own_start][j]];
 
         MatSetValues(Kmat, 1, &i, matCol[i-own_start], matIndex[i-own_start], 
             matIndexValues[i-own_start], INSERT_VALUES); 
@@ -781,7 +788,7 @@ void FESolver::enrich_cell_shape_deriv(oppic_dat cell_shape_deriv)
 }
 
 /*adds contributions from element stiffness matrix*/
-void FESolver::addKe(double** K, int e, double ke[4][4]) // BUG : K is not created correctly
+void FESolver::addKe(std::map<int, std::map<int, double>>& sparse_K, int e, double ke[4][4]) // BUG : K is not created correctly
 { 
 
     if (neq <= 0) return;
@@ -802,7 +809,14 @@ void FESolver::addKe(double** K, int e, double ke[4][4]) // BUG : K is not creat
             else 
                 Q += own_start;             // on the same MPI rank, get its correct column
 
-            K[P][Q] += ke[a][b];
+            std::map<int, double>& K_sparse_row = sparse_K[P];
+            auto it = K_sparse_row.find(Q);
+            if (it == K_sparse_row.end()) {
+                K_sparse_row.insert(std::pair<int,double>(Q, ke[a][b]));
+            }
+            else {
+                it->second += ke[a][b];
+            }
         }
     }
 }
@@ -941,11 +955,11 @@ void FESolver::sanityCheck()
     
     void FESolver::summarize(std::ostream &out) {};  
 
-    void FESolver::addKe(double** K, int e, double ke[4][4]) {};
+    void FESolver::addKe(std::map<int, std::map<int, double>>& sparse_K, int e, double ke[4][4]) {};
     void FESolver::addFe(Vec *Fvec, int e, double fe[4]) {};
     double FESolver::evalNa(int a, double xi, double eta, double zeta) { return -1.0; };
     void FESolver::getNax(double nx[3], int e, int a) {};
-    void FESolver::initialzeMatrix(double **p_A) {};
+    void FESolver::initialzeMatrix(std::map<int, std::map<int, double>>& sparse_K) {};
     void FESolver::computeNX(oppic_dat node_pos, oppic_map cell_to_nodes_map) {};
     void FESolver::sanityCheck() {};
     void FESolver::initID(oppic_dat node_type_dat) {};

@@ -174,6 +174,8 @@ int main(int argc, char **argv)
 
             opp_inc_part_count_with_distribution(particle_set, n_parts_to_inject, iface_dist, false);
 
+            // logSetSizeStatistics(particle_set, 4);
+
             int old_nparts = particle_set->size;
             opp_loop_inject__InjectIons(
                 particle_set,                                                                           
@@ -247,14 +249,16 @@ int main(int argc, char **argv)
                 opp_get_arg(node_potential, 3, cell_v_nodes_map, OP_READ) 
             );
 
-            if (print_final_log)
+            if (print_final_log || OPP_main_loop_iter + 1 == max_iter)
             {
                 log = get_global_level_log(node_charge_den, node_potential, particle_set->size, 
                     n_parts_to_inject, (old_nparts - particle_set->size));
             }
-            
-            if (OPP_rank == OPP_ROOT)
+
+            if ((print_final_log || OPP_main_loop_iter + 1 == max_iter) && OPP_rank == OPP_ROOT) 
+            {
                 opp_printf("Main", "ts: %d %s ****", OPP_main_loop_iter, log.c_str());
+            }
 
             if (OP_DEBUG)
                 print_per_cell_particle_counts(cell_colors, part_mesh_rel); // cell_colors will reset

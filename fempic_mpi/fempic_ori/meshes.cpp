@@ -17,6 +17,7 @@
 #include <iomanip>
 #include <map>
 #include <algorithm>
+#include <set>
 
 #include "maths.h"
 #include "particles.h"
@@ -56,24 +57,12 @@ bool LoadVolumeMesh(const std::string file_name, Volume &volume) {
             /*flipping nodes 2 & 3 to get positive volumes*/
             volume.elements.emplace_back(n1-1, n2-1, n3-1, n4-1);
 
-        } else if (type == 102) { // Edge element
-            in >> n1 >> n2;
-            double len = 0;
-            for (int d=0; d<3; d++) {
-                len += pow(volume.nodes[n1].pos[d] - volume.nodes[n2].pos[d], 2);
-            }
-            len = sqrt(len);
-            edge_lengths.emplace_back(len);
-
-        } else {
+        } 
+        else {
             std::string s; getline(in,s);continue;
         }
     }
     volume.avg_edge_len = 0;
-    for (auto l: edge_lengths) volume.avg_edge_len += l;
-    volume.avg_edge_len = volume.avg_edge_len / edge_lengths.size();
-
-
 
     /*reset number of nodes and elements since we skipped bunch of lines and triangles*/
     n_nodes = volume.nodes.size();
@@ -83,107 +72,109 @@ bool LoadVolumeMesh(const std::string file_name, Volume &volume) {
 
     /*compute element volumes*/
     for (int l=0; l<n_elements; l++) {
+
         Tetra &tet = volume.elements[l];
-        double M[4][4];
 
-        /*set first column to 1*/
-        for (int i=0;i<4;i++) M[i][0] = 1;
+        {
+            double M[4][4];
 
-        /*loop over vertices*/
-        for (int v=0;v<4;v++) {
-            for (int dim=0;dim<3;dim++) {
-                M[v][dim+1] = volume.nodes[tet.con[v]].pos[dim];
+            /*set first column to 1*/
+            for (int i=0;i<4;i++) M[i][0] = 1;
+
+            /*loop over vertices*/
+            for (int v=0;v<4;v++) {
+                for (int dim=0;dim<3;dim++) {
+                    M[v][dim+1] = volume.nodes[tet.con[v]].pos[dim];
+                }
+
+                node_con[tet.con[v]].emplace_back(l);
             }
 
-            node_con[tet.con[v]].emplace_back(l);
-        }
+            /*volume is (1/6)*det4(M)*/
+            tet.volume = (1.0/6.0)*det4(M);
 
-        /*volume is (1/6)*det4(M)*/
-        tet.volume = (1.0/6.0)*det4(M);
-
-        /*flip ABCD to ADBC if negative volume*/
-        if (tet.volume<0) {int t=tet.con[1];tet.con[1]=tet.con[3];tet.con[3]=t;tet.volume=-tet.volume;}
-    }
-
-    /*precompute 3x3 determinants for LC computation*/
-    for (Tetra &tet:volume.elements) {
-        double M[3][3];
-        /*loop over vertices*/
-        for (int v=0;v<4;v++) {
-            int v2,v3,v4;
-
-            switch (v) {
-                case 0: v2=1;v3=2;v4=3;break;
-                case 1: v2=3;v3=2;v4=0;break;
-                case 2: v2=3;v3=0;v4=1;break;
-                case 3: v2=1;v3=0;v4=2;break;
+            /*flip ABCD to ADBC if negative volume*/
+            if (tet.volume<0) {
+                int t=tet.con[1];
+                tet.con[1]=tet.con[3];
+                tet.con[3]=t;
+                tet.volume=-tet.volume;
             }
+        }
 
-            double *p2 = volume.nodes[tet.con[v2]].pos;
-            double *p3 = volume.nodes[tet.con[v3]].pos;
-            double *p4 = volume.nodes[tet.con[v4]].pos;
+        /*precompute 3x3 determinants for LC computation*/
+        {
+            double M[3][3];
+            /*loop over vertices*/
+            for (int v=0;v<4;v++) {
+                int v2,v3,v4;
 
-            /*alpha*/
-            M[0][0] = p2[0];
-            M[0][1] = p2[1];
-            M[0][2] = p2[2];
-            M[1][0] = p3[0];
-            M[1][1] = p3[1];
-            M[1][2] = p3[2];
-            M[2][0] = p4[0];
-            M[2][1] = p4[1];
-            M[2][2] = p4[2];
-            tet.alpha[v] = det3(M);
+                switch (v) {
+                    case 0: v2=1;v3=2;v4=3;break;
+                    case 1: v2=3;v3=2;v4=0;break;
+                    case 2: v2=3;v3=0;v4=1;break;
+                    case 3: v2=1;v3=0;v4=2;break;
+                }
 
-            /*beta*/
-            M[0][0] =1;
-            M[0][1] = p2[1];
-            M[0][2] = p2[2];
-            M[1][0] = 1;
-            M[1][1] = p3[1];
-            M[1][2] = p3[2];
-            M[2][0] = 1;
-            M[2][1] = p4[1];
-            M[2][2] = p4[2];
-            tet.beta[v] = det3(M);
+                double *p2 = volume.nodes[tet.con[v2]].pos;
+                double *p3 = volume.nodes[tet.con[v3]].pos;
+                double *p4 = volume.nodes[tet.con[v4]].pos;
 
-            /*gamma*/
-            M[0][0] =1;
-            M[0][1] = p2[0];
-            M[0][2] = p2[2];
-            M[1][0] = 1;
-            M[1][1] = p3[0];
-            M[1][2] = p3[2];
-            M[2][0] = 1;
-            M[2][1] = p4[0];
-            M[2][2] = p4[2];
-            tet.gamma[v] = det3(M);
+                /*alpha*/
+                M[0][0] = p2[0];
+                M[0][1] = p2[1];
+                M[0][2] = p2[2];
+                M[1][0] = p3[0];
+                M[1][1] = p3[1];
+                M[1][2] = p3[2];
+                M[2][0] = p4[0];
+                M[2][1] = p4[1];
+                M[2][2] = p4[2];
+                tet.alpha[v] = det3(M);
 
-            /*delta*/
-            M[0][0] =1;
-            M[0][1] = p2[0];
-            M[0][2] = p2[1];
-            M[1][0] = 1;
-            M[1][1] = p3[0];
-            M[1][2] = p3[1];
-            M[2][0] = 1;
-            M[2][1] = p4[0];
-            M[2][2] = p4[1];
-            tet.delta[v] = det3(M);
+                /*beta*/
+                M[0][0] =1;
+                M[0][1] = p2[1];
+                M[0][2] = p2[2];
+                M[1][0] = 1;
+                M[1][1] = p3[1];
+                M[1][2] = p3[2];
+                M[2][0] = 1;
+                M[2][1] = p4[1];
+                M[2][2] = p4[2];
+                tet.beta[v] = det3(M);
+
+                /*gamma*/
+                M[0][0] =1;
+                M[0][1] = p2[0];
+                M[0][2] = p2[2];
+                M[1][0] = 1;
+                M[1][1] = p3[0];
+                M[1][2] = p3[2];
+                M[2][0] = 1;
+                M[2][1] = p4[0];
+                M[2][2] = p4[2];
+                tet.gamma[v] = det3(M);
+
+                /*delta*/
+                M[0][0] =1;
+                M[0][1] = p2[0];
+                M[0][2] = p2[1];
+                M[1][0] = 1;
+                M[1][1] = p3[0];
+                M[1][2] = p3[1];
+                M[2][0] = 1;
+                M[2][1] = p4[0];
+                M[2][2] = p4[1];
+                tet.delta[v] = det3(M);
+            }
         }
     }
 
-    /*build cell connectivity, there is probably a faster way*/
-
-    /*reset connectivities*/
-    for (int l=0;l<n_elements;l++) {
+    for (int l=0;l<n_elements;l++) 
+    {
         Tetra &tet = volume.elements[l];
-        for (int v=0;v<4;v++) tet.cell_con[v] = -1;    /*no neighbor*/
-    }
-
-
-    for (int l=0;l<n_elements;l++) {
-        Tetra &tet = volume.elements[l];
+        if (tet.initDone) continue;
         int v1,v2,v3;
         for (int v=0;v<4;v++) {
             /*skip if already set*/
@@ -199,25 +190,35 @@ bool LoadVolumeMesh(const std::string file_name, Volume &volume) {
             /*loop over the tets again looking for one with these three vertices*/
             /*(ejh - only look at elements that share a node with this element)*/
             for (int n=0; n<4; n++) {
-                for (int m:node_con[tet.con[n]]) {
+                for (int m : node_con[tet.con[n]]) {
                     if (l == m) continue;
                     Tetra &other = volume.elements[m];
+                    if (other.initDone) continue;
 
                     bool matches[4] = {false,false,false,false};
                     int count = 0;
                     for (int k=0;k<4;k++) {
                         if (other.con[k]==tet.con[v1] ||
                             other.con[k]==tet.con[v2] ||
-                            other.con[k]==tet.con[v3]) {count++;matches[k]=true;}
+                            other.con[k]==tet.con[v3]) {
+                                count++;
+                                matches[k]=true;
+                        }
                     }
 
                     /*if three vertices match*/
                     if (count==3) {
                         tet.cell_con[v] = m;
+                        if (tet.cell_con[0]>=0 && tet.cell_con[1]>=0 && tet.cell_con[2]>=0 && tet.cell_con[3]>=0)
+                            tet.initDone = true;
 
                         /*set the cell connectivity for the index without a matching vertex to l*/
                         for (int k=0;k<4;k++)
-                            if(!matches[k]) other.cell_con[k] = l;
+                            if(!matches[k]) {
+                                other.cell_con[k] = l;
+                                if (other.cell_con[0]>=0 && other.cell_con[1]>=0 && other.cell_con[2]>=0 && other.cell_con[3]>=0)
+                                    other.initDone = true;
+                            }
                     }
                 }
             }
@@ -225,10 +226,6 @@ bool LoadVolumeMesh(const std::string file_name, Volume &volume) {
     }
 
     /*also compute node volumes by scattering cell volumes,this can only be done after 3x3 dets are computed*/
-
-    /*first set all to zero*/
-    for (Node &node:volume.nodes) {node.volume=0;}
-
     for (int i=0;i<n_elements;i++) {
         Particle dummy_part;
         Tetra &tet = volume.elements[i];
@@ -246,11 +243,7 @@ bool LoadVolumeMesh(const std::string file_name, Volume &volume) {
             volume.nodes[tet.con[v]].volume += dummy_part.lc[v]*tet.volume;
         }
 
-    }
-
-    /*mark nodes on open faces as open*/
-    for (size_t e=0;e<volume.elements.size();e++) {
-        Tetra &tet = volume.elements[e];
+        /*mark nodes on open faces as open*/
         for (int v=0;v<4;v++)
             if (tet.cell_con[v]<0)    /*no neighbor*/ {
                 for (int i=0;i<4;i++) {
@@ -298,44 +291,53 @@ bool LoadSurfaceMesh(const std::string file_name, Volume &volume, NodeType node_
 
             /*flipping nodes 2 & 3 to get positive volumes*/
             volume.inlet_faces.emplace_back(n1-1, n2-1, n3-1);
-
-            volume.inlet_faces.back().cell_con = -1;
+            auto& inletFace = volume.inlet_faces.back();
+            std::set<int> inletNodesSet = {n1 - 1, n2 - 1, n3 - 1};
 
             // Find the volume element that attaches to the inlet surface
             for (size_t v=0;v<volume.elements.size(); v++) {
                 int matching_nodes = 0;
                 for (int element_node: volume.elements[v].con) {
-                    if (element_node == n1-1 || element_node == n2-1 || element_node == n3-1) {
+                    // if (element_node == n1-1 || element_node == n2-1 || element_node == n3-1) {
+                    if (inletNodesSet.count(element_node)) {
                         matching_nodes += 1;
+                        if (matching_nodes == 3) break;
                     }
                 }
                 if (matching_nodes == 3) {
-                    if (volume.inlet_faces.back().cell_con == -1) {
-                         volume.inlet_faces.back().cell_con = v;
+                    if (inletFace.cell_con == -1) {
+                         inletFace.cell_con = v;
+                         break;
                     } else {
                         std::cerr<<"Inlet surface attached to more than one volume element"<<index<<std::endl;
                         exit(-1);
                     }
                 }
             }
-            if ( volume.inlet_faces.back().cell_con == -1) {
+            if ( inletFace.cell_con == -1) {
                 std::cerr<<"No volume element attached to inlet surface"<<index<<std::endl;
                 exit(-1);
             }
 
             // Set the inlet velocity normal to the inlet surface
-            double normal[3];
             for (int i=0; i<3; i++) {
-                volume.inlet_faces.back().u[i] = volume.nodes[n2-1].pos[i] - volume.nodes[n1-1].pos[i];
-                volume.inlet_faces.back().v[i] = volume.nodes[n3-1].pos[i] - volume.nodes[n1-1].pos[i];
+                inletFace.u[i] = volume.nodes[n2-1].pos[i] - volume.nodes[n1-1].pos[i];
+                inletFace.v[i] = volume.nodes[n3-1].pos[i] - volume.nodes[n1-1].pos[i];
             }
 
-            normal[0] = volume.inlet_faces.back().u[2]*volume.inlet_faces.back().v[1] 
-                          - volume.inlet_faces.back().u[1]*volume.inlet_faces.back().v[2];
-            normal[1] = volume.inlet_faces.back().u[0]*volume.inlet_faces.back().v[2] 
-                          - volume.inlet_faces.back().u[2]*volume.inlet_faces.back().v[0];
-            normal[2] = volume.inlet_faces.back().u[1]*volume.inlet_faces.back().v[0] 
-                          - volume.inlet_faces.back().u[0]*volume.inlet_faces.back().v[1];
+            double normal[3] = {
+                inletFace.u[2] * inletFace.v[1] - inletFace.u[1] * inletFace.v[2],
+                inletFace.u[0] * inletFace.v[2] - inletFace.u[2] * inletFace.v[0],
+                inletFace.u[1] * inletFace.v[0] - inletFace.u[0] * inletFace.v[1]
+            };
+
+            // double normal[3];
+            // normal[0] = inletFace.u[2]*inletFace.v[1] 
+            //               - inletFace.u[1]*inletFace.v[2];
+            // normal[1] = inletFace.u[0]*inletFace.v[2] 
+            //               - inletFace.u[2]*inletFace.v[0];
+            // normal[2] = inletFace.u[1]*inletFace.v[0] 
+            //               - inletFace.u[0]*inletFace.v[1];
             if (invert_normal) {
                 normal[0] = -normal[0];
                 normal[1] = -normal[1];
@@ -345,9 +347,9 @@ bool LoadSurfaceMesh(const std::string file_name, Volume &volume, NodeType node_
             double normal_len = sqrt(normal[0]*normal[0] + normal[1]*normal[1] + normal[2]*normal[2]);
 
             for (int i=0; i<3; i++) {
-                volume.inlet_faces.back().normal[i] = normal[i]/normal_len;
+                inletFace.normal[i] = normal[i]/normal_len;
             }
-            volume.inlet_faces.back().area = normal_len / 2;
+            inletFace.area = normal_len / 2;
         }
     }
 

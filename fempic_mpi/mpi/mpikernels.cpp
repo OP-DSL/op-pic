@@ -203,13 +203,6 @@ void opp_loop_all__CalculateNewPartPosVel(
             &((double*) arg1.data)[i * arg1.dim],        // part_pos,
             &((double*) arg2.data)[i * arg2.dim]         // part_vel,
         );
-    
-    // printf("n %d ci %d ef %2.20lE %2.20lE %2.20lE p %2.20lE %2.20lE %2.20lE v %2.20lE %2.20lE %2.20lE\n",
-    // i, map0idx, 
-    // ((double*) arg0.data)[map0idx * arg0.dim], ((double*) arg0.data)[map0idx * arg0.dim+1], ((double*) arg0.data)[map0idx * arg0.dim+2], 
-    // ((double*) arg1.data)[i * arg1.dim], ((double*) arg1.data)[i * arg1.dim+1], ((double*) arg1.data)[i * arg1.dim+2],
-    // ((double*) arg2.data)[i * arg2.dim], ((double*) arg2.data)[i * arg2.dim+1], ((double*) arg2.data)[i * arg2.dim+2]
-    // );
     }
 
     opp_set_dirtybit(nargs, args);

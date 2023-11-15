@@ -189,7 +189,8 @@ inline std::string get_global_level_log(oppic_dat n_charge_density, oppic_dat n_
     std::string log = "";
     double max_den = 0.0, max_phi = 0.0;
     double global_max_den = 0.0, global_max_phi = 0.0;
-    int global_part_size = 0, global_inj_size = 0, global_removed = 0, global_max_comm_iteration = 0;
+    int64_t global_part_size = 0, global_inj_size = 0, global_removed = 0;
+    int global_max_comm_iteration = 0;
 
     // ideally, need to copy data from device to host, but at this point host has correct data
     for (int n = 0; n< n_potential->set->size; n++) 
@@ -201,10 +202,15 @@ inline std::string get_global_level_log(oppic_dat n_charge_density, oppic_dat n_
 #ifdef USE_MPI
     MPI_Reduce(&max_den, &global_max_den, 1, MPI_DOUBLE, MPI_MAX, OPP_ROOT, MPI_COMM_WORLD);
     MPI_Reduce(&max_phi, &global_max_phi, 1, MPI_DOUBLE, MPI_MAX, OPP_ROOT, MPI_COMM_WORLD);
-    MPI_Reduce(&local_part_count, &global_part_size, 1, MPI_INT, MPI_SUM, OPP_ROOT, MPI_COMM_WORLD);
-    MPI_Reduce(&local_parts_injected, &global_inj_size, 1, MPI_INT, MPI_SUM, OPP_ROOT, MPI_COMM_WORLD);
-    MPI_Reduce(&local_part_removed, &global_removed, 1, MPI_INT, MPI_SUM, OPP_ROOT, MPI_COMM_WORLD);
     MPI_Reduce(&OPP_max_comm_iteration, &global_max_comm_iteration, 1, MPI_INT, MPI_MAX, OPP_ROOT, MPI_COMM_WORLD);
+
+    int64_t temp_local_part_count     = (int64_t)local_part_count;
+    int64_t temp_local_parts_injected = (int64_t)local_parts_injected;
+    int64_t temp_local_part_removed   = (int64_t)local_part_removed;
+    MPI_Reduce(&temp_local_part_count, &global_part_size, 1, MPI_INT64_T, MPI_SUM, OPP_ROOT, MPI_COMM_WORLD);
+    MPI_Reduce(&temp_local_parts_injected, &global_inj_size, 1, MPI_INT64_T, MPI_SUM, OPP_ROOT, MPI_COMM_WORLD);
+    MPI_Reduce(&temp_local_part_removed, &global_removed, 1, MPI_INT64_T, MPI_SUM, OPP_ROOT, MPI_COMM_WORLD);
+    
 #else
     global_max_den = max_den;
     global_max_phi = max_phi;
@@ -214,9 +220,9 @@ inline std::string get_global_level_log(oppic_dat n_charge_density, oppic_dat n_
     global_max_comm_iteration = OPP_max_comm_iteration;
 #endif
 
-    log += std::string("\t np: ") + str(global_part_size, "%d");
-    log += std::string(" (") + str(global_inj_size, "%d");
-    log += std::string(" added, ") + str(global_removed, "%d");
+    log += std::string("\t np: ") + str(global_part_size, "%" PRId64);
+    log += std::string(" (") + str(global_inj_size, "%" PRId64);
+    log += std::string(" added, ") + str(global_removed, "%" PRId64);
     log += std::string(" removed)\t max den: ") + str(global_max_den, "%2.25lE");
     log += std::string(" max |phi|: ") + str(global_max_phi, "%2.10lE");
     log += std::string(" max_comm_iteration: ") + str(global_max_comm_iteration, "%d");
@@ -232,6 +238,7 @@ inline int getGlobalSetSizes(opp_set set, std::vector<int>& counts_vec, std::vec
     ifaces_offsets.clear();
     ifaces_offsets.resize(OPP_comm_size, -1);
 
+#ifdef USE_MPI
     MPI_Allgather(&(set->size), 1, MPI_INT, &counts_vec[0], 1, MPI_INT, MPI_COMM_WORLD);
 
     int count = 0;
@@ -241,6 +248,12 @@ inline int getGlobalSetSizes(opp_set set, std::vector<int>& counts_vec, std::vec
     }
 
     return count;
+#else
+    counts_vec[0] = set->size;
+    ifaces_offsets[0] = 0;
+
+    return set->size;
+#endif
 }
 
 //*************************************************************************************************
@@ -249,6 +262,7 @@ inline void genColoursForBlockPartition(opp_dat cell_colours, opp_dat cell_centr
     
     opp_profiler->start("genColsForPart");
 
+#ifdef USE_MPI
     std::vector<int> num_ifaces_vec, ifaces_offsets;
     const int g_iface_size = getGlobalSetSizes(iface_n_pos->set, num_ifaces_vec, ifaces_offsets);
     std::vector<int> g_face_rank_assignments(g_iface_size, -1);
@@ -289,7 +303,7 @@ inline void genColoursForBlockPartition(opp_dat cell_colours, opp_dat cell_centr
         node_face_con.clear();
         for (int l=0; l < g_iface_size; l++) {
             for (int v = 0; v < 3; v++) {
-                int n_index = g_if_to_n_map[l * N_PER_IF + v];
+                const int n_index = g_if_to_n_map[l * N_PER_IF + v];
                 node_face_con[n_index].emplace_back(l);
             }
         }
@@ -313,7 +327,7 @@ inline void genColoursForBlockPartition(opp_dat cell_colours, opp_dat cell_centr
 
                 for (int n = 0; n < 3; n++) { 
                     
-                    int n_index = g_if_to_n_map[faceID * N_PER_IF + n];
+                    const int n_index = g_if_to_n_map[faceID * N_PER_IF + n];
                     for (int m : node_face_con[n_index]) {  // m are other face indices mapped with the node of the face of interest
 
                         if (faceID == m || already_done[m] || already_done[faceID]) continue;
@@ -330,7 +344,7 @@ inline void genColoursForBlockPartition(opp_dat cell_colours, opp_dat cell_centr
 
                         if (count == 2) {
 
-                            int n_idx = faceID * N_PER_IF * DIM + v * DIM; // Matching node index in the if_npos dat
+                            const int n_idx = faceID * N_PER_IF * DIM + v * DIM; // Matching node index in the if_npos dat
                             int othr_n_idx = -1;              // Non-matching node index in the if_npos dat
 
                             for (int k = 0; k < 3; k++)
@@ -408,17 +422,17 @@ inline void genColoursForBlockPartition(opp_dat cell_colours, opp_dat cell_centr
             opp_abort();
         }
 
-        int error_code;
-        MPI_Error_class(status1.MPI_ERROR, &error_code);
-        if (error_code != MPI_SUCCESS) {
-            opp_printf("ERROR", "ERROR in g_if_npos_dat");
-            opp_abort();
-        }
-        MPI_Error_class(status2.MPI_ERROR, &error_code);
-        if (error_code != MPI_SUCCESS) {
-            opp_printf("ERROR", "ERROR in g_face_rank_assignments");
-            opp_abort();
-        }      
+        // int error_code;
+        // MPI_Error_class(status1.MPI_ERROR, &error_code);
+        // if (error_code != MPI_SUCCESS) {
+        //     opp_printf("ERROR", "ERROR in g_if_npos_dat");
+        //     opp_abort();
+        // }
+        // MPI_Error_class(status2.MPI_ERROR, &error_code);
+        // if (error_code != MPI_SUCCESS) {
+        //     opp_printf("ERROR", "ERROR in g_face_rank_assignments");
+        //     opp_abort();
+        // }      
     }
 
     // Assign the cell colours according to its centroid position relative to inlet faces
@@ -453,4 +467,47 @@ inline void genColoursForBlockPartition(opp_dat cell_colours, opp_dat cell_centr
     opp_profiler->end("genColsForPart");
 
     if (OP_DEBUG) opp_printf("Setup", "Cell Colouring Issue Count = %d", error_count);
+#endif
 }
+
+//*************************************************************************************************
+std::map<int, std::map<int,int>> particle_counts;
+
+//*************************************************************************************************
+inline void logSetSizeStatistics(opp_set set, int logBoundaryCount = 1) {
+
+#ifdef USE_MPI    
+    std::vector<int> count_per_iter(OPP_comm_size, 0);
+    MPI_Gather(&(set->size), 1, MPI_INT, count_per_iter.data(), 1, MPI_INT, 0, MPI_COMM_WORLD);
+    int sum = 0, average = 0;
+
+    auto& cc = particle_counts[OPP_main_loop_iter];
+    for (int i = 0; i < OPP_comm_size; i++) {
+        cc[count_per_iter[i]] = i;
+        sum += count_per_iter[i];
+    }
+    average = sum / OPP_comm_size;
+
+    std::string max_log = ""; 
+    int counter_max = 1;
+    for (auto it = cc.rbegin(); it != cc.rend(); ++it) {
+        max_log += std::string(" ") + std::to_string(it->first) + "|" + std::to_string(it->second);
+        if (counter_max == logBoundaryCount) break;
+        counter_max++;
+    }
+    std::string min_log = "";
+    int counter_min = 1;
+    for (auto it = cc.begin(); it != cc.end(); ++it) {
+        min_log += std::string(" ") + std::to_string(it->first) + "|" + std::to_string(it->second);
+        if (counter_min == logBoundaryCount) break;
+        counter_min++;
+    }
+
+    if (OPP_rank == 0) {
+        opp_printf("ParticleSet", "sum %d average %d max [%s ] min [%s ]", 
+            sum, average, max_log.c_str(), min_log.c_str());
+    }
+#endif
+}
+
+//*************************************************************************************************
