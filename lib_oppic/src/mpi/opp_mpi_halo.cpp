@@ -119,7 +119,20 @@ int opp_mpi_halo_exchanges(oppic_set set, int nargs, oppic_arg *args)
 *******************************************************************************/
 void opp_mpi_halo_exchange(oppic_arg *arg, int exec_flag)
 {
-    __opp_mpi_host_halo_exchange(arg, exec_flag);
+    if (arg->opt == 0)
+        return;
+
+    // For a directly accessed op_dat do not do halo exchanges if not executing over redundant compute block
+    if (exec_flag == 0 && arg->idx == -1)
+        return;
+
+    opp_dat dat = arg->dat;
+
+        // need to exchange both direct and indirect data sets if they are dirty
+    if ((arg->acc == OP_READ || arg->acc == OP_RW) && (dat->dirtybit == 1)) 
+    {
+        __opp_mpi_host_halo_exchange(arg, exec_flag);
+    }
 }
 
 /*******************************************************************************

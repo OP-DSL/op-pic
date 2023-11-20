@@ -85,23 +85,26 @@ protected:
     void initialzeMatrix(std::map<int, std::map<int, double>>& sparse_K);
     void computeNX(oppic_dat node_pos, oppic_map cell_to_nodes_map);
     void sanityCheck();
-    void initID(oppic_dat node_type_dat);
+    void init_node_to_eq_map(oppic_dat node_type_dat);
     void initPetscStructures();
 
     Method fesolver_method = Method::Petsc;
 
     int *node_to_eq_map  = nullptr;        /*node_to_eq_map[n]=A*/
-    int **LM  = nullptr;                    /*LM[e][a] location matrix */
     double ***NX  = nullptr;                /*NX[e][a] is a dNa/dx [3] vector*/
     
     double *detJ = nullptr;     /* determinant of the jacobian x_xi */
+
+    const oppic_map cell_to_nodes_map;
 
     const double n0 = 0.0;
     const double phi0 = 0.0;
     const double kTe = 0.0;
     const double wall_potential = 0.0;
 
-    double *d = nullptr;        /* d[neq] is the solution from the linear solver */  
+    double *dLocal = nullptr;        /* d[neq] is the solution from the linear solver */  
+    double *f1Local = nullptr;
+    double *tempNEQ1 = nullptr, *tempNEQ2 = nullptr, *tempNEQ3 = nullptr;
 
     const int n_nodes_set = 0;
     const int n_nodes_inc_halo = 0; 
@@ -114,21 +117,32 @@ protected:
     int own_end = 0;
 
     /*quadrature points*/
-    double l[2];
-    double W[2];
-    int n_int = 0;
+    const double l[2] = { -sqrt(1.0/3.0), sqrt(1.0/3.0) };
+    const double W[2] = { 1, 1 };
+    const int n_int = 2;
 
     /* Petsc related variables */
-    Vec         Xvec, Bvec, F0vec, F1vec, Dvec, Yvec;       
+    Vec         Bvec, F0vec, F1vec, Dvec, Yvec;       
     Mat         Jmat, Kmat;                                 
     KSP         ksp;            /* linear solver context */
     KSPConvergedReason reason;
 
-    // TODO : revise -- these can be removed...
-    int *vecCol;                    
-    int *matCol;                    // Number of non zero columns per row
-    int **matIndex;                 // Non zero column indices per row
-    double **matIndexValues;        // Non zero column values per row (temp copy to enrich K matrix)
-    bool matIndexCreated = false;   // Not required
+    int *vecCol;                // in use - indices related to current MPI rank
+
+// #ifdef USE_CUDA
+    double *dLocal_d = nullptr;        /* d[neq] is the solution from the linear solver */  
+    double *f1Local_d = nullptr;
+    double *tempNEQ1_d = nullptr;
+    double *tempNEQ2_d = nullptr;
+    double *tempNEQ3_d = nullptr;
+    double *detJ_d = nullptr; 
+
+    int *node_to_eq_map_d= nullptr;
+    
+    int neqNBlocks = 0;
+    int nodesNBlocks = 0;
+    int nodes_inc_haloNBlocks = 0;
+    int cells_inc_haloNBlocks = 0;
+// #endif
 };
 

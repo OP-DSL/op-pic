@@ -159,6 +159,8 @@ int main(int argc, char **argv)
             
         field_solver->enrich_cell_shape_deriv(cell_shape_deriv);
 
+        opp_inc_part_count_with_distribution(particle_set, n_parts_to_inject, iface_dist, false);
+
         opp_profiler->end("Setup");
 
 #ifdef USE_MPI
@@ -172,8 +174,8 @@ int main(int argc, char **argv)
             if (OP_DEBUG && OPP_rank == OPP_ROOT) 
                 opp_printf("Main", "Starting main loop iteration %d *************", OPP_main_loop_iter);
 
-            opp_inc_part_count_with_distribution(particle_set, n_parts_to_inject, iface_dist, false);
-
+            if (OPP_main_loop_iter != 0)
+                opp_inc_part_count_with_distribution(particle_set, n_parts_to_inject, iface_dist, false);
             // logSetSizeStatistics(particle_set, 4);
 
             int old_nparts = particle_set->size;

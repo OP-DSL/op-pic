@@ -34,14 +34,14 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //*********************************************
 
 
-#include "../fempic.h"
+#include "../fempic_defs.h"
 #include <opp_cuda.h>
 
 __constant__ int OPP_cells_set_size_d;
 int OPP_cells_set_size;
 
 // TODO : This should be removed - only for testing
-double CONST_spwt = 0, CONST_ion_velocity = 0, CONST_dt = 0, CONST_plasma_den = 0, CONST_mass = 0, CONST_charge = 0;
+double CONST_spwt = 0, CONST_ion_velocity = 0, CONST_dt = 0, CONST_plasma_den = 0, CONST_mass = 0, CONST_charge = 0, CONST_wall_potential = 0;
 
 //****************************************
 __constant__ double CONST_spwt_cuda = 0.0;
@@ -50,6 +50,7 @@ __constant__ double CONST_dt_cuda = 0.0;
 __constant__ double CONST_plasma_den_cuda = 0.0;
 __constant__ double CONST_mass_cuda = 0.0;
 __constant__ double CONST_charge_cuda = 0.0;
+__constant__ double CONST_wall_potential_cuda = 0.0;
 
 void opp_decl_const_impl(int dim, int size, char* data, const char* name)
 {
@@ -65,6 +66,8 @@ void opp_decl_const_impl(int dim, int size, char* data, const char* name)
         cutilSafeCall(cudaMemcpyToSymbol(CONST_mass_cuda, data, dim*size));
     else if (!strcmp(name,"CONST_charge"))       
         cutilSafeCall(cudaMemcpyToSymbol(CONST_charge_cuda, data, dim*size));
+    else if (!strcmp(name,"CONST_wall_potential"))
+        cutilSafeCall(cudaMemcpyToSymbol(CONST_wall_potential_cuda, data, dim*size));
     else 
         std::cerr << "error: unknown const name" << std::endl;
 
@@ -82,6 +85,8 @@ void opp_decl_const_impl(int dim, int size, char* data, const char* name)
             CONST_mass = *((double*)data);
         else if (!strcmp(name,"CONST_charge"))       
             CONST_charge = *((double*)data);
+        else if (!strcmp(name,"CONST_wall_potential")) 
+            CONST_wall_potential = *((double*)data);
         else std::cerr << "error: unknown const name" << std::endl; 
        
     } // TODO : This block should be removed
@@ -108,3 +113,5 @@ void opp_decl_const_impl(int dim, int size, char* data, const char* name)
 #include "opp_loop_all__ComputeElectricField.cu"
 
 //*************************************************************************************************
+#include "opp_loop_all__InitBndPotential.cu"
+

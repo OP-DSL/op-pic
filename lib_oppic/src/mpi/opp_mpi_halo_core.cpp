@@ -1151,9 +1151,6 @@ void __opp_mpi_host_halo_exchange(oppic_arg *arg, int exec_flag)
 {
     oppic_dat dat = arg->dat;
 
-    if (arg->opt == 0)
-        return;
-
     if (arg->sent == 1) 
     {
         opp_printf("opp_mpi_halo_exchange", "Error: Halo exchange already in flight for dat %s", dat->name);
@@ -1161,117 +1158,107 @@ void __opp_mpi_host_halo_exchange(oppic_arg *arg, int exec_flag)
         opp_abort("opp_mpi_halo_exchange");
     }
 
-    if (exec_flag == 0 && arg->idx == -1)
-        return;
-
-    // For a directly accessed op_dat do not do halo exchanges if not executing over redundant compute block
-    if (exec_flag == 0 && arg->idx == -1)
-        return;
-
     arg->sent = 0; // reset flag
 
-    // need to exchange both direct and indirect data sets if they are dirty
-    if ((arg->acc == OP_READ || arg->acc == OP_RW) && (dat->dirtybit == 1)) 
+    if (OP_DEBUG) 
+        opp_printf("opp_mpi_halo_exchange", "Exchanging Halo of data array [%s]", dat->name);
+
+    halo_list imp_exec_list    = OP_import_exec_list[dat->set->index];
+    halo_list imp_nonexec_list = OP_import_nonexec_list[dat->set->index];
+
+    halo_list exp_exec_list    = OP_export_exec_list[dat->set->index];
+    halo_list exp_nonexec_list = OP_export_nonexec_list[dat->set->index];
+
+    //-------first exchange exec elements related to this data array--------
+
+    // sanity checks
+    if (compare_sets(imp_exec_list->set, dat->set) == 0) 
     {
-        if (OP_DEBUG) opp_printf("opp_mpi_halo_exchange", "Exchanging Halo of data array [%s]", dat->name);
-
-        halo_list imp_exec_list    = OP_import_exec_list[dat->set->index];
-        halo_list imp_nonexec_list = OP_import_nonexec_list[dat->set->index];
-
-        halo_list exp_exec_list    = OP_export_exec_list[dat->set->index];
-        halo_list exp_nonexec_list = OP_export_nonexec_list[dat->set->index];
-
-        //-------first exchange exec elements related to this data array--------
-
-        // sanity checks
-        if (compare_sets(imp_exec_list->set, dat->set) == 0) 
-        {
-            opp_printf("opp_mpi_halo_exchange", "Error: Import list and set mismatch\n");
-            opp_abort("opp_mpi_halo_exchange Error: Import list and set mismatch");
-        }
-        if (compare_sets(exp_exec_list->set, dat->set) == 0) 
-        {
-            opp_printf("opp_mpi_halo_exchange", "Error: Export list and set mismatch\n");
-            opp_abort("opp_mpi_halo_exchange Error: Export list and set mismatch");
-        }
-
-        op_mpi_buffer mpi_buffer = (op_mpi_buffer)(dat->mpi_buffer);
-
-        opp_profiler->startMpiComm("", opp::OPP_Mesh);
-
-        double total_send_size = 0.0;
-
-        int set_elem_index = -1;
-        for (int i = 0; i < exp_exec_list->ranks_size; i++) 
-        {
-            for (int j = 0; j < exp_exec_list->sizes[i]; j++) 
-            {
-                set_elem_index = exp_exec_list->list[exp_exec_list->disps[i] + j];
-                memcpy(&mpi_buffer->buf_exec[exp_exec_list->disps[i] * dat->size + j * dat->size],
-                    (void *)&dat->data[dat->size * (set_elem_index)], dat->size);
-            }
-            
-            MPI_Isend(&mpi_buffer->buf_exec[exp_exec_list->disps[i] * dat->size], 
-                dat->size * exp_exec_list->sizes[i], MPI_CHAR, exp_exec_list->ranks[i], dat->index, 
-                OP_MPI_WORLD, &mpi_buffer->s_req[mpi_buffer->s_num_req++]);
-            
-            total_send_size += (dat->size * exp_exec_list->sizes[i] * 1.0f);
-        }
-
-        int init = dat->set->size * dat->size;
-        for (int i = 0; i < imp_exec_list->ranks_size; i++) 
-        {
-            MPI_Irecv(&(dat->data[init + imp_exec_list->disps[i] * dat->size]), 
-                dat->size * imp_exec_list->sizes[i], MPI_CHAR, imp_exec_list->ranks[i], dat->index, 
-                OP_MPI_WORLD, &mpi_buffer->r_req[mpi_buffer->r_num_req++]);
-        }
-
-        //-----second exchange nonexec elements related to this data array------
-        
-        // sanity checks
-        if (compare_sets(imp_nonexec_list->set, dat->set) == 0) 
-        {
-            opp_printf("opp_mpi_halo_exchange", "Error: Non-Import list and set mismatch");
-            opp_abort("opp_mpi_halo_exchange Error: Non-Import list and set mismatch");
-        }
-        if (compare_sets(exp_nonexec_list->set, dat->set) == 0) 
-        {
-            opp_printf("opp_mpi_halo_exchange", "Error: Non-Export list and set mismatch");
-            opp_abort("opp_mpi_halo_exchange Error: Non-Export list and set mismatch");
-        }
-
-        for (int i = 0; i < exp_nonexec_list->ranks_size; i++) 
-        {
-            for (int j = 0; j < exp_nonexec_list->sizes[i]; j++) 
-            {
-                set_elem_index = exp_nonexec_list->list[exp_nonexec_list->disps[i] + j];
-                memcpy(&mpi_buffer->buf_nonexec[exp_nonexec_list->disps[i] * dat->size + j * dat->size],
-                    (void *)&dat->data[dat->size * (set_elem_index)], dat->size);
-            }
-
-            MPI_Isend(&mpi_buffer->buf_nonexec[exp_nonexec_list->disps[i] * dat->size], 
-                dat->size * exp_nonexec_list->sizes[i], MPI_CHAR, exp_nonexec_list->ranks[i], dat->index, 
-                OP_MPI_WORLD, &mpi_buffer->s_req[mpi_buffer->s_num_req++]);
-            
-            total_send_size += (dat->size * exp_nonexec_list->sizes[i] * 1.0f);
-        }
-
-        int nonexec_init = (dat->set->size + imp_exec_list->size) * dat->size;
-        for (int i = 0; i < imp_nonexec_list->ranks_size; i++) 
-        {
-            MPI_Irecv(&(dat->data[nonexec_init + imp_nonexec_list->disps[i] * dat->size]), 
-                dat->size * imp_nonexec_list->sizes[i], MPI_CHAR, imp_nonexec_list->ranks[i], dat->index, 
-                OP_MPI_WORLD, &mpi_buffer->r_req[mpi_buffer->r_num_req++]);
-        }
-        
-        opp_profiler->addTransferSize("", opp::OPP_Mesh, total_send_size, 1);
-
-        opp_profiler->endMpiComm("", opp::OPP_Mesh);
-
-        // clear dirty bit
-        dat->dirtybit = 0;
-        arg->sent = 1;
+        opp_printf("opp_mpi_halo_exchange", "Error: Import list and set mismatch\n");
+        opp_abort("opp_mpi_halo_exchange Error: Import list and set mismatch");
     }
+    if (compare_sets(exp_exec_list->set, dat->set) == 0) 
+    {
+        opp_printf("opp_mpi_halo_exchange", "Error: Export list and set mismatch\n");
+        opp_abort("opp_mpi_halo_exchange Error: Export list and set mismatch");
+    }
+
+    op_mpi_buffer mpi_buffer = (op_mpi_buffer)(dat->mpi_buffer);
+
+    opp_profiler->startMpiComm("", opp::OPP_Mesh);
+
+    double total_send_size = 0.0;
+
+    int set_elem_index = -1;
+    for (int i = 0; i < exp_exec_list->ranks_size; i++) 
+    {
+        for (int j = 0; j < exp_exec_list->sizes[i]; j++) 
+        {
+            set_elem_index = exp_exec_list->list[exp_exec_list->disps[i] + j];
+            memcpy(&mpi_buffer->buf_exec[exp_exec_list->disps[i] * dat->size + j * dat->size],
+                (void *)&dat->data[dat->size * (set_elem_index)], dat->size);
+        }
+        
+        MPI_Isend(&mpi_buffer->buf_exec[exp_exec_list->disps[i] * dat->size], 
+            dat->size * exp_exec_list->sizes[i], MPI_CHAR, exp_exec_list->ranks[i], dat->index, 
+            OP_MPI_WORLD, &mpi_buffer->s_req[mpi_buffer->s_num_req++]);
+        
+        total_send_size += (dat->size * exp_exec_list->sizes[i] * 1.0f);
+    }
+
+    int init = dat->set->size * dat->size;
+    for (int i = 0; i < imp_exec_list->ranks_size; i++) 
+    {
+        MPI_Irecv(&(dat->data[init + imp_exec_list->disps[i] * dat->size]), 
+            dat->size * imp_exec_list->sizes[i], MPI_CHAR, imp_exec_list->ranks[i], dat->index, 
+            OP_MPI_WORLD, &mpi_buffer->r_req[mpi_buffer->r_num_req++]);
+    }
+
+    //-----second exchange nonexec elements related to this data array------
+    
+    // sanity checks
+    if (compare_sets(imp_nonexec_list->set, dat->set) == 0) 
+    {
+        opp_printf("opp_mpi_halo_exchange", "Error: Non-Import list and set mismatch");
+        opp_abort("opp_mpi_halo_exchange Error: Non-Import list and set mismatch");
+    }
+    if (compare_sets(exp_nonexec_list->set, dat->set) == 0) 
+    {
+        opp_printf("opp_mpi_halo_exchange", "Error: Non-Export list and set mismatch");
+        opp_abort("opp_mpi_halo_exchange Error: Non-Export list and set mismatch");
+    }
+
+    for (int i = 0; i < exp_nonexec_list->ranks_size; i++) 
+    {
+        for (int j = 0; j < exp_nonexec_list->sizes[i]; j++) 
+        {
+            set_elem_index = exp_nonexec_list->list[exp_nonexec_list->disps[i] + j];
+            memcpy(&mpi_buffer->buf_nonexec[exp_nonexec_list->disps[i] * dat->size + j * dat->size],
+                (void *)&dat->data[dat->size * (set_elem_index)], dat->size);
+        }
+
+        MPI_Isend(&mpi_buffer->buf_nonexec[exp_nonexec_list->disps[i] * dat->size], 
+            dat->size * exp_nonexec_list->sizes[i], MPI_CHAR, exp_nonexec_list->ranks[i], dat->index, 
+            OP_MPI_WORLD, &mpi_buffer->s_req[mpi_buffer->s_num_req++]);
+        
+        total_send_size += (dat->size * exp_nonexec_list->sizes[i] * 1.0f);
+    }
+
+    int nonexec_init = (dat->set->size + imp_exec_list->size) * dat->size;
+    for (int i = 0; i < imp_nonexec_list->ranks_size; i++) 
+    {
+        MPI_Irecv(&(dat->data[nonexec_init + imp_nonexec_list->disps[i] * dat->size]), 
+            dat->size * imp_nonexec_list->sizes[i], MPI_CHAR, imp_nonexec_list->ranks[i], dat->index, 
+            OP_MPI_WORLD, &mpi_buffer->r_req[mpi_buffer->r_num_req++]);
+    }
+    
+    opp_profiler->addTransferSize("", opp::OPP_Mesh, total_send_size, 1);
+
+    opp_profiler->endMpiComm("", opp::OPP_Mesh);
+
+    // clear dirty bit
+    dat->dirtybit = 0;
+    arg->sent = 1;
 }
 
 /*******************************************************************************

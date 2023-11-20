@@ -29,6 +29,8 @@ bool LoadVolumeMesh(const std::string file_name, Volume &volume) {
     std::ifstream in(file_name);
     if (!in.is_open()) {std::cerr<<"Failed to open "<<file_name<<std::endl; return false;}
 
+    printf("LoadVolumeMesh\n");
+
     /*read number of nodes and elements*/
     int n_nodes, n_elements;
     in>>n_nodes>>n_elements;
@@ -42,6 +44,9 @@ bool LoadVolumeMesh(const std::string file_name, Volume &volume) {
         if (index!=n+1) std::cerr<<"Inconsistent node numbering"<<std::endl;
 
         volume.nodes.emplace_back(x/1000.,y/1000.,z/1000.);
+
+        if (n % 10000 == 0)
+            printf("Read Nodes at %d\n", n);  
     }
 
     std::vector<double> edge_lengths;
@@ -61,6 +66,9 @@ bool LoadVolumeMesh(const std::string file_name, Volume &volume) {
         else {
             std::string s; getline(in,s);continue;
         }
+
+        if (e % 10000 == 0)
+            printf("Read Cells at %d\n", e);  
     }
     volume.avg_edge_len = 0;
 
@@ -169,6 +177,9 @@ bool LoadVolumeMesh(const std::string file_name, Volume &volume) {
                 tet.delta[v] = det3(M);
             }
         }
+
+        if (l % 100000 == 0)
+            printf("Compute tetra at %d\n", l);  
     }
 
     for (int l=0;l<n_elements;l++) 
@@ -223,6 +234,9 @@ bool LoadVolumeMesh(const std::string file_name, Volume &volume) {
                 }
             }
         }
+
+        if (l % 100000 == 0)
+            printf("Compute tetra 2 at %d\n", l); 
     }
 
     /*also compute node volumes by scattering cell volumes,this can only be done after 3x3 dets are computed*/
@@ -244,12 +258,16 @@ bool LoadVolumeMesh(const std::string file_name, Volume &volume) {
         }
 
         /*mark nodes on open faces as open*/
-        for (int v=0;v<4;v++)
+        for (int v=0;v<4;v++) {
             if (tet.cell_con[v]<0)    /*no neighbor*/ {
                 for (int i=0;i<4;i++) {
                     if (i!=v) volume.nodes[tet.con[i]].type=OPEN;
                 }
             }
+        }
+
+        if (i % 100000 == 0)
+            printf("Compute tetra 3 at %d\n", i); 
     }
 
     return true;
@@ -260,6 +278,8 @@ bool LoadSurfaceMesh(const std::string file_name, Volume &volume, NodeType node_
     /*open file*/
     std::ifstream in(file_name);
     if (!in.is_open()) {std::cerr<<"Failed to open "<<file_name<<std::endl; return false;}
+
+    printf("LoadSurfaceMesh\n"); 
 
     /*read number of nodes and elements*/
     int n_nodes, n_elements;
@@ -276,6 +296,9 @@ bool LoadSurfaceMesh(const std::string file_name, Volume &volume, NodeType node_
 
         if (index<1 || index>nn) {std::cerr<<"Incorrect node number "<<index<<std::endl;continue;}
         volume.nodes[index-1].type=node_type;
+
+        if (n % 10000 == 0)
+            printf("Read Surface Mesh at %d\n", n); 
     }
 
     if (node_type == INLET) {
@@ -350,6 +373,9 @@ bool LoadSurfaceMesh(const std::string file_name, Volume &volume, NodeType node_
                 inletFace.normal[i] = normal[i]/normal_len;
             }
             inletFace.area = normal_len / 2;
+
+            if (e % 10000 == 0)
+                printf("Compute inlet cells at %d\n", e); 
         }
     }
 

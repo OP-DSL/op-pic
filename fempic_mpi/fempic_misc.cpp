@@ -135,25 +135,28 @@ inline int InitializeInjectDistributions(oppic_dat if_dist_dat, oppic_dat if_are
     MPI_Bcast(dist, total_size, MPI_DOUBLE, OPP_ROOT, MPI_COMM_WORLD);
 #endif
 
-    double* random_dat = (double *)dummy_random->data;
-    int* distribution  = (int *)if_dist_dat->data;
-    int iface_index = 0, part_in_face_index = 0;
-
-    // This trouble is only because we need mpi results to match with seq and others
-    for (int i = 0; i < dummy_random->set->size; i++)
+    if (if_area_dat->set->size > 0) 
     {
-        if (i >= distribution[iface_index])
+        double* random_dat = (double *)dummy_random->data;
+        int* distribution  = (int *)if_dist_dat->data;
+        int iface_index = 0, part_in_face_index = 0;
+
+        // This trouble is only because we need mpi results to match with seq and others
+        for (int i = 0; i < dummy_random->set->size; i++)
         {
-            iface_index++; // check whether it is j or j-1
-            part_in_face_index = 0; 
+            if (i >= distribution[iface_index])
+            {
+                iface_index++; // check whether it is j or j-1
+                part_in_face_index = 0; 
+            }
+
+            random_dat[i * 2 + 0] = dist[part_in_face_index * 2 + 0];
+            random_dat[i * 2 + 1] = dist[part_in_face_index * 2 + 1];
+
+            part_in_face_index++;
         }
-
-        random_dat[i * 2 + 0] = dist[part_in_face_index * 2 + 0];
-        random_dat[i * 2 + 1] = dist[part_in_face_index * 2 + 1];
-
-        part_in_face_index++;
     }
-
+    
     delete[] dist;
 
     dummy_random->dirty_hd = Dirty::Device; // To make GPU versions to download updated data!
