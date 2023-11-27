@@ -573,8 +573,10 @@ void FESolver::computePhi(oppic_arg arg0, oppic_arg arg1, oppic_arg arg2)
     args[2] = arg2;  // node_bnd_pot
     args[1].idx = 2; // HACK to forcefully make halos to download
 
+    opp_profiler->start("FSolve_halo");
     opp_mpi_halo_exchanges_grouped(arg1.dat->set, nargs, args, Device_GPU);
     opp_mpi_halo_wait_all(nargs, args);
+    opp_profiler->end("FSolve_halo");
 
     if (linearSolve((double*)arg1.dat->data_d) == false)
     {
@@ -584,11 +586,13 @@ void FESolver::computePhi(oppic_arg arg0, oppic_arg arg1, oppic_arg arg2)
             "; run with -ksp_converged_reason" << std::endl;           
     }
 
+    opp_profiler->start("FSolve_npot");
     computeNodePotentialKernel <<<nodesNBlocks, OPP_gpu_threads_per_block>>> (n_nodes_set, node_to_eq_map_d, dLocal_d, 
                                                         (double*)arg2.dat->data_d, (double*)arg0.dat->data_d);
 
     opp_set_dirtybit_grouped(nargs, args, Device_GPU);
     cutilSafeCall(cudaDeviceSynchronize());
+    opp_profiler->end("FSolve_npot");
 
     opp_profiler->end("ComputePhi");
 
@@ -610,13 +614,16 @@ bool FESolver::linearSolve(double *ion_den_d)
 
     if (OP_DEBUG) opp_printf("FESolver", "linearSolve START");
 
+    opp_profiler->start("FSolve_solv_init");
     initBuildF1VectorKernel <<<nodes_inc_haloNBlocks, OPP_gpu_threads_per_block>>> (node_to_eq_map_d, dLocal_d, 
                                                                         ion_den_d, tempNEQ1_d, n_nodes_inc_halo);
 
     initBuildJmatrixKernel <<<neqNBlocks, OPP_gpu_threads_per_block>>> (tempNEQ2_d, tempNEQ3_d, dLocal_d, neq);
 
     cutilSafeCall(cudaDeviceSynchronize()); // Sync since we need tempNEQ1_d and tempNEQ3_d
+    opp_profiler->end("FSolve_solv_init");
 
+    opp_profiler->start("FSolve_j_and_f1");
     const int stride = cell_to_nodes_map->from->size + cell_to_nodes_map->from->exec_size + cell_to_nodes_map->from->nonexec_size;
 
     computeF1VectorValuesKernel <<<cells_inc_haloNBlocks, OPP_gpu_threads_per_block>>> (n_elements_inc_halo, 
@@ -632,6 +639,7 @@ bool FESolver::linearSolve(double *ion_den_d)
     VecAXPY(Bvec, -1.0, F0vec); // B = B - F0
 
     cutilSafeCall(cudaDeviceSynchronize()); // Sync since we need f1Local_d and tempNEQ2_d
+    opp_profiler->end("FSolve_j_and_f1");
 
     cutilSafeCall(cudaMemcpy(f1Local, f1Local_d, neq * sizeof(double), cudaMemcpyDeviceToHost));
     cutilSafeCall(cudaMemcpy(tempNEQ2, tempNEQ2_d, neq * sizeof(double), cudaMemcpyDeviceToHost));
@@ -646,13 +654,17 @@ bool FESolver::linearSolve(double *ion_den_d)
 
     VecAXPY(Bvec, -1.0, F1vec); // B = B - F1
 
+    opp_profiler->start("FSolve_ksp");
     KSPSolve(ksp, Bvec, Yvec); // Jmat * Yvec = Bvec (Yvec = solution)
+    opp_profiler->end("FSolve_ksp");
 
     VecAXPY(Dvec, -1.0, Yvec); // D = D - Y
 
+    opp_profiler->start("FSolve_d");
     VecGetValues(Dvec, neq, vecCol, dLocal); // For the calculation at computePhi()
 
     cutilSafeCall(cudaMemcpy(dLocal_d, dLocal, neq * sizeof(double), cudaMemcpyHostToDevice));
+    opp_profiler->end("FSolve_d");
 
     KSPGetConvergedReason(ksp, &reason);
 

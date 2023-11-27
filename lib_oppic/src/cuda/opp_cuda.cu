@@ -821,9 +821,15 @@ void cutilDeviceInit(int argc, char **argv)
         opp_printf("cutilDeviceInit", "Failed to get hostname of MPI rank %d", OPP_rank);
         opp_abort();
     }
+  
+    int int_rank = OPP_rank;
+#ifdef USE_MPI
+        opp::Comm comm(MPI_COMM_WORLD);
+        int_rank = comm.rank_intra;
+#endif
 
     // Test we have access to a device
-    cudaError_t err = cudaSetDevice(OPP_rank % deviceCount);
+    cudaError_t err = cudaSetDevice(int_rank % deviceCount);
     if (err == cudaSuccess) 
     {
         float *test;

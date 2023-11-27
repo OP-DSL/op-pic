@@ -59,6 +59,7 @@ __global__ void opp_cuda_ComputeNodeChargeDensity(
     {
         int n = tid + start;
 
+        //user-supplied kernel call
         compute_node_charge_density__kernel_gpu(
             (dir_arg0 + n),
             (dir_arg1 + n)

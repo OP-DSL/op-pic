@@ -164,12 +164,10 @@ __device__ bool opp_part_check_status_cuda(opp_move_var& m, int* map0idx, int pa
 
     if (m.move_status == OPP_MOVE_DONE)
     {
-//printf("Y");
         return false;
     }
     else if (m.move_status == OPP_NEED_REMOVE)
     {
-//printf("U");
         *map0idx = MAX_CELL_INDEX;
         atomicAdd(&remove_count, 1);
 
@@ -177,7 +175,6 @@ __device__ bool opp_part_check_status_cuda(opp_move_var& m, int* map0idx, int pa
     }
     else if (*map0idx >= OPP_cells_set_size_d)
     {
-//printf("V%d_%d|", *map0idx, OPP_cells_set_size_d);
         // map0idx cell is not owned by the current mpi rank (it is in the import exec halo region), need to communicate
         int moveArrayIndex = atomicAdd(move_count, 1);
         move_indices[moveArrayIndex] = particle_index;
@@ -188,7 +185,7 @@ __device__ bool opp_part_check_status_cuda(opp_move_var& m, int* map0idx, int pa
 
         return false;
     }
-//printf("L");
+
     // map0idx is an own cell and m.move_status == OPP_NEED_MOVE
     return true;
 }
@@ -224,18 +221,12 @@ __global__ void opp_cuda_all_MoveToCells(
             // int map0idx = d_cell_index[n]; // TODO : I dont know why this isn't working ??? 
             // dir_arg2 and d_cell_index has same pointer values, but this get stuck!
 
-// if (n < 50)
-// printf("n %d ci %d cv %2.20lE p %2.20lE %2.20lE %2.20lE cd %2.20lE %2.20lE %2.20lE %2.20lE m %d %d %d %d\n",
-//     n, *map0idx, ind_arg3[*map0idx],
-//     dir_arg0[n], dir_arg0[n + move_stride_OPP_CUDA_0], dir_arg0[n + 2*move_stride_OPP_CUDA_0],
-//     ind_arg4[*map0idx], ind_arg4[*map0idx + move_stride_OPP_CUDA_4], ind_arg4[*map0idx + 2*move_stride_OPP_CUDA_4], ind_arg4[*map0idx + 3*move_stride_OPP_CUDA_4],
-//     ind_arg5[*map0idx], ind_arg5[*map0idx + move_stride_OPP_CUDA_5], ind_arg5[*map0idx + 2*move_stride_OPP_CUDA_5], ind_arg5[*map0idx + 3*move_stride_OPP_CUDA_5]
-//     );
+            //user-supplied kernel call
             move_all_particles_to_cell__kernel(
                 (m),
-                (dir_arg0 + n),         // part_pos,
-                (dir_arg1 + n),         // cell_index,
-                (dir_arg2 + n),         // part_lc,
+                (dir_arg0 + n),          // part_pos,
+                (dir_arg1 + n),          // cell_index,
+                (dir_arg2 + n),          // part_lc,
                 (ind_arg3 + *map0idx),   // cell_volume,
                 (ind_arg4 + *map0idx),   // cell_det,
                 (ind_arg5 + *map0idx)    // cell_connectivity,
@@ -273,13 +264,10 @@ void opp_particle_mover__Move(
     args[4]  = std::move(arg4);
     args[5]  = std::move(arg5);
 
-opp_profiler->start("FMv_halo_exchanges");    
+    opp_profiler->start("FMv_halo_exchanges");    
     int set_size = opp_mpi_halo_exchanges_grouped(set, nargs, args, Device_GPU); 
-opp_profiler->end("FMv_halo_exchanges");
-
-opp_profiler->start("FMv_halo_wait");
     opp_mpi_halo_wait_all(nargs, args);
-opp_profiler->end("FMv_halo_wait");
+    opp_profiler->end("FMv_halo_exchanges");
 
     if (set_size > 0) 
     {
@@ -297,9 +285,9 @@ opp_profiler->end("FMv_halo_wait");
             cudaMemcpyToSymbol(move_stride_OPP_CUDA_4, &move_stride_OPP_HOST_4, sizeof(int));
             cudaMemcpyToSymbol(move_stride_OPP_CUDA_5, &move_stride_OPP_HOST_5, sizeof(int));
 
-opp_profiler->start("FMv_init_part");
+            opp_profiler->start("FMv_init_part");
             opp_init_particle_move(set, nargs, args);
-opp_profiler->end("FMv_init_part");
+            opp_profiler->end("FMv_init_part");
 
             if (OPP_iter_end - OPP_iter_start > 0) 
             {
@@ -312,7 +300,7 @@ opp_profiler->end("FMv_init_part");
 
                 cutilSafeCall(cudaDeviceSynchronize());
                 opp_profiler->start("FMv_OnlyMoveKernel");
-
+                
                 opp_cuda_all_MoveToCells<<<nblocks, nthread>>>(
                     (int *)           set->mesh_relation_dat->data_d,
                     (const double *)  args[0].data_d,                   // part_position,   

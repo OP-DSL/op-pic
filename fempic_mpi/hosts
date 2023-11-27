@@ -1,4 +1,4 @@
-gpu012 slots=3 max_slots=3
-gpu013 slots=3 max_slots=3
-gpu014 slots=3 max_slots=3
-gpu015 slots=3 max_slots=3
+gpu002 slots=2 max_slots=2
+gpu009 slots=2 max_slots=2
+gpu010 slots=2 max_slots=2
+gpu013 slots=2 max_slots=2

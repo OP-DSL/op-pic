@@ -52,10 +52,16 @@ int main(int argc, char **argv)
     opp_init(argc, argv);
     opp_params->write(std::cout);
 
+    if (OPP_comm_size > 1) 
+        opp_printf("Main", "Warnining: Run with 1 MPI rank to avoid intermittent issues...");
+
     {
         opp_profiler->start("Setup");
 
         opp_profiler->start("LoadMesh");
+
+        MPI_Barrier(MPI_COMM_WORLD);
+        if (OPP_rank == OPP_ROOT) opp_printf("Main", "Load mesh Start");
 
         std::shared_ptr<FieldPointers> g_m, m; // g_m - global mesh, m - local mesh
         g_m = std::make_shared<FieldPointers>();
@@ -69,7 +75,13 @@ int main(int argc, char **argv)
                 g_m->n_nodes, g_m->n_cells, g_m->n_ifaces);
         }
 
+        MPI_Barrier(MPI_COMM_WORLD);
+        if (OPP_rank == OPP_ROOT) opp_printf("Main", "DistributeMeshOverRanks Start");
+
         DistributeMeshOverRanks(g_m, m);
+
+        MPI_Barrier(MPI_COMM_WORLD);
+        if (OPP_rank == OPP_ROOT) opp_printf("Main", "Creating Sets");
 
         opp_profiler->end("LoadMesh");
 
@@ -78,10 +90,16 @@ int main(int argc, char **argv)
         opp_set iface_set        = opp_decl_mesh_set(m->n_ifaces, "inlet_faces_cells");
         opp_set particle_set     = opp_decl_part_set("particles", cell_set); 
 
+        MPI_Barrier(MPI_COMM_WORLD);
+        if (OPP_rank == OPP_ROOT) opp_printf("Main", "Creating Maps");
+
         opp_map cell_v_nodes_map = opp_decl_mesh_map(cell_set,  node_set, N_PER_C,  m->c_to_n, "c_v_n_map");
         opp_map cell_v_cell_map  = opp_decl_mesh_map(cell_set,  cell_set, NEIGHB_C, m->c_to_c,  "c_v_c_map"); 
         opp_map iface_v_cell_map = opp_decl_mesh_map(iface_set, cell_set, ONE,      m->if_to_c, "if_v_c_map"); 
         opp_map iface_v_node_map = opp_decl_mesh_map(iface_set, node_set, N_PER_IF, m->if_to_n, "if_v_n_map");
+
+        MPI_Barrier(MPI_COMM_WORLD);
+        if (OPP_rank == OPP_ROOT) opp_printf("Main", "Creating Mesh Dats");
 
         opp_dat cell_det         = opp_decl_mesh_dat(cell_set, ALL_DET,     DT_REAL, m->c_det,      "c_det");  
         opp_dat cell_volume      = opp_decl_mesh_dat(cell_set, ONE,         DT_REAL, m->c_vol,      "c_volume");        
@@ -108,6 +126,9 @@ int main(int argc, char **argv)
         opp_dat iface_n_pos      = opp_decl_mesh_dat(iface_set, N_PER_IF*DIM, DT_REAL, m->if_n_pos,  "iface_n_pos"); 
         opp_dat iface_id         = opp_decl_mesh_dat(iface_set, ONE,          DT_INT,  m->if_id,     "iface_id"); 
 
+        MPI_Barrier(MPI_COMM_WORLD);
+        if (OPP_rank == OPP_ROOT) opp_printf("Main", "Creating Particle Dats");
+
         opp_dat part_position    = opp_decl_part_dat(particle_set, DIM,     DT_REAL, nullptr, "part_position");
         opp_dat part_velocity    = opp_decl_part_dat(particle_set, DIM,     DT_REAL, nullptr, "part_velocity");    
         opp_dat part_lc          = opp_decl_part_dat(particle_set, N_PER_C, DT_REAL, nullptr, "part_lc");
@@ -117,10 +138,14 @@ int main(int argc, char **argv)
         opp_set dummy_part_set   = opp_decl_part_set("dummy particles", cell_set); 
         opp_dat dummy_part_rand  = opp_decl_part_dat(dummy_part_set, 2, DT_REAL, nullptr, "dummy_part_rand");
 
+        MPI_Barrier(MPI_COMM_WORLD);
+        if (OPP_rank == OPP_ROOT) opp_printf("Main", "Deleting Loader");
+
         m->DeleteValues();
 
         opp_profiler->end("Setup");
 
+        MPI_Barrier(MPI_COMM_WORLD);
         opp_printf("FEMPIC_CONVERT_MESH", "Init opp structures DONE, dumping to HDF5");
 
         std::string file_out = opp_params->get<OPP_STRING>("hdf_filename");

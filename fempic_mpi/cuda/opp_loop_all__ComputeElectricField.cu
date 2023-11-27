@@ -93,9 +93,6 @@ __global__ void opp_cuda_ComputeElectricField(
         const int map3idx = opDat2Map[n + computeEF_stride_OPP_CUDA_2_MAP * 2];
         const int map4idx = opDat2Map[n + computeEF_stride_OPP_CUDA_2_MAP * 3];
 
-// printf("ci %d c_to_n %d %d %d %d\n",
-//     n, map1idx,map2idx,map3idx,map4idx);
-
         //user-supplied kernel call
         compute_electric_field__kernel_gpu(
             (dir_arg0 + n),

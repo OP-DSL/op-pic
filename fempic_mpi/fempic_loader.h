@@ -196,7 +196,11 @@ inline std::shared_ptr<FieldPointers> LoadMesh(std::string global_mesh, std::str
     mesh->n_cells         = volume->elements.size();
     mesh->n_ifaces        = volume->inlet_faces.size();
 
+    printf("LoadMesh nodes %d cells %d ifaces %d\n", mesh->n_nodes, mesh->n_cells, mesh->n_ifaces);
+
     mesh->CreateMeshArrays();
+
+    printf("LoadMesh CreateMeshArrays DONE\n");
 
     for (int n=0; n<mesh->n_nodes; n++)
     {
@@ -211,7 +215,12 @@ inline std::shared_ptr<FieldPointers> LoadMesh(std::string global_mesh, std::str
         mesh->n_vol[n] = node.volume;
         mesh->n_type[n]   = (int)node.type;
         mesh->n_id[n]     = n;
+
+        if (n % 10000 == 0)
+            printf("LoadMesh Mesh Nodes at %d\n", n);  
     }
+
+    printf("LoadMesh Mesh Nodes Loaded\n");
 
     for (int cID=0; cID<mesh->n_cells; cID++)
     {
@@ -252,7 +261,12 @@ inline std::shared_ptr<FieldPointers> LoadMesh(std::string global_mesh, std::str
         mesh->c_ef[cID * DIM + 0] = 0.0;
         mesh->c_ef[cID * DIM + 1] = 0.0;
         mesh->c_ef[cID * DIM + 2] = 0.0;        
+
+        if (cID % 10000 == 0)
+            printf("LoadMesh Mesh Cells at %d\n", cID);   
     }
+
+    printf("LoadMesh Mesh Cells Loaded\n");
 
     for (int faceID=0; faceID<mesh->n_ifaces; faceID++)
     {
@@ -282,6 +296,7 @@ inline std::shared_ptr<FieldPointers> LoadMesh(std::string global_mesh, std::str
         }
     }
 
+    printf("LoadMesh Mesh inlet faces Loaded\n");
 
 #ifdef USE_MPI 
 

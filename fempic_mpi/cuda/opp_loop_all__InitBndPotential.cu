@@ -69,6 +69,7 @@ __global__ void opp_cuda_InitBndPotential(
     {
         int n = tid + start;
 
+        //user-supplied kernel call
         init_bnd_potential__kernel_gpu(
             (dir_arg0 + n),
             (dir_arg1 + n)

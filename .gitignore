@@ -34,5 +34,7 @@ junk/
 *.qdrep
 *.sqlite
 advisor*
+archive*
+run*
 vg*
 old

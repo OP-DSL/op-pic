@@ -121,6 +121,7 @@ __global__ void opp_cuda_InjectIons(
         const int map0idx = mesh_relation[n + inj_start]; // iface index
         const int map1idx = opDat4Map[map0idx]; // cell index
 
+        //user-supplied kernel call
         inject_ions__kernel_gpu(
             (dir_arg0 + (n + inj_start)),
             (dir_arg1 + (n + inj_start)),

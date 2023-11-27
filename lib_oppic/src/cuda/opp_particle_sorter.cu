@@ -48,8 +48,11 @@ struct RandomFunctor
         }
         else
         {
-            thrust::uniform_int_distribution<int> dist(0, 100000);
+            thrust::uniform_int_distribution<int> dist(0, 1000000000);
             return dist(rng); // Assign random number < 100
+
+            // thrust::normal_distribution<float> dist(50.0f, 10.0f);
+            // return static_cast<int>(dist(rng)); // Convert to integer
         }
     }
 };
@@ -92,6 +95,8 @@ void particle_sort_cuda(oppic_set set, bool hole_filling)
     if (hole_filling)
     {
         // in hole filling, randomize the cell indices to minimize shared memory issues
+        // The below will create random numbers for each index, and MAX_CELL_INDEX for removed, 
+        // ideally this should not be called cell_Idx_dv, better naming would be something like, random ordering
         thrust::transform(cellIdx_dv.begin(), cellIdx_dv.end(), 
             cellIdx_dv.begin(), RandomFunctor(seed));
 

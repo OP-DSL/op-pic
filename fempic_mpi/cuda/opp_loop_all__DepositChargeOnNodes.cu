@@ -102,6 +102,7 @@ __global__ void opp_cuda_all_DepNodeCharge(
         const int map3idx = oppDat1Map[map0idx + dep_charge_stride_OPP_CUDA_1 * 2];
         const int map4idx = oppDat1Map[map0idx + dep_charge_stride_OPP_CUDA_1 * 3];
 
+        //user-supplied kernel call
         dep_node_charge__kernel_gpu(
             (dir_arg0 + n),
             (k_arg1 + map1idx),

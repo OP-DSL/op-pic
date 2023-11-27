@@ -79,19 +79,12 @@ __global__ void opp_cuda_all_CalcPosVel(
 
         int map0idx = d_cell_index[n];
 
+        //user-supplied kernel call
         compute_pos_vel__kernel_gpu(
             (ind_arg0 + map0idx),
             (dir_arg1 + n),
             (dir_arg2 + n)
         );
-
-// printf("n %d ci %d ef %2.20lE %2.20lE %2.20lE p %2.20lE %2.20lE %2.20lE v %2.20lE %2.20lE %2.20lE\n",
-//     n, map0idx, 
-//     ind_arg0[map0idx], ind_arg0[map0idx + calc_pos_vel_stride_OPP_CUDA_0], ind_arg0[map0idx + 2*calc_pos_vel_stride_OPP_CUDA_0], 
-//     dir_arg1[n], dir_arg1[n + calc_pos_vel_stride_OPP_CUDA_1], dir_arg1[n + 2*calc_pos_vel_stride_OPP_CUDA_1],
-//     dir_arg2[n], dir_arg2[n + calc_pos_vel_stride_OPP_CUDA_2], dir_arg2[n + 2*calc_pos_vel_stride_OPP_CUDA_2]
-//     );
-
     }
 }
 
