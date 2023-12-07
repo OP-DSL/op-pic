@@ -13,7 +13,7 @@ STRING fesolver_method = petsc
 BOOL check_max_values = true
 
 # Input files
-STRING rand_file    = /work/e723/e723/csrcnj/phd/box_mesh_gen/random_100k.dat
+STRING rand_file    = /work/e723/e723/csrcnj/phd/box_mesh_gen/random_300k.dat
 STRING hdf_filename = /work/e723/e723/csrcnj/phd/box_mesh_gen/hdf5/box_96000.hdf5
 
 STRING global_mesh = /work/e723/e723/csrcnj/phd/box_mesh_gen/dats/12000/mesh.dat
@@ -23,7 +23,7 @@ STRING wall_mesh   = /work/e723/e723/csrcnj/phd/box_mesh_gen/dats/12000/wall.dat
 BOOL invert_normals = false
 
 BOOL opp_auto_sort          = false
-INT opp_allocation_multiple = 21
+INT opp_allocation_multiple = 5
 INT opp_threads_per_block   = 1024
 
 BOOL opp_profile_all        = false
