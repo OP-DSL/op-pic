@@ -745,7 +745,7 @@ void initializeParticleMover(const double gridSpacing, int dim, const opp_dat no
     opp_profiler->reg("GlbToLocal");
     opp_profiler->reg("GblMv_Move");
     opp_profiler->reg("GblMv_AllMv");
-    for (int i = 0; i < 10; i++) {
+    for (int i = 0; i < 5; i++) {
         std::string profName = std::string("Mv_AllMv") + std::to_string(i);
         opp_profiler->reg(profName);
     }

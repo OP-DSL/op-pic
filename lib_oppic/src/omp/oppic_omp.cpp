@@ -46,6 +46,9 @@ void opp_init(int argc, char **argv)
     oppic_init_core(argc, argv);
 
     OPP_nthreads = omp_get_max_threads();
+
+    if (OPP_rank == OPP_ROOT) 
+        opp_printf("oppic_init", "initialized with %d OMP threads", OPP_nthreads);
 }
 
 //****************************************

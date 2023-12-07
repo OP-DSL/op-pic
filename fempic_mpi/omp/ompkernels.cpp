@@ -35,25 +35,52 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 
 #include "oppic_omp.h"
-#include "../fempic.h"
+#include "../fempic_defs.h"
 
 using namespace opp;
 
 //****************************************
-double CONST_spwt = 0, CONST_ion_velocity = 0, CONST_dt = 0, CONST_plasma_den = 0, CONST_mass = 0, CONST_charge = 0;
+double CONST_spwt = 0, CONST_ion_velocity = 0, CONST_dt = 0, CONST_plasma_den = 0, CONST_mass = 0, CONST_charge = 0, CONST_wall_potential = 0;
 void opp_decl_const_impl(int dim, int size, char* data, const char* name)
 {
-    if (!strcmp(name,"CONST_spwt"))              CONST_spwt = *((double*)data);
-    else if (!strcmp(name,"CONST_ion_velocity")) CONST_ion_velocity = *((double*)data);
-    else if (!strcmp(name,"CONST_dt"))           CONST_dt = *((double*)data);
-    else if (!strcmp(name,"CONST_plasma_den"))   CONST_plasma_den = *((double*)data);
-    else if (!strcmp(name,"CONST_mass"))         CONST_mass = *((double*)data);
-    else if (!strcmp(name,"CONST_charge"))       CONST_charge = *((double*)data);
+    if (!strcmp(name,"CONST_spwt"))                 CONST_spwt = *((double*)data);
+    else if (!strcmp(name,"CONST_ion_velocity"))    CONST_ion_velocity = *((double*)data);
+    else if (!strcmp(name,"CONST_dt"))              CONST_dt = *((double*)data);
+    else if (!strcmp(name,"CONST_plasma_den"))      CONST_plasma_den = *((double*)data);
+    else if (!strcmp(name,"CONST_mass"))            CONST_mass = *((double*)data);
+    else if (!strcmp(name,"CONST_charge"))          CONST_charge = *((double*)data);
+    else if (!strcmp(name,"CONST_wall_potential"))  CONST_wall_potential = *((double*)data);
     else std::cerr << "error: unknown const name" << std::endl;
 }
 //****************************************
 
 #include "../kernels.h"
+
+//*************************************************************************************************
+void opp_loop_all__InitBndPotential(
+    opp_set set,      // nodes_set
+    opp_arg arg0,     // node_type,
+    opp_arg arg1      // node_bnd_pot,
+)
+{ 
+
+    if (FP_DEBUG) 
+        opp_printf("FEMPIC", "opp_loop_all__InitBndPotential set_size %d diff %d", 
+            set->size, set->diff);
+    
+    opp_profiler->start("InitBndPot");
+
+    #pragma omp parallel for
+    for (int i = 0; i < set->size; i++)
+    {    
+        init_boundary_potential(
+            &((int*) arg0.data)[i * arg0.dim],     // node_type,
+            &((double*) arg1.data)[i * arg1.dim]   // node_bnd_pot,
+        );
+    }
+
+    opp_profiler->end("InitBndPot");
+}
 
 //*************************************************************************************************
 void opp_loop_inject__InjectIons(
@@ -536,7 +563,7 @@ void initializeParticleMover(const double gridSpacing, int dim, const opp_dat no
     opp_profiler->reg("GlbToLocal");
     opp_profiler->reg("GblMv_Move");
     opp_profiler->reg("GblMv_AllMv");
-    for (int i = 0; i < 10; i++) {
+    for (int i = 0; i < 5; i++) {
         std::string profName = std::string("Mv_AllMv") + std::to_string(i);
         opp_profiler->reg(profName);
     }
@@ -570,12 +597,10 @@ void opp_particle_mover__Move(
     args[4] = std::move(arg4);
     args[5] = std::move(arg5);
 
-    int size = set->size;
-    int cellIdx = MAX_CELL_INDEX;
-
     opp_init_particle_move(set, 0, nullptr);
 
-    int nthreads = omp_get_max_threads();
+    const int size = set->size;
+    const int nthreads = omp_get_max_threads();
     
     #pragma omp parallel for
     for (int thr = 0; thr < nthreads; thr++)
@@ -583,6 +608,7 @@ void opp_particle_mover__Move(
         size_t start  = ((size_t)size * thr) / nthreads;
         size_t finish = ((size_t)size * (thr+1)) / nthreads;
 
+        // opp_printf("MOVE", "Thread %d start %zu end %zu", thr, start, finish);
         for (size_t i = start; i < finish; i++)
         {  
             if (useGlobalMove) {
@@ -611,6 +637,7 @@ void opp_particle_mover__Move(
             }
 
             opp_move_var m;
+            int cellIdx = MAX_CELL_INDEX;
 
             do {
                 cellIdx = ((int*)args[1].data)[i];
