@@ -55,3 +55,6 @@ void opp_mpi_print_dat_to_txtfile(op_dat dat, const char *file_name);
 bool opp_part_checkForGlobalMove(opp_set set, const opp_point& point, const int partIndex, int& cellIdx);
 
 void cleanSendRecvBuffers(oppic_set set);
+
+extern std::vector<int> move_part_indices;
+void opp_process_marked_particles(opp_set set);

@@ -10,6 +10,8 @@ simpic_seq
 simpic_genseq*
 simpic_openmp*
 
+MPI_*
+OMP_*
 *.log
 files*/
 backup*

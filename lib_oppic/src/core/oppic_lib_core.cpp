@@ -60,6 +60,7 @@ int OPP_gpu_threads_per_block       = OPP_DEFAULT_GPU_THREADS_PER_BLOCK;
 size_t OPP_gpu_shared_mem_per_block = -1;
 int *OPP_mesh_relation_data         = nullptr;
 int *OPP_mesh_relation_data_d       = nullptr;
+int OPP_part_cells_set_size         = 0;
 
 std::unique_ptr<opp::Params> opp_params;
 std::unique_ptr<opp::Profiler> opp_profiler;
@@ -580,6 +581,8 @@ void oppic_init_particle_move_core(oppic_set set)
 {
     if (OP_DEBUG) opp_printf("oppic_init_particle_move_core", "set [%s]", set->name);
 
+    OPP_part_cells_set_size = set->cells_set->size;
+    
     // if (set->particle_statuses) free(set->particle_statuses);
 
     // set->particle_statuses = (int *)malloc(set->size * sizeof(int));

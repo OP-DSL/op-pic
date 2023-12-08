@@ -350,6 +350,7 @@ extern int *OPP_mesh_relation_data_d;
 extern int OPP_main_loop_iter;
 extern int OPP_gpu_threads_per_block;
 extern size_t OPP_gpu_shared_mem_per_block;
+extern int OPP_part_cells_set_size;
 
 extern std::vector<oppic_set> oppic_sets;
 extern std::vector<oppic_map> oppic_maps;

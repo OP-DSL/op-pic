@@ -46,6 +46,8 @@ std::map<int, std::map<int, std::vector<opp_particle_move_info>>> opp_part_move_
 std::vector<MPI_Request> send_req_count;
 std::vector<MPI_Request> recv_req_count;
 
+std::vector<int> move_part_indices;
+
 //*******************************************************************************
 void opp_part_mark_move(oppic_set set, int particle_index, opp_particle_comm_data& comm_data)
 {
@@ -355,6 +357,34 @@ void opp_part_unpack(oppic_set set)
     if (OP_DEBUG) opp_printf("opp_part_unpack", "END");
 }
 
+void opp_process_marked_particles(opp_set set) 
+{
+    for (int particle_index : move_part_indices)
+    {
+        std::map<int, opp_particle_comm_data>& set_part_com_data = opp_part_comm_neighbour_data[set];
+        const int map0idx = OPP_mesh_relation_data[particle_index];
+        
+        // Removed from the current rank
+        OPP_mesh_relation_data[particle_index] = MAX_CELL_INDEX;
+        set->particle_remove_count += 1;
+
+        auto it = set_part_com_data.find(map0idx);
+        if (it == set_part_com_data.end())
+        {
+            opp_printf("opp_part_check_status", "Error: cell %d cannot be found in opp_part_comm_neighbour_data map", map0idx);
+            return; // unlikely, need exit(-1) to abort instead!
+        }
+
+        opp_particle_comm_data& comm_data = it->second;
+        
+        // change the cell_index to reflect the correct neighbour ranks local cell index before packing
+        // OPP_mesh_relation_data[particle_index] = comm_data.local_index;
+        // opp_part_pack(set, particle_index, comm_data.cell_residing_rank);
+
+        opp_part_mark_move(set, particle_index, comm_data);
+    }
+}
+
 //*******************************************************************************
 // Returns true only if another hop is required by the current rank
 bool opp_part_check_status(opp_move_var& m, int map0idx, oppic_set set, 
@@ -373,32 +403,10 @@ bool opp_part_check_status(opp_move_var& m, int map0idx, oppic_set set,
 
         return false;
     }
-    else if (map0idx >= set->cells_set->size)
+    else if (map0idx >= OPP_part_cells_set_size)
     {
         // map0idx cell is not owned by the current mpi rank (it is in the import exec halo region), need to communicate
-
-        std::map<int, opp_particle_comm_data>& set_part_com_data = opp_part_comm_neighbour_data[set];
-
-        auto it = set_part_com_data.find(map0idx);
-        if (it == set_part_com_data.end())
-        {
-            opp_printf("opp_part_check_status", "Error: cell %d cannot be found in opp_part_comm_neighbour_data map", map0idx);
-            return false; // unlikely, need exit(-1) to abort instead!
-        }
-
-        opp_particle_comm_data& comm_data = it->second;
-        
-        // change the cell_index to reflect the correct neighbour ranks local cell index before packing
-        // OPP_mesh_relation_data[particle_index] = comm_data.local_index;
-        // opp_part_pack(set, particle_index, comm_data.cell_residing_rank);
-
-        opp_part_mark_move(set, particle_index, comm_data);
-        
-        // This particle is already packed, hence needs to be removed from the current rank
-        m.move_status = OPP_NEED_REMOVE; 
-        remove_count += 1;
-        OPP_mesh_relation_data[particle_index] = MAX_CELL_INDEX;
-
+        move_part_indices.push_back(particle_index);
         return false;
     }
 

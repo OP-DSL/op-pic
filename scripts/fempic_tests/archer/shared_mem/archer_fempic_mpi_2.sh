@@ -4,7 +4,7 @@
 #SBATCH --time=05:00:00
 #SBATCH --nodes=1
 #SBATCH --ntasks-per-node=2
-#SBATCH --cpus-per-task=1
+#SBATCH --cpus-per-task=64
 
 #SBATCH --account=e723-neptune             
 #SBATCH --partition=standard

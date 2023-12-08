@@ -780,6 +780,11 @@ void opp_particle_mover__Move(
     args[4] = std::move(arg4);
     args[5] = std::move(arg5);
 
+    const int args0_dim = args[0].dim;
+    const int args2_dim = args[2].dim;
+    const int args4_dim = args[4].dim;
+    const int args5_dim = args[5].dim;
+
     // lambda function for multi hop particle movement
     auto multihop_mover = [&](const int i) {
 
@@ -792,22 +797,13 @@ void opp_particle_mover__Move(
         opp_move_var m;
 
         do {
-
-// if (i < 50)
-// printf("n %d ci %d cv %2.20lE p %2.20lE %2.20lE %2.20lE cd %2.20lE %2.20lE %2.20lE %2.20lE m %d %d %d %d\n",
-//     i, cellIdx, ((const double*) args[3].data)[cellIdx],
-//     ((const double*) args[0].data)[i * args[0].dim],((const double*) args[0].data)[i * args[0].dim+1],((const double*) args[0].data)[i * args[0].dim+2],
-//     ((const double*) args[4].data)[cellIdx * args[4].dim],((const double*) args[4].data)[cellIdx * args[4].dim+1],((const double*) args[4].data)[cellIdx * args[4].dim+2],((const double*) args[4].data)[cellIdx * args[4].dim+3],
-//     ((const int*)    args[5].data)[cellIdx * args[5].dim],((const int*)    args[5].data)[cellIdx * args[5].dim+1],((const int*)    args[5].data)[cellIdx * args[5].dim+2],((const int*)    args[5].data)[cellIdx * args[5].dim+3]
-//     );
-
             m.move_status = getCellIndexKernel(
-                &((const double*) args[0].data)[i * args[0].dim], 
-                &((int*)          args[1].data)[i],
-                &((double*)       args[2].data)[i * args[2].dim],
-                &((const double*) args[3].data)[cellIdx], 
-                &((const double*) args[4].data)[cellIdx * args[4].dim],   // 16 -> cellDet_dat->dim
-                &((const int*)    args[5].data)[cellIdx * args[5].dim]);   // 4 -> cellConnectivity_map->dim
+                &((const double*)args[0].data)[i * args0_dim], 
+                &((int*)         args[1].data)[i],
+                &((double*)      args[2].data)[i * args2_dim],
+                &((const double*)args[3].data)[cellIdx], 
+                &((const double*)args[4].data)[cellIdx * args4_dim],   // 16 -> cellDet_dat->dim
+                &((const int*)   args[5].data)[cellIdx * args5_dim]);   // 4 -> cellConnectivity_map->dim
 
         } while (opp_part_check_status(m, cellIdx, set, i, set->particle_remove_count));
     };

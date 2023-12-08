@@ -1,7 +1,7 @@
 #!/bin/bash
 
-#SBATCH --job-name=PIC_OMP2
-#SBATCH --time=05:00:00
+#SBATCH --job-name=PIC_OMP1
+#SBATCH --time=07:00:00
 #SBATCH --nodes=1
 #SBATCH --ntasks-per-node=1
 #SBATCH --cpus-per-task=128
@@ -38,7 +38,7 @@ file=$PWD'/..'$configFile
 # 12000 24000 48000 96000 192000
 
 for run in 1 2; do
-    for config in 96000 192000; do
+    for config in 12000 24000 48000; do
         for tasks in 128 64 32 16 8 4 2 1; do 
             
             export OMP_NUM_THREADS=${tasks}

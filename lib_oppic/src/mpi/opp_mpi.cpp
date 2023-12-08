@@ -289,6 +289,8 @@ void opp_init_particle_move(oppic_set set, int nargs, oppic_arg *args)
 
     oppic_init_particle_move_core(set);
 
+    move_part_indices.clear();
+
     if (OPP_comm_iteration == 0)
     {
         OPP_iter_start = 0;
@@ -316,6 +318,8 @@ bool opp_finalize_particle_move(oppic_set set)
     if (OP_DEBUG) opp_printf("opp_finalize_particle_move", "Start particle set [%s]", set->name);
 
     opp_profiler->start("Mv_Finalize");
+
+    opp_process_marked_particles(set); 
 
     opp_part_pack(set);
     
