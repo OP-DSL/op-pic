@@ -16,6 +16,10 @@ BOOL check_max_values = true
 STRING rand_file    = /home/dcs/csrcnj/phd/box_mesh_gen/random_100k.dat
 STRING hdf_filename = /home/dcs/csrcnj/phd/box_mesh_gen/hdf5/box_96000.hdf5
 
+STRING global_mesh = /home/dcs/csrcnj/phd/box_mesh_gen/12000/mesh.dat
+STRING inlet_mesh = /home/dcs/csrcnj/phd/box_mesh_gen/12000/inlet.dat
+STRING wall_mesh = /home/dcs/csrcnj/phd/box_mesh_gen/12000/wall.dat
+
 BOOL invert_normals = false
 
 BOOL opp_auto_sort          = false

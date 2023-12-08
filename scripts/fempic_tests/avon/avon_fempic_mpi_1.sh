@@ -2,7 +2,7 @@
 #SBATCH --job-name=PIC_1
 #SBATCH --nodes=1
 #SBATCH --ntasks-per-node=48
-#SBATCH --time=4:00:00
+#SBATCH --time=6:00:00
 #SBATCH --cpus-per-task=1
 #SBATCH --mem-per-cpu=3700
 #SBATCH --partition=compute

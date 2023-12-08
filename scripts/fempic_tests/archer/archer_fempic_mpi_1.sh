@@ -24,7 +24,7 @@ export PETSC_INSTALL_PATH=/work/e723/e723/csrcnj/lib_install/petsc-3.20.0
 export OPPIC_PATH=/work/e723/e723/csrcnj/phd/OP-PIC/lib_oppic
 export LD_LIBRARY_PATH=$PETSC_INSTALL_PATH/lib:$LD_LIBRARY_PATH
 
-runFolder=$PWD"/MPI_"$(date +"D_%Y_%m_%d_T_%I_%M_%S")
+runFolder=$PWD"/MPI_"$SLURM_TASKS_PER_NODE"_"$(date +"D_%Y_%m_%d_T_%I_%M_%S")
 echo "Creating running folder -> " $runFolder
 
 binPath='/work/e723/e723/csrcnj/phd/OP-PIC/fempic_mpi/bin/'
