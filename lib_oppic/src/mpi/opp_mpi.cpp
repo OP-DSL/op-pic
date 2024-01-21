@@ -400,6 +400,8 @@ void opp_partition(std::string lib_name, op_set prime_set, op_map prime_map, op_
 
     opp_desanitize_all_maps();
 
+    MPI_Barrier(MPI_COMM_WORLD);
+    
     opp_profiler->end("opp_partition");
 }
 

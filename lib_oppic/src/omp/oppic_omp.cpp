@@ -532,14 +532,14 @@ void oppic_particle_sort(oppic_set set)
 }
 
 //****************************************
-void oppic_print_dat_to_txtfile(oppic_dat dat, const char *file_name_prefix, const char *file_name_suffix)
+void opp_print_dat_to_txtfile(oppic_dat dat, const char *file_name_prefix, const char *file_name_suffix)
 {
     std::string prefix = std::string(file_name_prefix) + "_o";
     oppic_print_dat_to_txtfile_core(dat, prefix.c_str(), file_name_suffix);
 }
 
 //****************************************
-void oppic_print_map_to_txtfile(oppic_map map, const char *file_name_prefix, const char *file_name_suffix)
+void opp_print_map_to_txtfile(oppic_map map, const char *file_name_prefix, const char *file_name_suffix)
 {
     oppic_print_map_to_txtfile_core(map, file_name_prefix, file_name_suffix);
 }
