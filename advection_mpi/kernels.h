@@ -63,10 +63,12 @@ inline void push_particles_kernel(opp_move_var& m,
     const OPP_REAL part_pos_x = part_pos[Dim::x];
     if (part_pos_x < cell_pos_ll[Dim::x]) {
         part_cid[0] = cell_cell_map[CellMap::xd_y];
+        m.move_status = OPP_NEED_MOVE;
         return;
     }
     if (part_pos_x > (cell_pos_ll[Dim::x] + CONST_cell_width)) {
         part_cid[0] = cell_cell_map[CellMap::xu_y];
+        m.move_status = OPP_NEED_MOVE;
         return;
     }
 
@@ -74,10 +76,12 @@ inline void push_particles_kernel(opp_move_var& m,
     const OPP_REAL part_pos_y = part_pos[Dim::y];
     if (part_pos_y < cell_pos_ll[Dim::y]) {
         part_cid[0] = cell_cell_map[CellMap::x_yd];
+        m.move_status = OPP_NEED_MOVE;
         return;
     }
     if (part_pos_y > (cell_pos_ll[Dim::y] + CONST_cell_width)) {
         part_cid[0] = cell_cell_map[CellMap::x_yu];
+        m.move_status = OPP_NEED_MOVE;
         return;
     }
 

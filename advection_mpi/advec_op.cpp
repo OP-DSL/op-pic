@@ -78,24 +78,15 @@ int main(int argc, char **argv)
 
         m->DeleteValues();
         
-        {
-            std::string f = std::string("INIT_B_") + std::to_string(OPP_rank);
-            opp_print_dat_to_txtfile(cell_colors, f.c_str(), "cell_colors.dat");
-            opp_print_map_to_txtfile(cell_cell_map, f.c_str(), "cell_cell_map.dat");
-        }
-
+        // opp_print_map_to_txtfile(cell_cell_map, "INIT_B", "cell_cell_map.dat");
 #ifdef USE_MPI
         opp_partition(std::string("EXTERNAL"), cell_set, nullptr, cell_colors);
 #endif
-
-        {
-            std::string f = std::string("INIT_A_") + std::to_string(OPP_rank);
-            opp_print_dat_to_txtfile(cell_colors, f.c_str(), "cell_colors.dat");
-        }
+        // opp_print_map_to_txtfile(cell_cell_map, "INIT_A", "cell_cell_map.dat");
 
         init_particles(part_index, part_pos, part_vel, part_mesh_rel, cell_pos_ll);
 
-        opp_printf("Setup", "Cells[%d] Particles[%d]\n", cell_set->size, part_set->size);
+        opp_printf("Setup", "Cells[%d] Particles[%d]", cell_set->size, part_set->size);
 
         opp_profiler->end("Setup");
 
@@ -118,26 +109,11 @@ int main(int argc, char **argv)
         if (OPP_rank == OPP_ROOT) 
             opp_printf("Main", "Main loop completed after %d iterations ****", max_iter);
 
-        std::string f = std::string("FINAL");
-#ifdef USE_MPI
-        f +=  std::string("_") + std::to_string(OPP_rank);
-#endif
-        opp_print_dat_to_txtfile(part_mesh_rel, f.c_str(), "part_mesh_rel.dat");
-        opp_print_dat_to_txtfile(part_pos, f.c_str(), "part_pos.dat");
+        // opp_print_dat_to_txtfile(part_mesh_rel, "FINAL", "part_mesh_rel.dat");
+        // opp_print_dat_to_txtfile(part_pos, "FINAL", "part_pos.dat");
     }
 
     opp_exit();
 
     return 0;
 }
-
-// std::string f1 = std::string("INIT_");
-// opp_print_dat_to_txtfile(part_mesh_rel, f1.c_str(), "part_mesh_rel.dat");
-// opp_print_dat_to_txtfile(part_pos, f1.c_str(), "part_pos.dat");
-// opp_print_dat_to_txtfile(part_vel, f1.c_str(), "part_vel.dat");
-// opp_print_dat_to_txtfile(cell_pos_ll, f1.c_str(), "cell_pos_ll.dat");
-// opp_print_map_to_txtfile(cell_cell_map, f1.c_str(), "cell_cell_map.dat");
-
-// std::string f = std::string("F_") + std::to_string(OPP_main_loop_iter + 1);
-// opp_print_dat_to_txtfile(part_mesh_rel, f.c_str(), "part_mesh_rel.dat");
-// opp_print_dat_to_txtfile(part_pos, f.c_str(), "part_pos.dat");

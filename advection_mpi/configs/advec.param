@@ -1,10 +1,10 @@
 # Simulation parameters
-INT max_iter = 100 
+INT max_iter = 250 
 INT nx = 32
 INT ny = 32
 REAL dt = 0.01
 REAL cell_width = 0.5
-INT n_particles = 60000
+INT n_particles = 6000000
 
 
 # System parameters

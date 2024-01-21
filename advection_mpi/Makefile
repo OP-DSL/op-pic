@@ -5,7 +5,7 @@ LIB = lib
 OBJ = obj
 BIN = bin
 
-CPP        = g++
+CPP        = mpicxx
 MPICPP	   = mpicxx
 NVCC       = nvcc
 
@@ -66,7 +66,7 @@ omp: common
 
 mpi: common
 		 $(MPICPP) $(CPPFLAGS) -DUSE_MPI -c advec_op.cpp -o $(OBJ)/advec_op.o $(ALL_INC)
-		 $(MPICPP) $(CPPFLAGS) -DUSE_MPI -DDEBUG_INTERNAL -c mpi/mpikernels.cpp -o $(OBJ)/mpikernels.o $(ALL_INC)
+		 $(MPICPP) $(CPPFLAGS) -DUSE_MPI -c mpi/mpikernels.cpp -o $(OBJ)/mpikernels.o $(ALL_INC)
 	     $(MPICPP) $(CPPFLAGS) -DUSE_MPI -o $(BIN)/mpi $(OBJ)/advec_op.o $(OBJ)/mpikernels.o $(ALL_INC) $(ALL_LIBS) -loppic_mpi
 
 mpi_hdf5: common

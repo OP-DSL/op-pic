@@ -146,5 +146,14 @@ void opp_particle_mover__Move(
 
     opp_set_dirtybit(nargs, args);
 
+#ifdef DEBUG_INTERNAL // ----------------------------------------------------------------------------
+    std::chrono::duration<double> total_diff   = std::chrono::system_clock::now() - total_start;
+    opp_printf("Move", "TotalTime: %2.15lE KernelTime: %2.15lE | total_particles: %d | \
+        particle_loops_per_comm_iter [%d %d %d %d] | comm_iteration: %d max_internal_hops: %d", 
+        (double)total_diff.count(), kernel_time, total_particles, 
+        particle_loops_per_comm_iter[0], particle_loops_per_comm_iter[1], particle_loops_per_comm_iter[2], 
+        particle_loops_per_comm_iter[3], comm_iteration, max_internal_hops);
+#endif // DEBUG_INTERNAL ----------------------------------------------------------------------------
+
     opp_profiler->end("Move");
 }
