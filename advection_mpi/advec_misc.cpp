@@ -282,6 +282,11 @@ void init_particles(opp_dat part_index, opp_dat part_pos, opp_dat part_vel, opp_
         ((OPP_INT*)part_index->data)[px]               = px; 
     }
 
+    part_pos->dirty_hd = Dirty::Device; // To make GPU versions to download updated data!
+    part_vel->dirty_hd = Dirty::Device; // To make GPU versions to download updated data!
+    part_mesh_rel->dirty_hd = Dirty::Device; // To make GPU versions to download updated data!
+    part_index->dirty_hd = Dirty::Device; // To make GPU versions to download updated data!
+
 #ifdef USE_MPI
     MPI_Barrier(MPI_COMM_WORLD);
 #endif

@@ -78,13 +78,15 @@ int main(int argc, char **argv)
 
         m->DeleteValues();
         
-        // opp_print_map_to_txtfile(cell_cell_map, "INIT_B", "cell_cell_map.dat");
 #ifdef USE_MPI
         opp_partition(std::string("EXTERNAL"), cell_set, nullptr, cell_colors);
 #endif
-        // opp_print_map_to_txtfile(cell_cell_map, "INIT_A", "cell_cell_map.dat");
-
+        
         init_particles(part_index, part_pos, part_vel, part_mesh_rel, cell_pos_ll);
+
+        // opp_print_map_to_txtfile(cell_cell_map, "INIT_A", "cell_cell_map.dat");
+        // opp_print_dat_to_txtfile(part_mesh_rel, "INIT_A", "part_mesh_rel.dat");
+        // opp_print_dat_to_txtfile(part_pos, "INIT_A", "part_pos.dat");
 
         opp_printf("Setup", "Cells[%d] Particles[%d]", cell_set->size, part_set->size);
 
