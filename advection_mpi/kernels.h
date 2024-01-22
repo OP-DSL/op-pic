@@ -39,6 +39,55 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <cmath>
 
 //*************************************************************************************************
+inline void update_pos_kernel(
+    OPP_REAL* part_vel, 
+    OPP_REAL* part_pos
+)
+{
+    for (int dm = 0; dm < DIM; dm++) {
+        
+        part_pos[dm] += part_vel[dm] * CONST_dt; // s1 = s0 + ut
+        
+        // correct for periodic boundary conditions
+        const OPP_INT n_extent_offset_int = std::abs(part_pos[dm]) + 2.0;
+        const OPP_REAL temp_pos = part_pos[dm] + n_extent_offset_int * CONST_extents[dm];
+        part_pos[dm] = std::fmod(temp_pos, CONST_extents[dm]);
+    }
+}
+
+//*************************************************************************************************
+inline opp_move_status is_point_in_current_cell_kernel(
+    OPP_INT* part_cid, 
+    const OPP_REAL* part_pos, 
+    const OPP_REAL* cell_pos_ll, 
+    const OPP_INT* cell_cell_map)
+{
+    // check for x direction movement
+    const OPP_REAL part_pos_x = part_pos[Dim::x];
+    if (part_pos_x < cell_pos_ll[Dim::x]) {
+        part_cid[0] = cell_cell_map[CellMap::xd_y];
+        return OPP_NEED_MOVE;
+    }
+    if (part_pos_x > (cell_pos_ll[Dim::x] + CONST_cell_width)) {
+        part_cid[0] = cell_cell_map[CellMap::xu_y];
+        return OPP_NEED_MOVE;
+    }
+
+    // check for y direction movement
+    const OPP_REAL part_pos_y = part_pos[Dim::y];
+    if (part_pos_y < cell_pos_ll[Dim::y]) {
+        part_cid[0] = cell_cell_map[CellMap::x_yd];
+        return OPP_NEED_MOVE;
+    }
+    if (part_pos_y > (cell_pos_ll[Dim::y] + CONST_cell_width)) {
+        part_cid[0] = cell_cell_map[CellMap::x_yu];
+        return OPP_NEED_MOVE;
+    }
+
+    return OPP_MOVE_DONE;
+}
+
+//*************************************************************************************************
 inline void push_particles_kernel(opp_move_var& m, 
     OPP_INT* part_cid, 
     OPP_REAL* part_vel, 
@@ -47,43 +96,18 @@ inline void push_particles_kernel(opp_move_var& m,
     const OPP_INT* cell_cell_map)
 {
     if (m.iteration_one) {
-        
-        for (int dm = 0; dm < DIM; dm++) {
-            
-            part_pos[dm] += part_vel[dm] * CONST_dt; // s1 = s0 + ut
-            
-            // correct for periodic boundary conditions
-            const OPP_INT n_extent_offset_int = std::abs(part_pos[dm]) + 2.0;
-            const OPP_REAL temp_pos = part_pos[dm] + n_extent_offset_int * CONST_extents[dm];
-            part_pos[dm] = std::fmod(temp_pos, CONST_extents[dm]);
-        }
+        update_pos_kernel(
+            part_vel, 
+            part_pos);
     }
 
-    // check for x direction movement
-    const OPP_REAL part_pos_x = part_pos[Dim::x];
-    if (part_pos_x < cell_pos_ll[Dim::x]) {
-        part_cid[0] = cell_cell_map[CellMap::xd_y];
-        m.move_status = OPP_NEED_MOVE;
-        return;
-    }
-    if (part_pos_x > (cell_pos_ll[Dim::x] + CONST_cell_width)) {
-        part_cid[0] = cell_cell_map[CellMap::xu_y];
-        m.move_status = OPP_NEED_MOVE;
-        return;
-    }
-
-    // check for y direction movement
-    const OPP_REAL part_pos_y = part_pos[Dim::y];
-    if (part_pos_y < cell_pos_ll[Dim::y]) {
-        part_cid[0] = cell_cell_map[CellMap::x_yd];
-        m.move_status = OPP_NEED_MOVE;
-        return;
-    }
-    if (part_pos_y > (cell_pos_ll[Dim::y] + CONST_cell_width)) {
-        part_cid[0] = cell_cell_map[CellMap::x_yu];
-        m.move_status = OPP_NEED_MOVE;
-        return;
-    }
-
-    m.move_status = OPP_MOVE_DONE;
+    m.move_status = is_point_in_current_cell_kernel(
+            part_cid,
+            part_pos, 
+            cell_pos_ll, 
+            cell_cell_map);
 }
+
+//*************************************************************************************************
+
+

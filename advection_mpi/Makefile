@@ -1,3 +1,4 @@
+# export OPPIC_PATH=/ext-home/zl/phd/neso_test/OP-PIC/lib_oppic
 
 SRC = .
 INC = .
@@ -69,12 +70,6 @@ mpi: common
 		 $(MPICPP) $(CPPFLAGS) -DUSE_MPI -c mpi/mpikernels.cpp -o $(OBJ)/mpikernels.o $(ALL_INC)
 	     $(MPICPP) $(CPPFLAGS) -DUSE_MPI -o $(BIN)/mpi $(OBJ)/advec_op.o $(OBJ)/mpikernels.o $(ALL_INC) $(ALL_LIBS) -loppic_mpi
 
-mpi_hdf5: common
-		 $(MPICPP) $(CPPFLAGS) -DUSE_MPI -c advec_op_hdf5.cpp -o $(OBJ)/advec_op_hdf5.o $(ALL_INC)
-		 $(MPICPP) $(CPPFLAGS) -DUSE_MPI -c mpi/mpikernels.cpp -o $(OBJ)/mpikernels.o $(ALL_INC)
-		 $(MPICPP) $(CPPFLAGS) -DUSE_MPI -c opp_mpi_hdf5.cpp -o $(OBJ)/opp_mpi_hdf5.o $(ALL_INC)
-	     $(MPICPP) $(CPPFLAGS) -DUSE_MPI -o $(BIN)/mpi_hdf5 $(OBJ)/advec_op_hdf5.o $(OBJ)/mpikernels.o $(OBJ)/opp_mpi_hdf5.o $(ALL_INC) $(ALL_LIBS) -loppic_mpi -lhdf5
-
 
 cuda: common
 		 $(CPP) $(CPPFLAGS) -c advec_op.cpp -o $(OBJ)/advec_op.o $(ALL_INC)
@@ -85,13 +80,6 @@ cuda_mpi: common
 		 $(MPICPP) $(CPPFLAGS) -DUSE_MPI -c advec_op.cpp -o $(OBJ)/advec_op.o $(ALL_INC)
 		 $(NVCC) $(NVCCFLAGS) -DUSE_MPI -c cuda/cudakernels.cu -o $(OBJ)/cudakernels.o $(ALL_INC) $(CUDA_INC)
 	     $(MPICPP) $(CPPFLAGS) -DUSE_MPI -o $(BIN)/cuda_mpi $(OBJ)/advec_op.o $(OBJ)/cudakernels.o $(ALL_INC) $(CUDA_INC) $(ALL_LIBS) $(CUDA_LIB) -lopp_cuda_mpi
-
-cuda_mpi_hdf5: mpi_common
-		 $(NVCC) $(NVCCFLAGS) -DUSE_MPI -c FESolver.cu -o $(OBJ)/FESolver_cu.o $(ALL_INC)	
-		 $(MPICPP) $(CPPFLAGS) -DUSE_MPI -c fempic_op_hdf5.cpp -o $(OBJ)/fempic_op_hdf5.o $(ALL_INC)
-		 $(MPICPP) $(CPPFLAGS) -DUSE_MPI -c opp_mpi_hdf5.cpp -o $(OBJ)/opp_mpi_hdf5.o $(ALL_INC)
-		 $(NVCC) $(NVCCFLAGS) -DUSE_MPI -c cuda/cudakernels.cu -o $(OBJ)/cudakernels.o $(ALL_INC) $(CUDA_INC)
-	     $(MPICPP) $(CPPFLAGS) -DUSE_MPI -o $(BIN)/cuda_mpi_hdf5 $(OBJ)/fempic_op_hdf5.o $(OBJ)/opp_mpi_hdf5.o $(OBJ)/meshes.o $(OBJ)/particles.o $(OBJ)/maths.o $(OBJ)/cudakernels.o $(OBJ)/FESolver_cu.o $(ALL_INC) $(CUDA_INC) $(ALL_LIBS) $(CUDA_LIB) -lopp_cuda_mpi -lhdf5
 
 clean: 
 	     rm -f *.o *.d *.a

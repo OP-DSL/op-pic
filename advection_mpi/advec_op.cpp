@@ -94,8 +94,9 @@ int main(int argc, char **argv)
 
         opp_profiler->start("MainLoop");
         for (OPP_main_loop_iter = 0; OPP_main_loop_iter < max_iter; OPP_main_loop_iter++) {
-        
-            opp_particle_mover__Move(
+
+#ifdef FUSE_KERNELS        
+            opp_particle_mover__UpdatePosMove(
                 part_set,
                 opp_get_arg(part_mesh_rel, OP_RW),
                 opp_get_arg(part_vel,      OP_RW),
@@ -103,6 +104,21 @@ int main(int argc, char **argv)
                 opp_get_arg(cell_pos_ll,   OP_READ, OPP_Map_from_Mesh_Rel),
                 opp_get_arg(cell_cell_map, OP_READ, OPP_Map_from_Mesh_Rel)
             );
+#else
+            opp_loop_all__UpdatePos(
+                part_set,
+                opp_get_arg(part_vel,      OP_READ),
+                opp_get_arg(part_pos,      OP_RW)
+            );
+
+            opp_particle_mover__Move(
+                part_set,
+                opp_get_arg(part_mesh_rel, OP_RW),
+                opp_get_arg(part_pos,      OP_READ),
+                opp_get_arg(cell_pos_ll,   OP_READ, OPP_Map_from_Mesh_Rel),
+                opp_get_arg(cell_cell_map, OP_READ, OPP_Map_from_Mesh_Rel)
+            );
+#endif
 
             if (OPP_rank == OPP_ROOT) opp_printf("Main", "ts: %d ****", OPP_main_loop_iter);
         }

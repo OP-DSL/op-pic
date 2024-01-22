@@ -54,7 +54,7 @@ void opp_decl_const_impl(int dim, int size, char* data, const char* name)
 #include "../kernels.h"
 
 //*************************************************************************************************
-void opp_particle_mover__Move(
+void opp_particle_mover__UpdatePosMove(
     opp_set set,        // particles_set
     opp_arg arg0,       // part_mesh_rel, OP_RW
     opp_arg arg1,       // part_vel,      OP_RW
@@ -65,7 +65,7 @@ void opp_particle_mover__Move(
 {
 
     if (OP_DEBUG) 
-        opp_printf("ADVEC", "opp_particle_mover__Move set_size %d diff %d", set->size, set->diff);
+        opp_printf("ADVEC", "opp_particle_mover__UpdatePosMove set_size %d diff %d", set->size, set->diff);
 
     opp_profiler->start("Move");
 

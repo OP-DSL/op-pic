@@ -40,6 +40,8 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
     #include <opp_mpi.h>
 #endif
 
+#define FUSE_KERNELS
+
 #define ONE                       1
 #define TWO                       2
 #define DIM                       2
@@ -74,7 +76,8 @@ enum CellMap {
     // xu_yu   
 };
 
-void opp_particle_mover__Move(
+#ifdef FUSE_KERNELS   
+void opp_particle_mover__UpdatePosMove(
     opp_set set,        // particles_set
     opp_arg arg0,       // part_mesh_rel, OP_RW
     opp_arg arg1,       // part_vel,      OP_RW
@@ -82,3 +85,18 @@ void opp_particle_mover__Move(
     opp_arg arg3,       // cell_centroid, OP_READ
     opp_arg arg4        // cell_cell_map, OP_READ
 );
+#else
+void opp_loop_all__UpdatePos(
+    opp_set set,        // particles_set
+    opp_arg arg0,       // part_vel,      OP_READ
+    opp_arg arg1        // part_pos,      OP_RW      
+);
+
+void opp_particle_mover__Move(
+    opp_set set,        // particles_set
+    opp_arg arg0,       // part_mesh_rel, OP_RW
+    opp_arg arg1,       // part_pos,      OP_READ
+    opp_arg arg2,       // cell_centroid, OP_READ
+    opp_arg arg3        // cell_cell_map, OP_READ
+);
+#endif
