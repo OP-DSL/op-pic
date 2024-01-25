@@ -74,6 +74,9 @@ class DataPointers // This is just a placeholder for initializing // No use in D
 
             for (int i = 0; i < this->n_cells * NEIGHBOURS; i++)
                 this->cell_cell_map[i] = -1;
+            
+            for (int i = 0; i < this->n_cells; i++)
+                this->c_colors[i] = 0;
         }
 
         int n_cells     = 0;
@@ -125,7 +128,6 @@ void init_mesh(std::shared_ptr<DataPointers> m) {
     OPP_REAL cell_width = opp_params->get<OPP_REAL>("cell_width");
 
     m->n_cells = (nx * ny);
-    const std::vector<int> local_counts = get_local_cell_count_array(m->n_cells);
 
     m->CreateMeshArrays();
 
@@ -140,26 +142,33 @@ void init_mesh(std::shared_ptr<DataPointers> m) {
             m->c_pos_ll[i*DIM + Dim::x] = x * cell_width;
             m->c_pos_ll[i*DIM + Dim::y] = y * cell_width;
 
-            const auto it = std::upper_bound(local_counts.begin(), local_counts.end(), i);
-            if (it != local_counts.end()) {
-                m->c_colors[i] = std::distance(local_counts.begin(), it);
-            }
-            else {
-                opp_printf("Main", "Error unable to color cell %d [%d,%d]", i, x, y);
-                m->c_colors[i] = OPP_rank;
-            } 
-
             VOXEL_MAP(x-1, y,   nx, ny, m->cell_cell_map[i * NEIGHBOURS + CellMap::xd_y]);
             VOXEL_MAP(x+1, y,   nx, ny, m->cell_cell_map[i * NEIGHBOURS + CellMap::xu_y]);
             VOXEL_MAP(x,   y-1, nx, ny, m->cell_cell_map[i * NEIGHBOURS + CellMap::x_yd]);
             VOXEL_MAP(x,   y+1, nx, ny, m->cell_cell_map[i * NEIGHBOURS + CellMap::x_yu]);
-
-            // VOXEL_MAP(x-1, y-1, nx, ny, m->cell_cell_map[i * NEIGHBOURS + CellMap::xd_yd]);
-            // VOXEL_MAP(x-1, y+1, nx, ny, m->cell_cell_map[i * NEIGHBOURS + CellMap::xd_yu]);
-            // VOXEL_MAP(x+1, y-1, nx, ny, m->cell_cell_map[i * NEIGHBOURS + CellMap::xu_yd]);
-            // VOXEL_MAP(x+1, y+1, nx, ny, m->cell_cell_map[i * NEIGHBOURS + CellMap::xu_yu]);
         }
     }
+
+// // Old Coloring, without considering dimension
+// #ifdef USE_MPI
+//     const std::vector<int> local_counts = get_local_cell_count_array(m->n_cells);
+
+// 	for (int x = 0; x < nx; x++) {
+// 		for (int y = 0; y < ny; y++) {
+ 
+//             const int i = VOXEL(x,y, nx);
+
+//             const auto it = std::upper_bound(local_counts.begin(), local_counts.end(), i);
+//             if (it != local_counts.end()) {
+//                 m->c_colors[i] = std::distance(local_counts.begin(), it);
+//             }
+//             else {
+//                 opp_printf("Main", "Error unable to color cell %d [%d,%d]", i, x, y);
+//                 m->c_colors[i] = OPP_rank;
+//             } 
+//         }
+//     }
+// #endif // USE_MPI
 
     // TODO : Sanity check : Ideally there should not be any -1 mappings
 }
@@ -312,5 +321,104 @@ void distribute_data_over_ranks(std::shared_ptr<DataPointers>& g_m, std::shared_
     
 #else
     m = g_m;
+#endif
+}
+
+//*************************************************************************************************
+// This should be moved to lib, may be to a util header file
+template <typename T>
+inline std::vector<T> reverse_argsort(const std::vector<T> &array) 
+{
+    std::vector<T> indices(array.size());
+    std::iota(indices.begin(), indices.end(), 0);
+    std::sort(indices.begin(), indices.end(),
+                [&array](int left, int right) -> bool {
+                    return array[left] > array[right];
+                });
+
+    return indices;
+}
+
+//*************************************************************************************************
+// This should be moved to lib, may be to a util header file
+template <typename T>
+void get_decomp_1d(const T N_compute_units, const T N_work_items,
+                   const T work_unit, T *rstart, T *rend) 
+{
+    const auto pq = std::div(N_work_items, N_compute_units);
+    const T i = work_unit;
+    const T p = pq.quot;
+    const T q = pq.rem;
+    const T n = (i < q) ? (p + 1) : p;
+    const T start = (MIN(i, q) * (p + 1)) + ((i > q) ? (i - q) * p : 0);
+    const T end = start + n;
+
+    *rstart = start;
+    *rend = end;
+}
+
+//*************************************************************************************************
+// This should be moved to lib, may be to opp_mpi.cpp file
+void opp_color_cart_mesh(const int ndim, const std::vector<int> cell_counts, opp_dat cell_index, 
+                            const opp_dat cell_colors)
+{
+#ifdef USE_MPI
+
+    MPI_Comm comm_cart;
+    int mpi_dims[3] = {0, 0, 0};
+    int periods[3] = {1, 1, 1};
+    int coords[3] = {0, 0, 0};
+    int cell_starts[3] = {0, 0, 0}; // Holds the first cell this rank owns in each dimension.
+    int cell_ends[3] = {1, 1, 1}; // Holds the last cell+1 this ranks owns in each dimension.
+
+    MPI_Dims_create(OPP_comm_size, ndim, mpi_dims);
+
+    std::vector<int> cell_count_ordering = reverse_argsort(cell_counts); // direction with most cells first to match mpi_dims order
+
+    std::vector<int> mpi_dims_reordered(ndim);
+    for (int dimx = 0; dimx < ndim; dimx++)  // reorder the mpi_dims to match the actual domain
+        mpi_dims_reordered[cell_count_ordering[dimx]] = mpi_dims[dimx];
+
+    MPI_Cart_create(MPI_COMM_WORLD, ndim, mpi_dims_reordered.data(), periods, 1, &comm_cart);
+    MPI_Cart_get(comm_cart, ndim, mpi_dims, periods, coords);
+
+    for (int dimx = 0; dimx < ndim; dimx++) 
+        get_decomp_1d(mpi_dims[dimx], cell_counts[dimx], coords[dimx], &cell_starts[dimx], &cell_ends[dimx]);
+
+    std::vector<int> all_cell_starts(OPP_comm_size * ndim);
+    std::vector<int> all_cell_ends(OPP_comm_size * ndim);
+
+    MPI_Allgather(cell_starts, ndim, MPI_INT, all_cell_starts.data(), ndim, MPI_INT, MPI_COMM_WORLD);
+    MPI_Allgather(cell_ends, ndim, MPI_INT, all_cell_ends.data(), ndim, MPI_INT, MPI_COMM_WORLD);
+
+    // used global id of cell and assign the color to the correct MPI rank
+    const OPP_INT* gcid = ((OPP_INT*)cell_index->data);
+    for (OPP_INT i = 0; i < cell_index->set->size; i++)
+    {
+        int coord[3] = {-1, -1 -1};
+        RANK_TO_INDEX(gcid[i], coord[0], coord[1], coord[2], cell_counts[0], cell_counts[1]);
+
+        for (int rank = 0; rank < OPP_comm_size; rank++) 
+        {
+            bool is_rank_suitable[3] = { true, true, true };
+
+            for (int dimx = 0; dimx < ndim; dimx++) 
+            {
+                if ((all_cell_starts[ndim*rank+dimx] > coord[dimx]) || 
+                    (all_cell_ends[ndim*rank+dimx] <= coord[dimx]))
+                {
+                    is_rank_suitable[dimx] = false;
+                    break;
+                }
+            }
+
+            if (is_rank_suitable[0] && is_rank_suitable[1] && is_rank_suitable[2])
+            {
+                ((OPP_INT*)cell_colors->data)[i] = rank;
+                break;
+            }
+        }
+        
+    }
 #endif
 }

@@ -79,6 +79,9 @@ int main(int argc, char **argv)
         m->DeleteValues();
         
 #ifdef USE_MPI
+        std::vector<int> counts = { opp_params->get<OPP_INT>("nx"), opp_params->get<OPP_INT>("ny") };
+        opp_color_cart_mesh(DIM, counts, cell_index, cell_colors);
+
         opp_partition(std::string("EXTERNAL"), cell_set, nullptr, cell_colors);
 #endif
         
