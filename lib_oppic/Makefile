@@ -143,6 +143,21 @@ cuda_mpi: mklib
 		 $(NVCC) $(NVCCFLAGS) -DUSE_MPI -DUSE_THRUST -c $(SRC)/cuda/opp_cuda_halo.cu -o $(OBJ)/opp_cuda_halo.o $(OPP_INC) $(PETSC_INC) $(CUDA_INC)
 		 $(NVCC) $(NVCCFLAGS) -DUSE_MPI -DUSE_THRUST -c $(SRC)/cuda/opp_particle_sorter.cu -o $(OBJ)/particle_sorter_cuda.o $(OPP_INC) $(PETSC_INC) $(CUDA_INC)
 	     ar -r $(LIB)/libopp_cuda_mpi.a $(OBJ)/oppic_lib_core.o $(OBJ)/oppic_util.o $(OBJ)/opp_params.o $(OBJ)/opp_mpi_halo_core.o $(OBJ)/opp_mpi_partition.o $(OBJ)/opp_mpi_core.o $(OBJ)/opp_mpi_particle_comm.o $(OBJ)/opp_mpi_double_ind_reducs.o $(OBJ)/opp_mpi_utils.o $(OBJ)/opp_cuda.o $(OBJ)/opp_cuda_halo.o $(OBJ)/particle_sorter_cuda.o				 
+
+hip_mpi: mklib
+	     $(HIPCC) $(HIPCCFLAGS) -DUSE_MPI -DUSE_THRUST -c $(SRC)/core/oppic_lib_core.cpp -o $(OBJ)/oppic_lib_core.o $(OPP_INC) $(PETSC_INC) $(HIP_INC)
+	     $(HIPCC) $(HIPCCFLAGS) -DUSE_MPI -DUSE_THRUST -c $(SRC)/core/oppic_util.cpp -o $(OBJ)/oppic_util.o $(OPP_INC) $(PETSC_INC) $(HIP_INC)
+		 $(HIPCC) $(HIPCCFLAGS) -DUSE_MPI -DUSE_THRUST -c $(SRC)/core/opp_params.cpp -o $(OBJ)/opp_params.o $(OPP_INC) $(PETSC_INC) $(HIP_INC)
+		 $(HIPCC) $(HIPCCFLAGS) -DUSE_MPI -DUSE_THRUST -c $(SRC)/mpi/opp_mpi_halo_core.cpp -o $(OBJ)/opp_mpi_halo_core.o $(OPP_INC) $(PETSC_INC) $(HIP_INC)
+		 $(HIPCC) $(HIPCCFLAGS) -DUSE_MPI -DUSE_THRUST -c $(SRC)/mpi/opp_mpi_partition.cpp -o $(OBJ)/opp_mpi_partition.o $(OPP_INC) $(PETSC_INC) $(HIP_INC)
+		 $(HIPCC) $(HIPCCFLAGS) -DUSE_MPI -DUSE_THRUST -c $(SRC)/mpi/opp_mpi_core.cpp -o $(OBJ)/opp_mpi_core.o $(OPP_INC) $(PETSC_INC) $(HIP_INC)
+		 $(HIPCC) $(HIPCCFLAGS) -DUSE_MPI -DUSE_THRUST -c $(SRC)/mpi/opp_mpi_particle_comm.cpp -o $(OBJ)/opp_mpi_particle_comm.o $(OPP_INC) $(PETSC_INC) $(HIP_INC)
+		 $(HIPCC) $(HIPCCFLAGS) -DUSE_MPI -DUSE_THRUST -c $(SRC)/mpi/opp_mpi_double_ind_reducs.cpp -o $(OBJ)/opp_mpi_double_ind_reducs.o $(OPP_INC) $(PETSC_INC) $(HIP_INC)
+		 $(HIPCC) $(HIPCCFLAGS) -DUSE_MPI -DUSE_THRUST -c $(SRC)/mpi/opp_mpi_utils.cpp -o $(OBJ)/opp_mpi_utils.o $(OPP_INC) $(PETSC_INC) $(HIP_INC)
+	     $(HIPCC) $(HIPCCFLAGS) -DUSE_MPI -DUSE_THRUST -c $(SRC)/hip/opp_hip.cpp -o $(OBJ)/opp_hip.o $(OPP_INC) $(PETSC_INC) $(HIP_INC)
+		 $(HIPCC) $(HIPCCFLAGS) -DUSE_MPI -DUSE_THRUST -c $(SRC)/hip/opp_hip_halo.cpp -o $(OBJ)/opp_hip_halo.o $(OPP_INC) $(PETSC_INC) $(HIP_INC)
+		 $(HIPCC) $(HIPCCFLAGS) -DUSE_MPI -DUSE_THRUST -c $(SRC)/hip/opp_particle_sorter.cpp -o $(OBJ)/particle_sorter_hip.o $(OPP_INC) $(PETSC_INC) $(HIP_INC)
+	     ar -r $(LIB)/libopp_hip_mpi.a $(OBJ)/oppic_lib_core.o $(OBJ)/oppic_util.o $(OBJ)/opp_params.o $(OBJ)/opp_mpi_halo_core.o $(OBJ)/opp_mpi_partition.o $(OBJ)/opp_mpi_core.o $(OBJ)/opp_mpi_particle_comm.o $(OBJ)/opp_mpi_double_ind_reducs.o $(OBJ)/opp_mpi_utils.o $(OBJ)/opp_hip.o $(OBJ)/opp_hip_halo.o $(OBJ)/particle_sorter_hip.o				 
 		 
 clean: 
 	     rm -f *.o *.d *.a

@@ -97,6 +97,11 @@ hip: mklib
 		 $(HIPCC) $(HIPCCFLAGS) -c hip/hipkernels.cpp -o $(OBJ)/hipkernels.o $(ALL_INC) $(HIP_INC)
 	     $(HIPCC) $(HIPCCFLAGS) -o $(BIN)/hip $(OBJ)/advec_op.o $(OBJ)/hipkernels.o $(ALL_INC) $(HIP_INC) $(ALL_LIBS) -lopp_hip
 
+hip_mpi: common
+		 $(HIPCC) $(HIPCCFLAGS) -DUSE_MPI -c advec_op.cpp -o $(OBJ)/advec_op.o $(ALL_INC) $(HIP_INC)
+		 $(HIPCC) $(HIPCCFLAGS) -DUSE_MPI -c hip/hipkernels.cpp -o $(OBJ)/hipkernels.o $(ALL_INC) $(HIP_INC)
+	     $(HIPCC) $(HIPCCFLAGS) -DUSE_MPI -o $(BIN)/hip_mpi $(OBJ)/advec_op.o $(OBJ)/hipkernels.o $(ALL_INC) $(HIP_INC) $(ALL_LIBS) -lopp_hip_mpi -lmpi
+
 clean: 
 	     rm -f *.o *.d *.a
 	     rm -f $(OBJ)/*
