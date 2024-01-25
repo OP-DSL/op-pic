@@ -1,4 +1,4 @@
-#include "hip/hip_runtime.h"
+
 /* 
 BSD 3-Clause License
 
@@ -34,6 +34,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 // AUTO GENERATED CODE
 //*********************************************
 
+#include "hip/hip_runtime.h"
 
 //user function
 //*************************************************************************************************
@@ -42,17 +43,17 @@ __device__ void compute_node_charge_density__kernel_gpu(
     const double *node_volume
 )
 {
-    (*node_charge_density) *= (CONST_spwt_cuda / (*node_volume));
+    (*node_charge_density) *= (CONST_spwt_device / (*node_volume));
 }
 
-// CUDA kernel function
+// DEVICE kernel function
 //*************************************************************************************************
-__global__ void oppic_cuda_ComputeNodeChargeDensity(
+__global__ void opp_device_ComputeNodeChargeDensity(
     double *__restrict dir_arg0,
     const double *__restrict dir_arg1,
     int start,
     int end
-    ) 
+) 
 {
     int tid = threadIdx.x + blockIdx.x * blockDim.x;
 
@@ -60,6 +61,7 @@ __global__ void oppic_cuda_ComputeNodeChargeDensity(
     {
         int n = tid + start;
 
+        //user-supplied kernel call
         compute_node_charge_density__kernel_gpu(
             (dir_arg0 + n),
             (dir_arg1 + n)
@@ -68,19 +70,25 @@ __global__ void oppic_cuda_ComputeNodeChargeDensity(
 }
 
 //*************************************************************************************************
-void oppic_par_loop_all__ComputeNodeChargeDensity(
-    oppic_set set,     // nodes_set
-    oppic_arg arg0,    // node_charge_density
-    oppic_arg arg1     // node_volume
+void opp_loop_all__ComputeNodeChargeDensity(
+    opp_set set,     // nodes_set
+    opp_arg arg0,    // node_charge_density
+    opp_arg arg1     // node_volume
 )
 { 
     
-    if (FP_DEBUG) printf("FEMPIC - oppic_par_loop_all__ComputeNodeChargeDensity set_size %d\n", set->size);
+    if (FP_DEBUG) opp_printf("FEMPIC", "opp_loop_all__ComputeNodeChargeDensity set_size %d", set->size);
 
-    const int nargs = 4;
-    oppic_arg args[nargs] = { arg0, arg1 };
+    opp_profiler->start("ComputeNodeChargeDensity");
 
-    int set_size = oppic_mpi_halo_exchanges_grouped(set, nargs, args, Device_GPU);
+    int nargs = 2;
+    opp_arg args[nargs];
+
+    args[0] = std::move(arg0);
+    args[1] = std::move(arg1);
+
+    int set_size = opp_mpi_halo_exchanges_grouped(set, nargs, args, Device_GPU);
+    opp_mpi_halo_wait_all(nargs, args);
     if (set_size > 0) 
     {
         int start = 0;
@@ -88,27 +96,19 @@ void oppic_par_loop_all__ComputeNodeChargeDensity(
 
         if (end - start > 0) 
         {
-            // int nthread = GPU_THREADS_PER_BLOCK;
-            int nthread = opp_params->get<INT>("opp_threads_per_block");
+            int nthread = OPP_gpu_threads_per_block;
             int nblocks  = (end - start - 1) / nthread + 1;
 
-            // oppic_cuda_ComputeNodeChargeDensity <<<nblocks, nthread>>> (
-            //     (double *)  arg0.data_d,
-            //     (double *)  arg1.data_d,
-            //     start, 
-            //     end);
-
-            hipLaunchKernelGGL(oppic_cuda_ComputeNodeChargeDensity, 
-                dim3(nblocks),
-                dim3(nthread),
-                0, 0,
-                (double *)  arg0.data_d,
-                (double *)  arg1.data_d,
+            opp_device_ComputeNodeChargeDensity <<<nblocks, nthread>>> (
+                (double *)  args[0].data_d,
+                (double *)  args[1].data_d,
                 start, 
                 end);
         } 
 
-        oppic_mpi_set_dirtybit_grouped(nargs, args, Device_GPU);
+        opp_set_dirtybit_grouped(nargs, args, Device_GPU);
         cutilSafeCall(hipDeviceSynchronize());       
     }
+
+    opp_profiler->end("ComputeNodeChargeDensity");
 }

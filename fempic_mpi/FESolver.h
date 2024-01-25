@@ -35,7 +35,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 // USER WRITTEN CODE
 //*********************************************
 
-#include <oppic_lib.h>
+#include "oppic_lib.h"
 #include "fempic_defs.h"
 #include "fempic_ori/meshes.h"
 #include "fempic_ori/maths.h"

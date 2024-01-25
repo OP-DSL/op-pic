@@ -30,7 +30,7 @@ OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-#include <opp_mpi.h>
+#include "opp_mpi.h"
 #include "opp_hdf5.h"
 
 #include "opp_hdf5_common.cpp"

@@ -9,36 +9,47 @@ BIN = bin
 CPP        = mpicxx
 MPICPP	   = mpicxx
 NVCC       = nvcc
+HIPCC      = hipcc
 
 CPPFLAGS   = -std=c++14 -Wall -fPIC 
 NVCCFLAGS  = -m64 -Xptxas -dlcm=ca -Xptxas=-v $(NVCCFLAGS_ADD)
+HIPCCFLAGS = -std=c++17 -Wall -isystem -D__HIP_PLATFORM_AMD__
 
 DEBUG ?= 0
 ifeq ($(DEBUG), 1)
 	CPPFLAGS   += -O0 -g
 	NVCCFLAGS  += -O0 -g -lineinfo
+	HIPCCFLAGS += -O0 -g -lineinfo
 	DEBUG_LOG   = 1
 else
 	CPPFLAGS   += -O3 -g
 	NVCCFLAGS  += -O3 -g
+	HIPCCFLAGS += -O3 -g
 endif
 
 DEBUG_LOG ?= 0
 ifeq ($(DEBUG_LOG), 1)
 	CPPFLAGS   += -DDEBUG_LOG
 	NVCCFLAGS  += -DDEBUG_LOG
+	HIPCCFLAGS += -DDEBUG_LOG
 endif
 
 IEEE ?= 0
 ifeq ($(IEEE), 1)
 	CPPFLAGS   += -fp-model strict -fp-model source -prec-div -prec-sqrt
 	NVCCFLAGS  += -fmad=false -ftz=false -prec-div=true -prec-sqrt=true
+	HIPCCFLAGS  += -fmad=false -ftz=false -prec-div=true -prec-sqrt=true
 endif
 
 CUDA ?= 1
 ifeq ($(CUDA), 1)
 	CUDA_INC   = -I$(CUDA_INSTALL_PATH)/include
 	CUDA_LIB   = -L$(CUDA_INSTALL_PATH)/lib64 -lcudart -lcuda
+endif
+
+HIP ?= 1
+ifeq ($(HIP), 1)
+	HIP_INC   = -I$(ROCM_INSTALL_DIR)/include -I$(ROCM_THRUST_DIR)/include -I$(ROCM_PRIM_DIR)/include
 endif
 
 ALL_INC    += -I$(OPPIC_PATH)/include
@@ -77,9 +88,14 @@ cuda: common
 	     $(CPP) $(CPPFLAGS) -o $(BIN)/cuda $(OBJ)/advec_op.o $(OBJ)/cudakernels.o $(ALL_INC) $(CUDA_INC) $(ALL_LIBS) $(CUDA_LIB) -lopp_cuda
 
 cuda_mpi: common
-		 $(MPICPP) $(CPPFLAGS) -DUSE_MPI -c advec_op.cpp -o $(OBJ)/advec_op.o $(ALL_INC)
+		 $(MPICPP) $(CPPFLAGS) -DUSE_MPI -c advec_op.cpp -o $(OBJ)/advec_op.o $(ALL_INC) $(CUDA_INC)
 		 $(NVCC) $(NVCCFLAGS) -DUSE_MPI -c cuda/cudakernels.cu -o $(OBJ)/cudakernels.o $(ALL_INC) $(CUDA_INC)
 	     $(MPICPP) $(CPPFLAGS) -DUSE_MPI -o $(BIN)/cuda_mpi $(OBJ)/advec_op.o $(OBJ)/cudakernels.o $(ALL_INC) $(CUDA_INC) $(ALL_LIBS) $(CUDA_LIB) -lopp_cuda_mpi
+
+hip: mklib
+		 $(HIPCC) $(HIPCCFLAGS) -c advec_op.cpp -o $(OBJ)/advec_op.o $(ALL_INC) $(HIP_INC)
+		 $(HIPCC) $(HIPCCFLAGS) -c hip/hipkernels.cpp -o $(OBJ)/hipkernels.o $(ALL_INC) $(HIP_INC)
+	     $(HIPCC) $(HIPCCFLAGS) -o $(BIN)/hip $(OBJ)/advec_op.o $(OBJ)/hipkernels.o $(ALL_INC) $(HIP_INC) $(ALL_LIBS) -lopp_hip
 
 clean: 
 	     rm -f *.o *.d *.a

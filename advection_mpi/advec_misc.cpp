@@ -250,6 +250,9 @@ inline void uniform_within_cartesian_cells(const OPP_REAL* cell_pos_ll, const OP
 void init_particles(opp_dat part_index, opp_dat part_pos, opp_dat part_vel, opp_dat part_mesh_rel, 
                     opp_dat cell_pos_ll) 
 {
+    if (OPP_rank == OPP_ROOT)
+        opp_printf("Setup", "Init particles START");
+
     OPP_INT nx          = opp_params->get<OPP_INT>("nx");
     OPP_INT ny          = opp_params->get<OPP_INT>("ny");
     OPP_INT n_particles = opp_params->get<OPP_INT>("n_particles");
@@ -299,6 +302,9 @@ void init_particles(opp_dat part_index, opp_dat part_pos, opp_dat part_vel, opp_
 #ifdef USE_MPI
     MPI_Barrier(MPI_COMM_WORLD);
 #endif
+
+    if (OPP_rank == OPP_ROOT)
+        opp_printf("Setup", "Init particles END");
 }
 
 //*************************************************************************************************

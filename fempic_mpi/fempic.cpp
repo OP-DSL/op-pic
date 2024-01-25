@@ -33,7 +33,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 // USER WRITTEN CODE
 //*********************************************
 
-#include <oppic_seq.h>
+#include "oppic_seq.h"
 #include "fempic.h"
 #include "kernels.h"
 

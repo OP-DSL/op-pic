@@ -21,7 +21,7 @@ HIPCC      = hipcc
 
 CPPFLAGS   = -std=c++14 -Wall -fPIC
 NVCCFLAGS  = -m64 -Xptxas -dlcm=ca -Xptxas=-v $(NVCCFLAGS_ADD)
-HIPCCFLAGS = -std=c++11 -isystem -D__HIP_PLATFORM_NVIDIA__ $(NVCCFLAGS_ADD)
+HIPCCFLAGS = -std=c++17 -isystem -D__HIP_PLATFORM_AMD__ $(NVCCFLAGS_ADD)
 
 DEBUG ?= 0
 ifeq ($(DEBUG), 1)
@@ -53,6 +53,7 @@ PETSC ?= 1
 ifeq ($(PETSC), 1)
 	CPPFLAGS   += -DUSE_PETSC
 	NVCCFLAGS += -DUSE_PETSC
+	HIPCCFLAGS += -DUSE_PETSC
 	PETSC_INC  = -I$(PETSC_INSTALL_PATH)/include
 endif
 
@@ -61,7 +62,7 @@ ifeq ($(CUDA), 1)
 	CUDA_INC   = -I$(CUDA_INSTALL_PATH)/include
 endif
 
-HIP ?= 0
+HIP ?= 1
 ifeq ($(HIP), 1)
 	HIP_INC   = -I$(ROCM_INSTALL_DIR)/include -I$(ROCM_THRUST_DIR)/include -I$(ROCM_PRIM_DIR)/include
 endif
@@ -106,12 +107,13 @@ cuda: mklib
 	     ar -r $(LIB)/libopp_cuda.a $(OBJ)/oppic_lib_core.o $(OBJ)/oppic_util.o $(OBJ)/opp_params.o $(OBJ)/opp_cuda.o $(OBJ)/particle_sorter_cuda.o $(OBJ)/opp_cuda_halo.o
 
 hip: mklib
-	     $(HIPCC) $(HIPCCFLAGS) -DUSE_THRUST -c $(SRC)/hip/oppic_hip.cpp -o $(OBJ)/oppic_hip.o $(CUDA_INC) $(HIP_INC) $(OPP_INC) $(PETSC_INC)
-		 $(HIPCC) $(HIPCCFLAGS) -DUSE_THRUST -c $(SRC)/hip/particle_sorter.cpp -o $(OBJ)/particle_sorter_hip.o $(HIP_INC) $(OPP_INC) $(PETSC_INC) $(CUDA_INC)
-	     $(HIPCC) $(HIPCCFLAGS) -DUSE_THRUST -c $(SRC)/core/oppic_lib_core.cpp -o $(OBJ)/oppic_lib_core.o $(OPP_INC) $(PETSC_INC) $(HIP_INC) $(CUDA_INC)
-	     $(HIPCC) $(HIPCCFLAGS) -DUSE_THRUST -c $(SRC)/core/oppic_util.cpp -o $(OBJ)/oppic_util.o $(OPP_INC) $(PETSC_INC) $(HIP_INC) $(CUDA_INC)
-		 $(HIPCC) $(HIPCCFLAGS) -DUSE_THRUST -c $(SRC)/core/opp_params.cpp -o $(OBJ)/opp_params.o $(OPP_INC) $(PETSC_INC) $(HIP_INC) $(CUDA_INC)
-	     ar -r $(LIB)/liboppic_hip.a $(OBJ)/oppic_lib_core.o $(OBJ)/oppic_util.o $(OBJ)/opp_params.o $(OBJ)/oppic_hip.o $(OBJ)/particle_sorter_hip.o
+	     $(HIPCC) $(HIPCCFLAGS) -DUSE_THRUST -c $(SRC)/core/oppic_lib_core.cpp -o $(OBJ)/oppic_lib_core.o $(OPP_INC) $(PETSC_INC) $(HIP_INC)
+	     $(HIPCC) $(HIPCCFLAGS) -DUSE_THRUST -c $(SRC)/core/oppic_util.cpp -o $(OBJ)/oppic_util.o $(OPP_INC) $(PETSC_INC) $(HIP_INC)
+		 $(HIPCC) $(HIPCCFLAGS) -DUSE_THRUST -c $(SRC)/core/opp_params.cpp -o $(OBJ)/opp_params.o $(OPP_INC) $(PETSC_INC) $(HIP_INC)
+	     $(HIPCC) $(HIPCCFLAGS) -DUSE_THRUST -c $(SRC)/hip/opp_hip.cpp -o $(OBJ)/opp_hip.o $(OPP_INC) $(PETSC_INC) $(HIP_INC)
+		 $(HIPCC) $(HIPCCFLAGS) -DUSE_THRUST -c $(SRC)/hip/opp_particle_sorter.cpp -o $(OBJ)/particle_sorter_hip.o $(OPP_INC) $(PETSC_INC) $(HIP_INC)
+		 $(HIPCC) $(HIPCCFLAGS) -DUSE_THRUST -c $(SRC)/hip/opp_hip_halo.cpp -o $(OBJ)/opp_hip_halo.o $(OPP_INC) $(PETSC_INC) $(HIP_INC)
+	     ar -r $(LIB)/libopp_hip.a $(OBJ)/oppic_lib_core.o $(OBJ)/oppic_util.o $(OBJ)/opp_params.o $(OBJ)/opp_hip.o $(OBJ)/particle_sorter_hip.o $(OBJ)/opp_hip_halo.o
 
 mpi: mklib
 	     $(CPP) $(CPPFLAGS) -DUSE_MPI -c $(SRC)/core/oppic_lib_core.cpp -o $(OBJ)/oppic_lib_core.o $(OPP_INC) $(PETSC_INC)

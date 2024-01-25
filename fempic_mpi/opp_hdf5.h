@@ -34,7 +34,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <hdf5.h>
 #include <H5FDmpio.h>
-#include <oppic_lib.h>
+#include "oppic_lib.h"
 
 opp_set opp_decl_mesh_set_hdf5(char const *file, char const *name);
 opp_map opp_decl_mesh_map_hdf5(opp_set from, opp_set to, int dim, char const *file, char const *name);

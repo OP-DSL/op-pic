@@ -1,3 +1,4 @@
+#include "hip/hip_runtime.h"
 /* 
 BSD 3-Clause License
 
@@ -34,12 +35,24 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //*********************************************
 
 #include "FESolver.h"
+#include "opp_hip.h"
 
 #define is_neq(a, b) ((a) != (b))
 
 #define SCALLING 100
+#define USE_HIP
 
 bool print_petsc = false;
+
+__constant__ double l_DEVICE_CONST[2];
+__constant__ double W_DEVICE_CONST[2];
+__constant__ int n_int_DEVICE_CONST;
+
+__constant__ double QE_DEVICE_CONST;
+__constant__ double EPS0_DEVICE_CONST;
+__constant__ double n0_DEVICE_CONST;
+__constant__ double phi0_DEVICE_CONST;
+__constant__ double kTe_DEVICE_CONST;
 
 #ifdef USE_PETSC
 //*************************************************************************************************
@@ -60,11 +73,6 @@ FESolver::FESolver(
 {
     if (OP_DEBUG) opp_printf("FESolver", "FESolver");
 
-    if      (opp_params->get<OPP_STRING>("fesolver_method") == "nonlinear") fesolver_method = NonLinear;
-    else if (opp_params->get<OPP_STRING>("fesolver_method") == "gaussseidel") fesolver_method = GaussSeidel;
-    else if (opp_params->get<OPP_STRING>("fesolver_method") == "lapack") fesolver_method = Lapack;
-    else if (opp_params->get<OPP_STRING>("fesolver_method") == "petsc") fesolver_method = Petsc;  
-    
     // opp_printf("FESolver", "n_nodes_set %d | n_nodes_inc_halo %d | n_elements_set %d | n_elements_inc_halo %d", 
     //     n_nodes_set, n_nodes_inc_halo, n_elements_set, n_elements_inc_halo);
 
@@ -90,7 +98,7 @@ FESolver::FESolver(
     tempNEQ1 = new double[neq];
     tempNEQ2 = new double[neq];
     tempNEQ3 = new double[neq];
-
+    
     for (int n=0;n<neq;n++) 
     {
         dLocal[n] = 0;                 /*initial guess*/
@@ -114,11 +122,52 @@ FESolver::FESolver(
     }
 
     sanityCheck();
+
+#ifdef USE_HIP
+    neqNBlocks            = (neq - 1) / OPP_gpu_threads_per_block + 1;
+    nodesNBlocks          = (n_nodes_set - 1) / OPP_gpu_threads_per_block + 1;
+    nodes_inc_haloNBlocks = (n_nodes_inc_halo - 1) / OPP_gpu_threads_per_block + 1;
+    cells_inc_haloNBlocks = (n_elements_inc_halo - 1) / OPP_gpu_threads_per_block + 1;
+
+    cutilSafeCall(hipMalloc(&dLocal_d, neq * sizeof(double)));
+    cutilSafeCall(hipMalloc(&f1Local_d, neq * sizeof(double)));
+    cutilSafeCall(hipMalloc(&tempNEQ1_d, neq * sizeof(double))); // Assigned, no need to init here
+    cutilSafeCall(hipMalloc(&tempNEQ2_d, neq * sizeof(double))); // Assigned, no need to init here
+    cutilSafeCall(hipMalloc(&tempNEQ3_d, neq * sizeof(double))); // Assigned, no need to init here
+    cutilSafeCall(hipMalloc(&detJ_d, n_elements_inc_halo * sizeof(double)));
+    cutilSafeCall(hipMalloc(&node_to_eq_map_d, n_nodes_inc_halo * sizeof(int)));
+
+    cutilSafeCall(hipMemcpy(dLocal_d, dLocal, neq * sizeof(double), hipMemcpyHostToDevice));
+    cutilSafeCall(hipMemcpy(f1Local_d, f1Local, neq * sizeof(double), hipMemcpyHostToDevice));
+    cutilSafeCall(hipMemcpy(detJ_d, detJ, n_elements_inc_halo * sizeof(double), hipMemcpyHostToDevice));
+    cutilSafeCall(hipMemcpy(node_to_eq_map_d, node_to_eq_map, n_nodes_inc_halo * sizeof(int), 
+                                hipMemcpyHostToDevice));
+
+    cutilSafeCall(hipMemcpyToSymbol(HIP_SYMBOL(l_DEVICE_CONST), l, sizeof(double) * 2));
+    cutilSafeCall(hipMemcpyToSymbol(HIP_SYMBOL(W_DEVICE_CONST), W, sizeof(double) * 2));
+    cutilSafeCall(hipMemcpyToSymbol(HIP_SYMBOL(n_int_DEVICE_CONST), &n_int, sizeof(int)));
+
+    cutilSafeCall(hipMemcpyToSymbol(HIP_SYMBOL(QE_DEVICE_CONST), &QE, sizeof(double)));
+    cutilSafeCall(hipMemcpyToSymbol(HIP_SYMBOL(EPS0_DEVICE_CONST), &EPS0, sizeof(double)));
+    cutilSafeCall(hipMemcpyToSymbol(HIP_SYMBOL(n0_DEVICE_CONST), &n0, sizeof(double)));
+    cutilSafeCall(hipMemcpyToSymbol(HIP_SYMBOL(phi0_DEVICE_CONST), &phi0, sizeof(double)));
+    cutilSafeCall(hipMemcpyToSymbol(HIP_SYMBOL(kTe_DEVICE_CONST), &kTe, sizeof(double)));
+#endif
 }
 
 //*************************************************************************************************
 FESolver::~FESolver() 
 {
+#ifdef USE_HIP
+    if (dLocal_d != NULL) cutilSafeCall(hipFree(dLocal_d));
+    if (f1Local_d != NULL) cutilSafeCall(hipFree(f1Local_d));
+    if (tempNEQ1_d != nullptr) cutilSafeCall(hipFree(tempNEQ1_d));
+    if (tempNEQ2_d != nullptr) cutilSafeCall(hipFree(tempNEQ2_d));
+    if (tempNEQ3_d != nullptr) cutilSafeCall(hipFree(tempNEQ3_d));
+    if (detJ_d != nullptr) cutilSafeCall(hipFree(detJ_d));
+    if (node_to_eq_map_d != nullptr) cutilSafeCall(hipFree(node_to_eq_map_d));
+#endif
+
     for (int e = 0; e < n_elements_inc_halo; e++) 
     {
         for (int a=0;a<4;a++) 
@@ -350,290 +399,273 @@ void FESolver::preAssembly(oppic_map cell_to_nodes_map, oppic_dat node_bnd_pot)
 }
 
 //*************************************************************************************************
-void FESolver::buildF1Vector(double *ion_den) 
+__global__ void initBuildF1VectorKernel(const int* node_to_eq_map_d, const double* dLocal_d, 
+                                            const double* ion_den_d, double* tempNEQ1_d, const int n_nodes_inc_halo) 
 {
-    double Na = 0.0;
-    double fe[4];
-    double ff = 0.0;
+    int tid = blockIdx.x * blockDim.x + threadIdx.x;
 
-    for (int n = 0; n < n_nodes_inc_halo; n++) 
-    {
-        const int A = node_to_eq_map[n];
-        if (A<0) continue;    /*is this a non-boundary node?*/
-        
-        tempNEQ1[A] = (QE/EPS0)*((ion_den[n]) + n0*exp((dLocal[A]-phi0)/kTe));
+    if (tid < n_nodes_inc_halo) {
+        const int A = node_to_eq_map_d[tid];
+        if (A >= 0) {
+            tempNEQ1_d[A] = (QE_DEVICE_CONST / EPS0_DEVICE_CONST) * 
+                             (ion_den_d[tid] + n0_DEVICE_CONST * exp((dLocal_d[A] - phi0_DEVICE_CONST) / kTe_DEVICE_CONST));
+        }
     }
+}
 
-    for (int e = 0; e < n_elements_inc_halo; e++) 
+//*************************************************************************************************
+__global__ void computeF1VectorValuesKernel(const int n_elements_inc_halo, const int* cell_to_nodes_map_d,  
+                    const int* node_to_eq_map_d, const double* tempNEQ1_d, double* f1Local_d, const double* detJ_d, const int stride) 
+{
+    int e = blockIdx.x * blockDim.x + threadIdx.x;
+
+    if (e < n_elements_inc_halo) 
     {
-        for (int a=0; a<4; a++) 
-        {
-            // IDEA : F1vec will be enriched only for the own range (owner compute),
-            // hence import halo region calculation is not required here. is it correct?
-            const int node_idx = cell_to_nodes_map->map[e * cell_to_nodes_map->dim + a];
-            const int A = node_to_eq_map[node_idx]; 
-            if (A>=0)    /*if unknown node*/ 
-            {
+        double Na = 0.0;
+        double fe[4];
+        double ff = 0.0;
+
+        for (int a = 0; a < 4; a++) {
+            const int node_idx = cell_to_nodes_map_d[e + stride * a];  // Assuming 4 nodes per element
+            const int A = node_to_eq_map_d[node_idx];
+
+            if (A >= 0) {
                 ff = 0.0;
 
-                /*perform quadrature*/
-                for (int k=0;k<n_int;k++) 
-                {
-                    for (int j=0;j<n_int;j++)
-                    {
-                        for (int i=0;i<n_int;i++) 
-                        {
-                            switch(a) // evalNa
-                            {
-                                case 0: Na = 0.5*(l[i]+1); break;
-                                case 1: Na = 0.5*(l[j]+1); break;
-                                case 2: Na = 0.5*(l[k]+1); break;
-                                case 3: Na = 1 - 0.5*(l[i]+1) - 0.5*(l[j]+1) - 0.5*(l[k]+1); break; 
-                                default: Na = 0;  
+                for (int k = 0; k < n_int_DEVICE_CONST; k++) {
+                    for (int j = 0; j < n_int_DEVICE_CONST; j++) {
+                        for (int i = 0; i < n_int_DEVICE_CONST; i++) {
+                            switch (a) {
+                                case 0: Na = 0.5 * (l_DEVICE_CONST[i] + 1); break;
+                                case 1: Na = 0.5 * (l_DEVICE_CONST[j] + 1); break;
+                                case 2: Na = 0.5 * (l_DEVICE_CONST[k] + 1); break;
+                                case 3: Na = 1 - 0.5 * (l_DEVICE_CONST[i] + 1) - 0.5 * (l_DEVICE_CONST[j] + 1) 
+                                                    - 0.5 * (l_DEVICE_CONST[k] + 1); break;
+                                default: Na = 0;
                             }
 
-                            ff += tempNEQ1[A]*Na*detJ[e]*W[i]*W[j]*W[k];
+                            ff += tempNEQ1_d[A] * Na * detJ_d[e] * W_DEVICE_CONST[i] * W_DEVICE_CONST[j] * W_DEVICE_CONST[k];
                         }
                     }
                 }
 
-                ff *= (1.0/8.0);    /*change of limits*/
+                ff *= (1.0 / 8.0);
                 fe[a] = ff;
             }
         }
 
-        for (int a=0;a<4;a++)    /*tetrahedra*/ 
-        {
-            const int node_idx = cell_to_nodes_map->map[e * cell_to_nodes_map->dim + a];
-            const int P = node_to_eq_map[node_idx]; 
-            if (P<0) continue;    /* skip g nodes or on a different rank (owner compute)*/
-            
-            f1Local[P] += fe[a];
+        for (int a = 0; a < 4; a++) {
+            const int node_idx = cell_to_nodes_map_d[e + stride * a];
+            const int P = node_to_eq_map_d[node_idx];
+
+            if (P >= 0) {
+                atomicAdd(&f1Local_d[P], fe[a]);
+            }
         }
     }
-
-    VecSetValues(F1vec, neq, vecCol, f1Local, INSERT_VALUES);
-    VecAssemblyBegin(F1vec); VecAssemblyEnd(F1vec);
 }
 
 //*************************************************************************************************
-void FESolver::buildJmatrix() 
-{ 
-    for (int n=0;n<neq;n++) {
-        tempNEQ2[n] = 0;
-        tempNEQ3[n] = -QE/EPS0*n0*exp((dLocal[n]-phi0)/kTe)*(1/kTe);
-    }
-    
-    double fe[4];  /*build fprime vector*/
-    double Na = 0.0;
+void FESolver::buildF1Vector(double *ion_den_d) 
+{
 
-    for (int e = 0; e < n_elements_inc_halo; e++) 
+}
+
+//*************************************************************************************************
+__global__ void initBuildJmatrixKernel(double *f2_d, double *f3_d, const double *d_d, const int neq)
+{
+    int tid = blockIdx.x * blockDim.x + threadIdx.x;
+
+    if (tid < neq)
     {
-        for (int a=0;a<4;a++) 
-        {
-            double ff=0;
+        f2_d[tid] = 0.0;
+        f3_d[tid] = -QE_DEVICE_CONST / EPS0_DEVICE_CONST * n0_DEVICE_CONST * 
+                        exp((d_d[tid] - phi0_DEVICE_CONST) / kTe_DEVICE_CONST) * (1 / kTe_DEVICE_CONST);
+    }
+}
 
-            const int node_idx = cell_to_nodes_map->map[e * cell_to_nodes_map->dim + a];
-            const int A = node_to_eq_map[node_idx]; 
-            if (A>=0)    /*if unknown node*/ 
-            {
-                for (int k=0;k<n_int;k++) /*perform quadrature*/
-                    for (int j=0;j<n_int;j++)
-                        for (int i=0;i<n_int;i++) 
-                        {   
-                            switch(a) // evalNa
-                            {
-                                case 0: Na = 0.5*(l[i]+1); break;
-                                case 1: Na = 0.5*(l[j]+1); break;
-                                case 2: Na = 0.5*(l[k]+1); break;
-                                case 3: Na = 1 - 0.5*(l[i]+1) - 0.5*(l[j]+1) - 0.5*(l[k]+1); break; 
-                                default: Na = 0;  
+//*************************************************************************************************
+__global__ void computeJmatrixValuesKernel(const int n_elements_inc_halo, const int* cell_to_nodes_map_d, 
+                const int* node_to_eq_map_d, const double* detJ_d, double* tempNEQ3_d, double* tempNEQ2_d, const int stride) 
+{
+    int e = blockIdx.x * blockDim.x + threadIdx.x;
+
+    if (e < n_elements_inc_halo) 
+    {
+        double fe[4];
+        double Na = 0.0;
+
+        for (int a = 0; a < 4; a++) {
+            double ff = 0;
+
+            //const int node_idx = cell_to_nodes_map_d[e * 4 + a];  // Assuming 4 nodes per element
+            const int node_idx = cell_to_nodes_map_d[e + stride * a];  // Assuming 4 nodes per element
+            const int A = node_to_eq_map_d[node_idx];
+
+            if (A >= 0) {
+                for (int k = 0; k < n_int_DEVICE_CONST; k++) {
+                    for (int j = 0; j < n_int_DEVICE_CONST; j++) {
+                        for (int i = 0; i < n_int_DEVICE_CONST; i++) {
+                            switch (a) {
+                                case 0: Na = 0.5 * (l_DEVICE_CONST[i] + 1); break;
+                                case 1: Na = 0.5 * (l_DEVICE_CONST[j] + 1); break;
+                                case 2: Na = 0.5 * (l_DEVICE_CONST[k] + 1); break;
+                                case 3: Na = 1 - 0.5 * (l_DEVICE_CONST[i] + 1) - 0.5 * (l_DEVICE_CONST[j] + 1) 
+                                                - 0.5 * (l_DEVICE_CONST[k] + 1); break;
+                                default: Na = 0;
                             }
 
-                            ff += tempNEQ3[A]*Na*detJ[e]*W[i]*W[j]*W[k];
+                            ff += tempNEQ3_d[A] * Na * detJ_d[e] * W_DEVICE_CONST[i] * W_DEVICE_CONST[j] * W_DEVICE_CONST[k];
                         }
-
-                ff*=(1.0/8.0);    /*change of limits*/
+                    }
+                }
+                ff *= (1.0 / 8.0);
             }
 
             fe[a] = ff;
         }
 
-        /*assembly*/
-        for (int a=0;a<4;a++)    /*tetrahedra*/ 
-        {
-            const int node_idx = cell_to_nodes_map->map[e * cell_to_nodes_map->dim + a];
-            const int P = node_to_eq_map[node_idx]; 
-            if (P<0) continue;    /*skip g nodes*/
-
-            tempNEQ2[P] += fe[a];
+        for (int a = 0; a < 4; a++) {
+            const int node_idx = cell_to_nodes_map_d[e + stride * a];
+            const int P = node_to_eq_map_d[node_idx];
+            if (P >= 0) {  // Skip g nodes
+                atomicAdd(&tempNEQ2_d[P], fe[a]);
+            }
         }
     }
-
-    MatCopy(Kmat, Jmat, DIFFERENT_NONZERO_PATTERN);
-
-    for (int u=0;u<neq;u++) /*subtract diagonal term*/
-    {
-        MatSetValue(Jmat, (u + own_start), (u + own_start), (-tempNEQ2[u]), ADD_VALUES); // J[u][u]-=tempNEQ2[u];
-    }
-
-    MatAssemblyBegin(Jmat, MAT_FINAL_ASSEMBLY); MatAssemblyEnd(Jmat, MAT_FINAL_ASSEMBLY);
 }
 
+//*************************************************************************************************
+void FESolver::buildJmatrix() 
+{ 
+
+}
+
+//*************************************************************************************************
+__global__ void computeNodePotentialKernel(const int n_nodes_set_d, const int* node_to_eq_map_d, const double* dLocal_d, 
+                                            const double* node_bnd_pot_d, double* node_potential_d) 
+{
+    int n = blockIdx.x * blockDim.x + threadIdx.x;
+
+    if (n < n_nodes_set_d) {
+        node_potential_d[n] = node_bnd_pot_d[n]; /*zero on non-g nodes*/
+
+        if (!(node_bnd_pot_d[n] == -10000000 || node_bnd_pot_d[n] == 0)) {
+            printf("WRONG BND POT %2.20lE\n", node_bnd_pot_d[n]);
+        }
+        int A = node_to_eq_map_d[n];
+        if (A >= 0) /*is this a non-boundary node?*/
+            node_potential_d[n] += dLocal_d[A];
+    }
+}
 
 //*************************************************************************************************
 /*wrapper for solving the non-linear Poisson's equation*/
 void FESolver::computePhi(oppic_arg arg0, oppic_arg arg1, oppic_arg arg2) 
 { 
-
     if (OP_DEBUG) opp_printf("FESolver", "computePhi START");
 
     opp_profiler->start("ComputePhi");
 
     int nargs = 3;
     oppic_arg args[nargs];
-    args[0] = arg0;
-    args[1] = arg1;
-    args[2] = arg2;
-
+    args[0] = arg0;  // node_potential
+    args[1] = arg1;  // ion_den
+    args[2] = arg2;  // node_bnd_pot
     args[1].idx = 2; // HACK to forcefully make halos to download
 
-opp_profiler->start("FSolve_halo");
-    opp_mpi_halo_exchanges_grouped(arg1.dat->set, nargs, args, Device_CPU);
+    opp_profiler->start("FSolve_halo");
+    opp_mpi_halo_exchanges_grouped(arg1.dat->set, nargs, args, Device_GPU);
     opp_mpi_halo_wait_all(nargs, args);
-opp_profiler->end("FSolve_halo");
+    opp_profiler->end("FSolve_halo");
 
-    if (false) // incase if we want to print current ranks node_charge_density including halos
+    if (linearSolve((double*)arg1.dat->data_d) == false)
     {
-        std::string f = std::string("FESolverComputePhi_") + std::to_string(OPP_rank);
-        opp_print_dat_to_txtfile(args[1].dat  , f.c_str(), "node_charge_density.dat");
+        char* str_reason;
+        KSPGetConvergedReasonString(ksp, (const char**)(&str_reason));
+        std::cerr << "linearSolve Petsc failed to converge : " << str_reason <<
+            "; run with -ksp_converged_reason" << std::endl;           
     }
 
-    double *ion_den = (double*)arg1.dat->data;
-    double *node_potential = (double*)arg0.dat->data;
-    double *node_bnd_pot = (double*)arg2.dat->data;
+    opp_profiler->start("FSolve_npot");
+    computeNodePotentialKernel <<<nodesNBlocks, OPP_gpu_threads_per_block>>> (n_nodes_set, node_to_eq_map_d, dLocal_d, 
+                                                        (double*)arg2.dat->data_d, (double*)arg0.dat->data_d);
 
-    if (fesolver_method == Method::NonLinear) 
-    {
-        nonLinearSolve(ion_den);
-    } 
-    else if (fesolver_method == Method::Petsc) 
-    {
-        if (linearSolve(ion_den) == false)
-        {
-            char* str_reason;
-            KSPGetConvergedReasonString(ksp, (const char**)(&str_reason));
-            std::cerr << "linearSolve Petsc failed to converge : " << str_reason <<
-                "; run with -ksp_converged_reason" << std::endl;           
-        }
-    }
-    else
-    {
-        opp_printf("FESolver", "Error... Solver type not implemented");
-    }
-
-opp_profiler->start("FSolve_npot");
-    /* combine d (solution from linear solver) and boundary potential to get node_potential */
-    for (int n = 0;n < n_nodes_set; n++) // owner compute, hence can have only upto node set size
-    {
-        node_potential[n] = node_bnd_pot[n]; /*zero on non-g nodes*/
-
-        int A=node_to_eq_map[n];
-        if (A>=0)           /*is this a non-boundary node?*/
-            node_potential[n] += dLocal[A];
-    }
-opp_profiler->end("FSolve_npot");
-
-    opp_set_dirtybit(nargs, args);
+    opp_set_dirtybit_grouped(nargs, args, Device_GPU);
+    cutilSafeCall(hipDeviceSynchronize());
+    opp_profiler->end("FSolve_npot");
 
     opp_profiler->end("ComputePhi");
 
     if (OP_DEBUG) opp_printf("FESolver", "computePhi DONE");
 }
 
+/*
+    build F1 using ion_density and D
+    B = K * D
+    B = B - F0
+    B = B - F1
+    Build J using K and D
+    Ksp Solve : J * Y = B (Y = solution)
+    D = D - Y
+*/
 //*************************************************************************************************
-void FESolver::nonLinearSolve(double *ion_den) 
-{ 
-
-    int it = 0;
-
-    if (OP_DEBUG) opp_printf("FESolver", "nonLinearSolve START");
-    bool converged = false;
-
-    for (; it<10; it++) 
-    {
-        converged = linearSolve(ion_den);
-        if (converged)
-            break;
-    }
-
-    if (!converged) 
-    {
-        char* str_reason;
-        KSPGetConvergedReasonString(ksp, (const char**)(&str_reason));
-        std::cerr << "nonLinearSolve Petsc failed to converge : " << str_reason << 
-            "; run with -ksp_converged_reason"<< std::endl;
-    }
-
-    if (OP_DEBUG) opp_printf("FESolver", "nonLinearSolve DONE it=%d", it);
-}
-
-//*************************************************************************************************
-bool FESolver::linearSolve(double *ion_den) 
+bool FESolver::linearSolve(double *ion_den_d) 
 { 
 
     if (OP_DEBUG) opp_printf("FESolver", "linearSolve START");
 
-opp_profiler->start("FSolve_f1");
-    buildF1Vector(ion_den);
-opp_profiler->end("FSolve_f1");
+    opp_profiler->start("FSolve_solv_init");
+    initBuildF1VectorKernel <<<nodes_inc_haloNBlocks, OPP_gpu_threads_per_block>>> (node_to_eq_map_d, dLocal_d, 
+                                                                        ion_den_d, tempNEQ1_d, n_nodes_inc_halo);
 
-    if (print_petsc) 
-    {
-        opp_printf("FESolver", "This is F1vec ***************************************************");
-        VecView(F1vec, PETSC_VIEWER_STDOUT_WORLD);
-        opp_printf("FESolver", "Above is F1vec ***************************************************");
-    }
+    initBuildJmatrixKernel <<<neqNBlocks, OPP_gpu_threads_per_block>>> (tempNEQ2_d, tempNEQ3_d, dLocal_d, neq);
+
+    cutilSafeCall(hipDeviceSynchronize()); // Sync since we need tempNEQ1_d and tempNEQ3_d
+    opp_profiler->end("FSolve_solv_init");
+
+    opp_profiler->start("FSolve_j_and_f1");
+    const int stride = cell_to_nodes_map->from->size + cell_to_nodes_map->from->exec_size + cell_to_nodes_map->from->nonexec_size;
+
+    computeF1VectorValuesKernel <<<cells_inc_haloNBlocks, OPP_gpu_threads_per_block>>> (n_elements_inc_halo, 
+                                            cell_to_nodes_map->map_d, node_to_eq_map_d, tempNEQ1_d, f1Local_d, detJ_d, stride);
+
+    computeJmatrixValuesKernel <<<cells_inc_haloNBlocks, OPP_gpu_threads_per_block>>> (n_elements_inc_halo, 
+                    cell_to_nodes_map->map_d, node_to_eq_map_d, detJ_d, tempNEQ3_d, tempNEQ2_d, stride);
+
+    MatCopy(Kmat, Jmat, DIFFERENT_NONZERO_PATTERN);
 
     MatMult(Kmat, Dvec, Bvec);  // B = K * D
     
     VecAXPY(Bvec, -1.0, F0vec); // B = B - F0
 
-// TODO_IMM : Can build F1 vec here by waiting for halo exch complete. This will overlap some work
+    cutilSafeCall(hipDeviceSynchronize()); // Sync since we need f1Local_d and tempNEQ2_d
+    opp_profiler->end("FSolve_j_and_f1");
+
+    cutilSafeCall(hipMemcpy(f1Local, f1Local_d, neq * sizeof(double), hipMemcpyDeviceToHost));
+    cutilSafeCall(hipMemcpy(tempNEQ2, tempNEQ2_d, neq * sizeof(double), hipMemcpyDeviceToHost));
+
+    VecSetValues(F1vec, neq, vecCol, f1Local, INSERT_VALUES);
+    VecAssemblyBegin(F1vec); VecAssemblyEnd(F1vec);
+
+    for (int u=0;u<neq;u++) {   /*subtract diagonal term*/
+        MatSetValue(Jmat, (u + own_start), (u + own_start), (-tempNEQ2[u]), ADD_VALUES); // J[u][u]-=tempNEQ2[u];
+    }
+    MatAssemblyBegin(Jmat, MAT_FINAL_ASSEMBLY); MatAssemblyEnd(Jmat, MAT_FINAL_ASSEMBLY);
 
     VecAXPY(Bvec, -1.0, F1vec); // B = B - F1
 
-opp_profiler->start("FSolve_j");
-    buildJmatrix();             // Build J using K and D
-opp_profiler->end("FSolve_j");
-
-    if (print_petsc) 
-    {
-        opp_printf("FESolver", "This is J ***************************************************");
-        MatView(Jmat, PETSC_VIEWER_STDOUT_WORLD);
-        opp_printf("FESolver", "Above is J ***************************************************");
-
-        opp_printf("FESolver", "This is B ***************************************************");
-        VecView(Bvec, PETSC_VIEWER_STDOUT_WORLD);
-        opp_printf("FESolver", "Above is B ***************************************************");
-    }
-
-opp_profiler->start("FSolve_ksp");
+    opp_profiler->start("FSolve_ksp");
     KSPSolve(ksp, Bvec, Yvec); // Jmat * Yvec = Bvec (Yvec = solution)
-opp_profiler->end("FSolve_ksp");
-
-    if (print_petsc) 
-    {
-        opp_printf("FESolver", "This is Y ***************************************************");
-        VecView(Yvec, PETSC_VIEWER_STDOUT_WORLD);
-        opp_printf("FESolver", "Above is Y ***************************************************");
-    }
+    opp_profiler->end("FSolve_ksp");
 
     VecAXPY(Dvec, -1.0, Yvec); // D = D - Y
 
-opp_profiler->start("FSolve_d");
+    opp_profiler->start("FSolve_d");
     VecGetValues(Dvec, neq, vecCol, dLocal); // For the calculation at computePhi()
-opp_profiler->end("FSolve_d");
+
+    cutilSafeCall(hipMemcpy(dLocal_d, dLocal, neq * sizeof(double), hipMemcpyHostToDevice));
+    opp_profiler->end("FSolve_d");
 
     KSPGetConvergedReason(ksp, &reason);
 
@@ -943,7 +975,6 @@ void FESolver::sanityCheck()
     void FESolver::enrich_cell_shape_deriv(oppic_dat cell_shape_deriv) {};
 
     bool FESolver::linearSolve(double *ion_den) { return true; }; 
-    void FESolver::nonLinearSolve(double *ion_den) {}; 
     void FESolver::buildJmatrix() {};
     void FESolver::buildF1Vector(double *ion_den) {};
     
