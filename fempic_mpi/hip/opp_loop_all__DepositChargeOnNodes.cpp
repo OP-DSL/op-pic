@@ -155,7 +155,7 @@ void opp_loop_all__DepositChargeOnNodes(
     opp_mpi_halo_wait_all(nargs, args);
 
 #ifdef USE_MPI
-    opp_init_double_indirect_reductions_device(nargs, args);
+    opp_init_double_indirect_reductions_hip(nargs, args);
 #endif
 
     if (set_size > 0) 
@@ -218,8 +218,8 @@ void opp_loop_all__DepositChargeOnNodes(
     }
 
 #ifdef USE_MPI
-    opp_exchange_double_indirect_reductions_device(nargs, args);
-    opp_complete_double_indirect_reductions_device(nargs, args);
+    opp_exchange_double_indirect_reductions_hip(nargs, args);
+    opp_complete_double_indirect_reductions_hip(nargs, args);
 #endif
 
     opp_set_dirtybit_grouped(nargs, args, Device_GPU);
