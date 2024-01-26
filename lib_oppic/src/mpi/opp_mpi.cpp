@@ -445,3 +445,19 @@ opp_dat opp_fetch_data(opp_dat dat) {
     // rearrange data backe to original order in mpi
     return opp_mpi_get_data(dat);
 }
+
+//*******************************************************************************
+// Copy a dat from host to device
+void opp_upload_dat(opp_dat dat) {}
+
+//*******************************************************************************
+// Copy a dat from device to host
+void opp_download_dat(opp_dat dat) {}
+
+//*******************************************************************************
+// Copy all dats of the set from device to host
+void opp_download_particle_set(opp_set particles_set, bool force_download) {}
+
+//*******************************************************************************
+// Copy all dats of the set from host to device
+void opp_upload_particle_set(opp_set particles_set, bool realloc) {}

@@ -605,3 +605,19 @@ opp_move_var opp_get_move_var(int thread)
 
     return move_var;
 }
+
+//*******************************************************************************
+// Copy a dat from host to device
+void opp_upload_dat(opp_dat dat) {}
+
+//*******************************************************************************
+// Copy a dat from device to host
+void opp_download_dat(opp_dat dat) {}
+
+//*******************************************************************************
+// Copy all dats of the set from device to host
+void opp_download_particle_set(opp_set particles_set, bool force_download) {}
+
+//*******************************************************************************
+// Copy all dats of the set from host to device
+void opp_upload_particle_set(opp_set particles_set, bool realloc) {}

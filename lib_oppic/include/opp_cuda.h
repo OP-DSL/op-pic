@@ -80,14 +80,8 @@ void oppic_cuda_exit();
 
 void cutilDeviceInit(int argc, char **argv);
 
-void oppic_upload_dat(opp_dat dat);
-void oppic_upload_map(opp_map map, bool create_new = false);
-
-void oppic_download_dat(opp_dat dat);
-
-void oppic_download_particle_set(opp_set particles_set, bool force_download = false);
-
-void oppic_upload_particle_set(opp_set particles_set, bool realloc = false);
+// Copy a map from host to device
+void opp_upload_map(opp_map map, bool create_new = false);
 
 /*******************************************************************************/
 

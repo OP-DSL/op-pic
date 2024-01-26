@@ -168,7 +168,7 @@ oppic_map opp_decl_mesh_map(oppic_set from, oppic_set to, int dim, int *imap, ch
 {
     oppic_map map = oppic_decl_map_core(from, to, dim, imap, name);
 
-    oppic_upload_map(map, true);
+    opp_upload_map(map, true);
 
     return map;
 }
@@ -185,7 +185,7 @@ oppic_dat opp_decl_mesh_dat(oppic_set set, int dim, opp_data_type dtype, void *d
 
     oppic_create_device_arrays(dat);
 
-    oppic_upload_dat(dat);
+    opp_upload_dat(dat);
 
     return dat;
 }
@@ -287,7 +287,7 @@ oppic_dat opp_decl_part_dat(oppic_set set, int dim, opp_data_type dtype, void *d
 
     oppic_create_device_arrays(dat);
 
-    oppic_upload_dat(dat);
+    opp_upload_dat(dat);
 
     return dat;
 }
@@ -322,7 +322,7 @@ void oppic_increase_particle_count(oppic_set part_set, const int num_particles_t
     // TODO : We should be able to do a device to device copy instead of getting to host
 
     if (need_resizing)
-        oppic_download_particle_set(part_set, true); 
+        opp_download_particle_set(part_set, true); 
 
     if (!oppic_increase_particle_count_core(part_set, num_particles_to_insert))
     {
@@ -341,7 +341,7 @@ void oppic_increase_particle_count(oppic_set part_set, const int num_particles_t
 
             oppic_create_device_arrays(current_dat, true);
 
-            oppic_upload_dat(current_dat);
+            opp_upload_dat(current_dat);
 
             current_dat->dirty_hd = Dirty::NotDirty;
         }        
@@ -364,7 +364,7 @@ void opp_print_dat_to_txtfile(oppic_dat dat, const char *file_name_prefix, const
     if (OP_DEBUG) opp_printf("opp_print_dat_to_txtfile", "writing file [%s]", file_name_suffix);
 
     if (dat->dirty_hd == Dirty::Host) 
-        oppic_download_dat(dat);
+        opp_download_dat(dat);
 
     std::string prefix = std::string(file_name_prefix) + "_c";
     oppic_print_dat_to_txtfile_core(dat, prefix.c_str(), file_name_suffix);
@@ -441,12 +441,12 @@ void opp_partition(std::string lib_name, op_set prime_set, op_map prime_map, op_
             continue;
 
         oppic_create_device_arrays(dat, true);
-        oppic_upload_dat(dat);
+        opp_upload_dat(dat);
     }
 
     for (opp_map map : oppic_maps) 
     {
-        oppic_upload_map(map, true);
+        opp_upload_map(map, true);
     }
 #endif
 }
@@ -460,7 +460,7 @@ opp_dat opp_fetch_data(opp_dat dat) {
     }
 
     if (dat->dirty_hd == Dirty::Host) 
-        oppic_download_dat(dat);
+        opp_download_dat(dat);
 
 #ifdef USE_MPI
     // rearrange data backe to original order in mpi
@@ -499,21 +499,21 @@ void oppic_dump_dat(oppic_dat dat)
     cutilSafeCall(hipDeviceSynchronize());
 
     if (dat->dirty_hd == Dirty::Host) 
-        oppic_download_dat(dat);
+        opp_download_dat(dat);
 
     oppic_dump_dat_core(dat);
 }
 
 //****************************************
 // DEVICE->HOST | this invalidates what is in the HOST
-void oppic_download_dat(oppic_dat dat) 
+void opp_download_dat(oppic_dat dat) 
 { 
     cutilSafeCall(hipDeviceSynchronize());
 
     size_t set_size = dat->set->set_capacity;
     if (strstr(dat->type, ":soa") != NULL || (OP_auto_soa && dat->dim > 1)) 
     {
-        if (OP_DEBUG) opp_printf("oppic_download_dat", "GPU->CPU SOA | %s", dat->name);
+        if (OP_DEBUG) opp_printf("opp_download_dat", "GPU->CPU SOA | %s", dat->name);
 
         char *temp_data = (char *)malloc(dat->size * set_size * sizeof(char));
         cutilSafeCall(hipMemcpy(temp_data, dat->data_d, set_size * dat->size, hipMemcpyDeviceToHost));
@@ -534,7 +534,7 @@ void oppic_download_dat(oppic_dat dat)
     } 
     else 
     {
-        if (OP_DEBUG) opp_printf("oppic_download_dat", "GPU->CPU NON-SOA| %s", dat->name);
+        if (OP_DEBUG) opp_printf("opp_download_dat", "GPU->CPU NON-SOA| %s", dat->name);
 
         cutilSafeCall(hipMemcpy(dat->data, dat->data_d, set_size * dat->size, hipMemcpyDeviceToHost));
     }
@@ -544,14 +544,14 @@ void oppic_download_dat(oppic_dat dat)
 
 //****************************************
 // HOST->DEVICE | this invalidates what is in the DEVICE
-void oppic_upload_dat(oppic_dat dat)
+void opp_upload_dat(oppic_dat dat)
 { 
 
     size_t set_capacity = dat->set->set_capacity;
 
     if (strstr(dat->type, ":soa") != NULL || (OP_auto_soa && dat->dim > 1)) 
     {
-        if (OP_DEBUG) opp_printf("oppic_upload_dat","CPU->GPU SOA | %s", dat->name);
+        if (OP_DEBUG) opp_printf("opp_upload_dat","CPU->GPU SOA | %s", dat->name);
 
         char *temp_data = (char *)malloc(dat->size * set_capacity * sizeof(char));
         int element_size = dat->size / dat->dim;
@@ -574,7 +574,7 @@ void oppic_upload_dat(oppic_dat dat)
     } 
     else 
     {
-        if (OP_DEBUG) opp_printf("oppic_upload_dat", "CPU->GPU NON-SOA| %s", dat->name);
+        if (OP_DEBUG) opp_printf("opp_upload_dat", "CPU->GPU NON-SOA| %s", dat->name);
         oppic_cpHostToDevice((void **)&(dat->data_d), (void **)&(dat->data), (dat->size * set_capacity), 
                                 (dat->size * set_capacity), false);
     }
@@ -584,9 +584,9 @@ void oppic_upload_dat(oppic_dat dat)
 
 //****************************************
 // HOST->DEVICE | this invalidates what is in the DEVICE
-void oppic_upload_map(opp_map map, bool create_new) 
+void opp_upload_map(opp_map map, bool create_new) 
 {
-    if (OP_DEBUG) opp_printf("oppic_upload_map", "CPU->GPU | %s %s", map->name, create_new ? "NEW" : "COPY");
+    if (OP_DEBUG) opp_printf("opp_upload_map", "CPU->GPU | %s %s", map->name, create_new ? "NEW" : "COPY");
     int set_size = map->from->size + map->from->exec_size;
     int *temp_map = (int *)malloc(map->dim * set_size * sizeof(int));
 
@@ -605,10 +605,10 @@ void oppic_upload_map(opp_map map, bool create_new)
 
 //****************************************
 // DEVICE -> HOST
-void oppic_download_particle_set(oppic_set particles_set, bool force_download)
+void opp_download_particle_set(oppic_set particles_set, bool force_download)
 {
 
-    if (OP_DEBUG) opp_printf("oppic_download_particle_set", "set [%s]", particles_set->name);
+    if (OP_DEBUG) opp_printf("opp_download_particle_set", "set [%s]", particles_set->name);
 
     cutilSafeCall(hipDeviceSynchronize());
 
@@ -616,17 +616,35 @@ void oppic_download_particle_set(oppic_set particles_set, bool force_download)
     {
         if (current_dat->data_d == NULL)
         {
-            if (OP_DEBUG) opp_printf("oppic_download_particle_set", "device pointer is NULL in dat [%s]", 
+            if (OP_DEBUG) opp_printf("opp_download_particle_set", "device pointer is NULL in dat [%s]", 
                             current_dat->name);
             continue;
         }
         if (current_dat->dirty_hd != Dirty::Host && !force_download)
         {
-            if (OP_DEBUG) opp_printf("oppic_download_particle_set", "host is not dirty in dat [%s]", 
+            if (OP_DEBUG) opp_printf("opp_download_particle_set", "host is not dirty in dat [%s]", 
                             current_dat->name);
             continue;
         }
-        oppic_download_dat(current_dat);
+        opp_download_dat(current_dat);
+    }  
+}
+
+//****************************************
+// HOST->DEVICE
+void opp_upload_particle_set(oppic_set particles_set, bool realloc)
+{ 
+
+    if (OP_DEBUG) opp_printf("opp_upload_particle_set", "set [%s]", particles_set->name);
+
+    for (oppic_dat& current_dat : *(particles_set->particle_dats))
+    {
+        if (realloc)
+        {
+            oppic_create_device_arrays(current_dat, realloc);
+        }
+
+        opp_upload_dat(current_dat);
     }  
 }
 
@@ -665,7 +683,7 @@ void opp_exchange_double_indirect_reductions_hip(int nargs, oppic_arg *args)
 
             if (!already_done)
             {
-                oppic_download_dat(args[n].dat);
+                opp_download_dat(args[n].dat);
             }
         }
     }
@@ -700,7 +718,7 @@ void opp_complete_double_indirect_reductions_hip(int nargs, oppic_arg *args)
 
             if (!already_done)
             {
-                oppic_upload_dat(args[n].dat);
+                opp_upload_dat(args[n].dat);
             }
         }
     }  
@@ -885,29 +903,6 @@ void print_last_hip_error()
 
 // **************************************** REMOVED FUNCTIONS ****************************************
 
-//****************************************
-// HOST->DEVICE
-// void oppic_upload_particle_set(oppic_set particles_set, bool realloc)
-// { 
-
-//     if (OP_DEBUG) printf("\toppic_upload_particle_set set [%s]\n", particles_set->name);
-
-//     for (oppic_dat& current_dat : *(particles_set->particle_dats))
-//     {
-//         if (realloc)
-//         {
-//             // TODO : CONVERT TO THRUST VECTORS, WILL BREAK IF NOT 
-//             if (current_dat->data_d != NULL) 
-//                 cutilSafeCall(hipFree(current_dat->data_d));
-
-//             cutilSafeCall(hipMalloc(&(current_dat->data_d), particles_set->set_capacity * current_dat->size));
-//         }
-
-//         oppic_upload_dat(current_dat);
-//     }  
-// }
-
-
 // // TODO: Try to do this in hip
 // // make cell index of the particle to be removed as int_max,
 // // sort all arrays
@@ -939,11 +934,11 @@ void print_last_hip_error()
 //         return;
 //     }
 
-//     oppic_download_particle_set(set); // TODO : Find a better way
+//     opp_download_particle_set(set); // TODO : Find a better way
 
 //     oppic_finalize_particle_move_core(set);
 
-//     oppic_upload_particle_set(set, true /* realloc the device pointers */);
+//     opp_upload_particle_set(set, true /* realloc the device pointers */);
 
 //     cutilSafeCall(hipFree(set->particle_statuses_d));
 //     set->particle_statuses_d = NULL;
@@ -1005,7 +1000,7 @@ void print_last_hip_error()
 //                 "FLAG All %d Move %d", OPP_need_remove_flags.size(), flagged);
 
 //     // This is because hole filling/ sorting is done on the device arrays
-//     oppic_upload_dat(set->mesh_relation_dat);
+//     opp_upload_dat(set->mesh_relation_dat);
 // #endif
 // }
 

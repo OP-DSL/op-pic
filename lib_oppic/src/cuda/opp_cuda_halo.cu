@@ -257,7 +257,7 @@ int opp_mpi_halo_exchanges_grouped(oppic_set set, int nargs, oppic_arg *args, De
     {
         if (!haloExInfo[n].skip && haloExInfo[n].download) {
             // opp_printf("halo_ex", "downloading %s", args[n].dat->name);
-            oppic_download_dat(args[n].dat);
+            opp_download_dat(args[n].dat);
         }
     }
 
@@ -286,7 +286,7 @@ void opp_mpi_halo_wait_all(int nargs, oppic_arg *args)
     {
         if (!haloExInfo[n].skip && haloExInfo[n].upload) {
             // opp_printf("halo_ex", "uploading %s", args[n].dat->name);
-            oppic_upload_dat(args[n].dat); // TODO : ideally need to upload only the halo regions
+            opp_upload_dat(args[n].dat); // TODO : ideally need to upload only the halo regions
         }
     }
 }
@@ -314,7 +314,7 @@ void opp_mpi_halo_wait_all(int nargs, oppic_arg *args)
 //             (!args[n].dat->set->is_particle || opp_current_device == Device_CPU)) 
 //         {
 //             opp_printf("HALO OLD", "downloading %s", args[n].dat->name);
-//             oppic_download_dat(args[n].dat);
+//             opp_download_dat(args[n].dat);
 //             if (args[n].dat->dirty_hd == Dirty::Host)
 //                 args[n].dat->dirty_hd = Dirty::NotDirty;
 //         }
@@ -352,7 +352,7 @@ void opp_mpi_halo_wait_all(int nargs, oppic_arg *args)
 //                 (args[n].dat->dirty_hd == Dirty::Device || !args[n].dat->set->is_particle)) 
 //         { 
 //             opp_printf("HALO OLD", "uploading %s", args[n].dat->name);
-//             oppic_upload_dat(args[n].dat); // TODO : ideally need to upload only the halo regions
+//             opp_upload_dat(args[n].dat); // TODO : ideally need to upload only the halo regions
 //             if (args[n].dat->dirty_hd == Dirty::Device)
 //                 args[n].dat->dirty_hd = Dirty::NotDirty;          
 //         }

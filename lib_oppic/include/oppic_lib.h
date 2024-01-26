@@ -123,3 +123,15 @@ int opp_mpi_halo_exchanges_grouped(oppic_set set, int nargs, oppic_arg *args, De
 int opp_mpi_halo_exchanges(oppic_set set, int nargs, oppic_arg *args);
 void opp_mpi_halo_exchange(oppic_arg *arg, int exec_flag);
 void opp_mpi_halo_wait_all(int nargs, oppic_arg *args);
+
+// Copy a dat from host to device
+void opp_upload_dat(opp_dat dat);
+
+// Copy a dat from device to host
+void opp_download_dat(opp_dat dat);
+
+// Copy all dats of the set from device to host
+void opp_download_particle_set(opp_set particles_set, bool force_download = false);
+
+// Copy all dats of the set from host to device
+void opp_upload_particle_set(opp_set particles_set, bool realloc = false);
