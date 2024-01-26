@@ -345,6 +345,17 @@ void opp_colour_cartesian_mesh(const int ndim, const std::vector<int> cell_count
     MPI_Allgather(cell_starts, ndim, MPI_INT, all_cell_starts.data(), ndim, MPI_INT, MPI_COMM_WORLD);
     MPI_Allgather(cell_ends, ndim, MPI_INT, all_cell_ends.data(), ndim, MPI_INT, MPI_COMM_WORLD);
 
+    if (OPP_rank == OPP_ROOT)
+    {
+        std::string log = "";
+        for (int r = 0; r < OPP_comm_size; r++) {
+            log += std::string("\nrank ") + std::to_string(r) + " start (" + 
+                std::to_string(all_cell_starts[r*ndim+0]) + "," + std::to_string(all_cell_starts[r*ndim+1]) +
+                ") end (" + std::to_string(all_cell_ends[r*ndim+0]) + "," + std::to_string(all_cell_ends[r*ndim+1]) + ")";
+        }
+        opp_printf("opp_colour_cartesian_mesh", "%s", log.c_str());
+    }
+
 #define CART_RANK_TO_INDEX(rank,ix,iy,iz,_x,_y) \
     int _ix, _iy, _iz;                                                    \
     _ix  = (rank);                        /* ix = ix+gpx*( iy+gpy*iz ) */ \

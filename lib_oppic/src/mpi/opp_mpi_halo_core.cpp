@@ -1266,7 +1266,7 @@ void __opp_mpi_host_halo_exchange(oppic_arg *arg, int exec_flag)
 *******************************************************************************/
 void __opp_mpi_host_halo_wait_all(int nargs, oppic_arg *args)
 {
-    if (OP_DEBUG) opp_printf("opp_mpi_halo_wait_all", "START");
+    if (OP_DEBUG) opp_printf("__opp_mpi_host_halo_wait_all", "START");
 
     opp_profiler->startMpiComm("", opp::OPP_Mesh);
 
@@ -1295,7 +1295,7 @@ void __opp_mpi_host_halo_wait_all(int nargs, oppic_arg *args)
 
     opp_profiler->endMpiComm("", opp::OPP_Mesh);
 
-    if (OP_DEBUG) opp_printf("opp_mpi_halo_wait_all", "END");
+    if (OP_DEBUG) opp_printf("__opp_mpi_host_halo_wait_all", "END");
 }
 
 

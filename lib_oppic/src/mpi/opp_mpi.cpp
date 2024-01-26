@@ -290,7 +290,7 @@ void opp_init_particle_move(oppic_set set, int nargs, oppic_arg *args)
 
     oppic_init_particle_move_core(set);
 
-    move_part_indices.clear();
+    opp_move_part_indices.clear();
 
     if (OPP_comm_iteration == 0)
     {
@@ -305,6 +305,7 @@ void opp_init_particle_move(oppic_set set, int nargs, oppic_arg *args)
             if (args[i].argtype == OP_ARG_DAT && args[i].dat->set->is_particle)
             {
                 args[i].data = args[i].dat->data;
+                if (OP_DEBUG) opp_printf("SSSS", "dat %s", args[i].dat->name);
             }
         }
     }

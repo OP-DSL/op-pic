@@ -297,7 +297,7 @@ void opp_loop_all_part_move__MoveToCells(
                     &((double*)arg8_dat_thread_data)[map4idx]    // node_charge_den3,
                 );  
 
-            } while (opp_part_check_status(m, *map0idx, set, i, thr, thr));  
+            } while (opp_part_check_status_omp(m, *map0idx, set, i, thr, thr));  
         }
     }
 
@@ -650,7 +650,7 @@ void opp_particle_mover__Move(
                     &((double*)       args[4].data)[cellIdx * args[4].dim], 
                     &((int*)          args[5].data)[cellIdx * args[5].dim]);
 
-            } while (opp_part_check_status(m, cellIdx, set, i, thr, thr));
+            } while (opp_part_check_status_omp(m, cellIdx, set, i, thr, thr));
         }
     }
 

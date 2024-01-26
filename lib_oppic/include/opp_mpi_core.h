@@ -467,3 +467,6 @@ opp_dat opp_mpi_get_data(opp_dat dat);
 // cell_colors : local cell_colors dat to colour with most appropriate MPI rank
 void opp_colour_cartesian_mesh(const int ndim, const std::vector<int> cell_counts, opp_dat cell_index, 
                             const opp_dat cell_colors);
+
+extern std::vector<int> opp_move_part_indices;
+void opp_process_marked_particles(opp_set set);

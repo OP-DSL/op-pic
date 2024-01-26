@@ -69,41 +69,62 @@ void opp_particle_mover__UpdatePosMove(
 
     opp_profiler->start("Move");
 
-    opp_init_particle_move(set, 0, nullptr);
+    int nargs = 5;
+    opp_arg args[nargs];
 
-    int nthreads = omp_get_max_threads();
+    args[0]  = std::move(arg0);
+    args[1]  = std::move(arg1);
+    args[2]  = std::move(arg2);
+    args[3]  = std::move(arg3);
+    args[4]  = std::move(arg4);
 
-    int set_size = set->size;
+    const int nthreads = omp_get_max_threads();
+ 
+    int set_size = opp_mpi_halo_exchanges(set, nargs, args); 
+    
+    opp_mpi_halo_wait_all(nargs, args);  // unable to overlap computation and communication
 
-    #pragma omp parallel for
-    for (int thr = 0; thr < nthreads; thr++)
+    if (set_size > 0) 
     {
-        size_t start  = ((size_t)set_size * thr) / nthreads;
-        size_t finish = ((size_t)set_size * (thr+1)) / nthreads;
+        do {
 
-        int *cellIdx = nullptr;
+            opp_init_particle_move(set, nargs, args);
 
-        for (size_t n = start; n < finish; n++)
-        {          
-            opp_move_var m = opp_get_move_var(thr);
+            if (OP_DEBUG) 
+                opp_printf("ADVEC", "opp_particle_mover__UpdatePosMove Starting iteration %d, start[%d] end[%d] nthreads %d", 
+                    OPP_comm_iteration, OPP_iter_start, OPP_iter_end, nthreads);
 
-            do
-            { 
-                cellIdx = &(OPP_mesh_relation_data[n]);
+            #pragma omp parallel for
+            for (int thr = 0; thr < nthreads; thr++)
+            {
+                size_t start  = (size_t)OPP_iter_start + ((size_t)(OPP_iter_end - OPP_iter_start) * thr) / nthreads;
+                size_t finish = (size_t)OPP_iter_start + ((size_t)(OPP_iter_end - OPP_iter_start) * (thr+1)) / nthreads;
 
-                push_particles_kernel(m, 
-                    &((OPP_INT*)  arg0.data)[n * arg0.dim],        // part_cid 
-                    &((OPP_REAL*) arg1.data)[n * arg1.dim],        // part_vel 
-                    &((OPP_REAL*) arg2.data)[n * arg2.dim],        // part_pos 
-                    &((OPP_REAL*) arg3.data)[*cellIdx * arg3.dim], // cell_pos_ll 
-                    &((OPP_INT*)  arg4.data)[*cellIdx * arg4.dim]  // cell_cell_map 
-                );
+                int *cellIdx = nullptr;
 
-            } while (opp_part_check_status(m, *cellIdx, set, n, thr, thr));  
-        }
-    }
+                for (size_t n = start; n < finish; n++)
+                {          
+                    opp_move_var m = opp_get_move_var(thr);
 
-    opp_finalize_particle_move(set);
+                    do
+                    { 
+                        cellIdx = &(OPP_mesh_relation_data[n]);
+
+                        push_particles_kernel(m, 
+                            &((OPP_INT*)  args[0].data)[n * args[0].dim],        // part_cid 
+                            &((OPP_REAL*) args[1].data)[n * args[1].dim],        // part_vel 
+                            &((OPP_REAL*) args[2].data)[n * args[2].dim],        // part_pos 
+                            &((OPP_REAL*) args[3].data)[*cellIdx * args[3].dim], // cell_pos_ll 
+                            &((OPP_INT*)  args[4].data)[*cellIdx * args[4].dim]  // cell_cell_map 
+                        );
+
+                    } while (opp_part_check_status_omp(m, *cellIdx, set, n, thr, thr));  
+                }
+            }
+
+        } while(opp_finalize_particle_move(set));
+    } 
+    
 
     opp_profiler->end("Move");
 }

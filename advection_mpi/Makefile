@@ -71,16 +71,20 @@ seq: common
 		 $(CPP) $(CPPFLAGS) -c seq/seqkernels.cpp -o $(OBJ)/seqkernels.o $(ALL_INC)
 	     $(CPP) $(CPPFLAGS) -o $(BIN)/seq $(OBJ)/advec_op.o $(OBJ)/seqkernels.o $(ALL_INC) $(ALL_LIBS) -loppic_seq
 
-omp: common
-	     $(CPP) $(CPPFLAGS) -fopenmp -DUSE_OMP -c advec_op.cpp -o $(OBJ)/advec_op.o $(ALL_INC)
-	     $(CPP) $(CPPFLAGS) -fopenmp -DUSE_OMP -c omp/ompkernels.cpp -o $(OBJ)/ompkernels.o $(ALL_INC)
-	     $(CPP) $(CPPFLAGS) -fopenmp -o $(BIN)/omp $(OBJ)/advec_op.o $(OBJ)/ompkernels.o $(ALL_INC) $(ALL_LIBS) -loppic_omp
-
 mpi: common
 		 $(MPICPP) $(CPPFLAGS) -DUSE_MPI -c advec_op.cpp -o $(OBJ)/advec_op.o $(ALL_INC)
 		 $(MPICPP) $(CPPFLAGS) -DUSE_MPI -c mpi/mpikernels.cpp -o $(OBJ)/mpikernels.o $(ALL_INC)
 	     $(MPICPP) $(CPPFLAGS) -DUSE_MPI -o $(BIN)/mpi $(OBJ)/advec_op.o $(OBJ)/mpikernels.o $(ALL_INC) $(ALL_LIBS) -loppic_mpi
 
+omp: common
+	     $(CPP) $(CPPFLAGS) -fopenmp -DUSE_OMP -c advec_op.cpp -o $(OBJ)/advec_op.o $(ALL_INC)
+	     $(CPP) $(CPPFLAGS) -fopenmp -DUSE_OMP -c omp/ompkernels.cpp -o $(OBJ)/ompkernels.o $(ALL_INC)
+	     $(CPP) $(CPPFLAGS) -fopenmp -o $(BIN)/omp $(OBJ)/advec_op.o $(OBJ)/ompkernels.o $(ALL_INC) $(ALL_LIBS) -loppic_omp
+
+omp_mpi: common
+	     $(CPP) $(CPPFLAGS) -fopenmp -DUSE_MPI -DUSE_OMP -c advec_op.cpp -o $(OBJ)/advec_op.o $(ALL_INC)
+	     $(CPP) $(CPPFLAGS) -fopenmp -DUSE_MPI -DUSE_OMP -c omp/ompkernels.cpp -o $(OBJ)/ompkernels.o $(ALL_INC)
+	     $(CPP) $(CPPFLAGS) -fopenmp -o $(BIN)/omp_mpi $(OBJ)/advec_op.o $(OBJ)/ompkernels.o $(ALL_INC) $(ALL_LIBS) -lopp_omp_mpi
 
 cuda: common
 		 $(CPP) $(CPPFLAGS) -c advec_op.cpp -o $(OBJ)/advec_op.o $(ALL_INC)

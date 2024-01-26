@@ -35,6 +35,10 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <oppic_lib.h>
 #include <omp.h>
 
+#ifdef USE_MPI
+    #include <opp_mpi_core.h>
+#endif
+
 extern std::vector<int> part_remove_count_per_thr;
 
 // TODO : May need to write with array capcity and realloc always if partticle dats are used
@@ -117,3 +121,16 @@ void opp_reduce_thread_level_data(oppic_arg arg)
 
 void oppic_finalize_particle_move_omp(oppic_set set);
 
+bool opp_part_check_status_omp(opp_move_var& m, int map0idx, oppic_set set, 
+    int particle_index, int& remove_count, int thread);
+/*******************************************************************************/
+
+void opp_halo_create();
+void opp_halo_destroy();
+
+/*******************************************************************************/
+
+void print_dat_to_txtfile_mpi(op_dat dat, const char *file_name);
+void opp_mpi_print_dat_to_txtfile(op_dat dat, const char *file_name);
+
+/*******************************************************************************/

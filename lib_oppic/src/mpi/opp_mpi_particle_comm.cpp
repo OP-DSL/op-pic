@@ -46,7 +46,7 @@ std::map<int, std::map<int, std::vector<opp_particle_move_info>>> opp_part_move_
 std::vector<MPI_Request> send_req_count;
 std::vector<MPI_Request> recv_req_count;
 
-std::vector<int> move_part_indices;
+std::vector<int> opp_move_part_indices;
 
 //*******************************************************************************
 void opp_part_mark_move(oppic_set set, int particle_index, opp_particle_comm_data& comm_data)
@@ -359,7 +359,7 @@ void opp_part_unpack(oppic_set set)
 
 void opp_process_marked_particles(opp_set set) 
 {
-    for (int particle_index : move_part_indices)
+    for (int particle_index : opp_move_part_indices)
     {
         std::map<int, opp_particle_comm_data>& set_part_com_data = opp_part_comm_neighbour_data[set];
         const int map0idx = OPP_mesh_relation_data[particle_index];
@@ -406,7 +406,7 @@ bool opp_part_check_status(opp_move_var& m, int map0idx, oppic_set set,
     else if (map0idx >= OPP_part_cells_set_size)
     {
         // map0idx cell is not owned by the current mpi rank (it is in the import exec halo region), need to communicate
-        move_part_indices.push_back(particle_index);
+        opp_move_part_indices.push_back(particle_index);
         return false;
     }
 
@@ -644,8 +644,8 @@ bool opp_part_check_all_done(oppic_set set)
     }
 
     if (OP_DEBUG) 
-        opp_printf("opp_part_check_all_done", "recv %lld - %s -%s", mpi_buffers->total_recv, 
-            (bool_ret ? "ITER AGAIN" : "ALL DONE"), log.c_str());
+        opp_printf("opp_part_check_all_done", "iteration %d recv %lld - %s -%s", OPP_comm_iteration,
+            mpi_buffers->total_recv, (bool_ret ? "ITER AGAIN" : "ALL DONE"), log.c_str());
 
     free(buffer_recv);
     
