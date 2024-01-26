@@ -80,16 +80,12 @@ int main(int argc, char **argv)
         
 #ifdef USE_MPI
         std::vector<int> counts = { opp_params->get<OPP_INT>("nx"), opp_params->get<OPP_INT>("ny") };
-        opp_color_cart_mesh(DIM, counts, cell_index, cell_colors);
+        opp_colour_cartesian_mesh(DIM, counts, cell_index, cell_colors);
 
         opp_partition(std::string("EXTERNAL"), cell_set, nullptr, cell_colors);
 #endif
         
         init_particles(part_index, part_pos, part_vel, part_mesh_rel, cell_pos_ll);
-
-        // opp_print_map_to_txtfile(cell_cell_map, "INIT_A", "cell_cell_map.dat");
-        // opp_print_dat_to_txtfile(part_mesh_rel, "INIT_A", "part_mesh_rel.dat");
-        // opp_print_dat_to_txtfile(part_pos, "INIT_A", "part_pos.dat");
 
         opp_printf("Setup", "Cells[%d] Particles[%d]", cell_set->size, part_set->size);
 
@@ -138,3 +134,7 @@ int main(int argc, char **argv)
 
     return 0;
 }
+
+// opp_print_map_to_txtfile(cell_cell_map, "INIT_A", "cell_cell_map.dat");
+// opp_print_dat_to_txtfile(part_mesh_rel, "INIT_A", "part_mesh_rel.dat");
+// opp_print_dat_to_txtfile(part_pos, "INIT_A", "part_pos.dat");

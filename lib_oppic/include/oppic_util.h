@@ -34,11 +34,12 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <vector>
 #include <algorithm>
+#include <random>
 #include <string>
 #include <cstring>
 #include <sys/time.h>
 
-typedef struct oppic_set_core *oppic_set;
+typedef struct oppic_set_core *opp_set;
 
 #ifndef MIN
 #define MIN(a, b) ((a < b) ? (a) : (b))
@@ -85,7 +86,7 @@ void quickSort_map(int arr[], int map[], int left, int right, int dim);
 
 int removeDups(int a[], int array_size);
 
-int compare_sets(oppic_set set1, oppic_set set2);
+int compare_sets(opp_set set1, opp_set set2);
 
 void op_timers(double *cpu, double *et); 
 
@@ -106,3 +107,108 @@ double* get_dandom_distriution(int count, int dim);
 int file_exist(char const *filename);
 
 bool opp_type_equivalence(const char *a, const char *b);
+
+
+//*************************************************************************************************
+template <typename RNG>
+inline std::vector<std::vector<double>>
+    get_normal_distribution(const int N, const int ndim, const double mu, const double sigma, RNG &rng) {
+
+    std::normal_distribution<> d{mu, sigma};
+    std::vector<std::vector<double>> array(ndim);
+    for (int dimx = 0; dimx < ndim; dimx++) {
+        array[dimx] = std::vector<double>(N);
+        for (int px = 0; px < N; px++) {
+            array[dimx][px] = d(rng);
+        }
+    }
+
+    return array;
+}
+
+//*************************************************************************************************
+template <typename RNG>
+inline std::vector<std::vector<double>>
+    get_uniform_within_extents(const int N, const int ndim, const double *extents, RNG &rng) {
+
+    std::uniform_real_distribution<double> uniform_rng(0.0, 1.0);
+    std::vector<std::vector<double>> positions(ndim);
+
+    for (int dimx = 0; dimx < ndim; dimx++) {
+        positions[dimx] = std::vector<double>(N);
+        const double ex = extents[dimx];
+        for (int px = 0; px < N; px++) {
+            positions[dimx][px] = ex * uniform_rng(rng);
+        }
+    }
+
+    return positions;
+}
+
+//*************************************************************************************************
+template <typename T>
+inline void uniform_within_cartesian_cells(int ndim, const double cell_width, const T* cell_pos_ll, 
+    const int64_t cells_set_size, const int64_t npart_per_cell, std::vector<std::vector<double>> &positions, 
+    std::vector<int> &cells, std::mt19937 rng) {
+
+    std::vector<double> extents(ndim, cell_width);
+
+    const int64_t npart_total = npart_per_cell * cells_set_size;
+    
+    cells.resize(npart_total);
+
+    positions.resize(ndim);
+    positions[0] = std::vector<double>(npart_total);
+    positions[1] = std::vector<double>(npart_total);
+
+    for (int cx = 0; cx < cells_set_size; cx++) {
+
+        const int index_start = cx * npart_per_cell;
+        const int index_end = (cx + 1) * npart_per_cell;
+
+        auto positions_ref_cell = get_uniform_within_extents(npart_per_cell, ndim, extents.data(), rng);
+
+        int index = 0;
+        for (int ex = index_start; ex < index_end; ex++) {
+
+            cells.at(ex) = cx;
+
+            for (int dx = 0; dx < ndim; dx++) {
+                positions.at(dx).at(ex) =
+                    cell_pos_ll[cx * ndim + dx] + positions_ref_cell.at(dx).at(index);
+            }
+            index++;
+        }
+    }
+}
+
+//*************************************************************************************************
+template <typename T>
+inline std::vector<T> reverse_argsort(const std::vector<T> &array) 
+{
+    std::vector<T> indices(array.size());
+    std::iota(indices.begin(), indices.end(), 0);
+    std::sort(indices.begin(), indices.end(),
+                [&array](int left, int right) -> bool {
+                    return array[left] > array[right];
+                });
+
+    return indices;
+}
+
+//*************************************************************************************************
+template <typename T>
+inline void get_decomp_1d(const T N_compute_units, const T N_work_items,
+                   const T work_unit, T *rstart, T *rend) 
+{
+    const auto pq = std::div(N_work_items, N_compute_units);
+    const T i = work_unit;
+    const T p = pq.quot;
+    const T q = pq.rem;
+    const T n = (i < q) ? (p + 1) : p;
+    const T start = (MIN(i, q) * (p + 1)) + ((i > q) ? (i - q) * p : 0);
+    const T end = start + n;
+
+    *rstart = start;
+    *rend = end;
+}

@@ -58,17 +58,6 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
     if (_y >= ny) _y = 0; \
     OUT = (_x + nx*_y); } \
 
-#define RANK_TO_INDEX(rank,ix,iy,iz,_x,_y) \
-    int _ix, _iy, _iz;                                                    \
-    _ix  = (rank);                        /* ix = ix+gpx*( iy+gpy*iz ) */ \
-    _iy  = _ix/int(_x);   /* iy = iy+gpy*iz */            \
-    _ix -= _iy*int(_x);   /* ix = ix */                   \
-    _iz  = _iy/int(_y);   /* iz = iz */                   \
-    _iy -= _iz*int(_y);   /* iy = iy */                   \
-    (ix) = _ix;                                                           \
-    (iy) = _iy;                                                           \
-    (iz) = _iz;                                                           \
-
 enum Dim {
     x = 0,
     y = 1,
@@ -80,11 +69,7 @@ enum CellMap {
     xd_y = 0,
     xu_y,
     x_yd,
-    x_yu,
-    // xd_yd,
-    // xd_yu,
-    // xu_yd,  
-    // xu_yu   
+    x_yu 
 };
 
 #ifdef FUSE_KERNELS   

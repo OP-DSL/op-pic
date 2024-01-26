@@ -309,3 +309,81 @@ Comm::~Comm() {
     }
 }
 
+//*************************************************************************************************
+// ndim : can be 2 or 3
+// cell_counts : cell_counts in each direction
+// cell_index : cell_index dat which holds global numbering
+// cell_colors : local cell_colors dat to colour with most appropriate MPI rank
+void opp_colour_cartesian_mesh(const int ndim, const std::vector<int> cell_counts, opp_dat cell_index, 
+                            const opp_dat cell_colors)
+{
+
+    MPI_Comm comm_cart;
+    int mpi_dims[3] = {0, 0, 0};
+    int periods[3] = {1, 1, 1};
+    int coords[3] = {0, 0, 0};
+    int cell_starts[3] = {0, 0, 0}; // Holds the first cell this rank owns in each dimension.
+    int cell_ends[3] = {1, 1, 1}; // Holds the last cell+1 this ranks owns in each dimension.
+
+    MPI_Dims_create(OPP_comm_size, ndim, mpi_dims);
+
+    std::vector<int> cell_count_ordering = reverse_argsort(cell_counts); // direction with most cells first to match mpi_dims order
+
+    std::vector<int> mpi_dims_reordered(ndim);
+    for (int dimx = 0; dimx < ndim; dimx++)  // reorder the mpi_dims to match the actual domain
+        mpi_dims_reordered[cell_count_ordering[dimx]] = mpi_dims[dimx];
+
+    MPI_Cart_create(MPI_COMM_WORLD, ndim, mpi_dims_reordered.data(), periods, 1, &comm_cart);
+    MPI_Cart_get(comm_cart, ndim, mpi_dims, periods, coords);
+
+    for (int dimx = 0; dimx < ndim; dimx++) 
+        get_decomp_1d(mpi_dims[dimx], cell_counts[dimx], coords[dimx], &cell_starts[dimx], &cell_ends[dimx]);
+
+    std::vector<int> all_cell_starts(OPP_comm_size * ndim);
+    std::vector<int> all_cell_ends(OPP_comm_size * ndim);
+
+    MPI_Allgather(cell_starts, ndim, MPI_INT, all_cell_starts.data(), ndim, MPI_INT, MPI_COMM_WORLD);
+    MPI_Allgather(cell_ends, ndim, MPI_INT, all_cell_ends.data(), ndim, MPI_INT, MPI_COMM_WORLD);
+
+#define CART_RANK_TO_INDEX(rank,ix,iy,iz,_x,_y) \
+    int _ix, _iy, _iz;                                                    \
+    _ix  = (rank);                        /* ix = ix+gpx*( iy+gpy*iz ) */ \
+    _iy  = _ix/int(_x);                   /* iy = iy+gpy*iz */            \
+    _ix -= _iy*int(_x);                   /* ix = ix */                   \
+    _iz  = _iy/int(_y);                   /* iz = iz */                   \
+    _iy -= _iz*int(_y);                   /* iy = iy */                   \
+    (ix) = _ix;                                                           \
+    (iy) = _iy;                                                           \
+    (iz) = _iz;                                                           \
+
+    // used global id of cell and assign the color to the correct MPI rank
+    const OPP_INT* gcid = ((OPP_INT*)cell_index->data);
+    for (OPP_INT i = 0; i < cell_index->set->size; i++)
+    {
+        int coord[3] = {-1, -1 -1};
+        CART_RANK_TO_INDEX(gcid[i], coord[0], coord[1], coord[2], cell_counts[0], cell_counts[1]);
+
+        for (int rank = 0; rank < OPP_comm_size; rank++) 
+        {
+            bool is_rank_suitable[3] = { true, true, true };
+
+            for (int dimx = 0; dimx < ndim; dimx++) 
+            {
+                if ((all_cell_starts[ndim*rank+dimx] > coord[dimx]) || 
+                    (all_cell_ends[ndim*rank+dimx] <= coord[dimx]))
+                {
+                    is_rank_suitable[dimx] = false;
+                    break;
+                }
+            }
+
+            if (is_rank_suitable[0] && is_rank_suitable[1] && is_rank_suitable[2])
+            {
+                ((OPP_INT*)cell_colors->data)[i] = rank;
+                break;
+            }
+        }    
+    }
+
+#undef CART_RANK_TO_INDEX
+}

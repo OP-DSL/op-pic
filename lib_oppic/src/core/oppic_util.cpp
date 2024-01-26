@@ -335,7 +335,7 @@ int removeDups(int a[], int array_size)
 }
 
 //********************************************************************************
-int compare_sets(oppic_set set1, oppic_set set2) 
+int compare_sets(opp_set set1, opp_set set2) 
 {
     if (set1->size == set2->size && strcmp(set1->name, set2->name) == 0)
         return 1;

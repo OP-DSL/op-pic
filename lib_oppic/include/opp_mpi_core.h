@@ -345,6 +345,20 @@ inline int opp_get_uniform_local_size(int global_size)
     return opp_get_uniform_local_size(global_size, OPP_rank);
 }
 
+//*************************************************************************************************
+inline std::vector<int> get_local_cell_count_array(const int num_cells, const int comm_size)
+{
+    std::vector<int> local_counts(comm_size);
+
+    int old_value = 0;
+    for (int i = 0; i < comm_size; i++) {
+        local_counts[i] = opp_get_uniform_local_size(num_cells, i) + old_value;
+        old_value = local_counts[i];
+    }
+
+    return local_counts;
+}
+
 //*******************************************************************************
 template <typename T> 
 inline void opp_uniform_scatter_array(T *g_array, T *l_array, int g_size, int l_size, int elem_size) 
@@ -446,3 +460,10 @@ void opp_desanitize_all_maps();
 void opp_get_start_end(opp_set set, opp_reset reset, int& start, int& end);
 opp_dat opp_mpi_get_data(opp_dat dat);
 
+//*************************************************************************************************
+// ndim : can be 2 or 3
+// cell_counts : cell_counts in each direction
+// cell_index : cell_index dat which holds global numbering
+// cell_colors : local cell_colors dat to colour with most appropriate MPI rank
+void opp_colour_cartesian_mesh(const int ndim, const std::vector<int> cell_counts, opp_dat cell_index, 
+                            const opp_dat cell_colors);
