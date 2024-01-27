@@ -42,6 +42,9 @@ void init_mesh(std::shared_ptr<DataPointers> m);
 void distribute_data_over_ranks(std::shared_ptr<DataPointers>& g_m, std::shared_ptr<DataPointers>& m);
 
 //*************************************************************************************************
+/**
+ * @brief Utility class to temporarily hold the mesh data until it is loaded by OP-PIC
+ */
 class DataPointers // This is just a placeholder for initializing // No use in DSL
 {
     public:
@@ -85,6 +88,10 @@ class DataPointers // This is just a placeholder for initializing // No use in D
 };
 
 //*************************************************************************************************
+/**
+ * @brief Initialize the rank specific mesh data to a DataPointers utility class shared pointer
+ * @return std::shared_ptr<DataPointers>
+ */
 std::shared_ptr<DataPointers> LoadData() {
 
     std::shared_ptr<DataPointers> g_m(new DataPointers());
@@ -99,6 +106,12 @@ std::shared_ptr<DataPointers> LoadData() {
 }
 
 //*************************************************************************************************
+/**
+ * @brief Initializes the mesh using 2D (nx,ny) and cell_width values in the config file
+ *          Expect this to run only on the ROOT MPI rank
+ * @param m std::shared_ptr<DataPointers> loaded with mesh data
+ * @return (void)
+ */
 void init_mesh(std::shared_ptr<DataPointers> m) {
 
     OPP_INT nx = opp_params->get<OPP_INT>("nx");
@@ -129,6 +142,16 @@ void init_mesh(std::shared_ptr<DataPointers> m) {
 }
 
 //*************************************************************************************************
+/**
+ * @brief Initializes the particles in to the particle dats in the arguments, using the cell_pos_ll dat
+ *          Expect this to run on every MPI rank
+ * @param part_index - opp_dat : Particle index relative to rank. TODO: make this global
+ * @param part_pos - opp_dat : Particle 2D position (x,y)
+ * @param part_vel - opp_dat : Particle 2D velocity (x,y)
+ * @param part_mesh_rel - opp_dat : Particle belonging cell index 
+ * @param cell_pos_ll - opp_dat : Lower left 2D position coordicate of the cell
+ * @return (void)
+ */
 void init_particles(opp_dat part_index, opp_dat part_pos, opp_dat part_vel, opp_dat part_mesh_rel, 
                     opp_dat cell_pos_ll) 
 {
@@ -161,8 +184,14 @@ void init_particles(opp_dat part_index, opp_dat part_pos, opp_dat part_vel, opp_
     // Sample some particle velocities.
     auto velocities = get_normal_distribution(rank_npart, DIM, 0.0, 0.5, rng_vel);
 
-    // Host space to store the particles.
+    if (OPP_rank == OPP_ROOT)
+        opp_printf("Setup", "Init particles oppic_increase_particle_count Start rank_npart=%d", rank_npart);
+
+    // Host/Device space to store the particles.
     oppic_increase_particle_count(part_index->set, rank_npart);
+
+    if (OPP_rank == OPP_ROOT)
+        opp_printf("Setup", "Init particles Load data to dats Start");
 
     // Populate the host space with particle data.
     for (int px = 0; px < rank_npart; px++) {
@@ -176,6 +205,9 @@ void init_particles(opp_dat part_index, opp_dat part_pos, opp_dat part_vel, opp_
         ((OPP_INT*)part_index->data)[px]               = px; 
     }
 
+    if (OPP_rank == OPP_ROOT)
+        opp_printf("Setup", "Init particles Uploading Start");
+
     opp_upload_particle_set(part_index->set);
 
 #ifdef USE_MPI
@@ -187,6 +219,12 @@ void init_particles(opp_dat part_index, opp_dat part_pos, opp_dat part_vel, opp_
 }
 
 //*************************************************************************************************
+/**
+ * @brief This block distributes temporary DataPointers from ROOT rank to other ranks
+ * @param g_m - Global mesh of temporary shared pointer of DataPointers, Root Rank should have data
+ * @param m - rank specific block partitioned mesh of temporary shared pointer of DataPointers
+ * @return (void)
+ */
 void distribute_data_over_ranks(std::shared_ptr<DataPointers>& g_m, std::shared_ptr<DataPointers>& m)
 { 
 #ifdef USE_MPI

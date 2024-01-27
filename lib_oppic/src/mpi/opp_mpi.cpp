@@ -462,3 +462,10 @@ void opp_download_particle_set(opp_set particles_set, bool force_download) {}
 //*******************************************************************************
 // Copy all dats of the set from host to device
 void opp_upload_particle_set(opp_set particles_set, bool realloc) {}
+
+//*******************************************************************************
+void opp_colour_cartesian_mesh(const int ndim, const std::vector<int> cell_counts, opp_dat cell_index, 
+                            const opp_dat cell_colors) 
+{  
+    __opp_colour_cartesian_mesh(ndim, cell_counts, cell_index, cell_colors);
+}

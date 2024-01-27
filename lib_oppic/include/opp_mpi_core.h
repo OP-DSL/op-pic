@@ -460,13 +460,13 @@ void opp_desanitize_all_maps();
 void opp_get_start_end(opp_set set, opp_reset reset, int& start, int& end);
 opp_dat opp_mpi_get_data(opp_dat dat);
 
+extern std::vector<int> opp_move_part_indices;
+void opp_process_marked_particles(opp_set set);
+
 //*************************************************************************************************
 // ndim : can be 2 or 3
 // cell_counts : cell_counts in each direction
 // cell_index : cell_index dat which holds global numbering
 // cell_colors : local cell_colors dat to colour with most appropriate MPI rank
-void opp_colour_cartesian_mesh(const int ndim, const std::vector<int> cell_counts, opp_dat cell_index, 
+void __opp_colour_cartesian_mesh(const int ndim, const std::vector<int> cell_counts, opp_dat cell_index, 
                             const opp_dat cell_colors);
-
-extern std::vector<int> opp_move_part_indices;
-void opp_process_marked_particles(opp_set set);

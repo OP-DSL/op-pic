@@ -314,7 +314,7 @@ Comm::~Comm() {
 // cell_counts : cell_counts in each direction
 // cell_index : cell_index dat which holds global numbering
 // cell_colors : local cell_colors dat to colour with most appropriate MPI rank
-void opp_colour_cartesian_mesh(const int ndim, const std::vector<int> cell_counts, opp_dat cell_index, 
+void __opp_colour_cartesian_mesh(const int ndim, const std::vector<int> cell_counts, opp_dat cell_index, 
                             const opp_dat cell_colors)
 {
 
@@ -353,7 +353,7 @@ void opp_colour_cartesian_mesh(const int ndim, const std::vector<int> cell_count
                 std::to_string(all_cell_starts[r*ndim+0]) + "," + std::to_string(all_cell_starts[r*ndim+1]) +
                 ") end (" + std::to_string(all_cell_ends[r*ndim+0]) + "," + std::to_string(all_cell_ends[r*ndim+1]) + ")";
         }
-        opp_printf("opp_colour_cartesian_mesh", "%s", log.c_str());
+        opp_printf("__opp_colour_cartesian_mesh", "%s", log.c_str());
     }
 
 #define CART_RANK_TO_INDEX(rank,ix,iy,iz,_x,_y) \

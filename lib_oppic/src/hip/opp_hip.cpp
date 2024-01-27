@@ -884,7 +884,14 @@ void print_last_hip_error()
     printf("ANY hip ERRORS? %s\n", hipGetErrorString(hipGetLastError()));
 }
 
-
+//*******************************************************************************
+void opp_colour_cartesian_mesh(const int ndim, const std::vector<int> cell_counts, opp_dat cell_index, 
+                            const opp_dat cell_colors) 
+{
+#ifdef USE_MPI  
+    __opp_colour_cartesian_mesh(ndim, cell_counts, cell_index, cell_colors);
+#endif
+}
 
 
 

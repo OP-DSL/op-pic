@@ -792,3 +792,12 @@ void opp_mpi_print_dat_to_txtfile(op_dat dat, const char *file_name)
     free(temp);
 #endif
 }
+
+//*******************************************************************************
+void opp_colour_cartesian_mesh(const int ndim, const std::vector<int> cell_counts, opp_dat cell_index, 
+                            const opp_dat cell_colors) 
+{
+#ifdef USE_MPI  
+    __opp_colour_cartesian_mesh(ndim, cell_counts, cell_index, cell_colors);
+#endif
+}

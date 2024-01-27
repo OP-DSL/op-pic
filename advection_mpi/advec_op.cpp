@@ -53,10 +53,10 @@ int main(int argc, char **argv)
     {
         opp_profiler->start("Setup");
 
-        OPP_INT max_iter          = opp_params->get<OPP_INT>("max_iter");   
-        OPP_REAL const_dt         = opp_params->get<OPP_REAL>("dt");
-        OPP_REAL cell_width       = opp_params->get<OPP_REAL>("cell_width");
-        OPP_REAL const_extents[2] = {opp_params->get<OPP_INT>("nx")*cell_width, opp_params->get<OPP_INT>("ny")*cell_width};
+        OPP_INT max_iter    = opp_params->get<OPP_INT>("max_iter");   
+        OPP_REAL dt         = opp_params->get<OPP_REAL>("dt");
+        OPP_REAL cell_width = opp_params->get<OPP_REAL>("cell_width");
+        OPP_REAL extents[2] = {opp_params->get<OPP_INT>("nx")*cell_width, opp_params->get<OPP_INT>("ny")*cell_width};
 
         std::shared_ptr<DataPointers> m = LoadData();
 
@@ -67,21 +67,22 @@ int main(int argc, char **argv)
         opp_dat cell_colors   = opp_decl_mesh_dat(cell_set, ONE, DT_INT,  m->c_colors, "c_colors"); // used only with MPI
 
         opp_set part_set      = opp_decl_part_set("particles", cell_set); // Zero particles, inject after partitioning
-        opp_dat part_index    = opp_decl_part_dat(part_set, ONE, DT_INT,  nullptr, "p_index");
+        opp_dat part_index    = opp_decl_part_dat(part_set, ONE, DT_INT,  nullptr, "p_index"); // Unused in the simulation
         opp_dat part_pos      = opp_decl_part_dat(part_set, DIM, DT_REAL, nullptr, "p_pos");
         opp_dat part_vel      = opp_decl_part_dat(part_set, DIM, DT_REAL, nullptr, "p_vel");    
         opp_dat part_mesh_rel = opp_decl_part_dat(part_set, ONE, DT_INT,  nullptr, "p_mesh_rel", true);
 
-        opp_decl_const<OPP_REAL>(TWO, const_extents, "CONST_extents");
-        opp_decl_const<OPP_REAL>(ONE, &const_dt,     "CONST_dt");
-        opp_decl_const<OPP_REAL>(ONE, &cell_width,   "CONST_cell_width");
+        opp_decl_const<OPP_REAL>(TWO, extents,     "CONST_extents");
+        opp_decl_const<OPP_REAL>(ONE, &dt,         "CONST_dt");
+        opp_decl_const<OPP_REAL>(ONE, &cell_width, "CONST_cell_width");
 
         m->DeleteValues();
-        
-#ifdef USE_MPI
+
+        // ideally opp_colour_cartesian_mesh is not required for non-mpi runs
         std::vector<int> counts = { opp_params->get<OPP_INT>("nx"), opp_params->get<OPP_INT>("ny") };
         opp_colour_cartesian_mesh(DIM, counts, cell_index, cell_colors);
 
+#ifdef USE_MPI
         opp_partition(std::string("EXTERNAL"), cell_set, nullptr, cell_colors);
 #endif
         
@@ -92,7 +93,8 @@ int main(int argc, char **argv)
         opp_profiler->end("Setup");
 
         opp_profiler->start("MainLoop");
-        for (OPP_main_loop_iter = 0; OPP_main_loop_iter < max_iter; OPP_main_loop_iter++) {
+        for (OPP_main_loop_iter = 0; OPP_main_loop_iter < max_iter; OPP_main_loop_iter++) // Start Main loop
+        {
 
 #ifdef FUSE_KERNELS        
             opp_particle_mover__UpdatePosMove(
@@ -120,14 +122,12 @@ int main(int argc, char **argv)
 #endif
 
             if (OPP_rank == OPP_ROOT) opp_printf("Main", "ts: %d ****", OPP_main_loop_iter);
-        }
+        
+        } // End Main loop
         opp_profiler->end("MainLoop");
         
         if (OPP_rank == OPP_ROOT) 
             opp_printf("Main", "Main loop completed after %d iterations ****", max_iter);
-
-        // opp_print_dat_to_txtfile(part_mesh_rel, "FINAL", "part_mesh_rel.dat");
-        // opp_print_dat_to_txtfile(part_pos, "FINAL", "part_pos.dat");
     }
 
     opp_exit();
@@ -135,6 +135,8 @@ int main(int argc, char **argv)
     return 0;
 }
 
+// opp_print_dat_to_txtfile(part_mesh_rel, "FINAL", "part_mesh_rel.dat");
+// opp_print_dat_to_txtfile(part_pos, "FINAL", "part_pos.dat");
 // opp_print_map_to_txtfile(cell_cell_map, "INIT_A", "cell_cell_map.dat");
 // opp_print_dat_to_txtfile(part_mesh_rel, "INIT_A", "part_mesh_rel.dat");
 // opp_print_dat_to_txtfile(part_pos, "INIT_A", "part_pos.dat");
