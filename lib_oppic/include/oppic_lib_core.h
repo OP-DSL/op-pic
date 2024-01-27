@@ -32,19 +32,10 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #pragma once
 
-#include <vector>
-#include <map>
-#include <iostream>
-#include <trace.h>
+#include <opp_defs.h>
 #include <opp_params.h>
 #include <opp_profiler.h>
 #include <oppic_util.h>
-#include <cstring>
-#include <limits.h>
-#include <inttypes.h>
-#include <stdio.h>
-#include <stdarg.h>
-#include <memory>
 
 #ifdef USE_PETSC
     #include <petscksp.h>
@@ -330,9 +321,19 @@ void oppic_print_dat_to_txtfile_core(oppic_dat dat, const char *file_name_prefix
 void oppic_print_map_to_txtfile_core(oppic_map map, const char *file_name_prefix, const char *file_name_suffix);
 
 void oppic_dump_dat_core(oppic_dat data);
+
+void opp_abort(std::string s = "");
+
+/*******************************************************************************/
+void opp_set_dirtybit(int nargs, oppic_arg *args);
+void opp_set_dirtybit_cuda(int nargs, oppic_arg *args);
+void opp_set_dirtybit_grouped(int nargs, oppic_arg *args, DeviceType device);
+/*******************************************************************************/
+
 //*************************************************************************************************
 
 extern int OP_hybrid_gpu;
+extern double OP_hybrid_balance;
 extern int OP_maps_base_index;
 extern int OP_auto_soa;
 extern int OP_part_alloc_mult;
@@ -345,9 +346,11 @@ extern int OPP_max_comm_iteration;
 extern int OPP_iter_start;
 extern int OPP_iter_end;
 extern int *OPP_mesh_relation_data;
+extern int *OPP_mesh_relation_data_d;
 extern int OPP_main_loop_iter;
 extern int OPP_gpu_threads_per_block;
 extern size_t OPP_gpu_shared_mem_per_block;
+extern int OPP_part_cells_set_size;
 
 extern std::vector<oppic_set> oppic_sets;
 extern std::vector<oppic_map> oppic_maps;
@@ -419,3 +422,98 @@ inline void opp_reduce_dat_element(T* out_dat, const T* in_dat, int dim, opp_red
         }  
     }   
 }
+
+
+namespace opp {
+
+    //*******************************************************************************
+    class BoundingBox {
+
+    public:
+        BoundingBox(int dim, opp_point minCoordinate, opp_point maxCoordinate, const std::shared_ptr<Comm> comm = nullptr);
+        BoundingBox(const opp_dat node_pos_dat, int dim, const std::shared_ptr<Comm> comm = nullptr);
+        ~BoundingBox();
+
+        const opp_point& getLocalMin() const;
+        const opp_point& getLocalMax() const;
+        const opp_point& getGlobalMin() const;
+        const opp_point& getGlobalMax() const;
+        bool isCoordinateInBoundingBox(const opp_point& point);
+        bool isCoordinateInGlobalBoundingBox(const opp_point& point);
+
+    private:
+        void generateGlobalBoundingBox(int dim, int count, const std::shared_ptr<Comm> comm);
+
+        std::array<opp_point,2> boundingBox; // index 0 is min, index 1 is max
+        std::array<opp_point,2> globalBoundingBox; // index 0 is min, index 1 is max
+    };
+
+    //*******************************************************************************
+    class GlobalToLocalCellIndexMapper {
+    
+    public:
+        //*******************************************************************************
+        // This will contain mappings for halo indices too
+        GlobalToLocalCellIndexMapper(const opp_dat global_cell_id_dat);
+        virtual ~GlobalToLocalCellIndexMapper();
+
+        int map(const int globalIndex);
+        
+    private:
+        std::map<int,int> globalToLocalCellIndexMap;
+    };
+
+    //*******************************************************************************
+    class CellMapper {
+    
+    public:
+        CellMapper(const std::shared_ptr<BoundingBox> boundingBox, const double gridSpacing, 
+            const std::shared_ptr<Comm> comm = nullptr);
+        ~CellMapper();
+
+        opp_point getCentroidOfBox(const opp_point& coordinate);
+        size_t findStructuredCellIndex(const opp_point& position);
+        int findClosestCellIndex(const size_t& structCellIdx);
+        int findClosestCellRank(const size_t& structCellIdx);
+        void reduceInterNodeMappings(int callID);
+        void convertToLocalMappings(const opp_dat global_cell_id_dat);
+        void enrichStructuredMesh(const int index, const int cell_index, const int rank = 0);
+        void printStructuredMesh(const std::string msg, int *array, size_t size, bool printToFile = true);
+        void createStructMeshMappingArrays();
+        void waitBarrier();
+        void lockWindows();
+        void unlockWindows();
+
+    // private:
+        const std::shared_ptr<BoundingBox> boundingBox = nullptr;
+        const double gridSpacing = 0.0;
+        const double oneOverGridSpacing = 0.0;
+        const opp_point& minGlbCoordinate;  
+        const std::shared_ptr<Comm> comm = nullptr;
+
+        opp_ipoint globalGridDims;
+        opp_ipoint localGridStart, localGridEnd;
+
+        size_t globalGridSize = 0;
+        
+        int* structMeshToCellMapping = nullptr;         // This contain mapping to local cell indices
+        int* structMeshToRankMapping = nullptr;         // This contain mapping to residing mpi rank
+
+#ifdef USE_MPI        
+        MPI_Win win_structMeshToCellMapping;
+        MPI_Win win_structMeshToRankMapping;
+#endif
+    };
+};
+
+extern std::shared_ptr<opp::BoundingBox> boundingBox;
+extern std::shared_ptr<opp::CellMapper> cellMapper;
+extern bool useGlobalMove;
+
+#ifdef USE_MPI 
+    extern std::shared_ptr<opp::Comm> comm;
+    extern std::unique_ptr<opp::GlobalParticleMover> globalMover;
+#else
+    extern std::shared_ptr<Comm> comm;
+    extern std::unique_ptr<GlobalParticleMover> globalMover;
+#endif

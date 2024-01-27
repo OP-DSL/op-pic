@@ -41,9 +41,9 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <iomanip>
 #include <sstream>
 
-// #define ENABLE_MPI
+// #define USE_MPI
 
-#ifdef ENABLE_MPI
+#ifdef USE_MPI
 #include <mpi.h>
 #endif
 
@@ -63,7 +63,7 @@ namespace opp {
     {
     public:
         Profiler() {
-#ifdef ENABLE_MPI
+#ifdef USE_MPI
             MPI_Comm_rank(MPI_COMM_WORLD, &m_myRank);
             MPI_Comm_size(MPI_COMM_WORLD, &m_worldSize);
 #endif
@@ -77,8 +77,9 @@ namespace opp {
         *  @param 
         */ 
         inline void reg(std::string profName) {
-            ProfilerData profData = m_elapsedTimeMap[profName];  
+            // ProfilerData profData = m_elapsedTimeMap[profName];  
 
+            m_elapsedTimeMap[profName] = ProfilerData();
             // m_elapsedTimeMap.insert(std::make_pair(profName, ProfilerData()));
             // Do nothing
         }
@@ -171,7 +172,7 @@ namespace opp {
         *  @param 
         */ 
         inline void printProfile(bool fromAllRanks = false) const {
-#ifndef ENABLE_MPI
+#ifndef USE_MPI
             fromAllRanks = true;
 #endif
             this->print(std::cout, fromAllRanks);
@@ -184,7 +185,7 @@ namespace opp {
         inline void printProfileToFile(std::string fileName, bool fromAllRanks = false) const {
             if (fromAllRanks)
                 fileName += std::string("_") + std::to_string(m_myRank);
-#ifndef ENABLE_MPI
+#ifndef USE_MPI
             fromAllRanks = true;
 #endif            
             std::ofstream file(fileName);
@@ -227,6 +228,9 @@ namespace opp {
 
             for (const auto& entry : m_elapsedTimeMap) {
                 const std::string& profName = entry.first;
+
+                // if (m_myRank == 0) printf("PROFILER ... Evaluating profile [%s]\n", profName.c_str());
+
                 const size_t count = this->getMaxCallCount(profName, fromAllRanks); //entry.second.count;
 
                 const double elapsedTime = this->getMaxElapsedTime(profName, fromAllRanks);
@@ -238,9 +242,12 @@ namespace opp {
                 const double particleCommunicationTime = this->getParticleCommunicationTime(profName, fromAllRanks);
 
                 if (fromAllRanks || m_myRank == 0) { 
-                    ss << this->adjustString(profName, 20) << "\t" << count << "\t" << elapsedTime << "\t" << averageTime; 
-                    ss << "\t" << meshTransferSize << "\t" << meshCommunicationTime;
-                    ss << "\t" << particleTransferSize << "\t" << particleTransferCount<< "\t" << particleCommunicationTime << std::endl;
+                    ss << fromAllRanks << " " << m_myRank << " " << this->adjustString(profName, 20) << "\t" << this->adjustString(std::to_string(count), 4) << "\t"; 
+                    ss << std::fixed << std::setprecision(10) << elapsedTime << "\t" << averageTime; 
+                    std::stringstream so;
+                    so << "\t" << meshTransferSize << "\t" << meshCommunicationTime;
+                    so << "\t" << particleTransferSize << "\t" << particleTransferCount<< "\t" << particleCommunicationTime << std::endl;
+                    ss << so.str();
                 }
             }
 
@@ -284,7 +291,7 @@ namespace opp {
             auto it = map.find(profName);
             if (it != map.end())
                 max = it->second;
-#ifdef ENABLE_MPI
+#ifdef USE_MPI
             if (!fromAllRanks)
             {
                 ProfilerData localMax = max;  
@@ -301,7 +308,7 @@ namespace opp {
             auto it = map.find(profName);
             if (it != map.end())
                 sum = it->second;
-#ifdef ENABLE_MPI
+#ifdef USE_MPI
             if (!fromAllRanks)
             {
                 ProfilerData localSum = sum;  
@@ -340,7 +347,7 @@ namespace opp {
 
 // int main(int argc, char **argv) {
 
-// #ifdef ENABLE_MPI
+// #ifdef USE_MPI
 //     MPI_Init(&argc, &argv);    
 // #endif
 
@@ -379,7 +386,7 @@ namespace opp {
 //     timer.printProfile(true);
 //     timer.printProfileToFile("Rank", true);
 //     timer.printProfileToFile("All", false);
-// #ifdef ENABLE_MPI
+// #ifdef USE_MPI
 //     MPI_Finalize();
 // #endif
 

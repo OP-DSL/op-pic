@@ -954,7 +954,8 @@ MPI_Comm OP_PART_WORLD;
                     int found = binary_search(g_index, map->map[i * map->dim + j], 0,
                                                 g_count - 1);
                     if (found < 0)
-                        printf("Problem in renumbering\n");
+                        printf("Problem in renumbering rank %d map %s index %d d %d\n", 
+                            OPP_rank, map->name, i, j);
                     else 
                     {
                         OP_map_list[map->index]->map[i * map->dim + j] = all_imp_index[found];

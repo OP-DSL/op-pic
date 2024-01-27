@@ -11,11 +11,11 @@
  *==============================================================================*/
 
 
-#include "trace.h"
 #include "maths.h"
+#include <iostream>
 
 /*computes determinant of a 4x4 matrix*/
-double det4(double (*M)[4]) { // TRACE_ME;
+double det4(double (*M)[4]) { 
     double M0[3][3];
     double M1[3][3];
     double M2[3][3];
@@ -46,14 +46,14 @@ double det4(double (*M)[4]) { // TRACE_ME;
 }
 
 /*computes determinant of a 3x3 matrix*/
-double det3(double (*M)[3]) { //TRACE_ME;
+double det3(double (*M)[3]) { 
     return M[0][0]*(M[1][1]*M[2][2]-M[1][2]*M[2][1])-
            M[0][1]*(M[1][0]*M[2][2]-M[1][2]*M[2][0])+
            M[0][2]*(M[1][0]*M[2][1]-M[1][1]*M[2][0]);
 }
 
 /*helper functions for matrix math, y=A*x */
-void matVecMultiply(double *y, double**A, double *x, int nu) { //TRACE_ME;
+void matVecMultiply(double *y, double**A, double *x, int nu) { 
     // #pragma omp parallel for
     for (int i=0;i<nu;i++) {
         y[i] = 0;

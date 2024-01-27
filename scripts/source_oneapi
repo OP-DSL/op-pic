@@ -30,31 +30,33 @@ if [ "$(hostname)" == 'telos' ]; then
   export NV_ARCH=Volta
   export CUDA_VISIBLE_DEVICES=0
   echo $NV_ARCH $(hostname)
-  # export LD_LIBRARY_PATH=/ext-home/zl/lib_install/petsc-3.18.3-oneapi-2021.3-cuda-rel/lib:$LD_LIBRARY_PATH
-  # export PETSC_INSTALL_PATH=/ext-home/zl/lib_install/petsc-3.18.3-oneapi-2021.3-cuda-rel
-  # export LD_LIBRARY_PATH=/ext-home/zl/lib_install/petsc-3.18.2-oneapi-2021.3-release/lib:$LD_LIBRARY_PATH
-  # export PETSC_INSTALL_PATH=/ext-home/zl/lib_install/petsc-3.18.2-oneapi-2021.3-release
-  export LD_LIBRARY_PATH=/ext-home/zl/lib_install/petsc-3.18.3-oneapi-2021.3-mpi_telos/lib:$LD_LIBRARY_PATH
   export PETSC_INSTALL_PATH=/ext-home/zl/lib_install/petsc-3.18.3-oneapi-2021.3-mpi_telos
+  # export PETSC_INSTALL_PATH=/ext-home/zl/lib_install/petsc-3.18.3-oneapi-2021.3-cuda-rel
+  # export PETSC_INSTALL_PATH=/ext-home/zl/lib_install/petsc-3.18.2-oneapi-2021.3-release
+  export LD_LIBRARY_PATH=$PETSC_INSTALL_PATH/lib:$LD_LIBRARY_PATH
+
   export NVCCFLAGS_ADD='-gencode arch=compute_70,code=sm_70'
 elif [ "$(hostname)" == 'kos' ]; then
   export NV_ARCH=Pascal
   export CUDA_VISIBLE_DEVICES=0,1
   echo $NV_ARCH $(hostname)
-  export LD_LIBRARY_PATH=/ext-home/zl/lib_install/petsc-3.18.3-oneapi-2021.3-cuda-kos/lib:$LD_LIBRARY_PATH
+  # export PETSC_INSTALL_PATH=/ext-home/zl/lib_install/petsc-3.18.3-oneapi-2021.3-mpi_kos
   export PETSC_INSTALL_PATH=/ext-home/zl/lib_install/petsc-3.18.3-oneapi-2021.3-cuda-kos
+  export LD_LIBRARY_PATH=$PETSC_INSTALL_PATH/lib:$LD_LIBRARY_PATH
   export NVCCFLAGS_ADD='-gencode arch=compute_60,code=sm_60'
 elif [ "$(hostname)" == 'amos' ]; then
   echo AMD $(hostname)
   export LD_LIBRARY_PATH=/ext-home/zl/lib_install/petsc-3.18.3-oneapi-2021.3-cpu-rel-amos/lib:$LD_LIBRARY_PATH
   export PETSC_INSTALL_PATH=/ext-home/zl/lib_install/petsc-3.18.3-oneapi-2021.3-cpu-rel-amos
-  export ROCM_INSTALL_DIR=/opt/rocm-5.4.3
+  export ROCM_INSTALL_DIR=/opt/rocm-5.6.0
   export PATH=$ROCM_INSTALL_DIR/bin:$PATH
   export ROCM_THRUST_DIR=/ext-home/zl/lib_install/rocThrust_rel
   export ROCM_PRIM_DIR=/ext-home/zl/lib_install/rocPrim_rel
 else
   echo The machine not configured, PETSC_INSTALL_PATH and some other variables may be missing!
 fi
+
+echo "petsc lib linked is - " $PETSC_INSTALL_PATH
 
 export OPPIC_PATH=/ext-home/zl/phd/OP-PIC/lib_oppic
 

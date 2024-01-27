@@ -35,11 +35,17 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 // USER WRITTEN CODE
 //*********************************************
 
+// #define OPP_KERNEL_LOOP_UNROLL
 
 #include "fempic_ori/maths.h"
 #include "oppic_lib.h"
 
-const double ONE_OVER_SIX = (1.0 / 6.0);
+//****************************************
+const double KERNEL_ONE_OVER_SIX = (1.0 / 6.0);
+const int KERNEL_N_PER_C = 4;
+const int KERNEL_DET_FIELDS = 4;
+const int KERNEL_NEIGHB_C = 4;
+const int KERNEL_DIM = 3;
 
 //*************************************************************************************************
 inline void calculate_injection_distribution(
@@ -70,10 +76,32 @@ inline void calculate_injection_distribution(
 }
 
 //*************************************************************************************************
+inline void init_boundary_potential(
+    const int *node_type, 
+    double *n_bnd_pot
+)
+{
+    switch (*node_type)
+    {
+        case 2: // INLET: 
+            *n_bnd_pot = 0; 
+            break;     
+        case 3: // FIXED: 
+            *n_bnd_pot = -1 * CONST_wall_potential; 
+            break;
+        default: // NORMAL or OPEN
+            *n_bnd_pot = 0; /*default*/
+    }
+}
+
+int part_counter = 0;
+
+//*************************************************************************************************
 inline void inject_ions__kernel(
     double *part_pos,
     double *part_vel,
     int *part_cell_connectivity,
+    int *part_id,
     int *cell_id, 
     double *cell_ef,
     double *iface_u,
@@ -91,7 +119,7 @@ inline void inject_ions__kernel(
         b = (1 - b);
     }
 
-    for (int i = 0; i < DIM; i++) 
+    for (int i = 0; i < KERNEL_DIM; i++) 
     {
         part_pos[i] = a * iface_u[i] + b * iface_v[i] + node_pos[i];
         
@@ -100,6 +128,47 @@ inline void inject_ions__kernel(
     }
 
     (*part_cell_connectivity) = (*cell_id);
+    // (*part_id) = OPP_rank * 10000000 + (part_counter++);
+}
+
+//*************************************************************************************************
+inline void calculate_new_pos_vel__kernel(
+    const double *cell_ef,
+    double *part_pos,
+    double *part_vel ) {
+
+#ifdef OPP_KERNEL_LOOP_UNROLL
+    const double coefficient1 = CONST_charge / CONST_mass * (CONST_dt);
+    part_vel[0] += (coefficient1 * cell_ef[0]);                  
+    part_vel[1] += (coefficient1 * cell_ef[1]);  
+    part_vel[2] += (coefficient1 * cell_ef[2]);  
+
+    part_pos[0] += part_vel[0] * (CONST_dt); // v = u + at
+    part_pos[1] += part_vel[1] * (CONST_dt); // v = u + at
+    part_pos[2] += part_vel[2] * (CONST_dt); // v = u + at
+#else
+    const double coefficient1 = CONST_charge / CONST_mass * (CONST_dt);
+    for (int i = 0; i < KERNEL_DIM; i++) {
+        part_vel[i] += (coefficient1 * cell_ef[i]);   
+        part_pos[i] += part_vel[i] * (CONST_dt);                
+    }
+    // for (int i = 0; i < KERNEL_DIM; i++)
+    //     part_pos[i] += part_vel[i] * (CONST_dt); // v = u + at
+#endif
+}
+
+//*************************************************************************************************
+inline void deposit_charge_on_nodes__kernel(
+    const double *part_lc,
+    double *node_charge_den0,
+    double *node_charge_den1,
+    double *node_charge_den2,
+    double *node_charge_den3) {
+
+    (*node_charge_den0) += part_lc[0];
+    (*node_charge_den1) += part_lc[1];
+    (*node_charge_den2) += part_lc[2];
+    (*node_charge_den3) += part_lc[3];
 }
 
 //*************************************************************************************************
@@ -122,22 +191,22 @@ inline void move_all_particles_to_cell__kernel(
     if (m.iteration_one)
     {
         double coefficient1 = CONST_charge / CONST_mass * (CONST_dt);
-        for (int i = 0; i < DIM; i++)
+        for (int i = 0; i < KERNEL_DIM; i++)
             part_vel[i] += (coefficient1 * cell_ef[i]);                  
         
-        for (int i = 0; i < DIM; i++)
+        for (int i = 0; i < KERNEL_DIM; i++)
             part_pos[i] += part_vel[i] * (CONST_dt); // v = u + at
     }
 
     bool inside = true;
-    double coefficient2 = ONE_OVER_SIX / (*current_cell_volume);
-    for (int i=0; i<N_PER_C; i++) /*loop over vertices*/
+    double coefficient2 = KERNEL_ONE_OVER_SIX / (*current_cell_volume);
+    for (int i=0; i<KERNEL_N_PER_C; i++) /*loop over vertices*/
     {
         part_lc[i] = coefficient2 * (
-            current_cell_det[i * DET_FIELDS + 0] - 
-            current_cell_det[i * DET_FIELDS + 1] * part_pos[0] + 
-            current_cell_det[i * DET_FIELDS + 2] * part_pos[1] - 
-            current_cell_det[i * DET_FIELDS + 3] * part_pos[2]);
+            current_cell_det[i * KERNEL_DET_FIELDS + 0] - 
+            current_cell_det[i * KERNEL_DET_FIELDS + 1] * part_pos[0] + 
+            current_cell_det[i * KERNEL_DET_FIELDS + 2] * part_pos[1] - 
+            current_cell_det[i * KERNEL_DET_FIELDS + 3] * part_pos[2]);
         
         if (part_lc[i] < 0.0 || 
             part_lc[i] > 1.0)  
@@ -163,7 +232,7 @@ inline void move_all_particles_to_cell__kernel(
     int min_i = 0;
     double min_lc = part_lc[0];
     
-    for (int i=1; i<NEIGHB_C; i++)
+    for (int i=1; i<KERNEL_NEIGHB_C; i++)
     {
         if (part_lc[i] < min_lc) 
         {
@@ -202,15 +271,142 @@ inline void compute_electric_field__kernel(
     const double *node_potential3
 )
 {
-    for (int dim = 0; dim < DIM; dim++)
+
+#ifdef OPP_KERNEL_LOOP_UNROLL
+        double c1, c2, c3, c4;
+
+        c1 = (cell_shape_deriv[0 * KERNEL_DIM + 0] * (*node_potential0));
+        c2 = (cell_shape_deriv[1 * KERNEL_DIM + 0] * (*node_potential1));
+        c3 = (cell_shape_deriv[2 * KERNEL_DIM + 0] * (*node_potential2));
+        c4 = (cell_shape_deriv[3 * KERNEL_DIM + 0] * (*node_potential3));
+
+        cell_electric_field[0] -= (c1 + c2 + c3 + c4); 
+
+        c1 = (cell_shape_deriv[0 * KERNEL_DIM + 1] * (*node_potential0));
+        c2 = (cell_shape_deriv[1 * KERNEL_DIM + 1] * (*node_potential1));
+        c3 = (cell_shape_deriv[2 * KERNEL_DIM + 1] * (*node_potential2));
+        c4 = (cell_shape_deriv[3 * KERNEL_DIM + 1] * (*node_potential3));
+
+        cell_electric_field[0] -= (c1 + c2 + c3 + c4); 
+
+        c1 = (cell_shape_deriv[0 * KERNEL_DIM + 2] * (*node_potential0));
+        c2 = (cell_shape_deriv[1 * KERNEL_DIM + 2] * (*node_potential1));
+        c3 = (cell_shape_deriv[2 * KERNEL_DIM + 2] * (*node_potential2));
+        c4 = (cell_shape_deriv[3 * KERNEL_DIM + 2] * (*node_potential3));
+
+        cell_electric_field[2] -= (c1 + c2 + c3 + c4); 
+#else
+    for (int dim = 0; dim < KERNEL_DIM; dim++)
     { 
-        double c1 = (cell_shape_deriv[0 * DIM + dim] * (*node_potential0));
-        double c2 = (cell_shape_deriv[1 * DIM + dim] * (*node_potential1));
-        double c3 = (cell_shape_deriv[2 * DIM + dim] * (*node_potential2));
-        double c4 = (cell_shape_deriv[3 * DIM + dim] * (*node_potential3));
+        double c1 = (cell_shape_deriv[0 * KERNEL_DIM + dim] * (*node_potential0));
+        double c2 = (cell_shape_deriv[1 * KERNEL_DIM + dim] * (*node_potential1));
+        double c3 = (cell_shape_deriv[2 * KERNEL_DIM + dim] * (*node_potential2));
+        double c4 = (cell_shape_deriv[3 * KERNEL_DIM + dim] * (*node_potential3));
 
         cell_electric_field[dim] -= (c1 + c2 + c3 + c4);
     }    
+#endif
 }
 
 //*************************************************************************************************
+
+#define OPP_LOOP_UNROLL
+//*******************************************************************************
+inline void isPointInCellKernel(bool& inside, const double *point_pos, double* point_lc, 
+                                const double *cell_volume, const double *cell_det) { 
+
+    inside = true;  
+    double coefficient2 = KERNEL_ONE_OVER_SIX / (*cell_volume);
+
+#ifdef OPP_LOOP_UNROLL
+
+    point_lc[0] = coefficient2 * (
+            cell_det[0] - 
+            cell_det[1] * point_pos[0] + 
+            cell_det[2] * point_pos[1] - 
+            cell_det[3] * point_pos[2]);
+
+    point_lc[1] = coefficient2 * (
+            cell_det[4] - 
+            cell_det[5] * point_pos[0] + 
+            cell_det[6] * point_pos[1] - 
+            cell_det[7] * point_pos[2]);
+
+    point_lc[2] = coefficient2 * (
+            cell_det[8] - 
+            cell_det[9] * point_pos[0] + 
+            cell_det[10] * point_pos[1] - 
+            cell_det[11] * point_pos[2]);
+
+    point_lc[3] = coefficient2 * (
+            cell_det[12] - 
+            cell_det[13] * point_pos[0] + 
+            cell_det[14] * point_pos[1] - 
+            cell_det[15] * point_pos[2]);
+
+    if (point_lc[0] < 0.0 || 
+        point_lc[0] > 1.0 ||
+        point_lc[1] < 0.0 || 
+        point_lc[1] > 1.0 ||
+        point_lc[2] < 0.0 || 
+        point_lc[2] > 1.0 ||
+        point_lc[3] < 0.0 || 
+        point_lc[3] > 1.0) { 
+            
+            inside = false;
+    }
+
+#else
+    for (int i=0; i<KERNEL_N_PER_C; i++) { /*loop over vertices*/
+    
+        point_lc[i] = coefficient2 * (
+            cell_det[i * KERNEL_DET_FIELDS + 0] - 
+            cell_det[i * KERNEL_DET_FIELDS + 1] * point_pos[0] + 
+            cell_det[i * KERNEL_DET_FIELDS + 2] * point_pos[1] - 
+            cell_det[i * KERNEL_DET_FIELDS + 3] * point_pos[2]);
+        
+        if (point_lc[i] < 0.0 || 
+            point_lc[i] > 1.0)  
+                inside = false;
+    }    
+#endif
+}
+
+//*******************************************************************************
+inline opp_move_status getCellIndexKernel(const double *point_pos, int* current_cell_index,
+    double* point_lc, const double *cell_volume, const double *cell_det, const int *cell_connectivity) { 
+    
+    bool inside;
+
+    isPointInCellKernel(
+        inside, 
+        point_pos, 
+        point_lc, 
+        cell_volume, 
+        cell_det);
+
+    if (inside) {
+        return OPP_MOVE_DONE;
+    }
+
+    // outside the last known cell, find most negative weight and 
+    // use that cell_index to reduce computations
+    int min_i = 0;
+    double min_lc = point_lc[0];
+    
+    for (int i=1; i<KERNEL_NEIGHB_C; i++) {
+        if (point_lc[i] < min_lc) {
+            min_lc = point_lc[i];
+            min_i = i;
+        }
+    }
+
+    if (cell_connectivity[min_i] >= 0) { // is there a neighbor in this direction?
+        (*current_cell_index) = cell_connectivity[min_i];
+        return OPP_NEED_MOVE;
+    }
+    else {
+        (*current_cell_index) = MAX_CELL_INDEX;
+        return OPP_NEED_REMOVE;
+    }
+}

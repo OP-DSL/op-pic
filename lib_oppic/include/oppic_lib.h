@@ -37,6 +37,8 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 const double opp_zero_double16[16] = { 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0 };
 const int opp_zero_int16[16] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
 
+extern std::vector<int> part_remove_count_per_thr;
+
 struct opp_move_var
 {
     bool inside_cell = true;
@@ -104,20 +106,40 @@ void opp_print_map_to_txtfile(oppic_map map, const char *file_name_prefix, const
 
 void oppic_dump_dat(oppic_dat data);
 
+opp_dat opp_fetch_data(opp_dat dat);
+
 void opp_reset_dat(oppic_dat dat, char* val, opp_reset reset = OPP_Reset_All);
-
-int opp_mpi_halo_exchanges(oppic_set set, int nargs, oppic_arg *args);
-
-void opp_mpi_halo_wait_all(int nargs, oppic_arg *args);
-
-void opp_mpi_set_dirtybit(int nargs, oppic_arg *args);
-
-void opp_abort(std::string s = "");
 
 opp_move_var opp_get_move_var(int thread = 0);
 
 bool opp_part_check_status(opp_move_var& m, int map0idx, oppic_set set, int particle_index, int& remove_count, int thread = 0);
 
+bool is_double_indirect_reduction(oppic_arg& arg);
 void opp_init_double_indirect_reductions(int nargs, oppic_arg *args);
 void opp_exchange_double_indirect_reductions(int nargs, oppic_arg *args) ;
 void opp_complete_double_indirect_reductions(int nargs, oppic_arg *args);
+
+int opp_mpi_halo_exchanges_grouped(oppic_set set, int nargs, oppic_arg *args, DeviceType device);
+int opp_mpi_halo_exchanges(oppic_set set, int nargs, oppic_arg *args);
+void opp_mpi_halo_exchange(oppic_arg *arg, int exec_flag);
+void opp_mpi_halo_wait_all(int nargs, oppic_arg *args);
+
+// Copy a dat from host to device
+void opp_upload_dat(opp_dat dat);
+
+// Copy a dat from device to host
+void opp_download_dat(opp_dat dat);
+
+// Copy all dats of the set from device to host
+void opp_download_particle_set(opp_set particles_set, bool force_download = false);
+
+// Copy all dats of the set from host to device
+void opp_upload_particle_set(opp_set particles_set, bool realloc = false);
+
+//*************************************************************************************************
+// ndim : can be 2 or 3
+// cell_counts : cell_counts in each direction
+// cell_index : cell_index dat which holds global numbering
+// cell_colors : local cell_colors dat to colour with most appropriate MPI rank
+void opp_colour_cartesian_mesh(const int ndim, const std::vector<int> cell_counts, opp_dat cell_index, 
+                            const opp_dat cell_colors);

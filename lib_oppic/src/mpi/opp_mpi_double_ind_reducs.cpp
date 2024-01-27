@@ -63,11 +63,13 @@ void opp_init_double_indirect_reductions(int nargs, oppic_arg *args)
                         else if (strcmp(args[n].dat->type, "int") == 0)
                             reset_values = (char*)opp_zero_int16;
                         else
-                            opp_printf("opp_init_double_indirect_reductions", "Error: Datatype [%s] dat [%s] not implemented",
+                            opp_printf("opp_init_double_indirect_reductions", 
+                                "Error: Datatype [%s] dat [%s] not implemented",
                                 args[n].dat->type, args[n].dat->name);
                         break;
                     default:
-                        opp_printf("opp_init_double_indirect_reductions", "Error: Reduction of dat [%s] operator not implemented",
+                        opp_printf("opp_init_double_indirect_reductions", 
+                            "Error: Reduction of dat [%s] operator not implemented",
                             args[n].dat->name);
                         return;
                 }
@@ -137,10 +139,10 @@ void opp_exchange_double_indirect_reductions(oppic_dat dat, opp_reduc_comm reduc
     { 
         int send_rank    = imp_nonexec_list->ranks[i];
         char* send_buf   = &(dat->data[init + imp_nonexec_list->disps[i] * dat->size]);
-        int send_size    = dat->size * imp_nonexec_list->sizes[i];
+        size_t send_size    = (size_t)dat->size * imp_nonexec_list->sizes[i];
         MPI_Request* req = &(reduc_buf->s_req[reduc_buf->s_num_req++]);
 
-        if (OP_DEBUG) opp_printf("opp_exchange_double_indirect_reductions", "SEND SIZE %d", send_size);
+        if (OP_DEBUG) opp_printf("opp_exchange_double_indirect_reductions", "SEND SIZE %zu bytes", send_size);
 
         MPI_Isend(send_buf, send_size, MPI_CHAR, send_rank, dat->index, OP_MPI_WORLD, req);
 
@@ -154,10 +156,10 @@ void opp_exchange_double_indirect_reductions(oppic_dat dat, opp_reduc_comm reduc
     {
         int recv_rank    = exp_nonexec_list->ranks[i];
         char* recv_buf   = &(reduc_buf->buf_nonexec[exp_nonexec_list->disps[i] * dat->size]);
-        int recv_size    = dat->size * exp_nonexec_list->sizes[i];
+        size_t recv_size    = (size_t)dat->size * exp_nonexec_list->sizes[i];
         MPI_Request* req = &(reduc_buf->r_req[reduc_buf->r_num_req++]);
 
-        if (OP_DEBUG) opp_printf("opp_exchange_double_indirect_reductions", "RECEIVE SIZE %d", recv_size);
+        if (OP_DEBUG) opp_printf("opp_exchange_double_indirect_reductions", "RECEIVE SIZE %zu bytes", recv_size);
 
         MPI_Irecv(recv_buf, recv_size, MPI_CHAR, recv_rank, dat->index, OP_MPI_WORLD, req);
     }
@@ -201,8 +203,8 @@ void opp_complete_double_indirect_reductions(oppic_dat dat)
 {
     if (dat->reduc_comm == OPP_Reduc_NO_Comm)
     {
-        if (OP_DEBUG) opp_printf("opp_complete_double_indirect_reductions", "No reduction communication in flight for  dat %s", 
-            dat->name);
+        if (OP_DEBUG) opp_printf("opp_complete_double_indirect_reductions", 
+                        "No reduction communication in flight for  dat %s", dat->name);
         return;
     }
 
@@ -257,8 +259,8 @@ void opp_complete_double_indirect_reductions(oppic_dat dat)
         } 
         else
         {
-            opp_printf("opp_complete_double_indirect_reductions", "Error: Reduction for data type [%s] not implemented", 
-                dat->type);
+            opp_printf("opp_complete_double_indirect_reductions", 
+                "Error: Reduction for data type [%s] not implemented", dat->type);
             return;
         } 
 

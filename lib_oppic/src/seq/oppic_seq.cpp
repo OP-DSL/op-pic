@@ -57,8 +57,9 @@ void opp_exit()
 }
 
 //****************************************
-void opp_abort()
+void opp_abort(std::string s)
 {
+    opp_printf("opp_abort", "%s", s.c_str());
     exit(-1);
 }
 
@@ -199,14 +200,14 @@ void oppic_increase_particle_count(oppic_set particles_set, const int num_partic
 }
 
 //****************************************
-void opp_inc_part_count_with_distribution(oppic_set particles_set, int num_particles_to_insert, oppic_dat part_dist)
+void opp_inc_part_count_with_distribution(oppic_set particles_set, int num_particles_to_insert, oppic_dat part_dist, bool calc_new)
 {
     if (OP_DEBUG) opp_printf("opp_inc_part_count_with_distribution", "num_particles_to_insert [%d]", num_particles_to_insert);
 
     if (!opp_inc_part_count_with_distribution_core(particles_set, num_particles_to_insert, part_dist))
     {
         opp_printf("opp_inc_part_count_with_distribution", "Error: opp_inc_part_count_with_distribution_core failed for particle set [%s]", particles_set->name);
-        exit(-1);        
+        opp_abort("opp_inc_part_count_with_distribution_core");        
     }
 }
 
@@ -305,21 +306,7 @@ void opp_reset_dat(oppic_dat dat, char* val, opp_reset reset)
 }
 
 //****************************************
-void opp_mpi_set_dirtybit(int nargs, oppic_arg *args) 
-{
-    for (int n = 0; n < nargs; n++) 
-    {
-        if ((args[n].opt == 1) && (args[n].argtype == OP_ARG_DAT) &&
-            (args[n].acc == OP_INC || args[n].acc == OP_WRITE ||
-            args[n].acc == OP_RW)) 
-        {
-            args[n].dat->dirty_hd = Dirty::Device;
-        }
-    }
-}
-
-//****************************************
-int opp_mpi_halo_exchanges(oppic_set set, int nargs, oppic_arg *args) 
+int opp_mpi_halo_exchanges_grouped(oppic_set set, int nargs, oppic_arg *args, DeviceType device) 
 {
     return set->size;
 }
@@ -379,3 +366,23 @@ opp_move_var opp_get_move_var(int thread)
     
     return move_var;
 }
+
+//*******************************************************************************
+// Copy a dat from host to device
+void opp_upload_dat(opp_dat dat) {}
+
+//*******************************************************************************
+// Copy a dat from device to host
+void opp_download_dat(opp_dat dat) {}
+
+//*******************************************************************************
+// Copy all dats of the set from device to host
+void opp_download_particle_set(opp_set particles_set, bool force_download) {}
+
+//*******************************************************************************
+// Copy all dats of the set from host to device
+void opp_upload_particle_set(opp_set particles_set, bool realloc) {}
+
+//*******************************************************************************
+void opp_colour_cartesian_mesh(const int ndim, const std::vector<int> cell_counts, opp_dat cell_index, 
+                            const opp_dat cell_colors) {}

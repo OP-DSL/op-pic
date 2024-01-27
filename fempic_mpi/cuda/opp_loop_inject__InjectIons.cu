@@ -121,6 +121,7 @@ __global__ void opp_cuda_InjectIons(
         const int map0idx = mesh_relation[n + inj_start]; // iface index
         const int map1idx = opDat4Map[map0idx]; // cell index
 
+        //user-supplied kernel call
         inject_ions__kernel_gpu(
             (dir_arg0 + (n + inj_start)),
             (dir_arg1 + (n + inj_start)),
@@ -141,6 +142,7 @@ void opp_loop_inject__InjectIons(
     opp_arg arg0,     // part_position,
     opp_arg arg1,     // part_velocity,
     opp_arg arg2,     // part_cell_connectivity,
+    opp_arg arg_unused,     // part_id
     opp_arg arg3,     // iface to cell map
     opp_arg arg4,     // cell_ef,
     opp_arg arg5,     // iface_u,
@@ -171,6 +173,7 @@ void opp_loop_inject__InjectIons(
     args[9] = std::move(arg9);
 
     int set_size = opp_mpi_halo_exchanges_grouped(set, nargs, args, Device_GPU);
+    opp_mpi_halo_wait_all(nargs, args);
     if (set_size > 0) 
     {
         injectIons_stride_OPP_HOST_0 = args[0].dat->set->set_capacity;
@@ -219,7 +222,7 @@ void opp_loop_inject__InjectIons(
         }
     }
 
-    opp_mpi_set_dirtybit_grouped(nargs, args, Device_GPU);
+    opp_set_dirtybit_grouped(nargs, args, Device_GPU);
     cutilSafeCall(cudaDeviceSynchronize());
 
     opp_profiler->end("InjectIons");

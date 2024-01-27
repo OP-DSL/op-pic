@@ -59,6 +59,7 @@ __global__ void opp_cuda_ComputeNodeChargeDensity(
     {
         int n = tid + start;
 
+        //user-supplied kernel call
         compute_node_charge_density__kernel_gpu(
             (dir_arg0 + n),
             (dir_arg1 + n)
@@ -85,6 +86,7 @@ void opp_loop_all__ComputeNodeChargeDensity(
     args[1] = std::move(arg1);
 
     int set_size = opp_mpi_halo_exchanges_grouped(set, nargs, args, Device_GPU);
+    opp_mpi_halo_wait_all(nargs, args);
     if (set_size > 0) 
     {
         int start = 0;
@@ -92,17 +94,17 @@ void opp_loop_all__ComputeNodeChargeDensity(
 
         if (end - start > 0) 
         {
-            int nthreads = OPP_gpu_threads_per_block;
-            int nblocks  = (end - start - 1) / nthreads + 1;
+            int nthread = OPP_gpu_threads_per_block;
+            int nblocks  = (end - start - 1) / nthread + 1;
 
-            opp_cuda_ComputeNodeChargeDensity <<<nblocks, nthreads>>> (
+            opp_cuda_ComputeNodeChargeDensity <<<nblocks, nthread>>> (
                 (double *)  args[0].data_d,
                 (double *)  args[1].data_d,
                 start, 
                 end);
         } 
 
-        opp_mpi_set_dirtybit_grouped(nargs, args, Device_GPU);
+        opp_set_dirtybit_grouped(nargs, args, Device_GPU);
         cutilSafeCall(cudaDeviceSynchronize());       
     }
 

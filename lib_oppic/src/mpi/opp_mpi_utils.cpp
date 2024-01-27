@@ -173,7 +173,7 @@ void print_dat_to_txtfile_mpi(op_dat dat, const char *file_name)
 }
 
 
-op_dat op_mpi_get_data(op_dat dat) 
+opp_dat opp_mpi_get_data(opp_dat dat) 
 {
     // create new communicator for fetching
     int my_rank, comm_size;
