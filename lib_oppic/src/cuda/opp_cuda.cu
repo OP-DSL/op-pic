@@ -321,17 +321,24 @@ void oppic_increase_particle_count(oppic_set part_set, const int num_particles_t
 
     // TODO : We should be able to do a device to device copy instead of getting to host
 
-    if (need_resizing)
+    if (need_resizing) 
+    {
+        opp_profiler->start("opp_inc_part_count_DWN");
         opp_download_particle_set(part_set, true); 
+        opp_profiler->end("opp_inc_part_count_DWN");
+    }
 
+    opp_profiler->start("opp_inc_part_count_INC");
     if (!oppic_increase_particle_count_core(part_set, num_particles_to_insert))
     {
         opp_printf("oppic_increase_particle_count", "Error at oppic_increase_particle_count_core");
         opp_abort();
     }
+    opp_profiler->end("opp_inc_part_count_INC");
 
     if (need_resizing)
     {
+        opp_profiler->start("opp_inc_part_count_UPL");
         for (oppic_dat& current_dat : *(part_set->particle_dats))
         {
             if (OP_DEBUG) opp_printf("oppic_increase_particle_count", "cuda resizing dat [%s] set_capacity [%d]", 
@@ -344,8 +351,9 @@ void oppic_increase_particle_count(oppic_set part_set, const int num_particles_t
             opp_upload_dat(current_dat);
 
             current_dat->dirty_hd = Dirty::NotDirty;
-        }        
-    }
+        }   
+        opp_profiler->end("opp_inc_part_count_UPL");     
+    } 
 
     opp_profiler->end("opp_inc_part_count");
 }
@@ -892,6 +900,7 @@ void opp_colour_cartesian_mesh(const int ndim, const std::vector<int> cell_count
     __opp_colour_cartesian_mesh(ndim, cell_counts, cell_index, cell_colors);
 #endif
 }
+
 
 
 //*******************************************************************************
