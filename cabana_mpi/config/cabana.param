@@ -3,7 +3,7 @@ INT max_iter = 2
 INT nx = 4
 INT ny = 3
 INT nz = 1
-INT ng = 1
+INT ng = 0
 INT num_particles = 120
 INT nppc = 10
 

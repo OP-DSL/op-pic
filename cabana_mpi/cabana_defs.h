@@ -51,21 +51,21 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #define DIM                       3
 #define ACCUMULATOR_ARRAY_LENGTH  4
 #define INTERP_LEN                18
+#define ACC_LEN (ACCUMULATOR_ARRAY_LENGTH*DIM)
+#define VOXEL(x,y,z, nx,ny,nz) (x + nx*(y + ny*z))
 
-#define VOXEL(x,y,z, nx,ny,nz, NG) ((x) + ((nx)+(NG*2))*((y) + ((ny)+(NG*2))*(z)))
-
-#define VOXEL_MAP(_ix,_iy,_iz, nx,ny,nz, NG, OUT) \
+#define VOXEL_MAP(_ix,_iy,_iz, nx,ny,nz, OUT) \
     { \
     int _x = _ix; \
     int _y = _iy; \
     int _z = _iz; \
-    if (_x < 0) _x = (nx+2*NG-1); \
-    if (_y < 0) _y = (ny+2*NG-1); \
-    if (_z < 0) _z = (nz+2*NG-1); \
-    if (_x > nx+NG) _x = 0; \
-    if (_y > ny+NG) _y = 0; \
-    if (_z > nz+NG) _z = 0; \
-    OUT = ((_x) + ((nx)+(NG*2))*((_y) + ((ny)+(NG*2))*(_z))); } \
+    if (_x < 0) _x = (nx-1); \
+    if (_y < 0) _y = (ny-1); \
+    if (_z < 0) _z = (nz-1); \
+    if (_x >= nx) _x = 0; \
+    if (_y >= ny) _y = 0; \
+    if (_z >= nz) _z = 0; \
+    OUT = _x + nx*(_y + ny*_z); } \
 
 #define RANK_TO_INDEX(rank,ix,iy,iz,_x,_y) \
     int _ix, _iy, _iz;                                                    \
@@ -111,7 +111,7 @@ enum CellInterp {
     dcbzdz,
 };
 
-#define NEIGHBOUR_CELLS 26
+#define NEIGHBOURS 26
 
 enum CellMap {
     xd_yd_zd = 0,
@@ -211,7 +211,7 @@ inline int get_neighbour_cell(int cell_index, FACE face, int nx, int ny, int nz,
 		}
 	}
 
-	return VOXEL(ix, iy, iz, nx, ny, nz, ng);
+	return VOXEL(ix, iy, iz, nx, ny, nz);
 }
 
 
@@ -219,17 +219,16 @@ void opp_loop_all__interpolate_mesh_fields(
     opp_set set,        // cells_set
     opp_arg arg0,       // cell0_e,        // OPP_READ
     opp_arg arg1,       // cell0_b,        // OPP_READ
-    opp_arg arg2,       // cell0_ghost,    // OPP_READ
-    opp_arg arg3,       // cell_x_e,       // OPP_READ
-    opp_arg arg4,       // cell_y_e,       // OPP_READ
-    opp_arg arg5,       // cell_z_e,       // OPP_READ
-    opp_arg arg6,       // cell_yz_e,      // OPP_READ 
-    opp_arg arg7,       // cell_xz_e,      // OPP_READ
-    opp_arg arg8,       // cell_xy_e,      // OPP_READ
-    opp_arg arg9,       // cell_x_b,       // OPP_READ
-    opp_arg arg10,      // cell_y_b,       // OPP_READ
-    opp_arg arg11,      // cell_z_b        // OPP_READ
-    opp_arg arg12       // cell0_interp    // OPP_WRITE
+    opp_arg arg2,       // cell_x_e,       // OPP_READ
+    opp_arg arg3,       // cell_y_e,       // OPP_READ
+    opp_arg arg4,       // cell_z_e,       // OPP_READ
+    opp_arg arg5,       // cell_yz_e,      // OPP_READ 
+    opp_arg arg6,       // cell_xz_e,      // OPP_READ
+    opp_arg arg7,       // cell_xy_e,      // OPP_READ
+    opp_arg arg8,       // cell_x_b,       // OPP_READ
+    opp_arg arg9,       // cell_y_b,       // OPP_READ
+    opp_arg arg10,      // cell_z_b        // OPP_READ
+    opp_arg arg11       // cell0_interp    // OPP_WRITE
 );
 
 void opp_particle_mover__Move(
@@ -245,34 +244,31 @@ void opp_particle_mover__Move(
 
 void opp_loop_all__accumulate_current_to_cells(
     opp_set set,     // cells set
-    opp_arg arg0,    // iter_acc        // OPP_READ
-    opp_arg arg1,    // cell0_j         // OPP_WRITE
-    opp_arg arg2,    // cell0_acc       // OPP_READ
-    opp_arg arg3,    // cell_xd_acc     // OPP_READ
-    opp_arg arg4,    // cell_yd_acc     // OPP_READ
-    opp_arg arg5,    // cell_zd_acc     // OPP_READ
-    opp_arg arg6,    // cell_xyd_acc    // OPP_READ
-    opp_arg arg7,    // cell_yzd_acc    // OPP_READ
-    opp_arg arg8     // cell_xzd_acc    // OPP_READ
+    opp_arg arg0,    // cell0_j         // OPP_WRITE
+    opp_arg arg1,    // cell0_acc       // OPP_READ
+    opp_arg arg2,    // cell_xd_acc     // OPP_READ
+    opp_arg arg3,    // cell_yd_acc     // OPP_READ
+    opp_arg arg4,    // cell_zd_acc     // OPP_READ
+    opp_arg arg5,    // cell_xyd_acc    // OPP_READ
+    opp_arg arg6,    // cell_yzd_acc    // OPP_READ
+    opp_arg arg7     // cell_xzd_acc    // OPP_READ
 );
 
 void opp_loop_all__half_advance_b(
     opp_set set,     // cells set
-    opp_arg arg0,    // cell0_ghost     // OPP_READ
-    opp_arg arg1,    // cell_x_e        // OPP_WRITE
-    opp_arg arg2,    // cell_y_e        // OPP_READ
-    opp_arg arg3,    // cell_z_e        // OPP_READ
-    opp_arg arg4,    // cell0_e         // OPP_READ
-    opp_arg arg5     // cell0_b         // OPP_INC
+    opp_arg arg0,    // cell_x_e        // OPP_WRITE
+    opp_arg arg1,    // cell_y_e        // OPP_READ
+    opp_arg arg2,    // cell_z_e        // OPP_READ
+    opp_arg arg3,    // cell0_e         // OPP_READ
+    opp_arg arg4     // cell0_b         // OPP_INC
 );
 
 void opp_loop_all__advance_e(
     opp_set set,     // cells set
-    opp_arg arg0,    // iter_adv_e      // OPP_READ
-    opp_arg arg1,    // cell_x_b        // OPP_READ
-    opp_arg arg2,    // cell_y_b        // OPP_READ
-    opp_arg arg3,    // cell_z_b        // OPP_READ
-    opp_arg arg4,    // cell0_b         // OPP_READ
-    opp_arg arg5,    // cell0_j         // OPP_READ
-    opp_arg arg6     // cell0_e         // OPP_INC
+    opp_arg arg0,    // cell_x_b        // OPP_READ
+    opp_arg arg1,    // cell_y_b        // OPP_READ
+    opp_arg arg2,    // cell_z_b        // OPP_READ
+    opp_arg arg3,    // cell0_b         // OPP_READ
+    opp_arg arg4,    // cell0_j         // OPP_READ
+    opp_arg arg5     // cell0_e         // OPP_INC
 );

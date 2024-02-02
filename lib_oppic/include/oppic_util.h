@@ -147,11 +147,9 @@ inline std::vector<std::vector<double>>
 
 //*************************************************************************************************
 template <typename T>
-inline void uniform_within_cartesian_cells(int ndim, const double cell_width, const T* cell_pos_ll, 
+inline void uniform_within_cartesian_cells(int ndim, const double* extents, const T* cell_pos_ll, 
     const int64_t cells_set_size, const int64_t npart_per_cell, std::vector<std::vector<double>> &positions, 
     std::vector<int> &cells, std::mt19937 rng) {
-
-    std::vector<double> extents(ndim, cell_width);
 
     const int64_t npart_total = npart_per_cell * cells_set_size;
     
@@ -166,7 +164,7 @@ inline void uniform_within_cartesian_cells(int ndim, const double cell_width, co
         const int index_start = cx * npart_per_cell;
         const int index_end = (cx + 1) * npart_per_cell;
 
-        auto positions_ref_cell = get_uniform_within_extents(npart_per_cell, ndim, extents.data(), rng);
+        auto positions_ref_cell = get_uniform_within_extents(npart_per_cell, ndim, extents, rng);
 
         int index = 0;
         for (int ex = index_start; ex < index_end; ex++) {
