@@ -418,7 +418,8 @@ void opp_reset_dat(oppic_dat dat, char* val, opp_reset reset)
     cutilSafeCall(hipDeviceSynchronize());
 
     dat->dirty_hd = Dirty::Host;
-    dat->dirtybit = 1;
+    if (!dat->set->is_particle && (reset != OPP_Reset_All))
+        dat->dirtybit = 1;
 }
 
 

@@ -291,7 +291,7 @@ oppic_dat oppic_decl_dat_core(oppic_set set, int dim, char const *type, int size
     dat->buffer_d      = NULL;
     dat->buffer_d_r    = NULL;
     dat->dirty_hd      = Dirty::NotDirty;
-    dat->dirtybit      = 1;
+    dat->dirtybit      = 0;
 
     dat->thread_data        = new std::vector<char*>();
     dat->is_cell_index      = false;

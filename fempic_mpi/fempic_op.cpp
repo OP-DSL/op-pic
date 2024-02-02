@@ -181,7 +181,6 @@ int main(int argc, char **argv)
         MPI_Barrier(MPI_COMM_WORLD);
 #endif
 
-
         opp_profiler->start("MainLoop");
         for (OPP_main_loop_iter = 0; OPP_main_loop_iter < max_iter; OPP_main_loop_iter++)
         {
@@ -274,8 +273,8 @@ int main(int argc, char **argv)
         }
         opp_profiler->end("MainLoop");
 
-        if (OP_DEBUG)
-            print_per_cell_particle_counts(cell_colors, part_mesh_rel); // cell_colors will reset
+        // if (OP_DEBUG)
+        //     print_per_cell_particle_counts(cell_colors, part_mesh_rel); // cell_colors will reset
         
         if (OPP_rank == OPP_ROOT) opp_printf("Main", "Main loop completed after %d iterations ****", max_iter);
     }
