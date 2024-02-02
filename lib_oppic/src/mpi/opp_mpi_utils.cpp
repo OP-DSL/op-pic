@@ -103,13 +103,13 @@ void write_file(op_dat dat, const char *file_name)
     // compute local number of elements in dat
     int count = dat->set->size;
 
-    T *l_array = (T *)malloc(dat->dim * (count) * sizeof(T));
+    T *l_array = (T *)opp_host_malloc(dat->dim * (count) * sizeof(T));
     memcpy(l_array, (void *)&(dat->data[0]), (size_t)dat->size * count);
 
     int l_size = count;
     int elem_size = dat->dim;
-    int *recevcnts = (int *)malloc(comm_size * sizeof(int));
-    int *displs = (int *)malloc(comm_size * sizeof(int));
+    int *recevcnts = (int *)opp_host_malloc(comm_size * sizeof(int));
+    int *displs = (int *)opp_host_malloc(comm_size * sizeof(int));
     int disp = 0;
     T *g_array = 0;
 
@@ -129,7 +129,7 @@ void write_file(op_dat dat, const char *file_name)
     }
 
     if (rank == OPP_ROOT)
-        g_array = (T *)malloc(elem_size * g_size * sizeof(T));
+        g_array = (T *)opp_host_malloc(elem_size * g_size * sizeof(T));
 
     _mpi_gather(l_array, g_array, l_size * elem_size, recevcnts, displs, OP_MPI_IO_WORLD);
 
@@ -146,12 +146,12 @@ void write_file(op_dat dat, const char *file_name)
         F(fp, g_size, elem_size, g_array, file_name);
 
         fclose(fp);
-        free(g_array);
+        opp_host_free(g_array);
     }
 
-    free(l_array);
-    free(recevcnts);
-    free(displs);
+    opp_host_free(l_array);
+    opp_host_free(recevcnts);
+    opp_host_free(displs);
 
     MPI_Comm_free(&OP_MPI_IO_WORLD);
 }
@@ -181,8 +181,8 @@ opp_dat opp_mpi_get_data(opp_dat dat)
     MPI_Comm_size(OP_MPI_WORLD, &comm_size);
 
     // make a copy of the distributed op_dat on to a distributed temporary op_dat
-    op_dat temp_dat = (op_dat)malloc(sizeof(oppic_dat_core));
-    char *data = (char *)malloc((size_t)dat->set->size * dat->size);
+    op_dat temp_dat = (op_dat)opp_host_malloc(sizeof(oppic_dat_core));
+    char *data = (char *)opp_host_malloc((size_t)dat->set->size * dat->size);
     memcpy(data, dat->data, dat->set->size * (size_t)dat->size);
 
     // use orig_part_range to fill in OP_part_list[set->index]->elem_part with
@@ -201,7 +201,7 @@ opp_dat opp_mpi_get_data(opp_dat dat)
     part p = OP_part_list[dat->set->index];
     int count = 0;
     int cap = 1000;
-    int *temp_list = (int *)malloc(cap * sizeof(int));
+    int *temp_list = (int *)opp_host_malloc(cap * sizeof(int));
 
     for (int i = 0; i < dat->set->size; i++) 
     {
@@ -210,18 +210,18 @@ opp_dat opp_mpi_get_data(opp_dat dat)
             if (count >= cap) 
             {
                 cap = cap * 2;
-                temp_list = (int *)realloc(temp_list, cap * sizeof(int));
+                temp_list = (int *)opp_host_realloc(temp_list, cap * sizeof(int));
             }
             temp_list[count++] = p->elem_part[i];
             temp_list[count++] = i;
         }
     }
 
-    pe_list = (halo_list)malloc(sizeof(halo_list_core));
+    pe_list = (halo_list)opp_host_malloc(sizeof(halo_list_core));
     
     create_export_list(dat->set, temp_list, pe_list, count, comm_size, my_rank);
     
-    free(temp_list);
+    opp_host_free(temp_list);
 
     // create import list
 
@@ -230,8 +230,8 @@ opp_dat opp_mpi_get_data(opp_dat dat)
 
     //-----Discover neighbors-----
     ranks_size = 0;
-    neighbors = (int *)malloc(comm_size * sizeof(int));
-    sizes = (int *)malloc(comm_size * sizeof(int));
+    neighbors = (int *)opp_host_malloc(comm_size * sizeof(int));
+    sizes = (int *)opp_host_malloc(comm_size * sizeof(int));
 
     find_neighbors_set(pe_list, neighbors, sizes, &ranks_size, my_rank, comm_size, OP_MPI_WORLD);
     
@@ -249,22 +249,22 @@ opp_dat opp_mpi_get_data(opp_dat dat)
 
     for (int i = 0; i < ranks_size; i++)
         cap = cap + sizes[i];
-    temp_list = (int *)malloc(cap * sizeof(int));
+    temp_list = (int *)opp_host_malloc(cap * sizeof(int));
 
     for (int i = 0; i < ranks_size; i++) 
     {
-        rbuf = (int *)malloc(sizes[i] * sizeof(int));
+        rbuf = (int *)opp_host_malloc(sizes[i] * sizeof(int));
         MPI_Recv(rbuf, sizes[i], MPI_INT, neighbors[i], 1, OP_MPI_WORLD, MPI_STATUS_IGNORE);
 
         memcpy(&temp_list[count], (void *)&rbuf[0], sizes[i] * sizeof(int));
         count = count + sizes[i];
         
-        free(rbuf);
+        opp_host_free(rbuf);
     }
 
     MPI_Waitall(pe_list->ranks_size, request_send, MPI_STATUSES_IGNORE);
     
-    pi_list = (halo_list)malloc(sizeof(halo_list_core));
+    pi_list = (halo_list)opp_host_malloc(sizeof(halo_list_core));
     
     create_import_list(dat->set, temp_list, pi_list, count, neighbors, sizes,
                         ranks_size, comm_size, my_rank);
@@ -272,11 +272,11 @@ opp_dat opp_mpi_get_data(opp_dat dat)
     // migrate the temp "data" array to the original MPI ranks
 
     // prepare bits of the data array to be exported
-    char **sbuf_char = (char **)malloc(pe_list->ranks_size * sizeof(char *));
+    char **sbuf_char = (char **)opp_host_malloc(pe_list->ranks_size * sizeof(char *));
 
     for (int i = 0; i < pe_list->ranks_size; i++) 
     {
-        sbuf_char[i] = (char *)malloc((size_t)pe_list->sizes[i] * (size_t)dat->size);
+        sbuf_char[i] = (char *)opp_host_malloc((size_t)pe_list->sizes[i] * (size_t)dat->size);
         
         for (int j = 0; j < pe_list->sizes[i]; j++) 
         {
@@ -289,7 +289,7 @@ opp_dat opp_mpi_get_data(opp_dat dat)
                 pe_list->ranks[i], dat->index, OP_MPI_WORLD, &request_send[i]);
     }
 
-    char *rbuf_char = (char *)malloc((size_t)dat->size * pi_list->size);
+    char *rbuf_char = (char *)opp_host_malloc((size_t)dat->size * pi_list->size);
     for (int i = 0; i < pi_list->ranks_size; i++) 
     {
         MPI_Recv(&rbuf_char[pi_list->disps[i] * (size_t)dat->size],
@@ -300,11 +300,11 @@ opp_dat opp_mpi_get_data(opp_dat dat)
     MPI_Waitall(pe_list->ranks_size, request_send, MPI_STATUSES_IGNORE);
     
     for (int i = 0; i < pe_list->ranks_size; i++)
-        free(sbuf_char[i]);
-    free(sbuf_char);
+        opp_host_free(sbuf_char[i]);
+    opp_host_free(sbuf_char);
 
     // delete the data entirs that has been sent and create a modified data array
-    char *new_dat = (char *)malloc((size_t)dat->size * (dat->set->size + pi_list->size));
+    char *new_dat = (char *)opp_host_malloc((size_t)dat->size * (dat->set->size + pi_list->size));
 
     count = 0;
     for (int i = 0; i < dat->set->size; i++) // iterate over old set size
@@ -318,20 +318,20 @@ opp_dat opp_mpi_get_data(opp_dat dat)
 
     memcpy(&new_dat[count * (size_t)dat->size], (void *)rbuf_char, (size_t)dat->size * pi_list->size);
     count = count + pi_list->size;
-    new_dat = (char *)realloc(new_dat, (size_t)dat->size * count);
+    new_dat = (char *)opp_host_realloc(new_dat, (size_t)dat->size * count);
     
-    free(rbuf_char);
-    free(data);
+    opp_host_free(rbuf_char);
+    opp_host_free(data);
     data = new_dat;
 
     // make a copy of the original g_index and migrate that also to the original MPI process
     // prepare bits of the original g_index array to be exported
-    int **sbuf = (int **)malloc(pe_list->ranks_size * sizeof(int *));
+    int **sbuf = (int **)opp_host_malloc(pe_list->ranks_size * sizeof(int *));
 
     // send original g_index values to relevant mpi processes
     for (int i = 0; i < pe_list->ranks_size; i++) 
     {
-        sbuf[i] = (int *)malloc(pe_list->sizes[i] * sizeof(int));
+        sbuf[i] = (int *)opp_host_malloc(pe_list->sizes[i] * sizeof(int));
         for (int j = 0; j < pe_list->sizes[i]; j++) 
         {
             sbuf[i][j] = OP_part_list[dat->set->index]->g_index[pe_list->list[pe_list->disps[i] + j]];
@@ -341,7 +341,7 @@ opp_dat opp_mpi_get_data(opp_dat dat)
             OP_MPI_WORLD, &request_send[i]);
     }
 
-    rbuf = (int *)malloc(sizeof(int) * pi_list->size);
+    rbuf = (int *)opp_host_malloc(sizeof(int) * pi_list->size);
 
     // receive original g_index values from relevant mpi processes
     for (int i = 0; i < pi_list->ranks_size; i++) 
@@ -353,11 +353,11 @@ opp_dat opp_mpi_get_data(opp_dat dat)
     MPI_Waitall(pe_list->ranks_size, request_send, MPI_STATUSES_IGNORE);
     
     for (int i = 0; i < pe_list->ranks_size; i++)
-        free(sbuf[i]);
-    free(sbuf);
+        opp_host_free(sbuf[i]);
+    opp_host_free(sbuf);
 
     // delete the g_index entirs that has been sent and create a modified g_index
-    int *new_g_index = (int *)malloc(sizeof(int) * (dat->set->size + pi_list->size));
+    int *new_g_index = (int *)opp_host_malloc(sizeof(int) * (dat->set->size + pi_list->size));
 
     count = 0;
     for (int i = 0; i < dat->set->size; i++)  // iterate over old size of the g_index array
@@ -371,27 +371,27 @@ opp_dat opp_mpi_get_data(opp_dat dat)
 
     memcpy(&new_g_index[count], (void *)rbuf, sizeof(int) * pi_list->size);
     count = count + pi_list->size;
-    new_g_index = (int *)realloc(new_g_index, sizeof(int) * count);
-    free(rbuf);
+    new_g_index = (int *)opp_host_realloc(new_g_index, sizeof(int) * count);
+    opp_host_free(rbuf);
 
     // sort elements in temporaty data according to new_g_index
     quickSort_dat(new_g_index, data, 0, count - 1, dat->size);
 
     // cleanup
-    free(pe_list->ranks);
-    free(pe_list->disps);
-    free(pe_list->sizes);
-    free(pe_list->list);
-    free(pe_list);
-    free(pi_list->ranks);
-    free(pi_list->disps);
-    free(pi_list->sizes);
-    free(pi_list->list);
-    free(pi_list);
-    free(new_g_index);
+    opp_host_free(pe_list->ranks);
+    opp_host_free(pe_list->disps);
+    opp_host_free(pe_list->sizes);
+    opp_host_free(pe_list->list);
+    opp_host_free(pe_list);
+    opp_host_free(pi_list->ranks);
+    opp_host_free(pi_list->disps);
+    opp_host_free(pi_list->sizes);
+    opp_host_free(pi_list->list);
+    opp_host_free(pi_list);
+    opp_host_free(new_g_index);
 
     // remember that the original set size is now given by count
-    op_set set = (op_set)malloc(sizeof(oppic_set_core));
+    op_set set = (op_set)opp_host_malloc(sizeof(oppic_set_core));
     set->index = dat->set->index;
     set->size = count;
     set->name = dat->set->name;
@@ -414,7 +414,7 @@ opp_dat opp_mpi_get_data(opp_dat dat)
  *******************************************************************************/
 void decl_partition(op_set set, int *g_index, int *partition) 
 {
-    part p = (part)malloc(sizeof(part_core));
+    part p = (part)opp_host_malloc(sizeof(part_core));
     p->set = set;
     p->g_index = g_index;
     p->elem_part = partition;
@@ -433,10 +433,10 @@ void get_part_range(int **part_range, int my_rank, int comm_size, MPI_Comm Comm)
     {
         op_set set = OP_set_list[s];
 
-        int *sizes = (int *)malloc(sizeof(int) * comm_size);
+        int *sizes = (int *)opp_host_malloc(sizeof(int) * comm_size);
         MPI_Allgather(&set->size, 1, MPI_INT, sizes, 1, MPI_INT, Comm);
 
-        part_range[set->index] = (int *)malloc(2 * comm_size * sizeof(int));
+        part_range[set->index] = (int *)opp_host_malloc(2 * comm_size * sizeof(int));
 
         int disp = 0;
         for (int i = 0; i < comm_size; i++) 
@@ -452,7 +452,7 @@ void get_part_range(int **part_range, int my_rank, int comm_size, MPI_Comm Comm)
                     part_range[set->index][2 * i + 1]);
         #endif
         }
-        free(sizes);
+        opp_host_free(sizes);
     }
 }
 
@@ -505,8 +505,8 @@ int get_global_index(int local_index, int partition, int *part_range, int comm_s
  *******************************************************************************/
 void find_neighbors_set(halo_list List, int *neighbors, int *sizes, int *ranks_size, int my_rank, int comm_size, MPI_Comm Comm) 
 {
-    int *temp = (int *)malloc(comm_size * sizeof(int));
-    int *r_temp = (int *)malloc(comm_size * comm_size * sizeof(int));
+    int *temp = (int *)opp_host_malloc(comm_size * sizeof(int));
+    int *r_temp = (int *)opp_host_malloc(comm_size * comm_size * sizeof(int));
 
     for (int r = 0; r < comm_size * comm_size; r++)
         r_temp[r] = -99;
@@ -536,8 +536,8 @@ void find_neighbors_set(halo_list List, int *neighbors, int *sizes, int *ranks_s
         }
     }
     *ranks_size = n;
-    free(temp);
-    free(r_temp);
+    opp_host_free(temp);
+    opp_host_free(r_temp);
 }
 
 bool is_double_indirect_reduction(oppic_arg& arg)

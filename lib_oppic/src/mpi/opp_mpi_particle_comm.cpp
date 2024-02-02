@@ -93,7 +93,7 @@ void opp_part_pack(oppic_set set)
             {
                 send_rank_buffer.buf_export_capacity  = required_buffer_size;
                 send_rank_buffer.buf_export_index     = 0;
-                send_rank_buffer.buf_export           = (char *)malloc(send_rank_buffer.buf_export_capacity);
+                send_rank_buffer.buf_export           = (char *)opp_host_malloc(send_rank_buffer.buf_export_capacity);
 
                 // opp_printf("opp_part_pack", "alloc buf_export capacity %" PRId64, send_rank_buffer.buf_export_capacity);
             }
@@ -101,7 +101,7 @@ void opp_part_pack(oppic_set set)
             {
                 // Assume that there are some particles left already, increase capacity beyond buf_export_index
                 send_rank_buffer.buf_export_capacity  = send_rank_buffer.buf_export_index + required_buffer_size;
-                send_rank_buffer.buf_export           = (char *)realloc(send_rank_buffer.buf_export, 
+                send_rank_buffer.buf_export           = (char *)opp_host_realloc(send_rank_buffer.buf_export, 
                                                                         send_rank_buffer.buf_export_capacity);
                 
                 // opp_printf("opp_part_pack", "realloc buf_export capacity %" PRId64, send_rank_buffer.buf_export_capacity);
@@ -218,13 +218,13 @@ void opp_part_pack(oppic_set set)
 //         {
 //             send_rank_buffer.buf_export_capacity  = OPP_mpi_part_alloc_mult * set->particle_size;
 //             send_rank_buffer.buf_export_index     = 0;
-//             send_rank_buffer.buf_export           = (char *)malloc(send_rank_buffer.buf_export_capacity);
+//             send_rank_buffer.buf_export           = (char *)opp_host_malloc(send_rank_buffer.buf_export_capacity);
 //             //memset(send_rank_buffer.buf_export, 0, send_rank_buffer.buf_export_capacity); // not essential, can remove
 //         }
 //         else
 //         {
 //             send_rank_buffer.buf_export_capacity += OPP_mpi_part_alloc_mult * set->particle_size;
-//             send_rank_buffer.buf_export           = (char *)realloc(send_rank_buffer.buf_export, 
+//             send_rank_buffer.buf_export           = (char *)opp_host_realloc(send_rank_buffer.buf_export, 
 //                                                                     send_rank_buffer.buf_export_capacity);
 //             // memset(&(send_rank_buffer.buf_export[send_rank_buffer.buf_export_capacity - 
 //             //                                          OPP_mpi_part_alloc_mult * set->particle_size]),
@@ -516,12 +516,12 @@ void opp_part_exchange(oppic_set set)
             if (recv_buffer.buf_import == nullptr)
             {
                 recv_buffer.buf_import_capacity  = recv_size;           
-                recv_buffer.buf_import           = (char *)malloc(recv_buffer.buf_import_capacity);          
+                recv_buffer.buf_import           = (char *)opp_host_malloc(recv_buffer.buf_import_capacity);          
             }
             else
             {
                 recv_buffer.buf_import_capacity += recv_size;
-                recv_buffer.buf_import           = (char *)realloc(recv_buffer.buf_import, recv_buffer.buf_import_capacity);
+                recv_buffer.buf_import           = (char *)opp_host_realloc(recv_buffer.buf_import, recv_buffer.buf_import_capacity);
             }
         }
 
@@ -560,7 +560,7 @@ void cleanSendRecvBuffers(oppic_set set)
         {
             buffer.buf_import_capacity = -1;  
             buffer.buf_import_index = 0;         
-            free(buffer.buf_import);
+            opp_host_free(buffer.buf_import);
             buffer.buf_import = nullptr; 
         }
 
@@ -568,7 +568,7 @@ void cleanSendRecvBuffers(oppic_set set)
         {
             buffer.buf_export_capacity = -1;
             buffer.buf_export_index = 0;
-            free(buffer.buf_export);
+            opp_host_free(buffer.buf_export);
             buffer.buf_export = nullptr;
         }
     }
@@ -625,7 +625,7 @@ bool opp_part_check_all_done(oppic_set set)
     }
 
     bool bool_ret = false;
-    bool* buffer_recv = (bool *)malloc(OPP_comm_size * sizeof(bool));
+    bool* buffer_recv = (bool *)opp_host_malloc(OPP_comm_size * sizeof(bool));
 
     opp_profiler->startMpiComm("", opp::OPP_Particle);
 
@@ -647,7 +647,7 @@ bool opp_part_check_all_done(oppic_set set)
         opp_printf("opp_part_check_all_done", "iteration %d recv %lld - %s -%s", OPP_comm_iteration,
             mpi_buffers->total_recv, (bool_ret ? "ITER AGAIN" : "ALL DONE"), log.c_str());
 
-    free(buffer_recv);
+    opp_host_free(buffer_recv);
     
     opp_profiler->end(profName);
 
@@ -857,10 +857,10 @@ void opp_part_comm_destroy()
             opp_mpi_part_buffer& buffer = all_buffers->buffers[rank];
 
             if (buffer.buf_export) 
-                free(buffer.buf_export);
+                opp_host_free(buffer.buf_export);
 
             if (buffer.buf_import) 
-                free(buffer.buf_import);
+                opp_host_free(buffer.buf_import);
         }
 
         delete all_buffers;

@@ -95,21 +95,21 @@ void oppic_init_core(int argc, char **argv)
 void oppic_exit_core() 
 {  
     for (auto& a : oppic_maps) {
-        free(a->map);
-        free((char*)a->name);
-        free(a);
+        opp_host_free(a->map);
+        opp_host_free((char*)a->name);
+        opp_host_free(a);
     }
     oppic_maps.clear();
 
     for (auto& a : oppic_dats) {
-        free(a->data);
+        opp_host_free(a->data);
         for (int thr = 1; thr < (int)a->thread_data->size(); thr++) { 
-            free(a->thread_data->at(thr)); 
+            opp_host_free(a->thread_data->at(thr)); 
         }
         delete a->thread_data;
-        free((char*)a->name);
-        free((char*)a->type);
-        free(a);
+        opp_host_free((char*)a->name);
+        opp_host_free((char*)a->type);
+        opp_host_free(a);
     }
     oppic_dats.clear();
 
@@ -117,9 +117,9 @@ void oppic_exit_core()
         delete a->indexes_to_remove;
         delete a->particle_dats;
         delete a->cell_index_v_part_index_map;
-        if (a->particle_statuses) free(a->particle_statuses);
-        free((char*)a->name);
-        free(a);
+        if (a->particle_statuses) opp_host_free(a->particle_statuses);
+        opp_host_free((char*)a->name);
+        opp_host_free(a);
     }
     oppic_sets.clear();
 
@@ -171,7 +171,7 @@ void oppic_set_args_core(char *argv)
 //****************************************
 oppic_set oppic_decl_set_core(int size, char const *name) 
 {
-    oppic_set set          = (oppic_set)malloc(sizeof(oppic_set_core));
+    oppic_set set          = (oppic_set)opp_host_malloc(sizeof(oppic_set_core));
     set->index             = oppic_sets.size();
     set->size              = size;
     set->name              = copy_str(name);
@@ -225,13 +225,13 @@ oppic_map oppic_decl_map_core(oppic_set from, oppic_set to, int dim, int *imap, 
         exit(-1);
     }
 
-    oppic_map map = (oppic_map)malloc(sizeof(oppic_map_core));
+    oppic_map map = (oppic_map)opp_host_malloc(sizeof(oppic_map_core));
     map->index    = oppic_maps.size();
     map->from     = from;
     map->to       = to;
     map->dim      = dim;
 
-    map->map      = (int *)malloc((size_t)from->size * (size_t)dim * sizeof(int));
+    map->map      = (int *)opp_host_malloc((size_t)from->size * (size_t)dim * sizeof(int));
     memcpy(map->map, imap, sizeof(int) * from->size * dim);  
 
     if (OP_maps_base_index == 1) // convert map to 0 based indexing -- i.e. reduce each map value by 1
@@ -263,7 +263,7 @@ oppic_dat oppic_decl_dat_core(oppic_set set, int dim, char const *type, int size
         exit(-1);
     }
 
-    oppic_dat dat = (oppic_dat)malloc(sizeof(oppic_dat_core));
+    oppic_dat dat = (oppic_dat)opp_host_malloc(sizeof(oppic_dat_core));
     dat->index    = oppic_dats.size();
     dat->set      = set;
     dat->dim      = dim;
@@ -272,7 +272,7 @@ oppic_dat oppic_decl_dat_core(oppic_set set, int dim, char const *type, int size
     {
         size_t bytes = (size_t)dim * (size_t)size * 
                             (size_t)(set->size + set->exec_size + set->nonexec_size) * sizeof(char);
-        dat->data = (char *)malloc(bytes);
+        dat->data = (char *)opp_host_malloc(bytes);
         memcpy(dat->data, data, (size_t)dim * (size_t)size * (size_t)set->size * sizeof(char));
     }
     else
@@ -525,8 +525,8 @@ bool oppic_increase_particle_count_core(oppic_set part_set, const int num_parts_
     {
         if (dat->data == NULL) 
         {
-            dat->data = (char *)malloc((size_t)(new_part_set_capacity * dat->size));
-            // opp_printf("oppic_increase_particle_count_core", "malloc name %s %p size %d", 
+            dat->data = (char *)opp_host_malloc((size_t)(new_part_set_capacity * dat->size));
+            // opp_printf("oppic_increase_particle_count_core", "opp_host_malloc name %s %p size %d", 
             //     dat->name, dat->data, (new_part_set_capacity * dat->size));
 
             if (dat->data == nullptr)
@@ -539,7 +539,7 @@ bool oppic_increase_particle_count_core(oppic_set part_set, const int num_parts_
         else
         {
             // char* old = dat->data;
-            dat->data = (char *)realloc(dat->data, (size_t)(new_part_set_capacity * dat->size));
+            dat->data = (char *)opp_host_realloc(dat->data, (size_t)(new_part_set_capacity * dat->size));
             // opp_printf("oppic_increase_particle_count_core", "realloc %p name %s %p size %d", 
             //     old, dat->name, dat->data, (new_part_set_capacity * dat->size));
 
@@ -583,9 +583,9 @@ void oppic_init_particle_move_core(oppic_set set)
 
     OPP_part_cells_set_size = set->cells_set->size;
     
-    // if (set->particle_statuses) free(set->particle_statuses);
+    // if (set->particle_statuses) opp_host_free(set->particle_statuses);
 
-    // set->particle_statuses = (int *)malloc(set->size * sizeof(int));
+    // set->particle_statuses = (int *)opp_host_malloc(set->size * sizeof(int));
     // memset(set->particle_statuses, 0, set->size * sizeof(int)); // 0 should be MOVE_DONE
 
     set->particle_remove_count = 0;
@@ -622,7 +622,7 @@ void oppic_finalize_particle_move_core(oppic_set set)
     if (OP_auto_sort == 0) // if not auto sorting, fill the holes
     {
         // getting a backup of cell index since it will also be rearranged using a random OMP thread
-        int *mesh_relation_data = (int *)malloc(set->set_capacity * set->mesh_relation_dat->size); 
+        int *mesh_relation_data = (int *)opp_host_malloc(set->set_capacity * set->mesh_relation_dat->size); 
         memcpy((char*)mesh_relation_data, set->mesh_relation_dat->data, 
                     set->set_capacity * set->mesh_relation_dat->size);
 
@@ -680,11 +680,11 @@ void oppic_finalize_particle_move_core(oppic_set set)
                 removed_count++;
             }
 
-            // current_oppic_dat->data = (char *)realloc(current_oppic_dat->data, 
+            // current_oppic_dat->data = (char *)opp_host_realloc(current_oppic_dat->data, 
             //     (size_t)(set->size - removed_count) * (size_t)current_oppic_dat->size);
         }
 
-        free(mesh_relation_data);
+        opp_host_free(mesh_relation_data);
     }
     else
     {
@@ -825,7 +825,7 @@ void oppic_remove_marked_particles_from_set_core(oppic_set set, std::vector<int>
             removed_count++;
         }
 
-        dat->data = (char *)realloc(dat->data, (size_t)(set->size - removed_count) * (size_t)dat->size);
+        dat->data = (char *)opp_host_realloc(dat->data, (size_t)(set->size - removed_count) * (size_t)dat->size);
     }
 
     set->size -= num_particles_to_remove;
@@ -848,7 +848,7 @@ void oppic_particle_sort_core(oppic_set set)
     for (int i = 0; i < (int)set->particle_dats->size(); i++)
     {    
         auto& dat = set->particle_dats->at(i);
-        char *new_data = (char *)malloc(set->set_capacity * dat->size);
+        char *new_data = (char *)opp_host_malloc(set->set_capacity * dat->size);
         char *old_data = (char*)dat->data;
         
         for (int j = 0; j < set->set_capacity; j++)
@@ -856,7 +856,7 @@ void oppic_particle_sort_core(oppic_set set)
             memcpy(new_data + j * dat->size, old_data + idx_before_sort[j] * dat->size, dat->size);
         }
 
-        free(dat->data);
+        opp_host_free(dat->data);
         dat->data = new_data;
     }
 
@@ -1089,7 +1089,7 @@ void* oppic_load_from_file_core(const char* file_name, int set_size, int dim, ch
 		exit(-1);        
     }
 
-    void* data = (void *)malloc((size_t)(set_size * dim * size));
+    void* data = (void *)opp_host_malloc((size_t)(set_size * dim * size));
 
     if (strncmp("double", type, 6) == 0)
     {
@@ -1130,7 +1130,7 @@ void* oppic_load_from_file_core(const char* file_name, int set_size, int dim, ch
             if (is_error)
             {
                 printf("\toppic_load_from_file - error reading from %s at index %d\n", file_name, n);
-                free(data);
+                opp_host_free(data);
                 exit(-1);
             }
         }
@@ -1167,7 +1167,7 @@ void* oppic_load_from_file_core(const char* file_name, int set_size, int dim, ch
             if (is_error)
             {
                 printf("\toppic_load_from_file - error reading from %s at index %d\n", file_name, n);
-                free(data);
+                opp_host_free(data);
                 exit(-1);
             }
         }
@@ -1175,7 +1175,7 @@ void* oppic_load_from_file_core(const char* file_name, int set_size, int dim, ch
     else 
     {
         printf("\toppic_load_from_file Unsupported type for loading %s\n", type);
-        free(data);
+        opp_host_free(data);
         exit(0);
     }
 

@@ -76,17 +76,17 @@ void opp_exit()
         opp_partition_destroy(); // free memory used for holding partition information
         opp_part_comm_destroy(); // free memory allocated for particle communication
         
-        // free(set_import_buffer_size);
+        // opp_host_free(set_import_buffer_size);
 
         // for (int i = 0; i < OP_import_index; i++)
-        //     free(OP_import_list[i]);
+        //     opp_host_free(OP_import_list[i]);
         // if (OP_import_list)
-        //     free(OP_import_list);
+        //     opp_host_free(OP_import_list);
         
         // for (int i = 0; i < OP_export_index; i++)
-        //     free(OP_export_list[i]);
+        //     opp_host_free(OP_export_list[i]);
         // if (OP_export_list)
-        //     free(OP_export_list);
+        //     opp_host_free(OP_export_list);
     }
 
     oppic_exit_core();
@@ -139,7 +139,7 @@ oppic_map oppic_decl_map_txt(oppic_set from, oppic_set to, int dim, const char* 
 
     oppic_map map = opp_decl_mesh_map(from, to, dim, map_data, name);
 
-    free(map_data);
+    opp_host_free(map_data);
 
     return map;
 }
@@ -155,7 +155,7 @@ oppic_dat oppic_decl_dat_txt(oppic_set set, int dim, opp_data_type dtype, const 
 
     oppic_dat dat = oppic_decl_dat_core(set, dim, type.c_str(), size, dat_data, name);
 
-    free(dat_data);
+    opp_host_free(dat_data);
 
     return dat;
 }
@@ -231,7 +231,7 @@ oppic_dat oppic_decl_particle_dat_txt(oppic_set set, int dim, opp_data_type dtyp
 
     oppic_dat dat = oppic_decl_particle_dat_core(set, dim, type.c_str(), size, dat_data, name, cell_index);
 
-    free(dat_data);
+    opp_host_free(dat_data);
 
     return dat;
 }
@@ -416,9 +416,9 @@ void opp_mpi_print_dat_to_txtfile(op_dat dat, const char *file_name)
     
     print_dat_to_txtfile_mpi(temp, prefixed_file_name.c_str());
 
-    free(temp->data);
-    free(temp->set);
-    free(temp);
+    opp_host_free(temp->data);
+    opp_host_free(temp->set);
+    opp_host_free(temp);
 }
 
 //*******************************************************************************
@@ -468,4 +468,23 @@ void opp_colour_cartesian_mesh(const int ndim, const std::vector<int> cell_count
                             const opp_dat cell_colors) 
 {  
     __opp_colour_cartesian_mesh(ndim, cell_counts, cell_index, cell_colors);
+}
+
+
+//*******************************************************************************
+void* opp_host_malloc(size_t size)
+{
+    return malloc(size);
+}
+
+//*******************************************************************************
+void* opp_host_realloc(void* ptr, size_t new_size)
+{
+    return realloc(ptr, new_size);
+}
+
+//*******************************************************************************
+void opp_host_free(void* ptr)
+{
+    free(ptr);
 }

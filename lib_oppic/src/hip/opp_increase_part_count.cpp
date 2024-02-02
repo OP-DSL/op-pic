@@ -133,7 +133,7 @@ void opp_inc_part_count_with_distribution(opp_set particles_set,
 
                     opp_saved_mesh_relation_size = copy_size;                
                     cutilSafeCall(hipMalloc(&(opp_saved_mesh_relation_d), copy_size));
-                    // opp_saved_mesh_relation_d = (int*)malloc(copy_size);
+                    // opp_saved_mesh_relation_d = (int*)opp_host_malloc(copy_size);
 
                     // duplicate code below
                     int nthread = OPP_gpu_threads_per_block;

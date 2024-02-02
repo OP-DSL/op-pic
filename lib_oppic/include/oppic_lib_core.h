@@ -330,6 +330,10 @@ void opp_set_dirtybit_cuda(int nargs, oppic_arg *args);
 void opp_set_dirtybit_grouped(int nargs, oppic_arg *args, DeviceType device);
 /*******************************************************************************/
 
+void* opp_host_malloc(size_t size);
+void* opp_host_realloc(void* ptr, size_t new_size);
+void opp_host_free(void* ptr);
+
 //*************************************************************************************************
 
 extern int OP_hybrid_gpu;

@@ -14,7 +14,7 @@ HIPCC      = hipcc
 
 CPPFLAGS   = -std=c++14 -Wall -fPIC 
 NVCCFLAGS  = -m64 -Xptxas -dlcm=ca -Xptxas=-v $(NVCCFLAGS_ADD)
-HIPCCFLAGS = -std=c++17 -Wall -isystem -D__HIP_PLATFORM_AMD__ -munsafe-fp-atomics -DUSE_THRUST
+HIPCCFLAGS = -std=c++17 -isystem -D__HIP_PLATFORM_AMD__ -munsafe-fp-atomics -DUSE_THRUST
 
 DEBUG ?= 0
 ifeq ($(DEBUG), 1)
@@ -75,7 +75,7 @@ ifeq ($(PARMETIS), 1)
 	ALL_INC  += -DHAVE_PARMETIS
 endif
 
-REDUCE_BY_KEY ?= 0
+REDUCE_BY_KEY ?= 1
 ifeq ($(REDUCE_BY_KEY), 1)
 	ALL_INC  += -DUSE_REDUCE_BY_KEY
 endif

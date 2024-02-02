@@ -52,18 +52,7 @@ typedef struct oppic_set_core *opp_set;
 std::string getTimeStr();
 
 //********************************************************************************
-inline char *copy_str(char const *src) 
-{
-    size_t src_len = strlen(src); // Calculate the actual length of src
-    size_t dest_len = (src_len > 100) ? 100 : src_len; // Limit the destination length to 100 characters
-
-    char *dest = (char *)malloc((dest_len + 1) * sizeof(char));
-    if (dest) {
-        memcpy(dest, src, dest_len);
-        dest[dest_len] = '\0'; // Ensure the destination string is null-terminated
-    }
-    return dest;
-}
+char *copy_str(char const *src);
 
 //********************************************************************************
 std::vector<size_t> sort_indexes(const int* cell_indices, int size);
