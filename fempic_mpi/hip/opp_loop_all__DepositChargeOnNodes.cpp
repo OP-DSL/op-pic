@@ -45,6 +45,10 @@ __constant__ int dep_charge_stride_OPP_DEVICE_1;
 __constant__ int dep_charge_stride_OPP_DEVICE_X;
 
 #ifndef USE_REDUCE_BY_KEY
+    #define USE_REDUCE_BY_KEY
+#endif
+
+#ifndef USE_REDUCE_BY_KEY
 /* // Uncomment For Shared memory 
 int dep_charge_stride_OPP_HOST_1_SH = -1;
 __constant__ int dep_charge_stride_OPP_DEVICE_1_SH;
@@ -321,16 +325,17 @@ void opp_loop_all__DepositChargeOnNodes(
     args[3]  = std::move(arg3);
     args[4]  = std::move(arg4);
 
-opp_profiler->start("Dep_preSync");
+    opp_profiler->start("Dep_preSync");
     cutilSafeCall(hipDeviceSynchronize());
-opp_profiler->end("Dep_preSync");
+    opp_profiler->end("Dep_preSync");
 
-opp_profiler->start("Dep_ExHalo");
+    opp_profiler->start("Dep_ExHalo");
     int set_size = opp_mpi_halo_exchanges_grouped(set, nargs, args, Device_GPU);
-opp_profiler->end("Dep_ExHalo");
-opp_profiler->start("Dep_ExHaloWait");
+    opp_profiler->end("Dep_ExHalo");
+
+    opp_profiler->start("Dep_ExHaloWait");
     opp_mpi_halo_wait_all(nargs, args);
-opp_profiler->end("Dep_ExHaloWait");
+    opp_profiler->end("Dep_ExHaloWait");
 
 #ifdef USE_MPI
     opp_init_double_indirect_reductions_hip(nargs, args);
@@ -341,28 +346,36 @@ opp_profiler->end("Dep_ExHaloWait");
         dep_charge_stride_OPP_HOST_0 = args[0].dat->set->set_capacity;
         dep_charge_stride_OPP_HOST_1 = args[1].size;
 
-        hipError_t hipError0 = hipMemcpyToSymbol(HIP_SYMBOL(dep_charge_stride_OPP_DEVICE_0), &dep_charge_stride_OPP_HOST_0, sizeof(int));
-        hipError_t hipError1 = hipMemcpyToSymbol(HIP_SYMBOL(dep_charge_stride_OPP_DEVICE_1), &dep_charge_stride_OPP_HOST_1, sizeof(int));
+        hipError_t hipError0 = hipMemcpyToSymbol(HIP_SYMBOL(dep_charge_stride_OPP_DEVICE_0), 
+                                                    &dep_charge_stride_OPP_HOST_0, sizeof(int));
+        hipError_t hipError1 = hipMemcpyToSymbol(HIP_SYMBOL(dep_charge_stride_OPP_DEVICE_1), 
+                                                    &dep_charge_stride_OPP_HOST_1, sizeof(int));
 
         int start = 0;
         int end   = set->size;
 
         if (end - start > 0) 
         {
-            int nthread = OPP_gpu_threads_per_block;
-            int nblocks = (end - start - 1) / nthread + 1;
-            size_t shared_mem = 0;
+            const int nthread = OPP_gpu_threads_per_block;
+            const int nblocks = (end - start - 1) / nthread + 1;
+            const size_t shared_mem = 0;
 
-            int resize_size = (args[0].dat->dim * args[0].dat->set->size); //  no halo in args[0]
             dep_charge_stride_OPP_HOST_X = args[0].dat->set->size;
+            hipError_t hipError2 = hipMemcpyToSymbol(HIP_SYMBOL(dep_charge_stride_OPP_DEVICE_X), 
+                                                    &dep_charge_stride_OPP_HOST_X, sizeof(int));
 
-opp_profiler->start("Dep_Resize1");
-            hipError_t hipError1 = hipMemcpyToSymbol(HIP_SYMBOL(dep_charge_stride_OPP_DEVICE_X), &dep_charge_stride_OPP_HOST_X, sizeof(int));
-            d_keys.resize(resize_size);
-            d_values.resize(resize_size);
-opp_profiler->end("Dep_Resize1");
+            opp_profiler->start("Dep_Resize1");
+            const size_t operating_size = (size_t)(args[0].dat->dim * args[0].dat->set->size); //  no halo in args[0]
+            const size_t resize_size = (size_t)(args[0].dat->dim * args[0].dat->set->set_capacity); 
+            if (resize_size != d_keys.size()) // resize only if current vector is small
+            {
+                d_keys.resize(resize_size);
+                d_values.resize(resize_size);
+            }
+            opp_profiler->end("Dep_Resize1");
 
-opp_profiler->start("Dep_CrKeyVal");
+            // Create key/value pairs by nodes (linked with particle->cell->node) with part_lc values
+            opp_profiler->start("Dep_CrKeyVal");
             create_key_value_pairs<<<nblocks, nthread, shared_mem>>> (
                 (int *)     set->mesh_relation_dat->data_d,
                 (int *)     thrust::raw_pointer_cast(d_keys.data()),
@@ -372,39 +385,34 @@ opp_profiler->start("Dep_CrKeyVal");
                 start, 
                 end);
             cutilSafeCall(hipDeviceSynchronize());
-opp_profiler->end("Dep_CrKeyVal");
+            opp_profiler->end("Dep_CrKeyVal");
 
-opp_profiler->start("Dep_Sort");
             // Sort by keys to bring the identical keys together
-            thrust::sort_by_key(d_keys.begin(), d_keys.end(), d_values.begin());
-opp_profiler->end("Dep_Sort");
+            opp_profiler->start("Dep_Sort");
+            thrust::sort_by_key(d_keys.begin(), d_keys.begin() + operating_size, d_values.begin());
+            opp_profiler->end("Dep_Sort");
 
-opp_profiler->start("Dep_Red");
             // Compute the unique keys and their corresponding values
+            opp_profiler->start("Dep_Red");
             auto new_end = thrust::reduce_by_key(
-                d_keys.begin(), d_keys.end(),
+                d_keys.begin(), d_keys.begin() + operating_size,
                 d_values.begin(),
                 d_keys.begin(),
                 d_values.begin()
             );        
-opp_profiler->end("Dep_Red");
+            opp_profiler->end("Dep_Red");
 
-opp_profiler->start("Dep_Resize2");
-            // Resize the vectors to the new end
-            d_keys.resize(new_end.first - d_keys.begin());
-            d_values.resize(new_end.first - d_keys.begin());
-opp_profiler->end("Dep_Resize2");
+            const size_t expected_size = (size_t)(args[1].dat->set->size + args[1].dat->set->exec_size + 
+                                        args[1].dat->set->nonexec_size) * args[1].dat->dim;
 
-            opp_dat node_charge_den = args[1].dat;
-            int expected = (node_charge_den->set->size + node_charge_den->set->exec_size + node_charge_den->set->nonexec_size) * node_charge_den->dim;
-
-            if (d_values.size() != expected) // Might not be equal if all cells dont have particles
+            const size_t reduced_size = (new_end.first - d_keys.begin());
+            if (reduced_size != expected_size) // Might not be equal if all cells dont have particles
             {
                 start = 0;
-                end = d_values.size();
-                
-                // opp_printf("ASSIGN KERNEL", "opp_loop_all__DepositChargeOnNodes reduced size:%zu reduc_set_size_inc_halo %d", d_values.size(), expected);
-opp_profiler->start("Dep_Assign");                
+                end = (int)reduced_size;
+
+                // Assign reduced values to the nodes using keys/values
+                opp_profiler->start("Dep_Assign");                
                 assign_values<<<nblocks, nthread, shared_mem>>> (
                     (int *)     thrust::raw_pointer_cast(d_keys.data()),
                     (double *)  thrust::raw_pointer_cast(d_values.data()),
@@ -412,14 +420,14 @@ opp_profiler->start("Dep_Assign");
                     start, 
                     end);
                 cutilSafeCall(hipDeviceSynchronize());
-opp_profiler->end("Dep_Assign");
+                opp_profiler->end("Dep_Assign");
             }
-            else
+            else // all nodes are mapped during reduction
             { 
-opp_profiler->start("Dep_AssignAll"); 
-                *(node_charge_den->thrust_real) = d_values; 
-                node_charge_den->data_d = (char*)thrust::raw_pointer_cast(node_charge_den->thrust_real->data());
-opp_profiler->end("Dep_AssignAll");
+                opp_profiler->start("Dep_AssignAll"); 
+                *(args[1].dat->thrust_real) = d_values; 
+                args[1].dat->data_d = (char*)thrust::raw_pointer_cast(args[1].dat->thrust_real->data());
+                opp_profiler->end("Dep_AssignAll");
             }
         }
     }
