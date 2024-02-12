@@ -145,8 +145,9 @@ inline void uniform_within_cartesian_cells(int ndim, const double* extents, cons
     cells.resize(npart_total);
 
     positions.resize(ndim);
-    positions[0] = std::vector<double>(npart_total);
-    positions[1] = std::vector<double>(npart_total);
+    for (int dx = 0; dx < ndim; dx++) {
+        positions[dx] = std::vector<double>(npart_total);
+    }
 
     for (int cx = 0; cx < cells_set_size; cx++) {
 

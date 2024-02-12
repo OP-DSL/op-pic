@@ -97,21 +97,21 @@ inline void weight_current_to_accumulator_kernel(
 
     v5 = (*q) * ux * uy * uz * one_third;              // Compute correction
  
-    #define CALC_J(X,Y,Z)                                        \
+    #define CALC_J(X,Y,Z)                                           \
     v4  = (*q)*u##X;   /* v2 = q ux                            */   \
-    v1  = v4*d##Y;  /* v1 = q ux dy                         */   \
-    v0  = v4-v1;    /* v0 = q ux (1-dy)                     */   \
-    v1 += v4;       /* v1 = q ux (1+dy)                     */   \
-    v4  = one+d##Z; /* v4 = 1+dz                            */   \
-    v2  = v0*v4;    /* v2 = q ux (1-dy)(1+dz)               */   \
-    v3  = v1*v4;    /* v3 = q ux (1+dy)(1+dz)               */   \
-    v4  = one-d##Z; /* v4 = 1-dz                            */   \
-    v0 *= v4;       /* v0 = q ux (1-dy)(1-dz)               */   \
-    v1 *= v4;       /* v1 = q ux (1+dy)(1-dz)               */   \
-    v0 += v5;       /* v0 = q ux [ (1-dy)(1-dz) + uy*uz/3 ] */   \
-    v1 -= v5;       /* v1 = q ux [ (1+dy)(1-dz) - uy*uz/3 ] */   \
-    v2 -= v5;       /* v2 = q ux [ (1-dy)(1+dz) - uy*uz/3 ] */   \
-    v3 += v5;       /* v3 = q ux [ (1+dy)(1+dz) + uy*uz/3 ] */
+    v1  = v4*d##Y;     /* v1 = q ux dy                         */   \
+    v0  = v4-v1;       /* v0 = q ux (1-dy)                     */   \
+    v1 += v4;          /* v1 = q ux (1+dy)                     */   \
+    v4  = one+d##Z;    /* v4 = 1+dz                            */   \
+    v2  = v0*v4;       /* v2 = q ux (1-dy)(1+dz)               */   \
+    v3  = v1*v4;       /* v3 = q ux (1+dy)(1+dz)               */   \
+    v4  = one-d##Z;    /* v4 = 1-dz                            */   \
+    v0 *= v4;          /* v0 = q ux (1-dy)(1-dz)               */   \
+    v1 *= v4;          /* v1 = q ux (1+dy)(1-dz)               */   \
+    v0 += v5;          /* v0 = q ux [ (1-dy)(1-dz) + uy*uz/3 ] */   \
+    v1 -= v5;          /* v1 = q ux [ (1+dy)(1-dz) - uy*uz/3 ] */   \
+    v2 -= v5;          /* v2 = q ux [ (1-dy)(1+dz) - uy*uz/3 ] */   \
+    v3 += v5;          /* v3 = q ux [ (1+dy)(1+dz) + uy*uz/3 ] */
 
     CALC_J( x,y,z );
     cell0_acc[CellAcc::jfx + 0] += v0; 
@@ -142,7 +142,8 @@ inline void push_particles_kernel(opp_move_var& m,
     OPP_REAL* part_streak_mid, 
     const OPP_REAL* part_weight, 
     const OPP_REAL* cell_interp, 
-    OPP_REAL* cell_acc)
+    OPP_REAL* cell_acc,
+    const OPP_INT* cell_cell_map)
 {
     if (m.iteration_one)
     {
@@ -209,9 +210,9 @@ inline void push_particles_kernel(opp_move_var& m,
 
         /**/                                        // Get norm displacement
         v0   = one/sqrt(one + (ux*ux+ (uy*uy + uz*uz)));
-        ux  *= CONST_cdt_dx;
-        uy  *= CONST_cdt_dy;
-        uz  *= CONST_cdt_dz;
+        ux  *= CONST_cdt_d[Dim::x];
+        uy  *= CONST_cdt_d[Dim::y];
+        uz  *= CONST_cdt_d[Dim::z];
     
         ux  *= v0;
         uy  *= v0;
@@ -334,9 +335,17 @@ inline void push_particles_kernel(opp_move_var& m,
         face = axis;
         if( v0>0 ) face += 3;
         
-        const int updated_ii = get_neighbour_cell(part_cid[0], (FACE)face, CONST_nx, CONST_ny, CONST_nz, 0);
-        printf("[%d] Moving particle to new cell from %d to %d\n", OPP_rank, part_cid[0], updated_ii);
-        part_cid[0] = updated_ii;
+// const int updated_ii = get_neighbour_cell(part_cid[0], (FACE)face, 
+//     CONST_c_per_dim[Dim::x], CONST_c_per_dim[Dim::y], CONST_c_per_dim[Dim::z], 0);
+// // printf("[%d] Moving particle to new cell from %d to %d\n", OPP_rank, part_cid[0], updated_ii);
+// part_cid[0] = updated_ii;
+
+        if (face == FACE_X_MIN ) { part_cid[0] =  cell_cell_map[CellMap::xd_y_z]; }
+        else if (face == FACE_X_PLUS) { part_cid[0] =  cell_cell_map[CellMap::xu_y_z]; }
+        else if (face == FACE_Y_MIN ) { part_cid[0] =  cell_cell_map[CellMap::x_yd_z]; }
+        else if (face == FACE_Y_PLUS) { part_cid[0] =  cell_cell_map[CellMap::x_yu_z]; }
+        else if (face == FACE_Z_MIN ) { part_cid[0] =  cell_cell_map[CellMap::x_y_zd]; }
+        else if (face == FACE_Z_PLUS) { part_cid[0] =  cell_cell_map[CellMap::x_y_zu]; }
 
         // TODO: this conditional/branching could be better
         if (axis == 0) { part_pos[Dim::x] = -v0; /* printf("0\n"); */ }
@@ -362,24 +371,20 @@ inline void accumulate_current_to_cells_kernel(
         const OPP_REAL* cell_yzd_acc, 
         const OPP_REAL* cell_xzd_acc)
 {
-    OPP_REAL cx = 0.25 / (CONST_dy * CONST_dz * CONST_dt);
-    OPP_REAL cy = 0.25 / (CONST_dz * CONST_dx * CONST_dt);
-    OPP_REAL cz = 0.25 / (CONST_dx * CONST_dy * CONST_dt);
+    cell0_j[Dim::x] = CONST_acc_coef[Dim::x] * (cell0_acc[CellAcc::jfx + 0] +
+                                                cell_yd_acc[CellAcc::jfx + 1] +
+                                                cell_zd_acc[CellAcc::jfx + 2] +
+                                                cell_yzd_acc[CellAcc::jfx + 3]);
 
-    cell0_j[Dim::x] = cx * (cell0_acc[CellAcc::jfx + 0] +
-                            cell_yd_acc[CellAcc::jfx + 1] +
-                            cell_zd_acc[CellAcc::jfx + 2] +
-                            cell_yzd_acc[CellAcc::jfx + 3]);
+    cell0_j[Dim::y] = CONST_acc_coef[Dim::y] * (cell0_acc[CellAcc::jfy + 0] +
+                                                cell_zd_acc[CellAcc::jfy + 1] +
+                                                cell_xd_acc[CellAcc::jfy + 2] +
+                                                cell_xzd_acc[CellAcc::jfy + 3]);
 
-    cell0_j[Dim::y] = cy * (cell0_acc[CellAcc::jfy + 0] +
-                            cell_zd_acc[CellAcc::jfy + 1] +
-                            cell_xd_acc[CellAcc::jfy + 2] +
-                            cell_xzd_acc[CellAcc::jfy + 3]);
-
-    cell0_j[Dim::z] = cz * (cell0_acc[CellAcc::jfz + 0] +
-                            cell_xd_acc[CellAcc::jfz + 1] +
-                            cell_yd_acc[CellAcc::jfz + 2] +
-                            cell_xyd_acc[CellAcc::jfz + 3]);
+    cell0_j[Dim::z] = CONST_acc_coef[Dim::z] * (cell0_acc[CellAcc::jfz + 0] +
+                                                cell_xd_acc[CellAcc::jfz + 1] +
+                                                cell_yd_acc[CellAcc::jfz + 2] +
+                                                cell_xyd_acc[CellAcc::jfz + 3]);
 }
 
 //*************************************************************************************************
@@ -390,14 +395,14 @@ inline void half_advance_b_kernel (
     const OPP_REAL* cell0_e, 
     OPP_REAL* cell0_b)
 {
-    cell0_b[Dim::x] -= ( 0.5 * CONST_py * ( cell_y_e[Dim::z] - cell0_e[Dim::z] ) 
-                            - 0.5 * CONST_pz * ( cell_z_e[Dim::y] - cell0_e[Dim::y] ) );
+    cell0_b[Dim::x] -= (0.5 * CONST_p[Dim::y] * (cell_y_e[Dim::z] - cell0_e[Dim::z]) 
+                            - 0.5 * CONST_p[Dim::z] * (cell_z_e[Dim::y] - cell0_e[Dim::y]));
 
-    cell0_b[Dim::y] -= ( 0.5 * CONST_pz * ( cell_z_e[Dim::x] - cell0_e[Dim::x] ) 
-                            - 0.5 * CONST_px * ( cell_x_e[Dim::z] - cell0_e[Dim::z] ) );
+    cell0_b[Dim::y] -= (0.5 * CONST_p[Dim::z] * (cell_z_e[Dim::x] - cell0_e[Dim::x]) 
+                            - 0.5 * CONST_p[Dim::x] * (cell_x_e[Dim::z] - cell0_e[Dim::z]));
 
-    cell0_b[Dim::z] -= ( 0.5 * CONST_px * ( cell_x_e[Dim::y] - cell0_e[Dim::y] ) 
-                            - 0.5 * CONST_py * ( cell_y_e[Dim::x] - cell0_e[Dim::x] ) );
+    cell0_b[Dim::z] -= (0.5 * CONST_p[Dim::x] * (cell_x_e[Dim::y] - cell0_e[Dim::y]) 
+                            - 0.5 * CONST_p[Dim::y] * (cell_y_e[Dim::x] - cell0_e[Dim::x]));
 }
 
 //*************************************************************************************************
@@ -409,12 +414,15 @@ inline void advance_e_kernel (
     const OPP_REAL* cell0_j, 
     OPP_REAL* cell0_e)
 {
-    cell0_e[Dim::x] += ( - CONST_cj * cell0_j[Dim::x] ) + 
-        ( CONST_py * (cell0_b[Dim::z] - cell_y_b[Dim::z]) - CONST_pz * (cell0_b[Dim::y] - cell_z_b[Dim::y]) );
+    cell0_e[Dim::x] += ( - CONST_dt_eps0 * cell0_j[Dim::x] ) + 
+        ( CONST_p[Dim::y] * (cell0_b[Dim::z] - cell_y_b[Dim::z]) - 
+        CONST_p[Dim::z] * (cell0_b[Dim::y] - cell_z_b[Dim::y]) );
 
-    cell0_e[Dim::y] += ( - CONST_cj * cell0_j[Dim::y] ) +            
-        ( CONST_pz * (cell0_b[Dim::x] - cell_z_b[Dim::x]) - CONST_px * (cell0_b[Dim::z] - cell_x_b[Dim::z]) );
+    cell0_e[Dim::y] += ( - CONST_dt_eps0 * cell0_j[Dim::y] ) +            
+        ( CONST_p[Dim::z] * (cell0_b[Dim::x] - cell_z_b[Dim::x]) - 
+        CONST_p[Dim::x] * (cell0_b[Dim::z] - cell_x_b[Dim::z]) );
 
-    cell0_e[Dim::z] += ( - CONST_cj * cell0_j[Dim::z] ) +           
-        ( CONST_px * (cell0_b[Dim::y] - cell_x_b[Dim::y]) - CONST_py * (cell0_b[Dim::x] - cell_y_b[Dim::x]) );
+    cell0_e[Dim::z] += ( - CONST_dt_eps0 * cell0_j[Dim::z] ) +           
+        ( CONST_p[Dim::x] * (cell0_b[Dim::y] - cell_x_b[Dim::y]) - 
+        CONST_p[Dim::y] * (cell0_b[Dim::x] - cell_y_b[Dim::x]) );
 }

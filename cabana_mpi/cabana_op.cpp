@@ -33,9 +33,6 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 // AUTO GENERATED CODE
 //*********************************************
 
-// make clean seq
-// bin/seq config/cabana.param
-
 #include "cabana_defs.h"
 
 using namespace opp;
@@ -56,15 +53,11 @@ int main(int argc, char **argv)
     {
         opp_profiler->start("Setup");
 
-        OPP_INT max_iter                   = opp_params->get<OPP_INT>("max_iter");   
-        std::vector<OPP_INT> cells_per_dim = { opp_params->get<OPP_INT>("nx"),
-                                               opp_params->get<OPP_INT>("ny"),
-                                               opp_params->get<OPP_INT>("nz") };
-        OPP_REAL c_widths[DIM]             = { opp_params->get<OPP_REAL>("c_width_x"),
-                                               opp_params->get<OPP_REAL>("c_width_y"),
-                                               opp_params->get<OPP_REAL>("c_width_z") };
-        OPP_REAL dt                        = opp_params->get<OPP_REAL>("dt");
-        std::string log                    = "";
+        OPP_INT max_iter = opp_params->get<OPP_INT>("max_iter");   
+        OPP_REAL dt      = opp_params->get<OPP_REAL>("dt");
+        OPP_REAL qsp     = opp_params->get<OPP_REAL>("qsp");
+        OPP_REAL qdt_2mc = cabana_get_qdt_2mc();
+        OPP_REAL dt_eps0 = cabana_get_dt_eps0();
 
         std::shared_ptr<DataPointers> m = LoadData();
 
@@ -86,15 +79,20 @@ int main(int argc, char **argv)
         opp_dat part_streak_mid = opp_decl_part_dat(part_set, DIM, DT_REAL, nullptr, "p_streak_mid");
         opp_dat part_weight     = opp_decl_part_dat(part_set, ONE, DT_REAL, nullptr, "p_weight");
         opp_dat part_mesh_rel   = opp_decl_part_dat(part_set, ONE, DT_INT,  nullptr, "p_mesh_rel", true);
-        
-        opp_decl_const<OPP_INT>(DIM,  cells_per_dim.data(), "CONST_c_per_dim");
-        opp_decl_const<OPP_REAL>(DIM, c_widths,             "CONST_c_widths");
-        opp_decl_const<OPP_REAL>(ONE, &dt,                  "CONST_dt");
+
+        opp_decl_const<OPP_INT>(DIM,  cabana_get_cells_per_dim().data(), "CONST_c_per_dim");
+        opp_decl_const<OPP_REAL>(ONE, &dt,                               "CONST_dt");
+        opp_decl_const<OPP_REAL>(ONE, &qsp,                              "CONST_qsp");
+        opp_decl_const<OPP_REAL>(DIM, cabana_get_cdt_d().data(),         "CONST_cdt_d");
+        opp_decl_const<OPP_REAL>(DIM, cabana_get_p().data(),             "CONST_p");
+        opp_decl_const<OPP_REAL>(ONE, &qdt_2mc,                          "CONST_qdt_2mc");
+        opp_decl_const<OPP_REAL>(ONE, &dt_eps0,                          "CONST_dt_eps0");
+        opp_decl_const<OPP_REAL>(DIM, cabana_get_acc_coef().data(),      "CONST_acc_coef");
 
         m->DeleteValues();
 
         // ideally opp_colour_cartesian_mesh is not required for non-mpi runs
-        opp_colour_cartesian_mesh(DIM, cells_per_dim, cell_index, cell_colors);
+        opp_colour_cartesian_mesh(DIM, cabana_get_cells_per_dim(), cell_index, cell_colors);
 
 #ifdef USE_MPI
         opp_partition(std::string("EXTERNAL"), cell_set, nullptr, cell_colors);
@@ -142,7 +140,8 @@ int main(int argc, char **argv)
                 opp_get_arg(part_streak_mid, OP_RW),
                 opp_get_arg(part_weight,     OP_READ),
                 opp_get_arg(cell_interp,     OP_READ, OPP_Map_from_Mesh_Rel),
-                opp_get_arg(cell_acc,        OP_INC,  OPP_Map_from_Mesh_Rel)
+                opp_get_arg(cell_acc,        OP_INC,  OPP_Map_from_Mesh_Rel),
+                opp_get_arg(cell_cell_map,   OP_READ, OPP_Map_from_Mesh_Rel)
             );
 
             opp_loop_all__accumulate_current_to_cells(
@@ -160,7 +159,7 @@ int main(int argc, char **argv)
             // Leap frog method
             opp_loop_all__half_advance_b(
                 cell_set,
-                opp_get_arg(cell_e, CellMap::xu_y_z, cell_cell_map, OP_WRITE),
+                opp_get_arg(cell_e, CellMap::xu_y_z, cell_cell_map, OP_READ),
                 opp_get_arg(cell_e, CellMap::x_yu_z, cell_cell_map, OP_READ), 
                 opp_get_arg(cell_e, CellMap::x_y_zu, cell_cell_map, OP_READ), 
                 opp_get_arg(cell_e,                                 OP_READ),
@@ -183,7 +182,7 @@ int main(int argc, char **argv)
 
             opp_loop_all__half_advance_b(
                 cell_set,
-                opp_get_arg(cell_e, CellMap::xu_y_z, cell_cell_map, OP_WRITE),
+                opp_get_arg(cell_e, CellMap::xu_y_z, cell_cell_map, OP_READ),
                 opp_get_arg(cell_e, CellMap::x_yu_z, cell_cell_map, OP_READ), 
                 opp_get_arg(cell_e, CellMap::x_y_zu, cell_cell_map, OP_READ), 
                 opp_get_arg(cell_e,                                 OP_READ),
@@ -191,8 +190,8 @@ int main(int argc, char **argv)
             );
 
 //             serial_update_ghosts_B(cell_b);
-
-            if (OPP_rank == OPP_ROOT)
+            std::string log = "";
+            if (OPP_rank == OPP_ROOT) 
                 opp_printf("Main", "ts: %d %s ****", OPP_main_loop_iter, log.c_str());
         }
         opp_profiler->end("MainLoop");

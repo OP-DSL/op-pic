@@ -41,10 +41,6 @@ class DataPointers;
 void init_mesh(std::shared_ptr<DataPointers> m);
 void distribute_data_over_ranks(std::shared_ptr<DataPointers>& g_m, std::shared_ptr<DataPointers>& m);
 
-int nx = -1;
-int ny = -1;
-int nz = -1;
-
 //*************************************************************************************************
 /**
  * @brief Utility class to temporarily hold the mesh data until it is loaded by OP-PIC
@@ -135,13 +131,12 @@ std::shared_ptr<DataPointers> LoadData() {
  */
 void init_mesh(std::shared_ptr<DataPointers> m) {
 
-    const OPP_INT nx         = opp_params->get<OPP_INT>("nx");
-    const OPP_INT ny         = opp_params->get<OPP_INT>("ny");
-    const OPP_INT nz         = opp_params->get<OPP_INT>("nz");
-    const OPP_REAL c_width_x = opp_params->get<OPP_REAL>("c_width_x");
-    const OPP_REAL c_width_y = opp_params->get<OPP_REAL>("c_width_y");
-    const OPP_REAL c_width_z = opp_params->get<OPP_REAL>("c_width_z");
-
+    const OPP_INT nx             = opp_params->get<OPP_INT>("nx");
+    const OPP_INT ny             = opp_params->get<OPP_INT>("ny");
+    const OPP_INT nz             = opp_params->get<OPP_INT>("nz");
+    const OPP_REAL c_widths[DIM] = { opp_params->get<OPP_REAL>("c_width_x"),
+                                   opp_params->get<OPP_REAL>("c_width_y"),
+                                   opp_params->get<OPP_REAL>("c_width_z") };
     m->n_cells   = (nx * ny * nz);
 
     opp_printf("Setup", "init_mesh global n_cells=%d nx=%d ny=%d nz=%d", m->n_cells, nx, ny, nz);
@@ -174,9 +169,9 @@ void init_mesh(std::shared_ptr<DataPointers> m) {
                 
                 const int i = VOXEL(x,y,z, nx,ny,nz);
 
-                m->c_pos_ll[i*DIM + Dim::x] = x * c_width_x;
-                m->c_pos_ll[i*DIM + Dim::y] = y * c_width_y;
-                m->c_pos_ll[i*DIM + Dim::z] = z * c_width_z;
+                m->c_pos_ll[i*DIM + Dim::x] = x * c_widths[Dim::x];
+                m->c_pos_ll[i*DIM + Dim::y] = y * c_widths[Dim::y];
+                m->c_pos_ll[i*DIM + Dim::z] = z * c_widths[Dim::z];
 
                 VOXEL_MAP(x-1, y-1, z-1, nx, ny, nz, m->cell_cell_map[i * NEIGHBOURS + CellMap::xd_yd_zd]);
                 VOXEL_MAP(x-1, y-1, z  , nx, ny, nz, m->cell_cell_map[i * NEIGHBOURS + CellMap::xd_yd_z]); 
@@ -230,9 +225,9 @@ void init_particles(opp_dat part_index, opp_dat part_pos, opp_dat part_vel, opp_
     if (OPP_rank == OPP_ROOT)
         opp_printf("Setup", "Init particles START");
 
-    const OPP_INT nx             = opp_params->get<OPP_INT>("nx");
-    const OPP_INT ny             = opp_params->get<OPP_INT>("ny");
-    const OPP_INT nz             = opp_params->get<OPP_INT>("nz");
+    // const OPP_INT nx             = opp_params->get<OPP_INT>("nx");
+    // const OPP_INT ny             = opp_params->get<OPP_INT>("ny");
+    // const OPP_INT nz             = opp_params->get<OPP_INT>("nz");
     const OPP_INT npart_per_cell = opp_params->get<OPP_INT>("num_part_per_cell");
     const OPP_REAL weight        = opp_params->get<OPP_REAL>("part_weight");
     const OPP_REAL init_vel      = opp_params->get<OPP_REAL>("init_vel");
@@ -244,12 +239,14 @@ void init_particles(opp_dat part_index, opp_dat part_pos, opp_dat part_vel, opp_
     std::mt19937 rng_vel(52234231 + OPP_rank);
 
     const int cell_count        = cell_pos_ll->set->size;
-    const int global_cell_count = (nx * ny * nz);
+    // const int global_cell_count = (nx * ny * nz);
     const int rank_npart        = npart_per_cell * cell_count;
 
     if (rank_npart <= 0) {
         opp_printf("Setup", "Error No particles to add in rank %d", OPP_rank);
     }
+
+    opp_printf("Setup", "%d particles to add in rank %d", rank_npart, OPP_rank);
 
     std::vector<std::vector<double>> positions;
     std::vector<int> cells;
@@ -300,7 +297,99 @@ void init_particles(opp_dat part_index, opp_dat part_pos, opp_dat part_vel, opp_
         opp_printf("Setup", "Init particles END");
 }
 
+inline std::vector<OPP_INT> cabana_get_cells_per_dim() {
+    
+    std::vector<OPP_INT> arr = { 
+        opp_params->get<OPP_INT>("nx"),
+        opp_params->get<OPP_INT>("ny"),
+        opp_params->get<OPP_INT>("nz") 
+    };
 
+    opp_printf("N", "%d %d %d", arr[0], arr[1], arr[2]);
+
+    return arr;
+}
+
+inline std::array<OPP_REAL, DIM> cabana_get_c_widths() {
+
+    std::array<OPP_REAL, DIM> arr = { 
+        opp_params->get<OPP_REAL>("c_width_x"),
+        opp_params->get<OPP_REAL>("c_width_y"),
+        opp_params->get<OPP_REAL>("c_width_z") 
+    };
+
+    opp_printf("c_widths", "%2.25lE %2.25lE %2.25lE", arr[0], arr[1], arr[2]);
+
+    return arr;
+}
+
+inline std::array<OPP_REAL, DIM> cabana_get_cdt_d() {
+
+    const OPP_REAL c = opp_params->get<OPP_REAL>("c");
+    const OPP_REAL dt = opp_params->get<OPP_REAL>("dt");
+
+    std::array<OPP_REAL, DIM> arr = {
+        (c * dt / opp_params->get<OPP_REAL>("c_width_x")),
+        (c * dt / opp_params->get<OPP_REAL>("c_width_y")),
+        (c * dt / opp_params->get<OPP_REAL>("c_width_z"))
+    };
+    
+    opp_printf("cdt_d", "%2.25lE %2.25lE %2.25lE", arr[0], arr[1], arr[2]);
+
+    return arr;
+}
+
+inline OPP_REAL cabana_get_qdt_2mc() {
+    OPP_REAL a = (opp_params->get<OPP_REAL>("qsp") * opp_params->get<OPP_REAL>("dt") / 
+                    (2 * opp_params->get<OPP_REAL>("me") * opp_params->get<OPP_REAL>("c")));
+    
+    opp_printf("qdt_2mc", "%2.25lE", a);
+
+    return a;
+}
+
+inline std::array<OPP_REAL, DIM> cabana_get_p() {
+
+    const OPP_REAL c = opp_params->get<OPP_REAL>("c");
+    const OPP_REAL dt = opp_params->get<OPP_REAL>("dt");
+    const OPP_REAL frac = 1.0f;
+
+    std::array<OPP_REAL, DIM> arr = {
+        (opp_params->get<OPP_INT>("nx")>0) ? (frac * c * dt / opp_params->get<OPP_REAL>("c_width_x")) : 0,
+        (opp_params->get<OPP_INT>("ny")>0) ? (frac * c * dt / opp_params->get<OPP_REAL>("c_width_y")) : 0,
+        (opp_params->get<OPP_INT>("nz")>0) ? (frac * c * dt / opp_params->get<OPP_REAL>("c_width_z")) : 0
+    };
+    
+    opp_printf("p", "%2.25lE %2.25lE %2.25lE", arr[0], arr[1], arr[2]);
+
+    return arr;
+}
+
+inline std::array<OPP_REAL, DIM> cabana_get_acc_coef() {
+
+    const OPP_REAL dt = opp_params->get<OPP_REAL>("dt");
+    const OPP_REAL dx = opp_params->get<OPP_REAL>("c_width_x");
+    const OPP_REAL dy = opp_params->get<OPP_REAL>("c_width_y");
+    const OPP_REAL dz = opp_params->get<OPP_REAL>("c_width_z");
+
+    std::array<OPP_REAL, DIM> arr = {
+        0.25 / (dy * dz * dt),
+        0.25 / (dz * dx * dt),
+        0.25 / (dx * dy * dt)
+    };
+    
+    opp_printf("acc_coef", "%2.25lE %2.25lE %2.25lE", arr[0], arr[1], arr[2]);
+
+    return arr;
+}
+
+inline OPP_REAL cabana_get_dt_eps0() {
+    OPP_REAL a = (opp_params->get<OPP_REAL>("dt") / opp_params->get<OPP_REAL>("eps"));
+
+    opp_printf("dt_eps0", "%2.25lE", a);
+
+    return a;
+}
 
 // //*************************************************************************************************
 // void init_particles(std::shared_ptr<DataPointers> m) {

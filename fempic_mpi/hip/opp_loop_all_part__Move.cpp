@@ -282,11 +282,16 @@ void opp_particle_mover__Move(
             move_stride_OPP_HOST_5 = args[5].size;
             OPP_cells_set_size = set->cells_set->size; 
          
-            hipMemcpyToSymbol(HIP_SYMBOL(OPP_cells_set_size_d), &OPP_cells_set_size, sizeof(int));
-            hipMemcpyToSymbol(HIP_SYMBOL(move_stride_OPP_DEVICE_0), &move_stride_OPP_HOST_0, sizeof(int));
-            hipMemcpyToSymbol(HIP_SYMBOL(move_stride_OPP_DEVICE_2), &move_stride_OPP_HOST_2, sizeof(int));
-            hipMemcpyToSymbol(HIP_SYMBOL(move_stride_OPP_DEVICE_4), &move_stride_OPP_HOST_4, sizeof(int));
-            hipMemcpyToSymbol(HIP_SYMBOL(move_stride_OPP_DEVICE_5), &move_stride_OPP_HOST_5, sizeof(int));
+            cutilSafeCall(hipMemcpyToSymbol(HIP_SYMBOL(OPP_cells_set_size_d), 
+                                                        &OPP_cells_set_size, sizeof(int)));
+            cutilSafeCall(hipMemcpyToSymbol(HIP_SYMBOL(move_stride_OPP_DEVICE_0), 
+                                                        &move_stride_OPP_HOST_0, sizeof(int)));
+            cutilSafeCall(hipMemcpyToSymbol(HIP_SYMBOL(move_stride_OPP_DEVICE_2), 
+                                                        &move_stride_OPP_HOST_2, sizeof(int)));
+            cutilSafeCall(hipMemcpyToSymbol(HIP_SYMBOL(move_stride_OPP_DEVICE_4), 
+                                                        &move_stride_OPP_HOST_4, sizeof(int)));
+            cutilSafeCall(hipMemcpyToSymbol(HIP_SYMBOL(move_stride_OPP_DEVICE_5), 
+                                                        &move_stride_OPP_HOST_5, sizeof(int)));
 
             opp_profiler->start("FMv_init_part");
             opp_init_particle_move(set, nargs, args);

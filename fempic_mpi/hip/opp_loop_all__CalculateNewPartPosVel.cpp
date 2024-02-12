@@ -118,9 +118,12 @@ void opp_loop_all__CalculateNewPartPosVel(
         calc_pos_vel_stride_OPP_HOST_1 = args[1].dat->set->set_capacity;
         calc_pos_vel_stride_OPP_HOST_2 = args[2].dat->set->set_capacity;
 
-        hipMemcpyToSymbol(HIP_SYMBOL(calc_pos_vel_stride_OPP_DEVICE_0), &calc_pos_vel_stride_OPP_HOST_0, sizeof(int));
-        hipMemcpyToSymbol(HIP_SYMBOL(calc_pos_vel_stride_OPP_DEVICE_1), &calc_pos_vel_stride_OPP_HOST_1, sizeof(int));
-        hipMemcpyToSymbol(HIP_SYMBOL(calc_pos_vel_stride_OPP_DEVICE_2), &calc_pos_vel_stride_OPP_HOST_2, sizeof(int));
+        cutilSafeCall(hipMemcpyToSymbol(HIP_SYMBOL(calc_pos_vel_stride_OPP_DEVICE_0), 
+                                                    &calc_pos_vel_stride_OPP_HOST_0, sizeof(int)));
+        cutilSafeCall(hipMemcpyToSymbol(HIP_SYMBOL(calc_pos_vel_stride_OPP_DEVICE_1), 
+                                                    &calc_pos_vel_stride_OPP_HOST_1, sizeof(int)));
+        cutilSafeCall(hipMemcpyToSymbol(HIP_SYMBOL(calc_pos_vel_stride_OPP_DEVICE_2), 
+                                                    &calc_pos_vel_stride_OPP_HOST_2, sizeof(int)));
 
         int start = 0;
         int end   = set->size;

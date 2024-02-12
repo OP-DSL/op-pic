@@ -48,7 +48,7 @@ ifeq ($(CUDA), 1)
 	CUDA_LIB   = -L$(CUDA_INSTALL_PATH)/lib64 -lcudart -lcuda
 endif
 
-HIP ?= 0
+HIP ?= 1
 ifeq ($(HIP), 1)
 	HIP_INC   = -I$(ROCM_INSTALL_DIR)/include -I$(ROCM_THRUST_DIR)/include -I$(ROCM_PRIM_DIR)/include
 endif
@@ -120,12 +120,8 @@ cuda_mpi_hdf5_fsol_cpu: mpi_common
 	
 hip: mklib
 		 $(HIPCC) $(HIPCCFLAGS) -c hip/hipkernels.cpp -o $(OBJ)/hipkernels.o $(ALL_INC) $(HIP_INC)
-	     $(HIPCC) $(HIPCCFLAGS) -c fempic_op.cpp -o $(OBJ)/fempic_op.o $(ALL_INC)
-	     $(HIPCC) $(HIPCCFLAGS) -c fempic_ori/meshes.cpp -o $(OBJ)/meshes.o $(ALL_INC)
-	     $(HIPCC) $(HIPCCFLAGS) -c fempic_ori/particles.cpp -o $(OBJ)/particles.o $(ALL_INC)
-		 $(HIPCC) $(HIPCCFLAGS) -c fempic_ori/maths.cpp -o $(OBJ)/maths.o $(ALL_INC)
-		 $(HIPCC) $(HIPCCFLAGS) -c FESolver.cpp -o $(OBJ)/FESolver.o $(ALL_INC)
-	     $(HIPCC) $(HIPCCFLAGS) -o $(BIN)/hip $(OBJ)/fempic_op.o $(OBJ)/meshes.o $(OBJ)/particles.o $(OBJ)/maths.o $(OBJ)/hipkernels.o $(OBJ)/FESolver.o $(ALL_INC) $(HIP_INC) $(ALL_LIBS) $(HIP_LIB) -loppic_hip
+	     $(HIPCC) $(HIPCCFLAGS) -c cabana_op.cpp -o $(OBJ)/cabana_op_hip.o $(ALL_INC)
+	     $(HIPCC) $(HIPCCFLAGS) -o $(BIN)/hip $(OBJ)/cabana_op_hip.o $(OBJ)/hipkernels.o $(ALL_INC) $(HIP_INC) $(ALL_LIBS) $(HIP_LIB) -lopp_hip
 
 mpi_hdf5_conv: mklib
 		 $(MPICPP) $(CPPFLAGS) -DUSE_MPI -c fempic_convert_hdf5.cpp -o $(OBJ)/fempic_convert_hdf5.o $(ALL_INC)

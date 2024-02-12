@@ -37,34 +37,26 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "oppic_seq.h"
 #include "../cabana_defs.h"
 
-const OPP_REAL CONST_qdt_2mc = -0.079733736813068389892578125;
-const OPP_REAL CONST_cdt_dx = 0.637869894504547119140625;
-const OPP_REAL CONST_cdt_dy = 0.757114291191101074218750;
-const OPP_REAL CONST_cdt_dz = 0.15946747362613677978515625;
-const OPP_REAL CONST_qsp = -1.0;
-
-const OPP_REAL CONST_dx = +2.500000000000000000000000000000E-01;
-const OPP_REAL CONST_dy = +2.106253922764312613846726662814E-01;
-const OPP_REAL CONST_dz = +1.000000000000000000000000000000E+00;
-const OPP_REAL CONST_dt = +1.594674816314074206058393201602E-01;
-
-const OPP_REAL CONST_px = +6.378699265256296824233572806406E-01;
-const OPP_REAL CONST_py = +7.571142297131837617385485827981E-01;
-const OPP_REAL CONST_pz = +0.000000000000000000000000000000E+00;
-const OPP_REAL CONST_cj = +1.594674736261367797851562500000E-01;
-
-OPP_INT CONST_nx = -1;
-OPP_INT CONST_ny = -1;
-OPP_INT CONST_nz = -1;
-OPP_INT CONST_ng = -1;
+OPP_INT CONST_c_per_dim[DIM];
+OPP_REAL CONST_dt;
+OPP_REAL CONST_qsp;
+OPP_REAL CONST_cdt_d[DIM];
+OPP_REAL CONST_p[DIM];
+OPP_REAL CONST_qdt_2mc;
+OPP_REAL CONST_dt_eps0;
+OPP_REAL CONST_acc_coef[DIM];
 
 //****************************************
 void opp_decl_const_impl(int dim, int size, char* data, const char* name)
 {
-    if (!strcmp(name,"CONST_nx"))       CONST_nx = *((int*)data);
-    else if (!strcmp(name,"CONST_ny"))  CONST_ny = *((int*)data);
-    else if (!strcmp(name,"CONST_nz"))  CONST_nz = *((int*)data);
-    else if (!strcmp(name,"CONST_ng"))  CONST_ng = *((int*)data);
+    if (!strcmp(name,"CONST_c_per_dim"))     std::memcpy(CONST_c_per_dim, data, (size*dim));
+    else if (!strcmp(name,"CONST_dt"))       std::memcpy(&CONST_dt, data, (size*dim));
+    else if (!strcmp(name,"CONST_qsp"))      std::memcpy(&CONST_qsp, data, (size*dim));
+    else if (!strcmp(name,"CONST_cdt_d"))    std::memcpy(&CONST_cdt_d, data, (size*dim));
+    else if (!strcmp(name,"CONST_p"))        std::memcpy(&CONST_p, data, (size*dim));
+    else if (!strcmp(name,"CONST_qdt_2mc"))  std::memcpy(&CONST_qdt_2mc, data, (size*dim));
+    else if (!strcmp(name,"CONST_dt_eps0"))  std::memcpy(&CONST_dt_eps0, data, (size*dim));
+    else if (!strcmp(name,"CONST_acc_coef")) std::memcpy(&CONST_acc_coef, data, (size*dim));
     else std::cerr << "error: unknown const name" << std::endl;
 }
 //****************************************
@@ -134,7 +126,8 @@ void opp_particle_mover__Move(
     opp_arg arg3,       // part_streak_mid    // OPP_RW
     opp_arg arg4,       // part_weight        // OPP_READ
     opp_arg arg5,       // cell_inter         // OPP_READ
-    opp_arg arg6        // cell_acc           // OPP_INC
+    opp_arg arg6,       // cell_acc           // OPP_INC
+    opp_arg arg7        // cell_cell_map      // OPP_READ
 )
 {
 
@@ -147,14 +140,16 @@ void opp_particle_mover__Move(
 
     int* cellIdx = nullptr;
 
+int int_hops = 0;
+int max_int_hops = 0;
     for (int n = 0; n < set->size; n++)
     {
         opp_move_var m; // = opp_get_move_var();
-
+int_hops = 0;
         do
         {
             cellIdx = &(OPP_mesh_relation_data[n]);
-
+int_hops++;
             push_particles_kernel(m, 
                 &((int*)    arg0.data)[n * arg0.dim],        // part_cid 
                 &((double*) arg1.data)[n * arg1.dim],        // part_vel 
@@ -162,11 +157,16 @@ void opp_particle_mover__Move(
                 &((double*) arg3.data)[n * arg3.dim],        // part_streak_mid 
                 &((double*) arg4.data)[n * arg4.dim],        // part_weight 
                 &((double*) arg5.data)[*cellIdx * arg5.dim], // cell_interp 
-                &((double*) arg6.data)[*cellIdx * arg6.dim]  // cell_acc
+                &((double*) arg6.data)[*cellIdx * arg6.dim], // cell_acc
+                &((int*)    arg7.data)[*cellIdx * arg7.dim]  // cell_cell_map
             );
 
         } while (opp_part_check_status(m, *cellIdx, set, n, set->particle_remove_count)); 
+    
+max_int_hops = (max_int_hops > int_hops ? max_int_hops : int_hops );  
     }
+
+opp_printf("MOVE", "Max hops %d", max_int_hops);
 
     opp_finalize_particle_move(set);
 
@@ -218,7 +218,7 @@ void opp_loop_all__accumulate_current_to_cells(
 //*************************************************************************************************
 void opp_loop_all__half_advance_b(
     opp_set set,     // cells set
-    opp_arg arg0,    // cell_x_e        // OPP_WRITE
+    opp_arg arg0,    // cell_x_e        // OPP_READ
     opp_arg arg1,    // cell_y_e        // OPP_READ
     opp_arg arg2,    // cell_z_e        // OPP_READ
     opp_arg arg3,    // cell0_e         // OPP_READ
