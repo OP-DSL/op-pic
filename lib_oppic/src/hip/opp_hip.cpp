@@ -134,7 +134,7 @@ void oppic_hip_exit()
     if (opp_saved_mesh_relation_d != nullptr)
     {
         cutilSafeCall(hipFree(opp_saved_mesh_relation_d));
-        // free(opp_saved_mesh_relation_d);
+        // opp_host_free(opp_saved_mesh_relation_d);
     }
 
     cellIdx_dv.clear();
@@ -198,7 +198,7 @@ oppic_map oppic_decl_map_txt(oppic_set from, oppic_set to, int dim, const char* 
 
     oppic_map map = opp_decl_mesh_map(from, to, dim, map_data, name);
 
-    free(map_data);
+    opp_host_free(map_data);
 
     return map;
 }
@@ -215,7 +215,7 @@ oppic_dat oppic_decl_dat_txt(oppic_set set, int dim, opp_data_type dtype, const 
 
     oppic_dat dat = oppic_decl_dat_core(set, dim, type.c_str(), size, dat_data, name);
 
-    free(dat_data);
+    opp_host_free(dat_data);
 
     return dat;
 }
@@ -304,7 +304,7 @@ oppic_dat oppic_decl_particle_dat_txt(oppic_set set, int dim, opp_data_type dtyp
 
     oppic_dat dat = oppic_decl_particle_dat_core(set, dim, type.c_str(), size, dat_data, name, cell_index);
 
-    free(dat_data);
+    opp_host_free(dat_data);
 
     return dat;
 }
@@ -321,17 +321,24 @@ void oppic_increase_particle_count(oppic_set part_set, const int num_particles_t
 
     // TODO : We should be able to do a device to device copy instead of getting to host
 
-    if (need_resizing)
+    if (need_resizing) 
+    {
+        opp_profiler->start("opp_inc_part_count_DWN");
         opp_download_particle_set(part_set, true); 
+        opp_profiler->end("opp_inc_part_count_DWN");
+    }
 
+    opp_profiler->start("opp_inc_part_count_INC");
     if (!oppic_increase_particle_count_core(part_set, num_particles_to_insert))
     {
         opp_printf("oppic_increase_particle_count", "Error at oppic_increase_particle_count_core");
         opp_abort();
     }
+    opp_profiler->end("opp_inc_part_count_INC");
 
     if (need_resizing)
     {
+        opp_profiler->start("opp_inc_part_count_UPL");
         for (oppic_dat& current_dat : *(part_set->particle_dats))
         {
             if (OP_DEBUG) opp_printf("oppic_increase_particle_count", "hip resizing dat [%s] set_capacity [%d]", 
@@ -344,8 +351,9 @@ void oppic_increase_particle_count(oppic_set part_set, const int num_particles_t
             opp_upload_dat(current_dat);
 
             current_dat->dirty_hd = Dirty::NotDirty;
-        }        
-    }
+        }   
+        opp_profiler->end("opp_inc_part_count_UPL");     
+    } 
 
     opp_profiler->end("opp_inc_part_count");
 }
@@ -418,7 +426,8 @@ void opp_reset_dat(oppic_dat dat, char* val, opp_reset reset)
     cutilSafeCall(hipDeviceSynchronize());
 
     dat->dirty_hd = Dirty::Host;
-    dat->dirtybit = 1;
+    if (!dat->set->is_particle && (reset != OPP_Reset_All))
+        dat->dirtybit = 1;
 }
 
 
@@ -484,9 +493,9 @@ void opp_mpi_print_dat_to_txtfile(op_dat dat, const char *file_name)
     
     print_dat_to_txtfile_mpi(temp, prefixed_file_name.c_str());
 
-    free(temp->data);
-    free(temp->set);
-    free(temp);
+    opp_host_free(temp->data);
+    opp_host_free(temp->set);
+    opp_host_free(temp);
 #endif
 }
 
@@ -515,7 +524,7 @@ void opp_download_dat(oppic_dat dat)
     {
         if (OP_DEBUG) opp_printf("opp_download_dat", "GPU->CPU SOA | %s", dat->name);
 
-        char *temp_data = (char *)malloc(dat->size * set_size * sizeof(char));
+        char *temp_data = (char *)opp_host_malloc(dat->size * set_size * sizeof(char));
         cutilSafeCall(hipMemcpy(temp_data, dat->data_d, set_size * dat->size, hipMemcpyDeviceToHost));
         
         int element_size = dat->size / dat->dim;
@@ -530,7 +539,7 @@ void opp_download_dat(oppic_dat dat)
                 }
             }
         }
-        free(temp_data);
+        opp_host_free(temp_data);
     } 
     else 
     {
@@ -553,7 +562,7 @@ void opp_upload_dat(oppic_dat dat)
     {
         if (OP_DEBUG) opp_printf("opp_upload_dat","CPU->GPU SOA | %s", dat->name);
 
-        char *temp_data = (char *)malloc(dat->size * set_capacity * sizeof(char));
+        char *temp_data = (char *)opp_host_malloc(dat->size * set_capacity * sizeof(char));
         int element_size = dat->size / dat->dim;
 
         for (int i = 0; i < dat->dim; i++) 
@@ -570,7 +579,7 @@ void opp_upload_dat(oppic_dat dat)
 
         oppic_cpHostToDevice((void **)&(dat->data_d), (void **)&(temp_data), (dat->size * set_capacity), 
                                 (dat->size * set_capacity), false);
-        free(temp_data);
+        opp_host_free(temp_data);
     } 
     else 
     {
@@ -588,7 +597,7 @@ void opp_upload_map(opp_map map, bool create_new)
 {
     if (OP_DEBUG) opp_printf("opp_upload_map", "CPU->GPU | %s %s", map->name, create_new ? "NEW" : "COPY");
     int set_size = map->from->size + map->from->exec_size;
-    int *temp_map = (int *)malloc(map->dim * set_size * sizeof(int));
+    int *temp_map = (int *)opp_host_malloc(map->dim * set_size * sizeof(int));
 
     for (int i = 0; i < map->dim; i++) 
     {
@@ -600,7 +609,7 @@ void opp_upload_map(opp_map map, bool create_new)
 
     size_t copy_size = map->dim * set_size * sizeof(int);
     oppic_cpHostToDevice((void **)&(map->map_d), (void **)&(temp_map), copy_size, copy_size, create_new);
-    free(temp_map);
+    opp_host_free(temp_map);
 }
 
 //****************************************
@@ -895,6 +904,49 @@ void opp_colour_cartesian_mesh(const int ndim, const std::vector<int> cell_count
 
 
 
+//*******************************************************************************
+void* opp_host_malloc(size_t size)
+{
+    opp_profiler->start("opp_host_malloc");
+    void* pinnedHostMemory;
+
+    // hipError_t err = hipHostMalloc((void**)&pinnedHostMemory, size, hipHostMallocNumaUser);
+    // if (err != hipSuccess) {
+    //     opp_printf("Error", "opp_host_malloc failed to allocate size %zu", size);
+    //     std::cerr << "Error allocating pinned host memory: " << hipGetErrorString(err) << std::endl;
+    //     return nullptr;
+    // }
+
+    pinnedHostMemory = malloc(size);
+
+    opp_profiler->end("opp_host_malloc");
+    return pinnedHostMemory;
+}
+
+//*******************************************************************************
+void* opp_host_realloc(void* ptr, size_t new_size)
+{
+    opp_profiler->start("opp_host_realloc");
+    void* realloced_ptr = nullptr;
+    
+    // realloced_ptr = opp_host_malloc(new_size);
+    // memcpy(realloced_ptr, ptr, new_size);
+    // opp_host_free(ptr);
+
+    realloced_ptr = realloc(ptr, new_size);
+
+    opp_profiler->end("opp_host_realloc");
+    return realloced_ptr;
+}
+
+//*******************************************************************************
+void opp_host_free(void* ptr)
+{
+    opp_profiler->start("opp_host_free");
+    // hipHostFree(ptr);
+    free(ptr);
+    opp_profiler->end("opp_host_free");
+}
 
 
 

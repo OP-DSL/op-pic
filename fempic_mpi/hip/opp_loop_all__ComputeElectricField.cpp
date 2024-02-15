@@ -141,9 +141,12 @@ void opp_loop_all__ComputeElectricField(
         computeEF_stride_OPP_HOST_1 = args[1].dat->set->set_capacity;
         computeEF_stride_OPP_HOST_2_MAP = args[2].size;
 
-        hipMemcpyToSymbol(HIP_SYMBOL(computeEF_stride_OPP_DEVICE_0), &computeEF_stride_OPP_HOST_0, sizeof(int));
-        hipMemcpyToSymbol(HIP_SYMBOL(computeEF_stride_OPP_DEVICE_1), &computeEF_stride_OPP_HOST_1, sizeof(int));
-        hipMemcpyToSymbol(HIP_SYMBOL(computeEF_stride_OPP_DEVICE_2_MAP), &computeEF_stride_OPP_HOST_2_MAP, sizeof(int));
+        cutilSafeCall(hipMemcpyToSymbol(HIP_SYMBOL(computeEF_stride_OPP_DEVICE_0), 
+                                                    &computeEF_stride_OPP_HOST_0, sizeof(int)));
+        cutilSafeCall(hipMemcpyToSymbol(HIP_SYMBOL(computeEF_stride_OPP_DEVICE_1), 
+                                                    &computeEF_stride_OPP_HOST_1, sizeof(int)));
+        cutilSafeCall(hipMemcpyToSymbol(HIP_SYMBOL(computeEF_stride_OPP_DEVICE_2_MAP), 
+                                                    &computeEF_stride_OPP_HOST_2_MAP, sizeof(int)));
 
         int start = 0;
         int end   = set->size;

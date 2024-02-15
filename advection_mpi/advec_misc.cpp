@@ -178,8 +178,9 @@ void init_particles(opp_dat part_index, opp_dat part_pos, opp_dat part_vel, opp_
     std::vector<int> cells;
 
     // Sample particles randomly in each local cell.
-    uniform_within_cartesian_cells(DIM, opp_params->get<OPP_REAL>("cell_width"), (OPP_REAL*)cell_pos_ll->data, 
-                                cell_count, npart_per_cell, positions, cells, rng_pos);
+    const double extents[] = { opp_params->get<OPP_REAL>("cell_width"), opp_params->get<OPP_REAL>("cell_width")};
+    uniform_within_cartesian_cells(DIM, extents, (OPP_REAL*)cell_pos_ll->data, cell_count, npart_per_cell, 
+                                positions, cells, rng_pos);
 
     // Sample some particle velocities.
     auto velocities = get_normal_distribution(rank_npart, DIM, 0.0, 0.5, rng_vel);

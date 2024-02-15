@@ -123,7 +123,7 @@ oppic_map oppic_decl_map_txt(oppic_set from, oppic_set to, int dim, const char* 
 
     oppic_map map = opp_decl_mesh_map(from, to, dim, map_data, name);
 
-    free(map_data);
+    opp_host_free(map_data);
 
     return map;
 }
@@ -139,7 +139,7 @@ oppic_dat oppic_decl_dat_txt(oppic_set set, int dim, opp_data_type dtype, const 
 
     oppic_dat dat = oppic_decl_dat_core(set, dim, type.c_str(), size, dat_data, name);
 
-    free(dat_data);
+    opp_host_free(dat_data);
 
     return dat;
 }
@@ -215,7 +215,7 @@ oppic_dat oppic_decl_particle_dat_txt(oppic_set set, int dim, opp_data_type dtyp
 
     oppic_dat dat = oppic_decl_particle_dat_core(set, dim, type.c_str(), size, dat_data, name, cell_index);
 
-    free(dat_data);
+    opp_host_free(dat_data);
 
     return dat;
 }
@@ -447,7 +447,7 @@ void oppic_finalize_particle_move_omp(oppic_set set)
     if (OP_auto_sort == 0) // if not auto sorting, fill the holes
     {
         // getting a backup of cell index since it will also be rearranged using a random OMP thread
-        int *mesh_relation_data = (int *)malloc(set->set_capacity * set->mesh_relation_dat->size); 
+        int *mesh_relation_data = (int *)opp_host_malloc(set->set_capacity * set->mesh_relation_dat->size); 
         
         memcpy((char*)mesh_relation_data, set->mesh_relation_dat->data, 
             set->set_capacity * set->mesh_relation_dat->size);
@@ -490,11 +490,11 @@ void oppic_finalize_particle_move_omp(oppic_set set)
                 removed_count++;
             }
 
-            // current_oppic_dat->data = (char *)realloc(current_oppic_dat->data, 
+            // current_oppic_dat->data = (char *)opp_host_realloc(current_oppic_dat->data, 
             //       (size_t)(set->size - removed_count) * (size_t)current_oppic_dat->size);
         }
 
-        free(mesh_relation_data);
+        opp_host_free(mesh_relation_data);
     }
 
     set->size -= set->particle_remove_count;
@@ -592,7 +592,7 @@ void oppic_particle_sort(oppic_set set)
     for (int i = 0; i < (int)set->particle_dats->size(); i++)
     {    
         auto& dat = set->particle_dats->at(i);
-        char *new_data = (char *)malloc(set->set_capacity * dat->size);
+        char *new_data = (char *)opp_host_malloc(set->set_capacity * dat->size);
         char *old_data = (char*)dat->data;
         
         for (int j = 0; j < set->size; j++)
@@ -600,7 +600,7 @@ void oppic_particle_sort(oppic_set set)
             memcpy(new_data + j * dat->size, old_data + idx_before_sort[j] * dat->size, dat->size);
         }
 
-        free(dat->data);
+        opp_host_free(dat->data);
         dat->data = new_data;
 
         if (dat->is_cell_index)
@@ -787,9 +787,9 @@ void opp_mpi_print_dat_to_txtfile(op_dat dat, const char *file_name)
     
     print_dat_to_txtfile_mpi(temp, prefixed_file_name.c_str());
 
-    free(temp->data);
-    free(temp->set);
-    free(temp);
+    opp_host_free(temp->data);
+    opp_host_free(temp->set);
+    opp_host_free(temp);
 #endif
 }
 
@@ -800,4 +800,22 @@ void opp_colour_cartesian_mesh(const int ndim, const std::vector<int> cell_count
 #ifdef USE_MPI  
     __opp_colour_cartesian_mesh(ndim, cell_counts, cell_index, cell_colors);
 #endif
+}
+
+//*******************************************************************************
+void* opp_host_malloc(size_t size)
+{
+    return malloc(size);
+}
+
+//*******************************************************************************
+void* opp_host_realloc(void* ptr, size_t new_size)
+{
+    return realloc(ptr, new_size);
+}
+
+//*******************************************************************************
+void opp_host_free(void* ptr)
+{
+    free(ptr);
 }

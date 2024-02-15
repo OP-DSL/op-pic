@@ -40,6 +40,20 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <random>
 
 //********************************************************************************
+char *copy_str(char const *src) 
+{
+    size_t src_len = strlen(src); // Calculate the actual length of src
+    size_t dest_len = (src_len > 100) ? 100 : src_len; // Limit the destination length to 100 characters
+
+    char *dest = (char *)opp_host_malloc((dest_len + 1) * sizeof(char));
+    if (dest) {
+        memcpy(dest, src, dest_len);
+        dest[dest_len] = '\0'; // Ensure the destination string is null-terminated
+    }
+    return dest;
+}
+
+//********************************************************************************
 std::string getTimeStr()
 {
     std::time_t now = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
@@ -218,7 +232,7 @@ void quickSort_dat(int arr[], char dat[], int left, int right, int elem_size2)
     size_t elem_size = elem_size2;
     int i = left, j = right;
     int tmp;
-    char *tmp_dat = (char *)malloc(sizeof(char) * elem_size);
+    char *tmp_dat = (char *)opp_host_malloc(sizeof(char) * elem_size);
     int pivot = arr[(left + right) / 2];
 
     // partition
@@ -257,7 +271,7 @@ void quickSort_dat(int arr[], char dat[], int left, int right, int elem_size2)
     if (i < right)
         quickSort_dat(arr, dat, i, right, elem_size);
     
-    free(tmp_dat);
+    opp_host_free(tmp_dat);
 }
 
 /*******************************************************************************
@@ -271,7 +285,7 @@ void quickSort_map(int arr[], int map[], int left, int right, int dim)
 
     int i = left, j = right;
     int tmp;
-    int *tmp_map = (int *)malloc(sizeof(int) * dim);
+    int *tmp_map = (int *)opp_host_malloc(sizeof(int) * dim);
     int pivot = arr[(left + right) / 2];
 
     // partition
@@ -309,7 +323,7 @@ void quickSort_map(int arr[], int map[], int left, int right, int dim)
     if (i < right)
         quickSort_map(arr, map, i, right, dim);
     
-    free(tmp_map);
+    opp_host_free(tmp_map);
 }
 
 /*******************************************************************************

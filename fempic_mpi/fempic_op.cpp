@@ -173,12 +173,13 @@ int main(int argc, char **argv)
             
         field_solver->enrich_cell_shape_deriv(cell_shape_deriv);
 
+        opp_inc_part_count_with_distribution(particle_set, n_parts_to_inject, iface_dist, false);
+
         opp_profiler->end("Setup");
 
 #ifdef USE_MPI
         MPI_Barrier(MPI_COMM_WORLD);
 #endif
-
 
         opp_profiler->start("MainLoop");
         for (OPP_main_loop_iter = 0; OPP_main_loop_iter < max_iter; OPP_main_loop_iter++)
@@ -186,7 +187,8 @@ int main(int argc, char **argv)
             if (OP_DEBUG && OPP_rank == OPP_ROOT) 
                 opp_printf("Main", "Starting main loop iteration %d *************", OPP_main_loop_iter);
 
-            opp_inc_part_count_with_distribution(particle_set, n_parts_to_inject, iface_dist, false);
+            if (OPP_main_loop_iter != 0)
+                opp_inc_part_count_with_distribution(particle_set, n_parts_to_inject, iface_dist, false);
 
             int old_nparts = particle_set->size;
             opp_loop_inject__InjectIons(
@@ -271,8 +273,8 @@ int main(int argc, char **argv)
         }
         opp_profiler->end("MainLoop");
 
-        if (OP_DEBUG)
-            print_per_cell_particle_counts(cell_colors, part_mesh_rel); // cell_colors will reset
+        // if (OP_DEBUG)
+        //     print_per_cell_particle_counts(cell_colors, part_mesh_rel); // cell_colors will reset
         
         if (OPP_rank == OPP_ROOT) opp_printf("Main", "Main loop completed after %d iterations ****", max_iter);
     }

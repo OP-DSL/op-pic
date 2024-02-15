@@ -345,7 +345,7 @@ void opp_part_pack_hip(opp_set set)
             {
                 send_rank_buffer.buf_export_capacity  = OPP_mpi_part_alloc_mult * required_buffer_size;
                 send_rank_buffer.buf_export_index     = 0;
-                send_rank_buffer.buf_export           = (char *)malloc(send_rank_buffer.buf_export_capacity);
+                send_rank_buffer.buf_export           = (char *)opp_host_malloc(send_rank_buffer.buf_export_capacity);
 
                 // opp_printf("opp_part_pack", "alloc buf_export capacity %d", send_rank_buffer.buf_export_capacity);
             }
@@ -354,7 +354,7 @@ void opp_part_pack_hip(opp_set set)
                 // Assume that there are some particles left already, increase capacity beyond buf_export_index
                 send_rank_buffer.buf_export_capacity  = send_rank_buffer.buf_export_index + 
                                                             OPP_mpi_part_alloc_mult * required_buffer_size;
-                send_rank_buffer.buf_export           = (char *)realloc(send_rank_buffer.buf_export, 
+                send_rank_buffer.buf_export           = (char *)opp_host_realloc(send_rank_buffer.buf_export, 
                                                             send_rank_buffer.buf_export_capacity);
                 
                 // opp_printf("opp_part_pack", "realloc buf_export capacity %d", send_rank_buffer.buf_export_capacity);
@@ -456,7 +456,7 @@ void opp_part_unpack_hip(oppic_set set)
         for (size_t d = 0; d < particle_dats.size(); d++)
         {
             opp_dat dat = particle_dats[d];
-            char *temp_data = (char *)malloc(dat->size * num_new_particles * sizeof(char));
+            char *temp_data = (char *)opp_host_malloc(dat->size * num_new_particles * sizeof(char));
             temp_data_vec.push_back(temp_data);
         }
 
@@ -537,7 +537,7 @@ void opp_part_unpack_hip(oppic_set set)
         cutilSafeCall(hipDeviceSynchronize());
 
         for (auto& char_ptr : temp_data_vec)
-            free(char_ptr);
+            opp_host_free(char_ptr);
         temp_data_vec.clear();
     }
 

@@ -130,11 +130,11 @@ MPI_Comm OP_PART_WORLD;
                             int comm_size, int my_rank) 
 {
     (void)my_rank;
-    int *ranks = (int *)malloc(comm_size * sizeof(int));
-    int *to_list = (int *)malloc((size / 3) * sizeof(int));
-    part_list = (int *)malloc((size / 3) * sizeof(int));
-    int *disps = (int *)malloc(comm_size * sizeof(int));
-    int *sizes = (int *)malloc(comm_size * sizeof(int));
+    int *ranks = (int *)opp_host_malloc(comm_size * sizeof(int));
+    int *to_list = (int *)opp_host_malloc((size / 3) * sizeof(int));
+    part_list = (int *)opp_host_malloc((size / 3) * sizeof(int));
+    int *disps = (int *)opp_host_malloc(comm_size * sizeof(int));
+    int *sizes = (int *)opp_host_malloc(comm_size * sizeof(int));
 
     int index = 0;
     size_t total_size = 0;
@@ -150,8 +150,8 @@ MPI_Comm OP_PART_WORLD;
     {
         sizes[index] = 0;
         disps[index] = 0;
-        int *temp_to = (int *)malloc((size / 3) * sizeof(int));
-        int *temp_part = (int *)malloc((size / 3) * sizeof(int));
+        int *temp_to = (int *)opp_host_malloc((size / 3) * sizeof(int));
+        int *temp_part = (int *)opp_host_malloc((size / 3) * sizeof(int));
 
         for (int i = 0; i < size; i = i + 3) 
         {
@@ -180,8 +180,8 @@ MPI_Comm OP_PART_WORLD;
             }
             index++;
         }
-        free(temp_to);
-        free(temp_part);
+        opp_host_free(temp_to);
+        opp_host_free(temp_part);
     }
 
     h_list->set = set;
@@ -203,7 +203,7 @@ MPI_Comm OP_PART_WORLD;
                               int ranks_size, int comm_size, int my_rank) 
 {
     (void)my_rank;
-    int *disps = (int *)malloc(comm_size * sizeof(int));
+    int *disps = (int *)opp_host_malloc(comm_size * sizeof(int));
     disps[0] = 0;
     for (int i = 0; i < ranks_size; i++) 
     {
@@ -230,9 +230,9 @@ MPI_Comm OP_PART_WORLD;
 
     size_t cap = 100;
     size_t count = 0;
-    int *temp_list = (int *)malloc(cap * sizeof(int));
+    int *temp_list = (int *)opp_host_malloc(cap * sizeof(int));
 
-    halo_list pi_list = (halo_list)malloc(sizeof(halo_list_core));
+    halo_list pi_list = (halo_list)opp_host_malloc(sizeof(halo_list_core));
 
     // go through the map and build an import list of the non-local "to" elements
     for (int i = 0; i < map->from->size; i++) 
@@ -244,7 +244,7 @@ MPI_Comm OP_PART_WORLD;
             if (count >= cap) 
             {
                 cap = cap * 2;
-                temp_list = (int *)realloc(temp_list, cap * sizeof(int));
+                temp_list = (int *)opp_host_realloc(temp_list, cap * sizeof(int));
             }
 
             if (part != my_rank) 
@@ -255,19 +255,19 @@ MPI_Comm OP_PART_WORLD;
         }
     }
     create_export_list(map->to, temp_list, pi_list, count, comm_size, my_rank);
-    free(temp_list);
+    opp_host_free(temp_list);
 
     // now, discover neighbors and create export list of "to" elements
     int ranks_size = 0;
 
-    int *neighbors = (int *)malloc(comm_size * sizeof(int));
-    int *sizes = (int *)malloc(comm_size * sizeof(int));
+    int *neighbors = (int *)opp_host_malloc(comm_size * sizeof(int));
+    int *sizes = (int *)opp_host_malloc(comm_size * sizeof(int));
 
-    halo_list pe_list = (halo_list)malloc(sizeof(halo_list_core));
+    halo_list pe_list = (halo_list)opp_host_malloc(sizeof(halo_list_core));
     find_neighbors_set(pi_list, neighbors, sizes, &ranks_size, my_rank, comm_size, OP_PART_WORLD);
 
     //  MPI_Request request_send[pi_list->ranks_size];
-    MPI_Request *request_send = (MPI_Request *)malloc(pi_list->ranks_size * sizeof(MPI_Request));
+    MPI_Request *request_send = (MPI_Request *)opp_host_malloc(pi_list->ranks_size * sizeof(MPI_Request));
 
     int *rbuf;
     cap = 0;
@@ -281,15 +281,15 @@ MPI_Comm OP_PART_WORLD;
 
     for (int i = 0; i < ranks_size; i++)
         cap = cap + sizes[i];
-    temp_list = (int *)malloc(cap * sizeof(int));
+    temp_list = (int *)opp_host_malloc(cap * sizeof(int));
 
     for (int i = 0; i < ranks_size; i++) 
     {
-        rbuf = (int *)malloc(sizes[i] * sizeof(int));
+        rbuf = (int *)opp_host_malloc(sizes[i] * sizeof(int));
         MPI_Recv(rbuf, sizes[i], MPI_INT, neighbors[i], 1, OP_PART_WORLD, MPI_STATUS_IGNORE);
         memcpy(&temp_list[count], (void *)&rbuf[0], sizes[i] * sizeof(int));
         count = count + sizes[i];
-        free(rbuf);
+        opp_host_free(rbuf);
     }
     MPI_Waitall(pi_list->ranks_size, request_send, MPI_STATUSES_IGNORE);
     create_import_list(map->to, temp_list, pe_list, count, neighbors, sizes, ranks_size, comm_size, my_rank);
@@ -298,10 +298,10 @@ MPI_Comm OP_PART_WORLD;
     MPI_Request request_send_p[pe_list->ranks_size];
 
     // first - prepare partition information of the "to" set element to be exported
-    int **sbuf = (int **)malloc(pe_list->ranks_size * sizeof(int *));
+    int **sbuf = (int **)opp_host_malloc(pe_list->ranks_size * sizeof(int *));
     for (int i = 0; i < pe_list->ranks_size; i++) 
     {
-        sbuf[i] = (int *)malloc(pe_list->sizes[i] * sizeof(int));
+        sbuf[i] = (int *)opp_host_malloc(pe_list->sizes[i] * sizeof(int));
         for (int j = 0; j < pe_list->sizes[i]; j++) 
         {
             int elem = pe_list->list[pe_list->disps[i] + j];
@@ -311,7 +311,7 @@ MPI_Comm OP_PART_WORLD;
     }
 
     // second - prepare space for the incomming partition information of the "to" set
-    int *imp_part = (int *)malloc(sizeof(int) * pi_list->size);
+    int *imp_part = (int *)opp_host_malloc(sizeof(int) * pi_list->size);
 
     // third - receive
     for (int i = 0; i < pi_list->ranks_size; i++) 
@@ -320,17 +320,17 @@ MPI_Comm OP_PART_WORLD;
     }
     MPI_Waitall(pe_list->ranks_size, request_send_p, MPI_STATUSES_IGNORE);
     for (int i = 0; i < pe_list->ranks_size; i++)
-        free(sbuf[i]);
-    free(sbuf);
+        opp_host_free(sbuf[i]);
+    opp_host_free(sbuf);
 
     // allocate memory to hold the partition details for the set thats going to be partitioned
-    int *partition = (int *)malloc(sizeof(int) * map->from->size);
+    int *partition = (int *)opp_host_malloc(sizeof(int) * map->from->size);
 
     // go through the mapping table and the imported partition information and partition the "from" set
     for (int i = 0; i < map->from->size; i++) 
     {
         int part, local_index;
-        int *found_parts = (int*)malloc(sizeof(int)*map->dim);
+        int *found_parts = (int*)opp_host_malloc(sizeof(int)*map->dim);
         for (int j = 0; j < map->dim; j++) 
         {
             part = get_partition(map->map[i * map->dim + j], part_range[map->to->index], &local_index, comm_size);
@@ -359,26 +359,26 @@ MPI_Comm OP_PART_WORLD;
             }
         }
         partition[i] = find_mode(found_parts, map->dim);
-        free(found_parts);
+        opp_host_free(found_parts);
     }
 
     OP_part_list[map->from->index]->elem_part = partition;
     OP_part_list[map->from->index]->is_partitioned = 1;
 
     // cleanup
-    free(imp_part);
-    free(pi_list->list);
-    free(pi_list->ranks);
-    free(pi_list->sizes);
-    free(pi_list->disps);
-    free(pi_list);
-    free(pe_list->list);
-    free(pe_list->ranks);
-    free(pe_list->sizes);
-    free(pe_list->disps);
-    free(pe_list);
+    opp_host_free(imp_part);
+    opp_host_free(pi_list->list);
+    opp_host_free(pi_list->ranks);
+    opp_host_free(pi_list->sizes);
+    opp_host_free(pi_list->disps);
+    opp_host_free(pi_list);
+    opp_host_free(pe_list->list);
+    opp_host_free(pe_list->ranks);
+    opp_host_free(pe_list->sizes);
+    opp_host_free(pe_list->disps);
+    opp_host_free(pe_list);
 
-    free(request_send);
+    opp_host_free(request_send);
 
     return 1;
 }
@@ -392,9 +392,9 @@ MPI_Comm OP_PART_WORLD;
 
     int cap = 300;
     int count = 0;
-    int *temp_list = (int *)malloc(cap * sizeof(int));
+    int *temp_list = (int *)opp_host_malloc(cap * sizeof(int));
 
-    halo_list pe_list = (halo_list)malloc(sizeof(halo_list_core));
+    halo_list pe_list = (halo_list)opp_host_malloc(sizeof(halo_list_core));
     int *part_list_e = NULL; // corresponding "to" element's partition infomation
     // exported to an mpi rank
 
@@ -416,7 +416,7 @@ MPI_Comm OP_PART_WORLD;
                 if (count >= cap) 
                 {
                     cap = cap * 3;
-                    temp_list = (int *)realloc(temp_list, cap * sizeof(int));
+                    temp_list = (int *)opp_host_realloc(temp_list, cap * sizeof(int));
                 }
 
                 temp_list[count++] = part; // curent partition (i.e. mpi rank)
@@ -427,21 +427,21 @@ MPI_Comm OP_PART_WORLD;
     }
 
     part_list_e = create_exp_list_2(map->to, temp_list, pe_list, part_list_e, count, comm_size, my_rank);
-    free(temp_list);
+    opp_host_free(temp_list);
 
     int ranks_size = 0;
-    int *neighbors = (int *)malloc(comm_size * sizeof(int));
-    int *sizes = (int *)malloc(comm_size * sizeof(int));
+    int *neighbors = (int *)opp_host_malloc(comm_size * sizeof(int));
+    int *sizes = (int *)opp_host_malloc(comm_size * sizeof(int));
 
     // to_part_list tpi_list;
-    halo_list pi_list = (halo_list)malloc(sizeof(halo_list_core));
+    halo_list pi_list = (halo_list)opp_host_malloc(sizeof(halo_list_core));
     int *part_list_i = NULL; // corresponding "to" element's partition infomation imported from an mpi rank
 
     find_neighbors_set(pe_list, neighbors, sizes, &ranks_size, my_rank, comm_size, OP_PART_WORLD);
 
     //  MPI_Request request_send_t[pe_list->ranks_size];
-    MPI_Request *request_send_t = (MPI_Request *)malloc(pe_list->ranks_size * sizeof(MPI_Request)); 
-    MPI_Request *request_send_p = (MPI_Request *)malloc(pe_list->ranks_size * sizeof(MPI_Request));
+    MPI_Request *request_send_t = (MPI_Request *)opp_host_malloc(pe_list->ranks_size * sizeof(MPI_Request)); 
+    MPI_Request *request_send_p = (MPI_Request *)opp_host_malloc(pe_list->ranks_size * sizeof(MPI_Request));
 
     int *rbuf_t, *rbuf_p;
     cap = 0;
@@ -457,13 +457,13 @@ MPI_Comm OP_PART_WORLD;
 
     for (int i = 0; i < ranks_size; i++)
         cap = cap + sizes[i];
-    int *temp_list_t = (int *)malloc(cap * sizeof(int));
-    part_list_i = (int *)malloc(cap * sizeof(int));
+    int *temp_list_t = (int *)opp_host_malloc(cap * sizeof(int));
+    part_list_i = (int *)opp_host_malloc(cap * sizeof(int));
 
     for (int i = 0; i < ranks_size; i++) 
     {
-        rbuf_t = (int *)malloc(sizes[i] * sizeof(int));
-        rbuf_p = (int *)malloc(sizes[i] * sizeof(int));
+        rbuf_t = (int *)opp_host_malloc(sizes[i] * sizeof(int));
+        rbuf_p = (int *)opp_host_malloc(sizes[i] * sizeof(int));
 
         MPI_Recv(rbuf_t, sizes[i], MPI_INT, neighbors[i], 1, OP_PART_WORLD, MPI_STATUS_IGNORE);
         MPI_Recv(rbuf_p, sizes[i], MPI_INT, neighbors[i], 2, OP_PART_WORLD, MPI_STATUS_IGNORE);
@@ -472,8 +472,8 @@ MPI_Comm OP_PART_WORLD;
         memcpy(&part_list_i[count], (void *)&rbuf_p[0], sizes[i] * sizeof(int));
 
         count = count + sizes[i];
-        free(rbuf_t);
-        free(rbuf_p);
+        opp_host_free(rbuf_t);
+        opp_host_free(rbuf_p);
     }
     MPI_Waitall(pe_list->ranks_size, request_send_t, MPI_STATUSES_IGNORE);
     MPI_Waitall(pe_list->ranks_size, request_send_p, MPI_STATUSES_IGNORE);
@@ -484,8 +484,8 @@ MPI_Comm OP_PART_WORLD;
     // and partition the "to" set
     cap = map->to->size;
     count = 0;
-    int *to_elems = (int *)malloc(sizeof(int) * cap);
-    int *parts = (int *)malloc(sizeof(int) * cap);
+    int *to_elems = (int *)opp_host_malloc(sizeof(int) * cap);
+    int *parts = (int *)opp_host_malloc(sizeof(int) * cap);
 
     //--first the local mapping table
     int local_index;
@@ -500,8 +500,8 @@ MPI_Comm OP_PART_WORLD;
                 if (count >= cap) 
                 {
                     cap = cap * 2;
-                    parts = (int *)realloc(parts, sizeof(int) * cap);
-                    to_elems = (int *)realloc(to_elems, sizeof(int) * cap);
+                    parts = (int *)opp_host_realloc(parts, sizeof(int) * cap);
+                    to_elems = (int *)opp_host_realloc(to_elems, sizeof(int) * cap);
                 }
                 to_elems[count] = local_index;
                 parts[count++] = p_set->elem_part[i];
@@ -511,14 +511,14 @@ MPI_Comm OP_PART_WORLD;
 
     // copy pi_list.list and part_list_i to to_elems and parts
     if (count + pi_list->size > 0) {
-        to_elems = (int *)realloc(to_elems, sizeof(int) * (count + pi_list->size));
-        parts = (int *)realloc(parts, sizeof(int) * (count + pi_list->size));
+        to_elems = (int *)opp_host_realloc(to_elems, sizeof(int) * (count + pi_list->size));
+        parts = (int *)opp_host_realloc(parts, sizeof(int) * (count + pi_list->size));
     }
 
     memcpy(&to_elems[count], (void *)&pi_list->list[0], pi_list->size * sizeof(int));
     memcpy(&parts[count], (void *)&part_list_i[0], pi_list->size * sizeof(int));
 
-    int *partition = (int *)malloc(sizeof(int) * map->to->size);
+    int *partition = (int *)opp_host_malloc(sizeof(int) * map->to->size);
     for (int i = 0; i < map->to->size; i++) {
         partition[i] = -99;
     }
@@ -531,7 +531,7 @@ MPI_Comm OP_PART_WORLD;
 
     if (count > comm_size * 10) 
     {
-        int *part_counter = (int *)malloc(comm_size * sizeof(int));
+        int *part_counter = (int *)opp_host_malloc(comm_size * sizeof(int));
         for (int i = 0; i < count;) 
         {
             memset(part_counter, 0, comm_size * sizeof(int));
@@ -551,7 +551,7 @@ MPI_Comm OP_PART_WORLD;
                     maxpos = j;
             partition[curr] = maxpos;
         }
-        free(part_counter);
+        opp_host_free(part_counter);
     } 
     else 
     {
@@ -561,14 +561,14 @@ MPI_Comm OP_PART_WORLD;
             int curr = to_elems[i];
             int c = 0;
             cap = map->dim;
-            found_parts = (int *)malloc(sizeof(int) * cap);
+            found_parts = (int *)opp_host_malloc(sizeof(int) * cap);
 
             do 
             {
                 if (c >= cap) 
                 {
                     cap = cap * 2;
-                    found_parts = (int *)realloc(found_parts, sizeof(int) * cap);
+                    found_parts = (int *)opp_host_realloc(found_parts, sizeof(int) * cap);
                 }
                 found_parts[c++] = parts[i];
                 i++;
@@ -578,14 +578,14 @@ MPI_Comm OP_PART_WORLD;
             } while (curr == to_elems[i]);
 
             partition[curr] = find_mode(found_parts, c);
-            free(found_parts);
+            opp_host_free(found_parts);
         }
     }
 
     if (count + pi_list->size > 0) 
     {
-        free(to_elems);
-        free(parts);
+        opp_host_free(to_elems);
+        opp_host_free(parts);
     }
 
     // check if this "from" set is an "on to" set
@@ -605,7 +605,7 @@ MPI_Comm OP_PART_WORLD;
     }
 
     // check if globally this map was giving us an on-to set mapping
-    int *global_ok_array = (int *)malloc(comm_size * sizeof(int));
+    int *global_ok_array = (int *)opp_host_malloc(comm_size * sizeof(int));
     for (int r = 0; r < comm_size; r++)
         global_ok_array[r] = 1;
 
@@ -619,7 +619,7 @@ MPI_Comm OP_PART_WORLD;
             result = -1;
         }
     }
-    free(global_ok_array);
+    opp_host_free(global_ok_array);
 
     if (result == 1) 
     {
@@ -628,25 +628,25 @@ MPI_Comm OP_PART_WORLD;
     } 
     else 
     {
-        free(partition);
+        opp_host_free(partition);
     }
 
     // cleanup
-    free(pi_list->list);
-    free(pi_list->ranks);
-    free(pi_list->sizes);
-    free(pi_list->disps);
-    free(pi_list);
-    free(pe_list->list);
-    free(pe_list->ranks);
-    free(pe_list->sizes);
-    free(pe_list->disps);
-    free(pe_list);
-    free(part_list_i);
-    free(part_list_e);
+    opp_host_free(pi_list->list);
+    opp_host_free(pi_list->ranks);
+    opp_host_free(pi_list->sizes);
+    opp_host_free(pi_list->disps);
+    opp_host_free(pi_list);
+    opp_host_free(pe_list->list);
+    opp_host_free(pe_list->ranks);
+    opp_host_free(pe_list->sizes);
+    opp_host_free(pe_list->disps);
+    opp_host_free(pe_list);
+    opp_host_free(part_list_i);
+    opp_host_free(part_list_e);
 
-    free(request_send_p);
-    free(request_send_t);
+    opp_host_free(request_send_p);
+    opp_host_free(request_send_t);
 
     return result;
 }
@@ -660,7 +660,7 @@ MPI_Comm OP_PART_WORLD;
     if (OP_DEBUG) opp_printf("partition_all", "start");
 
     // Compute global partition range information for each set
-    int **part_range = (int **)malloc(OP_set_index * sizeof(int *));
+    int **part_range = (int **)opp_host_malloc(OP_set_index * sizeof(int *));
     get_part_range(part_range, my_rank, comm_size, OP_PART_WORLD);
 
     int sets_partitioned = 1;
@@ -793,8 +793,8 @@ MPI_Comm OP_PART_WORLD;
     }
 
     for (int i = 0; i < OP_set_index; i++)
-        free(part_range[i]);
-    free(part_range);
+        opp_host_free(part_range[i]);
+    opp_host_free(part_range);
 }
 
 /*******************************************************************************
@@ -803,7 +803,7 @@ MPI_Comm OP_PART_WORLD;
 /* static */ void renumber_maps(int my_rank, int comm_size) 
 {
     // get partition rage information
-    int **part_range = (int **)malloc(OP_set_index * sizeof(int *));
+    int **part_range = (int **)opp_host_malloc(OP_set_index * sizeof(int *));
     get_part_range(part_range, my_rank, comm_size, OP_PART_WORLD);
 
     // find elements of the "to" set thats not in this local process
@@ -813,7 +813,7 @@ MPI_Comm OP_PART_WORLD;
 
         int cap = 1000;
         int count = 0;
-        int *req_list = (int *)malloc(cap * sizeof(int));
+        int *req_list = (int *)opp_host_malloc(cap * sizeof(int));
 
         for (int i = 0; i < map->from->size; i++) 
         {
@@ -826,7 +826,7 @@ MPI_Comm OP_PART_WORLD;
                 if (count >= cap) 
                 {
                     cap = cap * 2;
-                    req_list = (int *)realloc(req_list, cap * sizeof(int));
+                    req_list = (int *)opp_host_realloc(req_list, cap * sizeof(int));
                 }
 
                 if (local_index < 0) // not in this partition
@@ -841,7 +841,7 @@ MPI_Comm OP_PART_WORLD;
         {
             quickSort(req_list, 0, count - 1);
             count = removeDups(req_list, count);
-            req_list = (int *)realloc(req_list, count * sizeof(int));
+            req_list = (int *)opp_host_realloc(req_list, count * sizeof(int));
         }
 
         // do an allgather to findout how many elements that each process will
@@ -856,7 +856,7 @@ MPI_Comm OP_PART_WORLD;
 
         // prepare for an allgatherv
         int disp = 0;
-        int *displs = (int *)malloc(comm_size * sizeof(int));
+        int *displs = (int *)opp_host_malloc(comm_size * sizeof(int));
         for (int i = 0; i < comm_size; i++) 
         {
             displs[i] = disp;
@@ -865,16 +865,16 @@ MPI_Comm OP_PART_WORLD;
 
         // allocate memory to hold the global indexes of elements requiring
         // partition details
-        int *g_index = (int *)malloc(sizeof(int) * g_count);
+        int *g_index = (int *)opp_host_malloc(sizeof(int) * g_count);
 
         MPI_Allgatherv(req_list, count, MPI_INT, g_index, recv_count, displs, MPI_INT, OP_PART_WORLD);
-        free(req_list);
+        opp_host_free(req_list);
 
         if (g_count > 0) 
         {
             quickSort(g_index, 0, g_count - 1);
             g_count = removeDups(g_index, g_count);
-            g_index = (int *)realloc(g_index, g_count * sizeof(int));
+            g_index = (int *)opp_host_realloc(g_index, g_count * sizeof(int));
         }
 
         // printf("on rank %d map %s needs set %s : before g_count = %d\n",
@@ -883,8 +883,8 @@ MPI_Comm OP_PART_WORLD;
         // go through the recieved global g_index array and see if any local
         // element's
         // partition details are requested by some foreign process
-        int *exp_index = (int *)malloc(sizeof(int) * g_count);
-        int *exp_g_index = (int *)malloc(sizeof(int) * g_count);
+        int *exp_index = (int *)opp_host_malloc(sizeof(int) * g_count);
+        int *exp_g_index = (int *)opp_host_malloc(sizeof(int) * g_count);
 
         int exp_count = 0;
         for (int i = 0; i < g_count; i++) 
@@ -900,17 +900,17 @@ MPI_Comm OP_PART_WORLD;
                 exp_index[exp_count++] = global_index;
             }
         }
-        free(g_index);
+        opp_host_free(g_index);
 
         // realloc exp_index, exp_g_index
-        exp_index = (int *)realloc(exp_index, sizeof(int) * exp_count);
-        exp_g_index = (int *)realloc(exp_g_index, sizeof(int) * exp_count);
+        exp_index = (int *)opp_host_realloc(exp_index, sizeof(int) * exp_count);
+        exp_g_index = (int *)opp_host_realloc(exp_g_index, sizeof(int) * exp_count);
 
         // now export to every MPI rank, these partition info with an all-to-all
         MPI_Allgather(&exp_count, 1, MPI_INT, recv_count, 1, MPI_INT, OP_PART_WORLD);
         disp = 0;
-        free(displs);
-        displs = (int *)malloc(comm_size * sizeof(int));
+        opp_host_free(displs);
+        displs = (int *)opp_host_malloc(comm_size * sizeof(int));
 
         for (int i = 0; i < comm_size; i++) 
         {
@@ -923,16 +923,16 @@ MPI_Comm OP_PART_WORLD;
         for (int i = 0; i < comm_size; i++)
             g_count += recv_count[i];
         
-        int *all_imp_index = (int *)malloc(sizeof(int) * g_count);
-        g_index = (int *)malloc(sizeof(int) * g_count);
+        int *all_imp_index = (int *)opp_host_malloc(sizeof(int) * g_count);
+        g_index = (int *)opp_host_malloc(sizeof(int) * g_count);
 
 
         MPI_Allgatherv(exp_g_index, exp_count, MPI_INT, g_index, recv_count, displs, MPI_INT, OP_PART_WORLD);
 
         MPI_Allgatherv(exp_index, exp_count, MPI_INT, all_imp_index, recv_count, displs, MPI_INT, OP_PART_WORLD);
 
-        free(exp_index);
-        free(exp_g_index);
+        opp_host_free(exp_index);
+        opp_host_free(exp_g_index);
 
         // sort all_imp_index according to g_index array
         if (g_count > 0)
@@ -969,13 +969,13 @@ MPI_Comm OP_PART_WORLD;
             }
         }
 
-        free(g_index);
-        free(displs);
-        free(all_imp_index);
+        opp_host_free(g_index);
+        opp_host_free(displs);
+        opp_host_free(all_imp_index);
     }
     for (int i = 0; i < OP_set_index; i++)
-        free(part_range[i]);
-    free(part_range);
+        opp_host_free(part_range[i]);
+    opp_host_free(part_range);
 
     if (OP_DEBUG) opp_printf("partition_all", "end");
 }
@@ -1008,7 +1008,7 @@ MPI_Comm OP_PART_WORLD;
         // create a temporaty scratch space to hold export list for this set's partition information
         count = 0;
         cap = 1000;
-        temp_list = (int *)malloc(cap * sizeof(int));
+        temp_list = (int *)opp_host_malloc(cap * sizeof(int));
 
         for (int i = 0; i < set->size; i++) 
         {
@@ -1017,16 +1017,16 @@ MPI_Comm OP_PART_WORLD;
                 if (count >= cap) 
                 {
                     cap = cap * 2;
-                    temp_list = (int *)realloc(temp_list, cap * sizeof(int));
+                    temp_list = (int *)opp_host_realloc(temp_list, cap * sizeof(int));
                 }
                 temp_list[count++] = p->elem_part[i];
                 temp_list[count++] = i; // part.g_index[i];
             }
         }
         // create partition export list
-        pe_list[set->index] = (halo_list)malloc(sizeof(halo_list_core));
+        pe_list[set->index] = (halo_list)opp_host_malloc(sizeof(halo_list_core));
         create_export_list(set, temp_list, pe_list[set->index], count, comm_size, my_rank);
-        free(temp_list);
+        opp_host_free(temp_list);
     }
 
     // create partition import lists
@@ -1043,13 +1043,13 @@ MPI_Comm OP_PART_WORLD;
 
         //-----Discover neighbors-----
         ranks_size = 0;
-        neighbors = (int *)malloc(comm_size * sizeof(int));
-        sizes = (int *)malloc(comm_size * sizeof(int));
+        neighbors = (int *)opp_host_malloc(comm_size * sizeof(int));
+        sizes = (int *)opp_host_malloc(comm_size * sizeof(int));
 
         find_neighbors_set(exp, neighbors, sizes, &ranks_size, my_rank, comm_size, OP_PART_WORLD);
 
         //    MPI_Request request_send[exp->ranks_size];
-        MPI_Request *request_send = (MPI_Request *)malloc(exp->ranks_size * sizeof(MPI_Request));
+        MPI_Request *request_send = (MPI_Request *)opp_host_malloc(exp->ranks_size * sizeof(MPI_Request));
 
         int *rbuf;
         cap = 0;
@@ -1065,25 +1065,25 @@ MPI_Comm OP_PART_WORLD;
 
         for (int i = 0; i < ranks_size; i++)
             cap = cap + sizes[i];
-        temp_list = (int *)malloc(cap * sizeof(int));
+        temp_list = (int *)opp_host_malloc(cap * sizeof(int));
 
         for (int i = 0; i < ranks_size; i++) 
         {
             // printf("import from %d to %d set %10s, list of size %d\n",
             // neighbors[i], my_rank, set->name, sizes[i]);
-            rbuf = (int *)malloc(sizes[i] * sizeof(int));
+            rbuf = (int *)opp_host_malloc(sizes[i] * sizeof(int));
 
             MPI_Recv(rbuf, sizes[i], MPI_INT, neighbors[i], 1, OP_PART_WORLD, MPI_STATUS_IGNORE);
             memcpy(&temp_list[count], (void *)&rbuf[0], sizes[i] * sizeof(int));
             count = count + sizes[i];
-            free(rbuf);
+            opp_host_free(rbuf);
         }
 
         MPI_Waitall(exp->ranks_size, request_send, MPI_STATUSES_IGNORE);
-        pi_list[set->index] = (halo_list)malloc(sizeof(halo_list_core));
+        pi_list[set->index] = (halo_list)opp_host_malloc(sizeof(halo_list_core));
         create_import_list(set, temp_list, pi_list[set->index], count, neighbors, sizes, ranks_size, comm_size, my_rank);
 
-        free(request_send);
+        opp_host_free(request_send);
     }
 
     /*--STEP 2 - Perform Partitioning Data migration -----------------------------*/
@@ -1099,7 +1099,7 @@ MPI_Comm OP_PART_WORLD;
         halo_list exp = pe_list[set->index];
 
         //    MPI_Request request_send[exp->ranks_size];
-        MPI_Request *request_send = (MPI_Request *)malloc(exp->ranks_size * sizeof(MPI_Request));
+        MPI_Request *request_send = (MPI_Request *)opp_host_malloc(exp->ranks_size * sizeof(MPI_Request));
 
         // migrate data defined on this set
         int d = -1; // d is just simply the tag for mpi comms
@@ -1111,11 +1111,11 @@ MPI_Comm OP_PART_WORLD;
             if (compare_sets(dat->set, set) == 1)  // this data array is defined on this set
             {
                 // prepare bits of the data array to be exported
-                char **sbuf = (char **)malloc(exp->ranks_size * sizeof(char *));
+                char **sbuf = (char **)opp_host_malloc(exp->ranks_size * sizeof(char *));
 
                 for (int i = 0; i < exp->ranks_size; i++) 
                 {
-                    sbuf[i] = (char *)malloc(exp->sizes[i] * (size_t)dat->size);
+                    sbuf[i] = (char *)opp_host_malloc(exp->sizes[i] * (size_t)dat->size);
                     for (int j = 0; j < exp->sizes[i]; j++) 
                     {
                         int index = exp->list[exp->disps[i] + j];
@@ -1127,7 +1127,7 @@ MPI_Comm OP_PART_WORLD;
                     MPI_Isend(sbuf[i], (size_t)dat->size * exp->sizes[i], MPI_CHAR, exp->ranks[i], d, OP_PART_WORLD, &request_send[i]);
                 }
 
-                char *rbuf = (char *)malloc((size_t)dat->size * imp->size);
+                char *rbuf = (char *)opp_host_malloc((size_t)dat->size * imp->size);
                 for (int i = 0; i < imp->ranks_size; i++) 
                 {
                     if ((size_t)dat->size * imp->sizes[i] > (size_t)INT_MAX) 
@@ -1138,12 +1138,12 @@ MPI_Comm OP_PART_WORLD;
 
                 MPI_Waitall(exp->ranks_size, request_send, MPI_STATUSES_IGNORE);
                 for (int i = 0; i < exp->ranks_size; i++)
-                    free(sbuf[i]);
-                free(sbuf);
+                    opp_host_free(sbuf[i]);
+                opp_host_free(sbuf);
 
                 // delete the data entirs that has been sent and create a
                 // modified data array
-                char *new_dat = (char *)malloc((size_t)dat->size * (set->size + imp->size));
+                char *new_dat = (char *)opp_host_malloc((size_t)dat->size * (set->size + imp->size));
 
                 count = 0;
                 for (int i = 0; i < dat->set->size; i++) // iterate over old set size
@@ -1157,15 +1157,15 @@ MPI_Comm OP_PART_WORLD;
 
                 memcpy(&new_dat[count * (size_t)dat->size], (void *)rbuf, (size_t)dat->size * (size_t)imp->size);
                 count = count + imp->size;
-                new_dat = (char *)realloc(new_dat, (size_t)dat->size * count);
-                free(rbuf);
+                new_dat = (char *)opp_host_realloc(new_dat, (size_t)dat->size * count);
+                opp_host_free(rbuf);
 
-                free(dat->data);
+                opp_host_free(dat->data);
                 dat->data = new_dat;
             }
         }
 
-        free(request_send);
+        opp_host_free(request_send);
     }
 
     // mapping tables second ......
@@ -1179,7 +1179,7 @@ MPI_Comm OP_PART_WORLD;
         halo_list exp = pe_list[set->index];
 
         //    MPI_Request request_send[exp->ranks_size];
-        MPI_Request *request_send = (MPI_Request *)malloc(exp->ranks_size * sizeof(MPI_Request));
+        MPI_Request *request_send = (MPI_Request *)opp_host_malloc(exp->ranks_size * sizeof(MPI_Request));
 
         // migrate mapping tables from this set
         for (int m = 0; m < OP_map_index; m++)  // for each maping table
@@ -1189,12 +1189,12 @@ MPI_Comm OP_PART_WORLD;
             if (compare_sets(map->from, set) == 1) // need to select  mappings FROM this set
             { 
                 // prepare bits of the mapping tables to be exported
-                int **sbuf = (int **)malloc(exp->ranks_size * sizeof(int *));
+                int **sbuf = (int **)opp_host_malloc(exp->ranks_size * sizeof(int *));
 
                 // send mapping table entirs to relevant mpi processes
                 for (int i = 0; i < exp->ranks_size; i++) 
                 {
-                    sbuf[i] = (int *)malloc(exp->sizes[i] * map->dim * sizeof(int));
+                    sbuf[i] = (int *)opp_host_malloc(exp->sizes[i] * map->dim * sizeof(int));
                     for (int j = 0; j < exp->sizes[i]; j++) 
                     {
                         for (int p = 0; p < map->dim; p++) 
@@ -1205,7 +1205,7 @@ MPI_Comm OP_PART_WORLD;
                     MPI_Isend(sbuf[i], map->dim * exp->sizes[i], MPI_INT, exp->ranks[i], m, OP_PART_WORLD, &request_send[i]);
                 }
 
-                int *rbuf = (int *)malloc(map->dim * sizeof(int) * imp->size);
+                int *rbuf = (int *)opp_host_malloc(map->dim * sizeof(int) * imp->size);
 
                 // receive mapping table entirs from relevant mpi processes
                 for (int i = 0; i < imp->ranks_size; i++) 
@@ -1215,12 +1215,12 @@ MPI_Comm OP_PART_WORLD;
 
                 MPI_Waitall(exp->ranks_size, request_send, MPI_STATUSES_IGNORE);
                 for (int i = 0; i < exp->ranks_size; i++)
-                    free(sbuf[i]);
-                free(sbuf);
+                    opp_host_free(sbuf[i]);
+                opp_host_free(sbuf);
 
                 // delete the mapping table entirs that has been sent and create a
                 // modified mapping table
-                int *new_map = (int *)malloc(sizeof(int) * (set->size + imp->size) * map->dim);
+                int *new_map = (int *)opp_host_malloc(sizeof(int) * (set->size + imp->size) * map->dim);
 
                 count = 0;
                 for (int i = 0; i < map->from->size; i++)  // iterate over old size of the maping table
@@ -1234,15 +1234,15 @@ MPI_Comm OP_PART_WORLD;
                 memcpy(&new_map[count * map->dim], (void *)rbuf,
                     map->dim * sizeof(int) * imp->size);
                 count = count + imp->size;
-                new_map = (int *)realloc(new_map, sizeof(int) * count * map->dim);
+                new_map = (int *)opp_host_realloc(new_map, sizeof(int) * count * map->dim);
 
-                free(rbuf);
-                free(OP_map_list[map->index]->map);
+                opp_host_free(rbuf);
+                opp_host_free(OP_map_list[map->index]->map);
                 OP_map_list[map->index]->map = new_map;
             }
         }
 
-        free(request_send);
+        opp_host_free(request_send);
     }
 
     /*--STEP 3 - Update Partitioning Information and Sort Set Elements------------*/
@@ -1258,15 +1258,15 @@ MPI_Comm OP_PART_WORLD;
         halo_list exp = pe_list[set->index];
 
         //    MPI_Request request_send[exp->ranks_size];
-        MPI_Request *request_send = (MPI_Request *)malloc(exp->ranks_size * sizeof(MPI_Request));
+        MPI_Request *request_send = (MPI_Request *)opp_host_malloc(exp->ranks_size * sizeof(MPI_Request));
 
         // prepare bits of the original g_index array to be exported
-        int **sbuf = (int **)malloc(exp->ranks_size * sizeof(int *));
+        int **sbuf = (int **)opp_host_malloc(exp->ranks_size * sizeof(int *));
 
         // send original g_index values to relevant mpi processes
         for (int i = 0; i < exp->ranks_size; i++) 
         {
-            sbuf[i] = (int *)malloc(exp->sizes[i] * sizeof(int));
+            sbuf[i] = (int *)opp_host_malloc(exp->sizes[i] * sizeof(int));
             for (int j = 0; j < exp->sizes[i]; j++) 
             {
                 sbuf[i][j] = OP_part_list[set->index]->g_index[exp->list[exp->disps[i] + j]];
@@ -1274,7 +1274,7 @@ MPI_Comm OP_PART_WORLD;
             MPI_Isend(sbuf[i], exp->sizes[i], MPI_INT, exp->ranks[i], s, OP_PART_WORLD, &request_send[i]);
         }
 
-        int *rbuf = (int *)malloc(sizeof(int) * imp->size);
+        int *rbuf = (int *)opp_host_malloc(sizeof(int) * imp->size);
 
         // receive original g_index values from relevant mpi processes
         for (int i = 0; i < imp->ranks_size; i++) 
@@ -1285,11 +1285,11 @@ MPI_Comm OP_PART_WORLD;
         MPI_Waitall(exp->ranks_size, request_send, MPI_STATUSES_IGNORE);
         
         for (int i = 0; i < exp->ranks_size; i++)
-            free(sbuf[i]);
-        free(sbuf);
+            opp_host_free(sbuf[i]);
+        opp_host_free(sbuf);
 
         // delete the g_index entirs that has been sent and create a modified g_index
-        int *new_g_index = (int *)malloc(sizeof(int) * (set->size + imp->size));
+        int *new_g_index = (int *)opp_host_malloc(sizeof(int) * (set->size + imp->size));
 
         count = 0;
         for (int i = 0; i < set->size; i++) 
@@ -1304,15 +1304,15 @@ MPI_Comm OP_PART_WORLD;
 
         memcpy(&new_g_index[count], (void *)rbuf, sizeof(int) * imp->size);
         count = count + imp->size;
-        new_g_index = (int *)realloc(new_g_index, sizeof(int) * count);
-        int *new_part = (int *)malloc(sizeof(int) * count);
+        new_g_index = (int *)opp_host_realloc(new_g_index, sizeof(int) * count);
+        int *new_part = (int *)opp_host_malloc(sizeof(int) * count);
         
         for (size_t i = 0; i < count; i++)
             new_part[i] = my_rank;
 
-        free(rbuf);
-        free(OP_part_list[set->index]->g_index);
-        free(OP_part_list[set->index]->elem_part);
+        opp_host_free(rbuf);
+        opp_host_free(OP_part_list[set->index]->g_index);
+        opp_host_free(OP_part_list[set->index]->elem_part);
 
         OP_part_list[set->index]->elem_part = new_part;
         OP_part_list[set->index]->g_index = new_g_index;
@@ -1320,7 +1320,7 @@ MPI_Comm OP_PART_WORLD;
         OP_set_list[set->index]->size = count;
         OP_part_list[set->index]->set = OP_set_list[set->index];
 
-        free(request_send);
+        opp_host_free(request_send);
     }
 
     // re-set values in mapping tables
@@ -1359,10 +1359,10 @@ MPI_Comm OP_PART_WORLD;
             {
                 if (set->size > 0) 
                 {
-                    int *temp = (int *)malloc(sizeof(int) * set->size);
+                    int *temp = (int *)opp_host_malloc(sizeof(int) * set->size);
                     memcpy(temp, (void *)OP_part_list[set->index]->g_index, sizeof(int) * set->size);
                     quickSort_dat(temp, dat->data, 0, set->size - 1, dat->size);
-                    free(temp);
+                    opp_host_free(temp);
                 }
             }
         }
@@ -1376,10 +1376,10 @@ MPI_Comm OP_PART_WORLD;
             {
                 if (set->size > 0) 
                 {
-                    int *temp = (int *)malloc(sizeof(int) * set->size);
+                    int *temp = (int *)opp_host_malloc(sizeof(int) * set->size);
                     memcpy(temp, (void *)OP_part_list[set->index]->g_index, sizeof(int) * set->size);
                     quickSort_map(temp, OP_map_list[map->index]->map, 0, set->size - 1, map->dim);
-                    free(temp);
+                    opp_host_free(temp);
                 }
             }
         }
@@ -1394,17 +1394,17 @@ MPI_Comm OP_PART_WORLD;
 
         if (set->is_particle) continue;
 
-        free(pe_list[set->index]->ranks);
-        free(pe_list[set->index]->disps);
-        free(pe_list[set->index]->sizes);
-        free(pe_list[set->index]->list);
+        opp_host_free(pe_list[set->index]->ranks);
+        opp_host_free(pe_list[set->index]->disps);
+        opp_host_free(pe_list[set->index]->sizes);
+        opp_host_free(pe_list[set->index]->list);
 
-        free(pi_list[set->index]->ranks);
-        free(pi_list[set->index]->disps);
-        free(pi_list[set->index]->sizes);
-        free(pi_list[set->index]->list);
-        free(pe_list[set->index]);
-        free(pi_list[set->index]);
+        opp_host_free(pi_list[set->index]->ranks);
+        opp_host_free(pi_list[set->index]->disps);
+        opp_host_free(pi_list[set->index]->sizes);
+        opp_host_free(pi_list[set->index]->list);
+        opp_host_free(pe_list[set->index]);
+        opp_host_free(pi_list[set->index]);
     }
 
     if (OP_DEBUG) opp_printf("migrate_all", "end");
@@ -1422,18 +1422,18 @@ void opp_partition_destroy()
     { 
         op_set set = OP_set_list[s];
         // if (set->is_particle) continue;
-        free(OP_part_list[set->index]->g_index);
-        free(OP_part_list[set->index]->elem_part);
-        free(OP_part_list[set->index]);
+        opp_host_free(OP_part_list[set->index]->g_index);
+        opp_host_free(OP_part_list[set->index]->elem_part);
+        opp_host_free(OP_part_list[set->index]);
     }
-    free(OP_part_list);
+    opp_host_free(OP_part_list);
     for (int i = 0; i < OP_set_index; i++)
     {
         // if (OP_set_list[i]->is_particle) continue;
-        free(orig_part_range[i]);
+        opp_host_free(orig_part_range[i]);
     }
 
-    free(orig_part_range);
+    opp_host_free(orig_part_range);
 
     if (OP_DEBUG) opp_printf("opp_partition_destroy", "end");
 }
@@ -1476,15 +1476,15 @@ void opp_partition_kway(op_map primary_map)
     /*--STEP 0 - initialise partitioning data stauctures with the current (block) partitioning information */
 
     // Compute global partition range information for each set
-    int **part_range = (int **)malloc(OP_set_index * sizeof(int *));
+    int **part_range = (int **)opp_host_malloc(OP_set_index * sizeof(int *));
     get_part_range(part_range, my_rank, comm_size, OP_PART_WORLD);
 
     // save the original part_range for future partition reversing
-    orig_part_range = (int **)malloc(OP_set_index * sizeof(int *));
+    orig_part_range = (int **)opp_host_malloc(OP_set_index * sizeof(int *));
     for (int s = 0; s < OP_set_index; s++) 
     {
         op_set set = OP_set_list[s];
-        orig_part_range[set->index] = (int *)malloc(2 * comm_size * sizeof(int));
+        orig_part_range[set->index] = (int *)opp_host_malloc(2 * comm_size * sizeof(int));
 
         for (int j = 0; j < comm_size; j++) 
         {
@@ -1494,12 +1494,12 @@ void opp_partition_kway(op_map primary_map)
     }
 
     // allocate memory for list
-    OP_part_list = (part *)malloc(OP_set_index * sizeof(part));
+    OP_part_list = (part *)opp_host_malloc(OP_set_index * sizeof(part));
 
     for (int s = 0; s < OP_set_index; s++) { // for each set
         op_set set = OP_set_list[s];
         // printf("set %s size = %d\n", set.name, set.size);
-        int *g_index = (int *)malloc(sizeof(int) * set->size);
+        int *g_index = (int *)opp_host_malloc(sizeof(int) * set->size);
         for (int i = 0; i < set->size; i++)
         g_index[i] =
             get_global_index(i, my_rank, part_range[set->index], comm_size);
@@ -1511,7 +1511,7 @@ void opp_partition_kway(op_map primary_map)
     // create export list
     int c = 0;
     int cap = 1000;
-    int *list = (int *)malloc(cap * sizeof(int)); // temp list
+    int *list = (int *)opp_host_malloc(cap * sizeof(int)); // temp list
 
     for (int e = 0; e < primary_map->from->size; e++)  // for each maping table entry
     { 
@@ -1522,7 +1522,7 @@ void opp_partition_kway(op_map primary_map)
             if (c >= cap) 
             {
                 cap = cap * 2;
-                list = (int *)realloc(list, cap * sizeof(int));
+                list = (int *)opp_host_realloc(list, cap * sizeof(int));
             }
 
             if (part != my_rank) 
@@ -1532,9 +1532,9 @@ void opp_partition_kway(op_map primary_map)
             }
         }
     }
-    halo_list exp_list = (halo_list)malloc(sizeof(halo_list_core));
+    halo_list exp_list = (halo_list)opp_host_malloc(sizeof(halo_list_core));
     create_export_list(primary_map->from, list, exp_list, c, comm_size, my_rank);
-    free(list); // free temp list
+    opp_host_free(list); // free temp list
 
     // create import list
     int *neighbors, *sizes;
@@ -1542,14 +1542,14 @@ void opp_partition_kway(op_map primary_map)
 
     //-----Discover neighbors-----
     ranks_size = 0;
-    neighbors = (int *)malloc(comm_size * sizeof(int));
-    sizes = (int *)malloc(comm_size * sizeof(int));
+    neighbors = (int *)opp_host_malloc(comm_size * sizeof(int));
+    sizes = (int *)opp_host_malloc(comm_size * sizeof(int));
 
     // halo_list list = OP_export_exec_list[set->index];
     find_neighbors_set(exp_list, neighbors, sizes, &ranks_size, my_rank,
                         comm_size, OP_PART_WORLD);
 
-    MPI_Request *request_send = (MPI_Request *)malloc(exp_list->ranks_size * sizeof(MPI_Request));
+    MPI_Request *request_send = (MPI_Request *)opp_host_malloc(exp_list->ranks_size * sizeof(MPI_Request));
 
     int *rbuf, index = 0;
     cap = 0;
@@ -1562,20 +1562,20 @@ void opp_partition_kway(op_map primary_map)
 
     for (int i = 0; i < ranks_size; i++)
         cap = cap + sizes[i];
-    int *temp = (int *)malloc(cap * sizeof(int));
+    int *temp = (int *)opp_host_malloc(cap * sizeof(int));
 
     // import this list from those neighbors
     for (int i = 0; i < ranks_size; i++) 
     {
-        rbuf = (int *)malloc(sizes[i] * sizeof(int));
+        rbuf = (int *)opp_host_malloc(sizes[i] * sizeof(int));
         MPI_Recv(rbuf, sizes[i], MPI_INT, neighbors[i], primary_map->index, OP_PART_WORLD, MPI_STATUS_IGNORE);
         memcpy(&temp[index], (void *)&rbuf[0], sizes[i] * sizeof(int));
         index = index + sizes[i];
-        free(rbuf);
+        opp_host_free(rbuf);
     }
     MPI_Waitall(exp_list->ranks_size, request_send, MPI_STATUSES_IGNORE);
 
-    halo_list imp_list = (halo_list)malloc(sizeof(halo_list_core));
+    halo_list imp_list = (halo_list)opp_host_malloc(sizeof(halo_list_core));
     create_import_list(primary_map->from, temp, imp_list, index, neighbors, sizes,
                         ranks_size, comm_size, my_rank);
 
@@ -1584,11 +1584,11 @@ void opp_partition_kway(op_map primary_map)
     //
 
     // prepare bits of the mapping tables to be exported
-    int **sbuf = (int **)malloc(exp_list->ranks_size * sizeof(int *));
+    int **sbuf = (int **)opp_host_malloc(exp_list->ranks_size * sizeof(int *));
 
     for (int i = 0; i < exp_list->ranks_size; i++) 
     {
-        sbuf[i] = (int *)malloc(exp_list->sizes[i] * primary_map->dim * sizeof(int));
+        sbuf[i] = (int *)opp_host_malloc(exp_list->sizes[i] * primary_map->dim * sizeof(int));
         for (int j = 0; j < exp_list->sizes[i]; j++) 
         {
             for (int p = 0; p < primary_map->dim; p++) 
@@ -1601,7 +1601,7 @@ void opp_partition_kway(op_map primary_map)
     }
 
     // prepare space for the incomming mapping tables
-    int *foreign_maps = (int *)malloc(primary_map->dim * (imp_list->size) * sizeof(int));
+    int *foreign_maps = (int *)opp_host_malloc(primary_map->dim * (imp_list->size) * sizeof(int));
 
     for (int i = 0; i < imp_list->ranks_size; i++) {
         MPI_Recv(&foreign_maps[(size_t)imp_list->disps[i] * primary_map->dim], primary_map->dim * imp_list->sizes[i], MPI_INT, 
@@ -1610,19 +1610,19 @@ void opp_partition_kway(op_map primary_map)
 
     MPI_Waitall(exp_list->ranks_size, request_send, MPI_STATUSES_IGNORE);
     for (int i = 0; i < exp_list->ranks_size; i++)
-        free(sbuf[i]);
-    free(sbuf);
+        opp_host_free(sbuf[i]);
+    opp_host_free(sbuf);
 
-    int **adj = (int **)malloc(primary_map->to->size * sizeof(int *));
-    int *adj_i = (int *)malloc(primary_map->to->size * sizeof(int));
-    int *adj_cap = (int *)malloc(primary_map->to->size * sizeof(int));
+    int **adj = (int **)opp_host_malloc(primary_map->to->size * sizeof(int *));
+    int *adj_i = (int *)opp_host_malloc(primary_map->to->size * sizeof(int));
+    int *adj_cap = (int *)opp_host_malloc(primary_map->to->size * sizeof(int));
 
     for (int i = 0; i < primary_map->to->size; i++)
         adj_i[i] = 0;
     for (int i = 0; i < primary_map->to->size; i++)
         adj_cap[i] = primary_map->dim;
     for (int i = 0; i < primary_map->to->size; i++)
-        adj[i] = (int *)malloc(adj_cap[i] * sizeof(int));
+        adj[i] = (int *)opp_host_malloc(adj_cap[i] * sizeof(int));
 
     // go through each from-element of local primary_map and construct adjacency list
     for (int i = 0; i < primary_map->from->size; i++)
@@ -1641,7 +1641,7 @@ void opp_partition_kway(op_map primary_map)
                     if (adj_i[local_index] >= adj_cap[local_index]) 
                     {
                         adj_cap[local_index] = adj_cap[local_index] * 2;
-                        adj[local_index] = (int *)realloc(adj[local_index], adj_cap[local_index] * sizeof(int));
+                        adj[local_index] = (int *)opp_host_realloc(adj[local_index], adj_cap[local_index] * sizeof(int));
                     }
                     adj[local_index][adj_i[local_index]++] = primary_map->map[i * primary_map->dim + k];
                 }
@@ -1664,31 +1664,31 @@ void opp_partition_kway(op_map primary_map)
                     if (adj_i[local_index] >= adj_cap[local_index]) 
                     {
                         adj_cap[local_index] = adj_cap[local_index] * 2;
-                        adj[local_index] = (int *)realloc(adj[local_index], adj_cap[local_index] * sizeof(int));
+                        adj[local_index] = (int *)opp_host_realloc(adj[local_index], adj_cap[local_index] * sizeof(int));
                     }
                     adj[local_index][adj_i[local_index]++] = foreign_maps[i * primary_map->dim + k];
                 }
             }
         }
     }
-    free(foreign_maps);
+    opp_host_free(foreign_maps);
 
     //
     // Setup data structures for ParMetis PartKway
     //
     idx_t comm_size_pm = comm_size;
 
-    idx_t *vtxdist = (idx_t *)malloc(sizeof(idx_t) * (comm_size + 1));
+    idx_t *vtxdist = (idx_t *)opp_host_malloc(sizeof(idx_t) * (comm_size + 1));
     for (int i = 0; i < comm_size; i++) 
     {
         vtxdist[i] = part_range[primary_map->to->index][2 * i];
     }
     vtxdist[comm_size] = part_range[primary_map->to->index][2 * (comm_size - 1) + 1] + 1;
 
-    idx_t *xadj = (idx_t *)malloc(sizeof(idx_t) * (primary_map->to->size + 1));
+    idx_t *xadj = (idx_t *)opp_host_malloc(sizeof(idx_t) * (primary_map->to->size + 1));
     cap = (primary_map->to->size) * primary_map->dim;
 
-    idx_t *adjncy = (idx_t *)malloc(sizeof(idx_t) * cap);
+    idx_t *adjncy = (idx_t *)opp_host_malloc(sizeof(idx_t) * cap);
     int count = 0;
     int prev_count = 0;
     for (int i = 0; i < primary_map->to->size; i++) 
@@ -1705,7 +1705,7 @@ void opp_partition_kway(op_map primary_map)
             opp_abort("opp_partition_kway Need to select a different primary map");
         }
 
-        adj[i] = (int *)realloc(adj[i], adj_i[i] * sizeof(int));
+        adj[i] = (int *)opp_host_realloc(adj[i], adj_i[i] * sizeof(int));
         for (int j = 0; j < adj_i[i]; j++) 
         {
             if (adj[i][j] != g_index) 
@@ -1713,7 +1713,7 @@ void opp_partition_kway(op_map primary_map)
                 if (count >= cap) 
                 {
                     cap = cap * 2;
-                    adjncy = (idx_t *)realloc(adjncy, sizeof(idx_t) * cap);
+                    adjncy = (idx_t *)opp_host_realloc(adjncy, sizeof(idx_t) * cap);
                 }
                 adjncy[count++] = (idx_t)adj[i][j];
             }
@@ -1732,12 +1732,12 @@ void opp_partition_kway(op_map primary_map)
     xadj[primary_map->to->size] = count;
 
     for (int i = 0; i < primary_map->to->size; i++)
-        free(adj[i]);
-    free(adj_i);
-    free(adj_cap);
-    free(adj);
+        opp_host_free(adj[i]);
+    opp_host_free(adj_i);
+    opp_host_free(adj_cap);
+    opp_host_free(adj);
 
-    idx_t *partition_pm = (idx_t *)malloc(sizeof(idx_t) * primary_map->to->size);
+    idx_t *partition_pm = (idx_t *)opp_host_malloc(sizeof(idx_t) * primary_map->to->size);
     for (int i = 0; i < primary_map->to->size; i++) 
     {
         partition_pm[i] = -99;
@@ -1748,34 +1748,34 @@ void opp_partition_kway(op_map primary_map)
     idx_t wgtflag = 0;
     idx_t options[3] = {1, 3, 15};
 
-    int *hybrid_flags = (int *)malloc(comm_size * sizeof(int));
+    int *hybrid_flags = (int *)opp_host_malloc(comm_size * sizeof(int));
     MPI_Allgather(&OP_hybrid_gpu, 1, MPI_INT, hybrid_flags, 1, MPI_INT, OP_PART_WORLD);
     double total = 0;
     for (int i = 0; i < comm_size; i++)
         total += hybrid_flags[i] == 1 ? OP_hybrid_balance : 1.0;
 
     idx_t ncon = 1;
-    real_t *tpwgts = (real_t *)malloc(comm_size * sizeof(real_t) * ncon);
+    real_t *tpwgts = (real_t *)opp_host_malloc(comm_size * sizeof(real_t) * ncon);
     for (int i = 0; i < comm_size * ncon; i++)
         tpwgts[i] = hybrid_flags[i] == 1 ? OP_hybrid_balance / total : 1.0 / total;
 
-    real_t *ubvec = (real_t *)malloc(sizeof(real_t) * ncon);
+    real_t *ubvec = (real_t *)opp_host_malloc(sizeof(real_t) * ncon);
     *ubvec = 1.05;
 
     // clean up before calling ParMetis
     for (int i = 0; i < OP_set_index; i++)
-        free(part_range[i]);
-    free(part_range);
-    free(imp_list->list);
-    free(imp_list->disps);
-    free(imp_list->ranks);
-    free(imp_list->sizes);
-    free(exp_list->list);
-    free(exp_list->disps);
-    free(exp_list->ranks);
-    free(exp_list->sizes);
-    free(imp_list);
-    free(exp_list);
+        opp_host_free(part_range[i]);
+    opp_host_free(part_range);
+    opp_host_free(imp_list->list);
+    opp_host_free(imp_list->disps);
+    opp_host_free(imp_list->ranks);
+    opp_host_free(imp_list->sizes);
+    opp_host_free(exp_list->list);
+    opp_host_free(exp_list->disps);
+    opp_host_free(exp_list->ranks);
+    opp_host_free(exp_list->sizes);
+    opp_host_free(imp_list);
+    opp_host_free(exp_list);
 
     if (my_rank == OPP_ROOT) 
     {
@@ -1789,13 +1789,13 @@ void opp_partition_kway(op_map primary_map)
         
     if (my_rank == OPP_ROOT)
         opp_printf("opp_partition_kway", "-----------------------------------------------------------");
-    free(vtxdist);
-    free(xadj);
-    free(adjncy);
-    free(ubvec);
-    free(tpwgts);
+    opp_host_free(vtxdist);
+    opp_host_free(xadj);
+    opp_host_free(adjncy);
+    opp_host_free(ubvec);
+    opp_host_free(tpwgts);
 
-    int *partition = (int *)malloc(sizeof(int) * primary_map->to->size);
+    int *partition = (int *)opp_host_malloc(sizeof(int) * primary_map->to->size);
     for (int i = 0; i < primary_map->to->size; i++) 
     {
         // sanity check to see if all elements were partitioned
@@ -1807,7 +1807,7 @@ void opp_partition_kway(op_map primary_map)
         }
         partition[i] = partition_pm[i];
     }
-    free(partition_pm);
+    opp_host_free(partition_pm);
 
     // initialise primary set as partitioned
     OP_part_list[primary_map->to->index]->elem_part = partition;
@@ -1829,7 +1829,7 @@ void opp_partition_kway(op_map primary_map)
   
     if (my_rank == OPP_ROOT) opp_printf("opp_partition_kway", "Max total Kway partitioning time = %lf", max_time);
 
-    free(request_send);
+    opp_host_free(request_send);
 #endif
 
     if (OP_DEBUG) opp_printf("opp_partition_kway", "end");
@@ -1859,15 +1859,15 @@ void opp_partition_external(op_set primary_set, op_dat partvec)
     /*--STEP 0 - initialise partitioning data stauctures with the current (block) partitioning information */
 
     // Compute global partition range information for each set
-    int **part_range = (int **)malloc(OP_set_index * sizeof(int *));
+    int **part_range = (int **)opp_host_malloc(OP_set_index * sizeof(int *));
     get_part_range(part_range, my_rank, comm_size, OP_PART_WORLD);
 
     // save the original part_range for future partition reversing
-    orig_part_range = (int **)malloc(OP_set_index * sizeof(int *));
+    orig_part_range = (int **)opp_host_malloc(OP_set_index * sizeof(int *));
     for (int s = 0; s < OP_set_index; s++) 
     {
         op_set set = OP_set_list[s];
-        orig_part_range[set->index] = (int *)malloc(2 * comm_size * sizeof(int));
+        orig_part_range[set->index] = (int *)opp_host_malloc(2 * comm_size * sizeof(int));
         
         for (int j = 0; j < comm_size; j++) 
         {
@@ -1877,18 +1877,18 @@ void opp_partition_external(op_set primary_set, op_dat partvec)
     }
 
     // allocate memory for list
-    OP_part_list = (part *)malloc(OP_set_index * sizeof(part));
+    OP_part_list = (part *)opp_host_malloc(OP_set_index * sizeof(part));
 
     for (int s = 0; s < OP_set_index; s++) { // for each set
         op_set set = OP_set_list[s];
-        int *g_index = (int *)malloc(sizeof(int) * set->size);
+        int *g_index = (int *)opp_host_malloc(sizeof(int) * set->size);
         for (int i = 0; i < set->size; i++)
         g_index[i] =
             get_global_index(i, my_rank, part_range[set->index], comm_size);
         decl_partition(set, g_index, NULL);
     }
 
-    int *partition = (int *)malloc(sizeof(int) * primary_set->size);
+    int *partition = (int *)opp_host_malloc(sizeof(int) * primary_set->size);
     memcpy(partition, partvec->data, sizeof(int) * primary_set->size);
 
     // initialise primary set as partitioned
@@ -1897,8 +1897,8 @@ void opp_partition_external(op_set primary_set, op_dat partvec)
 
     // free part range
     for (int i = 0; i < OP_set_index; i++)
-        free(part_range[i]);
-    free(part_range);
+        opp_host_free(part_range[i]);
+    opp_host_free(part_range);
 
     /*-STEP 2 - Partition all other sets,migrate data and renumber mapping tables-*/
 
@@ -1953,15 +1953,15 @@ void opp_partition_geom(op_dat coords)
         partitioning information */
 
     // Compute global partition range information for each set
-    int **part_range = (int **)malloc(OP_set_index * sizeof(int *));
+    int **part_range = (int **)opp_host_malloc(OP_set_index * sizeof(int *));
     get_part_range(part_range, my_rank, comm_size, OP_PART_WORLD);
 
     // save the original part_range for future partition reversing
-    orig_part_range = (int **)malloc(OP_set_index * sizeof(int *));
+    orig_part_range = (int **)opp_host_malloc(OP_set_index * sizeof(int *));
     for (int s = 0; s < OP_set_index; s++) 
     {
         op_set set = OP_set_list[s];
-        orig_part_range[set->index] = (int *)malloc(2 * comm_size * sizeof(int));
+        orig_part_range[set->index] = (int *)opp_host_malloc(2 * comm_size * sizeof(int));
         for (int j = 0; j < comm_size; j++) 
         {
             orig_part_range[set->index][2 * j] = part_range[set->index][2 * j];
@@ -1970,13 +1970,13 @@ void opp_partition_geom(op_dat coords)
     }
 
     // allocate memory for list
-    OP_part_list = (part *)malloc(OP_set_index * sizeof(part));
+    OP_part_list = (part *)opp_host_malloc(OP_set_index * sizeof(part));
 
     for (int s = 0; s < OP_set_index; s++)  // for each set
     { 
         op_set set = OP_set_list[s];
         // printf("set %s size = %d\n", set.name, set.size);
-        int *g_index = (int *)malloc(sizeof(int) * set->size);
+        int *g_index = (int *)opp_host_malloc(sizeof(int) * set->size);
         for (int i = 0; i < set->size; i++)
             g_index[i] = get_global_index(i, my_rank, part_range[set->index], comm_size);
         decl_partition(set, g_index, NULL);
@@ -1985,8 +1985,8 @@ void opp_partition_geom(op_dat coords)
     /*--- STEP 1 - Partition primary set using its coordinates (1D,2D or 3D) -----*/
 
     // Setup data structures for ParMetis PartGeom
-    idx_t *vtxdist = (idx_t *)malloc(sizeof(idx_t) * (comm_size + 1));
-    idx_t *partition = (idx_t *)malloc(sizeof(idx_t) * coords->set->size);
+    idx_t *vtxdist = (idx_t *)opp_host_malloc(sizeof(idx_t) * (comm_size + 1));
+    idx_t *partition = (idx_t *)opp_host_malloc(sizeof(idx_t) * coords->set->size);
 
     idx_t ndims = coords->dim;
     real_t *xyz = 0;
@@ -1995,7 +1995,7 @@ void opp_partition_geom(op_dat coords)
     //- i.e. coordinates should be floats
     if (ndims == 3 || ndims == 2 || ndims == 1) 
     {
-        xyz = (real_t *)malloc(coords->set->size * coords->dim * sizeof(real_t));
+        xyz = (real_t *)opp_host_malloc(coords->set->size * coords->dim * sizeof(real_t));
         size_t mult = coords->size / coords->dim;
         for (int i = 0; i < coords->set->size; i++) 
         {
@@ -2022,13 +2022,13 @@ void opp_partition_geom(op_dat coords)
 
     // use xyz coordinates to feed into ParMETIS_V3_PartGeom
     ParMETIS_V3_PartGeom(vtxdist, &ndims, xyz, partition, &OP_PART_WORLD);
-    free(xyz);
-    free(vtxdist);
+    opp_host_free(xyz);
+    opp_host_free(vtxdist);
 
     // free part range
     for (int i = 0; i < OP_set_index; i++)
-        free(part_range[i]);
-    free(part_range);
+        opp_host_free(part_range[i]);
+    opp_host_free(part_range);
 
     // saniti check to see if all elements were partitioned
     for (int i = 0; i < coords->size; i++) 

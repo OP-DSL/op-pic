@@ -363,8 +363,8 @@ inline std::vector<int> get_local_cell_count_array(const int num_cells, const in
 template <typename T> 
 inline void opp_uniform_scatter_array(T *g_array, T *l_array, int g_size, int l_size, int elem_size) 
 {
-    int *sendcnts = (int *)malloc(OPP_comm_size * sizeof(int));
-    int *displs = (int *)malloc(OPP_comm_size * sizeof(int));
+    int *sendcnts = (int *)opp_host_malloc(OPP_comm_size * sizeof(int));
+    int *displs = (int *)opp_host_malloc(OPP_comm_size * sizeof(int));
     int disp = 0;
 
     for (int i = 0; i < OPP_comm_size; i++) 
@@ -382,8 +382,8 @@ inline void opp_uniform_scatter_array(T *g_array, T *l_array, int g_size, int l_
     MPI_Scatterv((char*)g_array, sendcnts, displs, MPI_CHAR, 
         (char*)l_array, (l_size * elem_size * sizeof(T)), MPI_CHAR, OPP_ROOT, MPI_COMM_WORLD);
 
-    free(sendcnts);
-    free(displs);
+    opp_host_free(sendcnts);
+    opp_host_free(displs);
 }
 
 //*******************************************************************************

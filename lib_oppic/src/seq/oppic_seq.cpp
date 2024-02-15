@@ -92,7 +92,7 @@ oppic_map oppic_decl_map_txt(oppic_set from, oppic_set to, int dim, const char* 
 
     oppic_map map = opp_decl_mesh_map(from, to, dim, map_data, name);
 
-    free(map_data);
+    opp_host_free(map_data);
 
     return map;
 }
@@ -108,7 +108,7 @@ oppic_dat oppic_decl_dat_txt(oppic_set set, int dim, opp_data_type dtype, const 
 
     oppic_dat dat = oppic_decl_dat_core(set, dim, type.c_str(), size, dat_data, name);
 
-    free(dat_data);
+    opp_host_free(dat_data);
 
     return dat;
 }
@@ -184,7 +184,7 @@ oppic_dat oppic_decl_particle_dat_txt(oppic_set set, int dim, opp_data_type dtyp
 
     oppic_dat dat = oppic_decl_particle_dat_core(set, dim, type.c_str(), size, dat_data, name, cell_index);
 
-    free(dat_data);
+    opp_host_free(dat_data);
 
     return dat;
 }
@@ -386,3 +386,21 @@ void opp_upload_particle_set(opp_set particles_set, bool realloc) {}
 //*******************************************************************************
 void opp_colour_cartesian_mesh(const int ndim, const std::vector<int> cell_counts, opp_dat cell_index, 
                             const opp_dat cell_colors) {}
+
+//*******************************************************************************
+void* opp_host_malloc(size_t size)
+{
+    return malloc(size);
+}
+
+//*******************************************************************************
+void* opp_host_realloc(void* ptr, size_t new_size)
+{
+    return realloc(ptr, new_size);
+}
+
+//*******************************************************************************
+void opp_host_free(void* ptr)
+{
+    free(ptr);
+}

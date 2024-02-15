@@ -3,8 +3,6 @@
 #SBATCH --job-name=csrcnl8
 #SBATCH --time=04:00:00
 #SBATCH --nodes=8
-#SBATCH --ntasks-per-node=4
-#SBATCH --cpus-per-task=5
 
 #SBATCH --account=bdyrk17            
 #SBATCH --partition=gpu
@@ -13,8 +11,8 @@
 echo "Start date and time: $(date +"%Y-%m-%d %H:%M:%S")"
 
 export OMP_NUM_THREADS=1
-export OMP_PLACES=cores
-export OMP_PROC_BIND=close
+# export OMP_PLACES=cores
+# export OMP_PROC_BIND=close
 
 module load gcc/12.2 openmpi/4.0.5 cuda/12.0.1 openblas/0.3.10
 
@@ -37,10 +35,10 @@ configFile="box_bede.param"
 file=$PWD'/'$configFile
 
 for run in 1 2; do
-    for config in 384000 768000 1536000; do
+    for config in 384000 768000 1536000 3072000; do
             
         folder=$runFolder/$config"_mpi"
-        totalGPUs=4*$SLURM_JOB_NUM_NODES
+	(( totalGPUs=4*$SLURM_JOB_NUM_NODES ))
 
         echo "Running MPI" $file $config $folder
 
@@ -55,20 +53,17 @@ for run in 1 2; do
         sed -i "s/STRING hdf_filename = \/users\/csrcnl\/phd\/box_mesh_gen\/hdf5\/box_96000.hdf5/STRING hdf_filename = ${escaped_folder}\/box_${config}.hdf5/" ${currentfilename}
 
         # ---------------------
-        command=${binPath}${binName}' '${currentfilename}' >'$folder'/log_N'${num_nodes}'_G'${totalGPUs}'_C'${config}'_D10_R'${run}'.log 2>&1'
-        echo "RUNNING ->"$totalGPUs $command
-        srun -N 1 -n $totalGPUs $command | tee $folder/log_N${num_nodes}_C${config}_D10_R${run}.log;
+        echo "RUNNING d 10e17 ->"$totalGPUs $command
+        bede-mpirun --bede-par 1ppg -np $totalGPUs ${binPath}${binName} ${currentfilename} | tee $folder/log_N${num_nodes}_G${totalGPUs}_C${config}_D10_R${run}.log;
 
         sed -i "s/REAL plasma_den     = 1e18/REAL plasma_den     = 0.5e18/" ${currentfilename}
-        command=${binPath}${binName}' '${currentfilename}' | tee '$folder'/log_N'${num_nodes}'_G'${totalGPUs}'_C'${config}'_D5_R'${run}'.log;'
-        echo "RUNNING ->"$totalGPUs $command
-        srun -N 1 -n $totalGPUs $command | tee $folder/log_N${num_nodes}_C${config}_D5_R${run}.log;
+        echo "RUNNING d 5e17 ->"$totalGPUs $command
+        bede-mpirun --bede-par 1ppg -np $totalGPUs ${binPath}${binName} ${currentfilename} | tee $folder/log_N${num_nodes}_G${totalGPUs}_C${config}_D5_R${run}.log;
 
         sed -i "s/REAL plasma_den     = 0.5e18/REAL plasma_den     = 1e17/" ${currentfilename}
-        command=${binPath}${binName}' '${currentfilename}' | tee '$folder'/log_N'${num_nodes}'_G'${totalGPUs}'_C'${config}'_D1_R'${run}'.log;'
-        echo "RUNNING ->"$totalGPUs $command
-        srun -N 1 -n $totalGPUs $command | tee $folder/log_N${num_nodes}_C${config}_D1_R${run}.log;
-        # ---------------------
+        echo "RUNNING d 1e17 ->"$totalGPUs $command
+        bede-mpirun --bede-par 1ppg -np $totalGPUs ${binPath}${binName} ${currentfilename} | tee $folder/log_N${num_nodes}_G${totalGPUs}_C${config}_D1_R${run}.log;
+	# ---------------------
 
         rmCommand=$folder'/box_'$config'.hdf5'
         echo $rmCommand

@@ -62,7 +62,7 @@ void opp_create_thread_level_data(oppic_arg arg, T init_value)
 
         for (int thr = 1; thr < nthreads; thr++)
         {
-            char* thr_data = (char *)malloc((size_t)dat->size * (size_t)(dat->set->size) * sizeof(char));;
+            char* thr_data = (char *)opp_host_malloc((size_t)dat->size * (size_t)(dat->set->size) * sizeof(char));;
             dat->thread_data->push_back(thr_data);
         }
     }

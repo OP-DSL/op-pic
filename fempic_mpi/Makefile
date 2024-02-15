@@ -13,8 +13,8 @@ NVCC       = nvcc
 HIPCC      = hipcc
 
 CPPFLAGS   = -std=c++14 -Wall -fPIC 
-NVCCFLAGS  = -m64 -Xptxas -dlcm=ca -Xptxas=-v $(NVCCFLAGS_ADD)
-HIPCCFLAGS = -std=c++17 -Wall -isystem -D__HIP_PLATFORM_AMD__
+NVCCFLAGS  = -m64 -Xptxas -dlcm=ca -Xptxas=-v $(NVCCFLAGS_ADD) -DUSE_THRUST 
+HIPCCFLAGS = -std=c++17 -isystem -D__HIP_PLATFORM_AMD__ -munsafe-fp-atomics -DUSE_THRUST
 
 DEBUG ?= 0
 ifeq ($(DEBUG), 1)
@@ -75,8 +75,13 @@ ifeq ($(PARMETIS), 1)
 	ALL_INC  += -DHAVE_PARMETIS
 endif
 
-ALL_INC    += -I$(OPPIC_PATH)/include $(PETSC_INC)
-ALL_LIBS   += -L$(OPPIC_PATH)/lib $(PETSC_LIB) 
+REDUCE_BY_KEY ?= 1
+ifeq ($(REDUCE_BY_KEY), 1)
+	ALL_INC  += -DUSE_REDUCE_BY_KEY
+endif
+
+ALL_INC    += -I$(OPPIC_PATH)/include $(PETSC_INC) -I$(HDF5_INSTALL_PATH)/include
+ALL_LIBS   += -L$(OPPIC_PATH)/lib $(PETSC_LIB) -L$(HDF5_INSTALL_PATH)/lib
 
 .PHONY: clean mklib
 
@@ -193,6 +198,23 @@ hip_mpi: mklib
 			$(OBJ)/maths_hip_mpi.o \
 			$(OBJ)/hipkernels_mpi.o \
 			$(OBJ)/FESolver_hip_mpi.o $(ALL_INC) $(HIP_INC) $(ALL_LIBS) -lopp_hip_mpi -lmpi
+
+hip_mpi_hdf5: mklib
+		 $(HIPCC) $(HIPCCFLAGS) -DUSE_MPI -c FESolver_hip.cpp -o $(OBJ)/FESolver_hip.o $(ALL_INC) $(HIP_INC)	
+		 $(HIPCC) $(HIPCCFLAGS) -DUSE_MPI -c fempic_ori/meshes.cpp -o $(OBJ)/meshes_hip_mpi.o $(ALL_INC) $(HIP_INC)
+	     $(HIPCC) $(HIPCCFLAGS) -DUSE_MPI -c fempic_ori/particles.cpp -o $(OBJ)/particles_hip_mpi.o $(ALL_INC) $(HIP_INC)
+		 $(HIPCC) $(HIPCCFLAGS) -DUSE_MPI -c fempic_ori/maths.cpp -o $(OBJ)/maths_hip_mpi.o $(ALL_INC) $(HIP_INC)
+		 $(HIPCC) $(HIPCCFLAGS) -DUSE_MPI -c fempic_op_hdf5.cpp -o $(OBJ)/fempic_op_hdf5.o $(ALL_INC) $(HIP_INC)
+		 $(HIPCC) $(HIPCCFLAGS) -DUSE_MPI -c opp_mpi_hdf5.cpp -o $(OBJ)/opp_mpi_hdf5.o $(ALL_INC) $(HIP_INC)
+		 $(HIPCC) $(HIPCCFLAGS) -DUSE_MPI -c hip/hipkernels.cpp -o $(OBJ)/hipkernels_mpi.o $(ALL_INC) $(HIP_INC)
+	     $(HIPCC) $(HIPCCFLAGS) -DUSE_MPI -o $(BIN)/hip_mpi_hdf5 \
+		 	$(OBJ)/fempic_op_hdf5.o \
+			$(OBJ)/opp_mpi_hdf5.o \
+			$(OBJ)/meshes_hip_mpi.o \
+			$(OBJ)/particles_hip_mpi.o \
+			$(OBJ)/maths_hip_mpi.o \
+			$(OBJ)/hipkernels_mpi.o \
+			$(OBJ)/FESolver_hip.o $(ALL_INC) $(HIP_INC) $(ALL_LIBS) -lopp_hip_mpi -lmpi -lhdf5
 
 mpi_hdf5_conv: mklib
 		 $(MPICPP) $(CPPFLAGS) -DUSE_MPI -c fempic_convert_hdf5.cpp -o $(OBJ)/fempic_convert_hdf5.o $(ALL_INC)

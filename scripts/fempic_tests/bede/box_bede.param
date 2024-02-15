@@ -19,7 +19,7 @@ STRING hdf_filename = /users/csrcnl/phd/box_mesh_gen/hdf5/box_96000.hdf5
 BOOL invert_normals = false
 
 BOOL opp_auto_sort          = false
-INT opp_allocation_multiple = 21
+INT opp_allocation_multiple = 11
 INT opp_threads_per_block   = 1024
 
 BOOL opp_profile_all        = false

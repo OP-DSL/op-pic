@@ -187,14 +187,22 @@ void opp_loop_inject__InjectIons(
         injectIons_stride_OPP_HOST_8 = args[8].dat->set->set_capacity;
         injectIons_stride_OPP_HOST_9 = args[9].dat->set->set_capacity;
 
-        hipMemcpyToSymbol(HIP_SYMBOL(injectIons_stride_OPP_DEVICE_0), &injectIons_stride_OPP_HOST_0, sizeof(int));
-        hipMemcpyToSymbol(HIP_SYMBOL(injectIons_stride_OPP_DEVICE_1), &injectIons_stride_OPP_HOST_1, sizeof(int));
-        hipMemcpyToSymbol(HIP_SYMBOL(injectIons_stride_OPP_DEVICE_4), &injectIons_stride_OPP_HOST_4, sizeof(int));
-        hipMemcpyToSymbol(HIP_SYMBOL(injectIons_stride_OPP_DEVICE_5), &injectIons_stride_OPP_HOST_5, sizeof(int));
-        hipMemcpyToSymbol(HIP_SYMBOL(injectIons_stride_OPP_DEVICE_6), &injectIons_stride_OPP_HOST_6, sizeof(int));
-        hipMemcpyToSymbol(HIP_SYMBOL(injectIons_stride_OPP_DEVICE_7), &injectIons_stride_OPP_HOST_7, sizeof(int));
-        hipMemcpyToSymbol(HIP_SYMBOL(injectIons_stride_OPP_DEVICE_8), &injectIons_stride_OPP_HOST_8, sizeof(int));
-        hipMemcpyToSymbol(HIP_SYMBOL(injectIons_stride_OPP_DEVICE_9), &injectIons_stride_OPP_HOST_9, sizeof(int));
+        cutilSafeCall(hipMemcpyToSymbol(HIP_SYMBOL(injectIons_stride_OPP_DEVICE_0), 
+                                                    &injectIons_stride_OPP_HOST_0, sizeof(int)));
+        cutilSafeCall(hipMemcpyToSymbol(HIP_SYMBOL(injectIons_stride_OPP_DEVICE_1), 
+                                                    &injectIons_stride_OPP_HOST_1, sizeof(int)));
+        cutilSafeCall(hipMemcpyToSymbol(HIP_SYMBOL(injectIons_stride_OPP_DEVICE_4), 
+                                                    &injectIons_stride_OPP_HOST_4, sizeof(int)));
+        cutilSafeCall(hipMemcpyToSymbol(HIP_SYMBOL(injectIons_stride_OPP_DEVICE_5), 
+                                                    &injectIons_stride_OPP_HOST_5, sizeof(int)));
+        cutilSafeCall(hipMemcpyToSymbol(HIP_SYMBOL(injectIons_stride_OPP_DEVICE_6), 
+                                                    &injectIons_stride_OPP_HOST_6, sizeof(int)));
+        cutilSafeCall(hipMemcpyToSymbol(HIP_SYMBOL(injectIons_stride_OPP_DEVICE_7), 
+                                                    &injectIons_stride_OPP_HOST_7, sizeof(int)));
+        cutilSafeCall(hipMemcpyToSymbol(HIP_SYMBOL(injectIons_stride_OPP_DEVICE_8), 
+                                                    &injectIons_stride_OPP_HOST_8, sizeof(int)));
+        cutilSafeCall(hipMemcpyToSymbol(HIP_SYMBOL(injectIons_stride_OPP_DEVICE_9), 
+                                                    &injectIons_stride_OPP_HOST_9, sizeof(int)));
 
         int start     = 0;
         int end       = set->diff;
