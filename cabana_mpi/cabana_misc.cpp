@@ -238,14 +238,23 @@ void init_particles(opp_dat part_index, opp_dat part_pos, opp_dat part_vel, opp_
     std::mt19937 rng_vel(52234231 + OPP_rank);
 
     const int cell_count        = cell_pos_ll->set->size;
-    // const int global_cell_count = (nx * ny * nz);
     const int rank_npart        = npart_per_cell * cell_count;
+    int rank_part_start = 0;
 
     if (rank_npart <= 0) {
         opp_printf("Setup", "Error No particles to add in rank %d", OPP_rank);
     }
 
-    opp_printf("Setup", "%d particles to add in rank %d", rank_npart, OPP_rank);
+#ifdef USE_MPI // canculate the starting particle index incase of MPI
+    {
+        std::vector<OPP_INT> temp(OPP_comm_size, 0);
+        MPI_Allgather(&rank_npart, 1, MPI_INT, temp.data(), 1, MPI_INT, MPI_COMM_WORLD);
+        for (int i = 0; i < OPP_rank; ++i) rank_part_start += temp[i];
+    }  
+#endif
+
+    opp_printf("Setup", "%d particles to add in rank %d [part start idx = %d]", 
+                    rank_npart, OPP_rank, rank_part_start);
 
     std::vector<std::vector<double>> positions;
     std::vector<int> cells;
@@ -255,7 +264,7 @@ void init_particles(opp_dat part_index, opp_dat part_pos, opp_dat part_vel, opp_
                                 positions, cells, rng_pos);
 
     if (OPP_rank == OPP_ROOT)
-        opp_printf("Setup", "Init particles oppic_increase_particle_count Start rank_npart=%d", rank_npart);
+        opp_printf("Setup", "Init particles oppic_increase_particle_count rank_npart=%d", rank_npart);
 
     // Host/Device space to store the particles.
     oppic_increase_particle_count(part_index->set, rank_npart);
@@ -279,7 +288,7 @@ void init_particles(opp_dat part_index, opp_dat part_pos, opp_dat part_vel, opp_
         ((OPP_REAL*)part_streak_mid->data)[px * DIM + Dim::z] = 0.0;
 
         ((OPP_INT*)part_mesh_rel->data)[px] = cells.at(px);
-        ((OPP_INT*)part_index->data)[px]    = px; 
+        ((OPP_INT*)part_index->data)[px]    = (px + rank_part_start); 
         ((OPP_REAL*)part_weight->data)[px]  = weight;
     }
 

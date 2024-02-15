@@ -185,9 +185,9 @@ void opp_particle_mover__Move(
     {
         opp_init_particle_move(set, nargs, args);
         
-        if (FP_DEBUG) 
-            opp_printf("CABANA", "opp_particle_mover__Move Starting iteration %d, start[%d] end[%d]", 
-                OPP_comm_iteration, OPP_iter_start, OPP_iter_end);
+        if (OP_DEBUG) 
+            opp_printf("MOVE", "iter %d start %d end %d", OPP_comm_iteration, 
+                                    OPP_iter_start, OPP_iter_end);
 
         int* cellIdx = nullptr;
 

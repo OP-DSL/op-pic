@@ -104,7 +104,13 @@ cuda: mklib
 	     $(NVCC) $(NVCCFLAGS) -DUSE_THRUST -c $(SRC)/cuda/opp_cuda.cu -o $(OBJ)/opp_cuda.o $(OPP_INC) $(PETSC_INC) $(CUDA_INC)
 		 $(NVCC) $(NVCCFLAGS) -DUSE_THRUST -c $(SRC)/cuda/opp_particle_sorter.cu -o $(OBJ)/particle_sorter_cuda.o $(OPP_INC) $(PETSC_INC) $(CUDA_INC)
 		 $(NVCC) $(NVCCFLAGS) -DUSE_THRUST -c $(SRC)/cuda/opp_cuda_halo.cu -o $(OBJ)/opp_cuda_halo.o $(OPP_INC) $(PETSC_INC) $(CUDA_INC)
-	     ar -r $(LIB)/libopp_cuda.a $(OBJ)/oppic_lib_core.o $(OBJ)/oppic_util.o $(OBJ)/opp_params.o $(OBJ)/opp_cuda.o $(OBJ)/particle_sorter_cuda.o $(OBJ)/opp_cuda_halo.o
+	     ar -r $(LIB)/libopp_cuda.a \
+			$(OBJ)/oppic_lib_core.o \
+			$(OBJ)/oppic_util.o \
+			$(OBJ)/opp_params.o \
+			$(OBJ)/opp_cuda.o \
+			$(OBJ)/particle_sorter_cuda.o \
+			$(OBJ)/opp_cuda_halo.o
 
 hip: mklib
 	     $(HIPCC) $(HIPCCFLAGS) -DUSE_THRUST -c $(SRC)/core/oppic_lib_core.cpp -o $(OBJ)/oppic_lib_core.o $(OPP_INC) $(PETSC_INC) $(HIP_INC)
@@ -113,7 +119,13 @@ hip: mklib
 	     $(HIPCC) $(HIPCCFLAGS) -DUSE_THRUST -c $(SRC)/hip/opp_hip.cpp -o $(OBJ)/opp_hip.o $(OPP_INC) $(PETSC_INC) $(HIP_INC)
 		 $(HIPCC) $(HIPCCFLAGS) -DUSE_THRUST -c $(SRC)/hip/opp_particle_sorter.cpp -o $(OBJ)/particle_sorter_hip.o $(OPP_INC) $(PETSC_INC) $(HIP_INC)
 		 $(HIPCC) $(HIPCCFLAGS) -DUSE_THRUST -c $(SRC)/hip/opp_hip_halo.cpp -o $(OBJ)/opp_hip_halo.o $(OPP_INC) $(PETSC_INC) $(HIP_INC)
-	     ar -r $(LIB)/libopp_hip.a $(OBJ)/oppic_lib_core.o $(OBJ)/oppic_util.o $(OBJ)/opp_params.o $(OBJ)/opp_hip.o $(OBJ)/particle_sorter_hip.o $(OBJ)/opp_hip_halo.o
+	     ar -r $(LIB)/libopp_hip.a \
+			$(OBJ)/oppic_lib_core.o \
+			$(OBJ)/oppic_util.o \
+			$(OBJ)/opp_params.o \
+			$(OBJ)/opp_hip.o \
+			$(OBJ)/particle_sorter_hip.o \
+			$(OBJ)/opp_hip_halo.o
 
 mpi: mklib
 	     $(MPICPP) $(CPPFLAGS) -DUSE_MPI -c $(SRC)/core/oppic_lib_core.cpp -o $(OBJ)/oppic_lib_core.o $(OPP_INC) $(PETSC_INC)
