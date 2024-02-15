@@ -204,6 +204,8 @@ void init_mesh(std::shared_ptr<DataPointers> m) {
     }
 
     // TODO : Sanity Check : Check whether any mapping is still negative or not
+
+    opp_printf("Setup", "init_mesh DONE");
 }
 
 //*************************************************************************************************
@@ -225,9 +227,6 @@ void init_particles(opp_dat part_index, opp_dat part_pos, opp_dat part_vel, opp_
     if (OPP_rank == OPP_ROOT)
         opp_printf("Setup", "Init particles START");
 
-    // const OPP_INT nx             = opp_params->get<OPP_INT>("nx");
-    // const OPP_INT ny             = opp_params->get<OPP_INT>("ny");
-    // const OPP_INT nz             = opp_params->get<OPP_INT>("nz");
     const OPP_INT npart_per_cell = opp_params->get<OPP_INT>("num_part_per_cell");
     const OPP_REAL weight        = opp_params->get<OPP_REAL>("part_weight");
     const OPP_REAL init_vel      = opp_params->get<OPP_REAL>("init_vel");

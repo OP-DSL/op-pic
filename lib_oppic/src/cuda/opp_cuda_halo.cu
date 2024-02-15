@@ -256,7 +256,7 @@ int opp_mpi_halo_exchanges_grouped(oppic_set set, int nargs, oppic_arg *args, De
     for (int n = 0; n < nargs; n++)
     {
         if (!haloExInfo[n].skip && haloExInfo[n].download) {
-            // opp_printf("halo_ex", "downloading %s", args[n].dat->name);
+            if (OP_DEBUG) opp_printf("halo_ex", "downloading %s", args[n].dat->name);
             opp_download_dat(args[n].dat);
         }
     }
@@ -265,7 +265,7 @@ int opp_mpi_halo_exchanges_grouped(oppic_set set, int nargs, oppic_arg *args, De
     for (int n = 0; n < nargs; n++)
     {
         if (!haloExInfo[n].skip && haloExInfo[n].HaloEx) {
-            // opp_printf("halo_ex", "opp_exchange_halo for dat [%s] exec_flag %d", args[n].dat->name, 1);
+            if (OP_DEBUG) opp_printf("halo_ex", "opp_exchange_halo for dat [%s] exec_flag %d", args[n].dat->name, 1);
             __opp_mpi_host_halo_exchange(&args[n], 1);
             size = set->size + set->exec_size;
         }
@@ -285,7 +285,7 @@ void opp_mpi_halo_wait_all(int nargs, oppic_arg *args)
     for (int n = 0; n < nargs; n++)
     {
         if (!haloExInfo[n].skip && haloExInfo[n].upload) {
-            // opp_printf("halo_ex", "uploading %s", args[n].dat->name);
+            if (OP_DEBUG) opp_printf("halo_ex", "uploading %s", args[n].dat->name);
             opp_upload_dat(args[n].dat); // TODO : ideally need to upload only the halo regions
         }
     }

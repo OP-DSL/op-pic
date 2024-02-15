@@ -14,7 +14,7 @@ HIPCC      = hipcc
 
 CPPFLAGS   = -std=c++14 -Wall -fPIC
 NVCCFLAGS  = -m64 -Xptxas -dlcm=ca -Xptxas=-v $(NVCCFLAGS_ADD)
-HIPCCFLAGS = -std=c++17 -Wall -isystem -D__HIP_PLATFORM_AMD__
+HIPCCFLAGS = -std=c++17 -Wall -isystem -D__HIP_PLATFORM_AMD__ -munsafe-fp-atomics 
 
 DEBUG ?= 0
 ifeq ($(DEBUG), 1)
@@ -122,6 +122,11 @@ hip: mklib
 		 $(HIPCC) $(HIPCCFLAGS) -c hip/hipkernels.cpp -o $(OBJ)/hipkernels.o $(ALL_INC) $(HIP_INC)
 	     $(HIPCC) $(HIPCCFLAGS) -c cabana_op.cpp -o $(OBJ)/cabana_op_hip.o $(ALL_INC)
 	     $(HIPCC) $(HIPCCFLAGS) -o $(BIN)/hip $(OBJ)/cabana_op_hip.o $(OBJ)/hipkernels.o $(ALL_INC) $(HIP_INC) $(ALL_LIBS) $(HIP_LIB) -lopp_hip
+
+hip_mpi: mklib
+		 $(HIPCC) $(HIPCCFLAGS) -DUSE_MPI -c hip/hipkernels.cpp -o $(OBJ)/hipkernels_mpi.o $(ALL_INC) $(HIP_INC)
+	     $(HIPCC) $(HIPCCFLAGS) -DUSE_MPI -c cabana_op.cpp -o $(OBJ)/cabana_op_hip_mpi.o $(ALL_INC)
+	     $(HIPCC) $(HIPCCFLAGS) -DUSE_MPI -o $(BIN)/hip_mpi $(OBJ)/cabana_op_hip_mpi.o $(OBJ)/hipkernels_mpi.o $(ALL_INC) $(HIP_INC) $(ALL_LIBS) $(HIP_LIB) -lopp_hip_mpi -lmpi
 
 mpi_hdf5_conv: mklib
 		 $(MPICPP) $(CPPFLAGS) -DUSE_MPI -c fempic_convert_hdf5.cpp -o $(OBJ)/fempic_convert_hdf5.o $(ALL_INC)
