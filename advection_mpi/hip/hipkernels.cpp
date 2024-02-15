@@ -40,6 +40,8 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 __constant__ int OPP_cells_set_size_d;
 int OPP_cells_set_size;
 
+__constant__ int OPP_comm_iteration_d;
+
 //****************************************
 // TODO : This should be removed - only for testing
 OPP_REAL CONST_extents[2];

@@ -40,6 +40,8 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 __constant__ int OPP_cells_set_size_d;
 int OPP_cells_set_size;
 
+__constant__ int OPP_comm_iteration_d;
+
 //****************************************
 // TODO : This should be removed - only for testing
 OPP_REAL CONST_extents[2];
@@ -47,18 +49,18 @@ OPP_REAL CONST_dt = 0.0;
 OPP_REAL CONST_cell_width = 0.0;
 
 //****************************************
-__constant__ OPP_REAL CONST_CUDA_extents[2];
-__constant__ OPP_REAL CONST_CUDA_dt;
-__constant__ OPP_REAL CONST_CUDA_cell_width;
+__constant__ OPP_REAL CONST_DEVICE_extents[2];
+__constant__ OPP_REAL CONST_DEVICE_dt;
+__constant__ OPP_REAL CONST_DEVICE_cell_width;
 
 void opp_decl_const_impl(int dim, int size, char* data, const char* name)
 {
     if (!strcmp(name,"CONST_extents"))              
-        cutilSafeCall(cudaMemcpyToSymbol(CONST_CUDA_extents, data, dim*size));
+        cutilSafeCall(cudaMemcpyToSymbol(CONST_DEVICE_extents, data, dim*size));
     else if (!strcmp(name,"CONST_dt")) 
-        cutilSafeCall(cudaMemcpyToSymbol(CONST_CUDA_dt, data, dim*size));
+        cutilSafeCall(cudaMemcpyToSymbol(CONST_DEVICE_dt, data, dim*size));
     else if (!strcmp(name,"CONST_cell_width"))           
-        cutilSafeCall(cudaMemcpyToSymbol(CONST_CUDA_cell_width, data, dim*size));
+        cutilSafeCall(cudaMemcpyToSymbol(CONST_DEVICE_cell_width, data, dim*size));
     else 
         std::cerr << "error: unknown const name" << std::endl;
 

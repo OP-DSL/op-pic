@@ -38,10 +38,10 @@ int move_stride_OPP_HOST_2 = -1;
 int move_stride_OPP_HOST_3 = -1;
 int move_stride_OPP_HOST_4 = -1;
 
-__constant__ int move_stride_OPP_CUDA_1;
-__constant__ int move_stride_OPP_CUDA_2;
-__constant__ int move_stride_OPP_CUDA_3;
-__constant__ int move_stride_OPP_CUDA_4;
+__constant__ int move_stride_OPP_DEVICE_1;
+__constant__ int move_stride_OPP_DEVICE_2;
+__constant__ int move_stride_OPP_DEVICE_3;
+__constant__ int move_stride_OPP_DEVICE_4;
 
 //user function
 //*************************************************************************************************
@@ -57,37 +57,37 @@ __device__ void move_all_particles_to_cell__kernel(opp_move_var& m,
         
         for (int dm = 0; dm < DIM; dm++) {
             
-            part_pos[dm * move_stride_OPP_CUDA_2] += part_vel[dm * move_stride_OPP_CUDA_1] * CONST_CUDA_dt; // s1 = s0 + ut
+            part_pos[dm * move_stride_OPP_DEVICE_2] += part_vel[dm * move_stride_OPP_DEVICE_1] * CONST_DEVICE_dt; // s1 = s0 + ut
             
             // correct for periodic boundary conditions
-            const OPP_INT n_extent_offset_int = std::abs(part_pos[dm * move_stride_OPP_CUDA_2]) + 2.0;
-            const OPP_REAL temp_pos = part_pos[dm * move_stride_OPP_CUDA_2] + n_extent_offset_int * CONST_CUDA_extents[dm];
-            part_pos[dm * move_stride_OPP_CUDA_2] = std::fmod(temp_pos, CONST_CUDA_extents[dm]);
+            const OPP_INT n_extent_offset_int = std::abs(part_pos[dm * move_stride_OPP_DEVICE_2]) + 2.0;
+            const OPP_REAL temp_pos = part_pos[dm * move_stride_OPP_DEVICE_2] + n_extent_offset_int * CONST_DEVICE_extents[dm];
+            part_pos[dm * move_stride_OPP_DEVICE_2] = std::fmod(temp_pos, CONST_DEVICE_extents[dm]);
         }
     }
 
     // check for x direction movement
-    const OPP_REAL part_pos_x = part_pos[Dim::x * move_stride_OPP_CUDA_2];
-    if (part_pos_x < cell_pos_ll[Dim::x * move_stride_OPP_CUDA_3]) {
-        part_cid[0] = cell_cell_map[CellMap::xd_y * move_stride_OPP_CUDA_4];
+    const OPP_REAL part_pos_x = part_pos[Dim::x * move_stride_OPP_DEVICE_2];
+    if (part_pos_x < cell_pos_ll[Dim::x * move_stride_OPP_DEVICE_3]) {
+        part_cid[0] = cell_cell_map[CellMap::xd_y * move_stride_OPP_DEVICE_4];
         m.move_status = OPP_NEED_MOVE;
         return;
     }
-    if (part_pos_x > (cell_pos_ll[Dim::x * move_stride_OPP_CUDA_3] + CONST_CUDA_cell_width)) {
-        part_cid[0] = cell_cell_map[CellMap::xu_y * move_stride_OPP_CUDA_4];
+    if (part_pos_x > (cell_pos_ll[Dim::x * move_stride_OPP_DEVICE_3] + CONST_DEVICE_cell_width)) {
+        part_cid[0] = cell_cell_map[CellMap::xu_y * move_stride_OPP_DEVICE_4];
         m.move_status = OPP_NEED_MOVE;
         return;
     }
 
     // check for y direction movement
-    const OPP_REAL part_pos_y = part_pos[Dim::y * move_stride_OPP_CUDA_2];
-    if (part_pos_y < cell_pos_ll[Dim::y * move_stride_OPP_CUDA_3]) {
-        part_cid[0] = cell_cell_map[CellMap::x_yd * move_stride_OPP_CUDA_4];
+    const OPP_REAL part_pos_y = part_pos[Dim::y * move_stride_OPP_DEVICE_2];
+    if (part_pos_y < cell_pos_ll[Dim::y * move_stride_OPP_DEVICE_3]) {
+        part_cid[0] = cell_cell_map[CellMap::x_yd * move_stride_OPP_DEVICE_4];
         m.move_status = OPP_NEED_MOVE;
         return;
     }
-    if (part_pos_y > (cell_pos_ll[Dim::y * move_stride_OPP_CUDA_3] + CONST_CUDA_cell_width)) {
-        part_cid[0] = cell_cell_map[CellMap::x_yu * move_stride_OPP_CUDA_4];
+    if (part_pos_y > (cell_pos_ll[Dim::y * move_stride_OPP_DEVICE_3] + CONST_DEVICE_cell_width)) {
+        part_cid[0] = cell_cell_map[CellMap::x_yu * move_stride_OPP_DEVICE_4];
         m.move_status = OPP_NEED_MOVE;
         return;
     }
@@ -97,7 +97,7 @@ __device__ void move_all_particles_to_cell__kernel(opp_move_var& m,
 
 //*******************************************************************************
 // Returns true only if another hop is required by the current rank
-__device__ bool opp_part_check_status_cuda(opp_move_var& m, int* map0idx, int particle_index, 
+__device__ bool opp_part_check_status_device(opp_move_var& m, int* map0idx, int particle_index, 
                     int& remove_count, int *move_indices, int *move_count) 
 {
     m.iteration_one = false;
@@ -132,7 +132,7 @@ __device__ bool opp_part_check_status_cuda(opp_move_var& m, int* map0idx, int pa
 
 // CUDA kernel function
 //*************************************************************************************************
-__global__ void opp_cuda_all_Move(
+__global__ void opp_device_all_Move(
     OPP_INT *__restrict dir_arg0,           // part_cid 
     OPP_REAL *__restrict dir_arg1,          // part_vel 
     OPP_REAL *__restrict dir_arg2,          // part_pos 
@@ -151,6 +151,8 @@ __global__ void opp_cuda_all_Move(
         int n = tid + start;
 
         opp_move_var m;
+        m.iteration_one = (OPP_comm_iteration_d > 0) ? false : true;
+
         OPP_INT* cellIdx = nullptr; //MAX_CELL_INDEX;
 
         do
@@ -167,7 +169,7 @@ __global__ void opp_cuda_all_Move(
                 (ind_arg4 + *cellIdx)    // cell_cell_map
             );                
 
-        } while (opp_part_check_status_cuda(m, cellIdx, n, 
+        } while (opp_part_check_status_device(m, cellIdx, n, 
                         *particle_remove_count, move_indices, move_count));
     }
 }
@@ -213,11 +215,18 @@ void opp_particle_mover__UpdatePosMove(
             move_stride_OPP_HOST_4 = args[4].size; 
             OPP_cells_set_size = set->cells_set->size; 
          
-            cudaMemcpyToSymbol(OPP_cells_set_size_d, &OPP_cells_set_size, sizeof(int));
-            cudaMemcpyToSymbol(move_stride_OPP_CUDA_1, &move_stride_OPP_HOST_1, sizeof(int));
-            cudaMemcpyToSymbol(move_stride_OPP_CUDA_2, &move_stride_OPP_HOST_2, sizeof(int));
-            cudaMemcpyToSymbol(move_stride_OPP_CUDA_3, &move_stride_OPP_HOST_3, sizeof(int));
-            cudaMemcpyToSymbol(move_stride_OPP_CUDA_4, &move_stride_OPP_HOST_4, sizeof(int));
+            cutilSafeCall(cudaMemcpyToSymbol(OPP_cells_set_size_d, 
+                                                &OPP_cells_set_size, sizeof(int)));
+            cutilSafeCall(cudaMemcpyToSymbol(move_stride_OPP_DEVICE_1, 
+                                                &move_stride_OPP_HOST_1, sizeof(int)));
+            cutilSafeCall(cudaMemcpyToSymbol(move_stride_OPP_DEVICE_2, 
+                                                &move_stride_OPP_HOST_2, sizeof(int)));
+            cutilSafeCall(cudaMemcpyToSymbol(move_stride_OPP_DEVICE_3, 
+                                                &move_stride_OPP_HOST_3, sizeof(int)));
+            cutilSafeCall(cudaMemcpyToSymbol(move_stride_OPP_DEVICE_4, 
+                                                &move_stride_OPP_HOST_4, sizeof(int)));
+            cutilSafeCall(cudaMemcpyToSymbol(OPP_comm_iteration_d, 
+                                                &OPP_comm_iteration, sizeof(int)));
 
             opp_profiler->start("FMv_init_part");
             opp_init_particle_move(set, nargs, args);
@@ -226,8 +235,9 @@ void opp_particle_mover__UpdatePosMove(
             if (OPP_iter_end - OPP_iter_start > 0) 
             {
 
-                if (OP_DEBUG) 
-                    opp_printf("MOVE", "iter %d start %d end %d", OPP_comm_iteration, OPP_iter_start, OPP_iter_end);
+                if (OP_DEBUG || OPP_comm_iteration > 3)
+                    opp_printf("MOVE", "iter %d start %d end %d - COUNT=%d", OPP_comm_iteration, 
+                                    OPP_iter_start, OPP_iter_end, (OPP_iter_end - OPP_iter_start));
 
                 int nthread = OPP_gpu_threads_per_block;
                 int nblocks = (OPP_iter_end - OPP_iter_start - 1) / nthread + 1;
@@ -235,7 +245,7 @@ void opp_particle_mover__UpdatePosMove(
                 cutilSafeCall(cudaDeviceSynchronize());
                 opp_profiler->start("FMv_OnlyMoveKernel");
                 
-                opp_cuda_all_Move<<<nblocks, nthread>>>(
+                opp_device_all_Move<<<nblocks, nthread>>>(
                     (OPP_INT*)        args[0].data_d,         // part_cid 
                     (OPP_REAL*)       args[1].data_d,         // part_vel 
                     (OPP_REAL*)       args[2].data_d,         // part_pos 
