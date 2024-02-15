@@ -334,11 +334,6 @@ inline void push_particles_kernel(opp_move_var& m,
         // _exactly_ on the boundary.
         face = axis;
         if( v0>0 ) face += 3;
-        
-// const int updated_ii = get_neighbour_cell(part_cid[0], (FACE)face, 
-//     CONST_c_per_dim[Dim::x], CONST_c_per_dim[Dim::y], CONST_c_per_dim[Dim::z], 0);
-// // printf("[%d] Moving particle to new cell from %d to %d\n", OPP_rank, part_cid[0], updated_ii);
-// part_cid[0] = updated_ii;
 
         if (face == FACE_X_MIN ) { part_cid[0] =  cell_cell_map[CellMap::xd_y_z]; }
         else if (face == FACE_X_PLUS) { part_cid[0] =  cell_cell_map[CellMap::xu_y_z]; }

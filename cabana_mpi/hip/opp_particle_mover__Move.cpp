@@ -62,21 +62,21 @@ __device__ void dev_weight_current_to_accumulator__kernel(
 
     v5 = (*q) * ux * uy * uz * CONST_DEV_one_third;              // Compute correction
  
-    #define CALC_J(X,Y,Z)                                           \
-    v4  = (*q)*u##X;   /* v2 = q ux                            */   \
-    v1  = v4*d##Y;     /* v1 = q ux dy                         */   \
-    v0  = v4-v1;       /* v0 = q ux (1-dy)                     */   \
-    v1 += v4;          /* v1 = q ux (1+dy)                     */   \
+    #define CALC_J(X,Y,Z)                                                     \
+    v4  = (*q)*u##X;             /* v2 = q ux                            */   \
+    v1  = v4*d##Y;               /* v1 = q ux dy                         */   \
+    v0  = v4-v1;                 /* v0 = q ux (1-dy)                     */   \
+    v1 += v4;                    /* v1 = q ux (1+dy)                     */   \
     v4  = CONST_DEV_one+d##Z;    /* v4 = 1+dz                            */   \
-    v2  = v0*v4;       /* v2 = q ux (1-dy)(1+dz)               */   \
-    v3  = v1*v4;       /* v3 = q ux (1+dy)(1+dz)               */   \
+    v2  = v0*v4;                 /* v2 = q ux (1-dy)(1+dz)               */   \
+    v3  = v1*v4;                 /* v3 = q ux (1+dy)(1+dz)               */   \
     v4  = CONST_DEV_one-d##Z;    /* v4 = 1-dz                            */   \
-    v0 *= v4;          /* v0 = q ux (1-dy)(1-dz)               */   \
-    v1 *= v4;          /* v1 = q ux (1+dy)(1-dz)               */   \
-    v0 += v5;          /* v0 = q ux [ (1-dy)(1-dz) + uy*uz/3 ] */   \
-    v1 -= v5;          /* v1 = q ux [ (1+dy)(1-dz) - uy*uz/3 ] */   \
-    v2 -= v5;          /* v2 = q ux [ (1-dy)(1+dz) - uy*uz/3 ] */   \
-    v3 += v5;          /* v3 = q ux [ (1+dy)(1+dz) + uy*uz/3 ] */
+    v0 *= v4;                    /* v0 = q ux (1-dy)(1-dz)               */   \
+    v1 *= v4;                    /* v1 = q ux (1+dy)(1-dz)               */   \
+    v0 += v5;                    /* v0 = q ux [ (1-dy)(1-dz) + uy*uz/3 ] */   \
+    v1 -= v5;                    /* v1 = q ux [ (1+dy)(1-dz) - uy*uz/3 ] */   \
+    v2 -= v5;                    /* v2 = q ux [ (1-dy)(1+dz) - uy*uz/3 ] */   \
+    v3 += v5;                    /* v3 = q ux [ (1+dy)(1+dz) + uy*uz/3 ] */
 
     CALC_J( x,y,z );
     atomicAdd(&(cell0_acc[m_OPP_DEVICE_6 * CellAcc::jfx + 0]), v0); 
@@ -397,6 +397,8 @@ __global__ void opp_device_all_MoveToCells(
         int n = tid + start;
 
         opp_move_var m;
+        m.iteration_one = (OPP_comm_iteration_d > 0) ? false : true;
+
         int* map0idx = nullptr; //MAX_CELL_INDEX;
 
         do
@@ -454,12 +456,12 @@ void opp_particle_mover__Move(
     args[6]  = std::move(arg6);
     args[7]  = std::move(arg7);
 
-opp_profiler->start("FMv_HaloSend");
+    opp_profiler->start("FMv_HaloSend");
     int set_size = opp_mpi_halo_exchanges_grouped(set, nargs, args, Device_GPU);
-opp_profiler->end("FMv_HaloSend");
-opp_profiler->start("FMv_HaloWait");
+    opp_profiler->end("FMv_HaloSend");
+    opp_profiler->start("FMv_HaloWait");
     opp_mpi_halo_wait_all(nargs, args);
-opp_profiler->end("FMv_HaloWait");
+    opp_profiler->end("FMv_HaloWait");
 
     if (set_size > 0) 
     {
@@ -487,6 +489,8 @@ opp_profiler->end("FMv_HaloWait");
                                                         &m_OPP_HOST_7, sizeof(int)));
             cutilSafeCall(hipMemcpyToSymbol(HIP_SYMBOL(OPP_cells_set_size_d), 
                                                         &OPP_cells_set_size, sizeof(int)));
+            cutilSafeCall(hipMemcpyToSymbol(HIP_SYMBOL(OPP_comm_iteration_d), 
+                                                        &OPP_comm_iteration, sizeof(int)));
 
             opp_profiler->start("FMv_init_part");
             opp_init_particle_move(set, nargs, args);
@@ -495,9 +499,9 @@ opp_profiler->end("FMv_HaloWait");
             if (OPP_iter_end - OPP_iter_start > 0) 
             {
 
-                if (OP_DEBUG) 
-                    opp_printf("MOVE", "iter %d start %d end %d", OPP_comm_iteration, 
-                                            OPP_iter_start, OPP_iter_end);
+                if (OP_DEBUG || OPP_comm_iteration > 3)
+                    opp_printf("MOVE", "iter %d start %d end %d - COUNT=%d", OPP_comm_iteration, 
+                                    OPP_iter_start, OPP_iter_end, (OPP_iter_end - OPP_iter_start));
 
                 int nthread = OPP_gpu_threads_per_block;
                 int nblocks = (OPP_iter_end - OPP_iter_start - 1) / nthread + 1;

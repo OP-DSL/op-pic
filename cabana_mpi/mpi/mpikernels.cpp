@@ -185,15 +185,15 @@ void opp_particle_mover__Move(
     {
         opp_init_particle_move(set, nargs, args);
         
-        if (OP_DEBUG) 
-            opp_printf("MOVE", "iter %d start %d end %d", OPP_comm_iteration, 
-                                    OPP_iter_start, OPP_iter_end);
+        if (OP_DEBUG || OPP_comm_iteration > 3)
+            opp_printf("MOVE", "iter %d start %d end %d - COUNT=%d", OPP_comm_iteration, 
+                                    OPP_iter_start, OPP_iter_end, (OPP_iter_end - OPP_iter_start));
 
         int* cellIdx = nullptr;
 
         for (int n = OPP_iter_start; n < OPP_iter_end; n++)
         {
-            opp_move_var m; // = opp_get_move_var();
+            opp_move_var m = opp_get_move_var();
 
             do
             {
@@ -209,9 +209,6 @@ void opp_particle_mover__Move(
                     &((double*) args[6].data)[*cellIdx * args[6].dim],  // cell_acc
                     &((int*)    args[7].data)[*cellIdx * args[7].dim]   // cell_cell_map
                 );
-
-// opp_printf("MOVE", "Part %d, cellIdx[%d] %2.20lE %2.20lE",  n, *cellIdx, 
-//     ((double*) args[6].data)[*cellIdx * args[6].dim], ((double*) args[6].data)[*cellIdx * args[6].dim + 1]);
 
             } while (opp_part_check_status(m, *cellIdx, set, n, set->particle_remove_count)); 
         }

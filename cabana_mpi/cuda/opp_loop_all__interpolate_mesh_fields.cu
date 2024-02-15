@@ -206,12 +206,13 @@ void opp_loop_all__interpolate_mesh_fields(
     args[10] = std::move(arg10);
     args[11] = std::move(arg11);
 
-opp_profiler->start("Interp_HaloSend");
+    opp_profiler->start("Interp_HaloSend");
     int set_size = opp_mpi_halo_exchanges_grouped(set, nargs, args, Device_GPU);
-opp_profiler->end("Interp_HaloSend");
-opp_profiler->start("Interp_HaloWait");
+    opp_profiler->end("Interp_HaloSend");
+    opp_profiler->start("Interp_HaloWait");
     opp_mpi_halo_wait_all(nargs, args);
-opp_profiler->end("Interp_HaloWait");
+    opp_profiler->end("Interp_HaloWait");
+    
     if (set_size > 0) 
     {
         imf_OPP_HOST_0 = args[0].dat->set->set_capacity;

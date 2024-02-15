@@ -131,12 +131,13 @@ void opp_loop_all__advance_e(
     args[4] = std::move(arg4);
     args[5] = std::move(arg5);
 
-opp_profiler->start("Adv_E_HaloSend");
+    opp_profiler->start("Adv_E_HaloSend");
     int set_size = opp_mpi_halo_exchanges_grouped(set, nargs, args, Device_GPU);
-opp_profiler->end("Adv_E_HaloSend");
-opp_profiler->start("Adv_E_HaloWait");
+    opp_profiler->end("Adv_E_HaloSend");
+    opp_profiler->start("Adv_E_HaloWait");
     opp_mpi_halo_wait_all(nargs, args);
-opp_profiler->end("Adv_E_HaloWait");
+    opp_profiler->end("Adv_E_HaloWait");
+    
     if (set_size > 0) 
     {
         ae_OPP_HOST_0 = args[0].dat->set->set_capacity;

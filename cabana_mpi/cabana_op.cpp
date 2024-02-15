@@ -166,10 +166,6 @@ int main(int argc, char **argv)
                 opp_get_arg(cell_b,                                 OP_INC)
             );
 
-//             serial_update_ghosts_B(cell_b);
-//             serial_update_ghosts(cell_j);
-//             serial_update_ghosts_B(cell_j);
-
             opp_loop_all__advance_e(
                 cell_set,
                 opp_get_arg(cell_b, CellMap::xd_y_z, cell_cell_map, OP_READ),
@@ -189,8 +185,7 @@ int main(int argc, char **argv)
                 opp_get_arg(cell_b,                                 OP_INC) 
             );
 
-//             serial_update_ghosts_B(cell_b);
-            std::string log = "";
+            std::string log = ""; // TODO : print some unseful information to verify
             if (OPP_rank == OPP_ROOT) 
                 opp_printf("Main", "ts: %d %s ****", OPP_main_loop_iter, log.c_str());
         }

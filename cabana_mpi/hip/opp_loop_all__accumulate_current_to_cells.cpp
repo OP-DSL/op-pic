@@ -148,29 +148,30 @@ void opp_loop_all__accumulate_current_to_cells(
     args[5] = std::move(arg5);
     args[6] = std::move(arg6);
     args[7] = std::move(arg7);
-opp_profiler->start("Acc_HaloSend");
+
+    opp_profiler->start("Acc_HaloSend");
     int set_size = opp_mpi_halo_exchanges_grouped(set, nargs, args, Device_GPU);
-opp_profiler->end("Acc_HaloSend");
-opp_profiler->start("Acc_HaloWait");
+    opp_profiler->end("Acc_HaloSend");
+    opp_profiler->start("Acc_HaloWait");
     opp_mpi_halo_wait_all(nargs, args);
-opp_profiler->end("Acc_HaloWait");
+    opp_profiler->end("Acc_HaloWait");
+
     if (set_size > 0) 
     {
         acc_OPP_HOST_0 = args[0].dat->set->set_capacity;
         acc_OPP_HOST_2 = args[2].dat->set->set_capacity;
         acc_OPP_HOST_2_MAP_STRIDE = args[2].size;
-opp_profiler->start("Acc_Symbol");
+
+        opp_profiler->start("Acc_Symbol");
         cutilSafeCall(hipMemcpyToSymbol(HIP_SYMBOL(acc_OPP_DEV_0), 
                                                     &acc_OPP_HOST_0, sizeof(int)));
         cutilSafeCall(hipMemcpyToSymbol(HIP_SYMBOL(acc_OPP_DEV_2), 
                                                     &acc_OPP_HOST_2, sizeof(int)));
         cutilSafeCall(hipMemcpyToSymbol(HIP_SYMBOL(acc_OPP_DEV_2_MAP_STRIDE), 
                                                     &acc_OPP_HOST_2_MAP_STRIDE, sizeof(int)));
-opp_profiler->end("Acc_Symbol");
         int start = 0;
         int end   = set->size;
 
-opp_profiler->start("Acc_Kernel");
         if (end - start > 0) 
         {
             int nthread = OPP_gpu_threads_per_block;
@@ -191,8 +192,7 @@ opp_profiler->start("Acc_Kernel");
         } 
 
         opp_set_dirtybit_grouped(nargs, args, Device_GPU);
-        cutilSafeCall(hipDeviceSynchronize()); 
-opp_profiler->end("Acc_Kernel");      
+        cutilSafeCall(hipDeviceSynchronize());   
     }
 
     opp_profiler->end("Acc_Current");

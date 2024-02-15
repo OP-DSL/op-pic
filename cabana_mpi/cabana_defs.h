@@ -149,11 +149,11 @@ enum CellMap {
 };
 
 enum FACE {
-    FACE_X_MIN  = 0,
-    FACE_X_PLUS = 1,
-    FACE_Y_MIN  = 2,
-    FACE_Y_PLUS = 3,
-    FACE_Z_MIN  = 4,
+    FACE_X_MIN  = 0,   
+    FACE_Y_MIN  = 1,  
+    FACE_Z_MIN  = 2,
+    FACE_X_PLUS = 3,
+    FACE_Y_PLUS = 4,
     FACE_Z_PLUS = 5,
 };
 
