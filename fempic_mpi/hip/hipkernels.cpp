@@ -115,3 +115,5 @@ void opp_decl_const_impl(int dim, int size, char* data, const char* name)
 //*************************************************************************************************
 #include "opp_loop_all__InitBndPotential.cpp"
 
+//*************************************************************************************************
+#include "opp_loop_all__GetFinalMaxValues.cpp"

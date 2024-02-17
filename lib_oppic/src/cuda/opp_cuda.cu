@@ -36,7 +36,8 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 // arrays for global constants and reductions
 int OP_consts_bytes = 0, OP_reduct_bytes = 0;
-char *OP_consts_h, *OP_consts_d, *OP_reduct_h, *OP_reduct_d;
+char *OP_reduct_h = nullptr;
+char *OP_reduct_d = nullptr;
 
 //****************************************
 void opp_init(int argc, char **argv)
@@ -93,6 +94,9 @@ void opp_exit()
     cellMapper.reset();
     boundingBox.reset();
     comm.reset();
+
+    if (OP_reduct_h) free(OP_reduct_h);
+    if (OP_reduct_d) cutilSafeCall(cudaFree(OP_reduct_d));
 
 #ifdef USE_MPI 
         opp_halo_destroy(); // free memory allocated to halos and mpi_buffers 

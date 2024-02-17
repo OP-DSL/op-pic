@@ -34,6 +34,11 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "opp_particle_comm.cpp"
 #include "opp_increase_part_count.cpp"
 
+// arrays for global constants and reductions
+int OP_consts_bytes = 0, OP_reduct_bytes = 0;
+char *OP_reduct_h = nullptr;
+char *OP_reduct_d = nullptr;
+
 //****************************************
 void opp_init(int argc, char **argv)
 {
@@ -85,6 +90,9 @@ void opp_exit()
     cellMapper.reset();
     boundingBox.reset();
     comm.reset();
+
+    if (OP_reduct_h) free(OP_reduct_h);
+    if (OP_reduct_d) cutilSafeCall(hipFree(OP_reduct_d));
 
 #ifdef USE_MPI 
         opp_halo_destroy(); // free memory allocated to halos and mpi_buffers 
@@ -402,9 +410,8 @@ void opp_reset_dat(oppic_dat dat, char* val, opp_reset reset)
         opp_printf("oppic_reset_dat", "dat [%s] dim [%d] dat size [%d] set size [%d] set capacity [%d]", 
             dat->name, dat->dim, dat->size, dat->set->size, dat->set->set_capacity);
 
-    int start = 0, end = dat->set->size;
-
 #ifdef USE_MPI
+    int start = 0, end = dat->set->size;
     opp_get_start_end(dat->set, reset, start, end);
 
     size_t element_size = dat->size / dat->dim;
@@ -955,7 +962,32 @@ void opp_host_free(void* ptr)
 
 
 //*******************************************************************************
+void opp_reallocReductArrays(int reduct_bytes) 
+{
+    if (reduct_bytes > OP_reduct_bytes) 
+    {
+        if (OP_reduct_bytes > 0) 
+        {
+            free(OP_reduct_h);
+            cutilSafeCall(hipFree(OP_reduct_d));
+        }
+        OP_reduct_bytes = 4 * reduct_bytes; // 4 is arbitrary, more than needed
+        OP_reduct_h = (char *)malloc(OP_reduct_bytes);
+        cutilSafeCall(hipMalloc((void **)&OP_reduct_d, OP_reduct_bytes));
+    }
+}
 
+void opp_mvReductArraysToDevice(int reduct_bytes) 
+{
+    cutilSafeCall(hipMemcpy(OP_reduct_d, OP_reduct_h, reduct_bytes, hipMemcpyHostToDevice));
+    cutilSafeCall(hipDeviceSynchronize());
+}
+
+void opp_mvReductArraysToHost(int reduct_bytes) 
+{
+    cutilSafeCall(hipMemcpy(OP_reduct_h, OP_reduct_d, reduct_bytes, hipMemcpyDeviceToHost));
+    cutilSafeCall(hipDeviceSynchronize());
+}
 
 
 

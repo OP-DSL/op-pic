@@ -70,7 +70,7 @@ extern int *OPP_move_count_d;
 extern thrust::device_vector<int> OPP_thrust_move_indices_d;
 
 // arrays for global constants and reductions
-extern char *OP_consts_h, *OP_consts_d, *OP_reduct_h, *OP_reduct_d;
+extern char *OP_reduct_h, *OP_reduct_d;
 
 //*************************************************************************************************
 

@@ -46,6 +46,7 @@ std::vector<oppic_dat> oppic_dats;
 int OP_hybrid_gpu                   = 0;
 int OP_maps_base_index              = 0;
 int OP_auto_soa                     = 0;
+int OP_gpu_direct                   = 0;
 int OP_part_alloc_mult              = 1;
 int OP_auto_sort                    = 1;
 int OPP_mpi_part_alloc_mult         = 1;
