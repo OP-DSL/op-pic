@@ -349,9 +349,13 @@ void __opp_colour_cartesian_mesh(const int ndim, const std::vector<int> cell_cou
     {
         std::string log = "";
         for (int r = 0; r < OPP_comm_size; r++) {
-            log += std::string("\nrank ") + std::to_string(r) + " start (" + 
-                std::to_string(all_cell_starts[r*ndim+0]) + "," + std::to_string(all_cell_starts[r*ndim+1]) +
-                ") end (" + std::to_string(all_cell_ends[r*ndim+0]) + "," + std::to_string(all_cell_ends[r*ndim+1]) + ")";
+            log += std::string("\nrank ") + std::to_string(r) + " start (";
+            for (int d = 0; d < ndim; d++)
+                log += std::to_string(all_cell_starts[r*ndim+d]) + ",";
+            log += ") end (";
+            for (int d = 0; d < ndim; d++)
+                log += std::to_string(all_cell_ends[r*ndim+d]) + ",";
+            log += ")";
         }
         opp_printf("__opp_colour_cartesian_mesh", "%s", log.c_str());
     }
@@ -397,4 +401,124 @@ void __opp_colour_cartesian_mesh(const int ndim, const std::vector<int> cell_cou
     }
 
 #undef CART_RANK_TO_INDEX
+}
+
+
+//*******************************************************************************
+void opp_mpi_reduce_double(opp_arg *arg, double *data) 
+{
+    (void)data;
+
+    if (arg->data == NULL)
+        return;
+
+    if (arg->argtype == OP_ARG_GBL && arg->acc != OP_READ) 
+    {
+        double result_static;
+        double *result;
+        
+        if (arg->dim > 1 && arg->acc != OP_WRITE)
+            result = (double *)opp_host_malloc(arg->dim * sizeof(double));
+        else
+            result = &result_static;
+
+        if (arg->acc == OP_INC) // global reduction
+        {
+            MPI_Allreduce((double *)arg->data, result, arg->dim, MPI_DOUBLE, MPI_SUM,
+                            MPI_COMM_WORLD);
+            memcpy(arg->data, result, sizeof(double) * arg->dim);
+        } 
+        else if (arg->acc == OP_MAX) // global maximum
+        {
+            MPI_Allreduce((double *)arg->data, result, arg->dim, MPI_DOUBLE, MPI_MAX,
+                            MPI_COMM_WORLD);
+            memcpy(arg->data, result, sizeof(double) * arg->dim);
+        } 
+        else if (arg->acc == OP_MIN) // global minimum
+        {
+            MPI_Allreduce((double *)arg->data, result, arg->dim, MPI_DOUBLE, MPI_MIN,
+                            MPI_COMM_WORLD);
+            memcpy(arg->data, result, sizeof(double) * arg->dim);
+        } 
+        else if (arg->acc == OP_WRITE) // any
+        {
+            result = (double *)opp_host_malloc(arg->dim * OPP_comm_size * sizeof(double));
+            MPI_Allgather((double *)arg->data, arg->dim, MPI_DOUBLE, result, arg->dim,
+                            MPI_DOUBLE, MPI_COMM_WORLD);
+            
+            for (int i = 1; i < OPP_comm_size; i++) 
+            {
+                for (int j = 0; j < arg->dim; j++) 
+                {
+                    if (result[i * arg->dim + j] != 0.0)
+                        result[j] = result[i * arg->dim + j];
+                }
+            }
+            memcpy(arg->data, result, sizeof(double) * arg->dim);
+            
+            if (arg->dim == 1)
+                opp_host_free(result);
+        }
+
+        if (arg->dim > 1)
+            opp_host_free(result);
+    }
+}
+
+//*******************************************************************************
+void opp_mpi_reduce_int(opp_arg *arg, int *data) 
+{
+    (void)data;
+
+    if (arg->data == NULL)
+        return;
+
+    if (arg->argtype == OP_ARG_GBL && arg->acc != OP_READ) 
+    {
+        int result_static;
+        int *result;
+
+        if (arg->dim > 1 && arg->acc != OP_WRITE)
+            result = (int *)opp_host_malloc(arg->dim * sizeof(int));
+        else
+            result = &result_static;
+
+        if (arg->acc == OP_INC) // global reduction
+        {
+            MPI_Allreduce((int *)arg->data, result, arg->dim, MPI_INT, MPI_SUM,
+                            MPI_COMM_WORLD);
+            memcpy(arg->data, result, sizeof(int) * arg->dim);
+        } 
+        else if (arg->acc == OP_MAX) // global maximum
+        {
+            MPI_Allreduce((int *)arg->data, result, arg->dim, MPI_INT, MPI_MAX,
+                            MPI_COMM_WORLD);
+            memcpy(arg->data, result, sizeof(int) * arg->dim);
+        } 
+        else if (arg->acc == OP_MIN) // global minimum
+        {
+            MPI_Allreduce((int *)arg->data, result, arg->dim, MPI_INT, MPI_MIN,
+                            MPI_COMM_WORLD);
+            memcpy(arg->data, result, sizeof(int) * arg->dim);
+        } 
+        else if (arg->acc == OP_WRITE) // any
+        {
+            result = (int *)opp_host_malloc(arg->dim * OPP_comm_size * sizeof(int));
+            MPI_Allgather((int *)arg->data, arg->dim, MPI_INT, result, arg->dim,
+                            MPI_INT, MPI_COMM_WORLD);
+            for (int i = 1; i < OPP_comm_size; i++) 
+            {
+                for (int j = 0; j < arg->dim; j++) 
+                {
+                    if (result[i * arg->dim + j] != 0)
+                        result[j] = result[i * arg->dim + j];
+                }
+            }
+            memcpy(arg->data, result, sizeof(int) * arg->dim);
+            if (arg->dim == 1)
+                opp_host_free(result);
+        }
+        if (arg->dim > 1)
+            opp_host_free(result);
+    }
 }

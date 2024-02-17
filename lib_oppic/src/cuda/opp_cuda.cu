@@ -34,6 +34,10 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "opp_particle_comm.cu"
 #include "opp_increase_part_count.cu"
 
+// arrays for global constants and reductions
+int OP_consts_bytes = 0, OP_reduct_bytes = 0;
+char *OP_consts_h, *OP_consts_d, *OP_reduct_h, *OP_reduct_d;
+
 //****************************************
 void opp_init(int argc, char **argv)
 {
@@ -66,6 +70,10 @@ void opp_init(int argc, char **argv)
     if (threads_per_block > 0 && threads_per_block < INT_MAX)
         OPP_gpu_threads_per_block = threads_per_block;
 
+    int gpu_direct = opp_params->get<OPP_INT>("opp_gpu_direct");   
+    if (gpu_direct > 0 && gpu_direct < INT_MAX)
+        OP_gpu_direct = gpu_direct;
+
     int deviceId = -1;
     cudaGetDevice(&deviceId);
     cudaDeviceProp deviceProp;
@@ -74,8 +82,8 @@ void opp_init(int argc, char **argv)
     OPP_gpu_shared_mem_per_block = deviceProp.sharedMemPerBlock;
 
     opp_printf("opp_init", 
-        "CUDA device: %d %s OPP_gpu_threads_per_block=%d Shared memory per block=%lu bytes", 
-        deviceId, deviceProp.name, OPP_gpu_threads_per_block, deviceProp.sharedMemPerBlock);
+        "CUDA device: %d %s OPP_gpu_threads_per_block=%d Shared memory per block=%lu bytes gpu_direct=%d", 
+        deviceId, deviceProp.name, OPP_gpu_threads_per_block, deviceProp.sharedMemPerBlock, OP_gpu_direct);
 }
 
 //****************************************
@@ -402,9 +410,8 @@ void opp_reset_dat(oppic_dat dat, char* val, opp_reset reset)
         opp_printf("oppic_reset_dat", "dat [%s] dim [%d] dat size [%d] set size [%d] set capacity [%d]", 
             dat->name, dat->dim, dat->size, dat->set->size, dat->set->set_capacity);
 
-    int start = 0, end = dat->set->size;
-
 #ifdef USE_MPI
+    int start = 0, end = dat->set->size;
     opp_get_start_end(dat->set, reset, start, end);
 
     size_t element_size = dat->size / dat->dim;
@@ -928,7 +935,32 @@ void opp_host_free(void* ptr)
 
 
 //*******************************************************************************
+void opp_reallocReductArrays(int reduct_bytes) 
+{
+    if (reduct_bytes > OP_reduct_bytes) 
+    {
+        if (OP_reduct_bytes > 0) 
+        {
+            free(OP_reduct_h);
+            cutilSafeCall(cudaFree(OP_reduct_d));
+        }
+        OP_reduct_bytes = 4 * reduct_bytes; // 4 is arbitrary, more than needed
+        OP_reduct_h = (char *)malloc(OP_reduct_bytes);
+        cutilSafeCall(cudaMalloc((void **)&OP_reduct_d, OP_reduct_bytes));
+    }
+}
 
+void opp_mvReductArraysToDevice(int reduct_bytes) 
+{
+    cutilSafeCall(cudaMemcpy(OP_reduct_d, OP_reduct_h, reduct_bytes, cudaMemcpyHostToDevice));
+    cutilSafeCall(cudaDeviceSynchronize());
+}
+
+void opp_mvReductArraysToHost(int reduct_bytes) 
+{
+    cutilSafeCall(cudaMemcpy(OP_reduct_h, OP_reduct_d, reduct_bytes, cudaMemcpyDeviceToHost));
+    cutilSafeCall(cudaDeviceSynchronize());
+}
 
 
 

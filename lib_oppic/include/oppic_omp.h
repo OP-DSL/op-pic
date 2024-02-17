@@ -134,3 +134,15 @@ void print_dat_to_txtfile_mpi(op_dat dat, const char *file_name);
 void opp_mpi_print_dat_to_txtfile(op_dat dat, const char *file_name);
 
 /*******************************************************************************/
+
+inline void opp_mpi_reduce(opp_arg *args, double *data) 
+{
+    (void)args;
+    (void)data;
+}
+
+inline void opp_mpi_reduce(opp_arg *args, int *data) 
+{
+    (void)args;
+    (void)data;
+}

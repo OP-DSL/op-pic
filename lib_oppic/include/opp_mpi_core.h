@@ -147,8 +147,8 @@ extern int **export_exec_list_d;
 extern int **export_exec_list_disps_d;
 extern int **export_nonexec_list_d;
 extern int **export_nonexec_list_disps_d;
-extern int **export_nonexec_list_partial_d;
-extern int **import_nonexec_list_partial_d;
+// extern int **export_nonexec_list_partial_d;
+// extern int **import_nonexec_list_partial_d;
 extern int *set_import_buffer_size;
 extern int **import_exec_list_disps_d;
 extern int **import_nonexec_list_disps_d;
@@ -391,6 +391,12 @@ inline void opp_uniform_scatter_array(T *g_array, T *l_array, int g_size, int l_
 /*******************************************************************************
 * Functions declared in opp_mpi_partition.cpp
 *******************************************************************************/
+
+void opp_partition(std::string lib_name, op_set prime_set, op_map prime_map = nullptr, op_dat data = nullptr);
+
+void print_dat_to_txtfile_mpi(op_dat dat, const char *file_name);
+void opp_mpi_print_dat_to_txtfile(op_dat dat, const char *file_name);
+
 #if __cplusplus
 extern "C" {
 #endif
@@ -424,6 +430,9 @@ bool opp_part_check_all_done(oppic_set set);
 void opp_part_wait_all(oppic_set set);
 void opp_part_comm_destroy();
 void opp_part_mark_move(oppic_set set, int particle_index, opp_particle_comm_data& comm_data);
+
+// returns true, if the current particle needs to be removed from the rank
+bool opp_part_checkForGlobalMove(opp_set set, const opp_point& point, const int partIndex, int& cellIdx);
 
 /*******************************************************************************
 * Functions declared in opp_mpi_halo_core.cpp
@@ -470,3 +479,6 @@ void opp_process_marked_particles(opp_set set);
 // cell_colors : local cell_colors dat to colour with most appropriate MPI rank
 void __opp_colour_cartesian_mesh(const int ndim, const std::vector<int> cell_counts, opp_dat cell_index, 
                             const opp_dat cell_colors);
+
+void opp_mpi_reduce_double(opp_arg *args, double *data);
+void opp_mpi_reduce_int(opp_arg *args, int *data);

@@ -75,7 +75,7 @@ ifeq ($(PARMETIS), 1)
 	ALL_INC  += -DHAVE_PARMETIS
 endif
 
-REDUCE_BY_KEY ?= 1
+REDUCE_BY_KEY ?= 0
 ifeq ($(REDUCE_BY_KEY), 1)
 	ALL_INC  += -DUSE_REDUCE_BY_KEY
 endif
@@ -135,11 +135,20 @@ cuda: common
 		 $(NVCC) $(NVCCFLAGS) -c cuda/cudakernels.cu -o $(OBJ)/cudakernels.o $(ALL_INC) $(CUDA_INC)
 	     $(CPP) $(CPPFLAGS) -o $(BIN)/cuda $(OBJ)/fempic_op.o $(OBJ)/meshes.o $(OBJ)/particles.o $(OBJ)/maths.o $(OBJ)/cudakernels.o $(OBJ)/FESolver.o $(ALL_INC) $(CUDA_INC) $(ALL_LIBS) $(CUDA_LIB) -lopp_cuda
 
-cuda_mpi: mpi_common
+cuda_mpi: mklib
+		 $(MPICPP) $(CPPFLAGS) -DUSE_MPI -c fempic_ori/meshes.cpp -o $(OBJ)/meshes.o $(ALL_INC)
+	     $(MPICPP) $(CPPFLAGS) -DUSE_MPI -c fempic_ori/particles.cpp -o $(OBJ)/particles.o $(ALL_INC)
+		 $(MPICPP) $(CPPFLAGS) -DUSE_MPI -c fempic_ori/maths.cpp -o $(OBJ)/maths.o $(ALL_INC)
 		 $(NVCC) $(NVCCFLAGS) -DUSE_MPI -c FESolver_cuda.cu -o $(OBJ)/FESolver_cuda.o $(ALL_INC) $(CUDA_INC)
 		 $(MPICPP) $(CPPFLAGS) -DUSE_MPI -c fempic_op.cpp -o $(OBJ)/fempic_op.o $(ALL_INC)	
 		 $(NVCC) $(NVCCFLAGS) -DUSE_MPI -c cuda/cudakernels.cu -o $(OBJ)/cudakernels.o $(ALL_INC) $(CUDA_INC)
-	     $(MPICPP) $(CPPFLAGS) -DUSE_MPI -o $(BIN)/cuda_mpi $(OBJ)/fempic_op.o $(OBJ)/meshes.o $(OBJ)/particles.o $(OBJ)/maths.o $(OBJ)/cudakernels.o $(OBJ)/FESolver_cuda.o $(ALL_INC) $(CUDA_INC) $(ALL_LIBS) $(CUDA_LIB) -lopp_cuda_mpi
+	     $(MPICPP) $(CPPFLAGS) -DUSE_MPI -o $(BIN)/cuda_mpi \
+		 	$(OBJ)/fempic_op.o \
+			$(OBJ)/meshes.o \
+			$(OBJ)/particles.o \
+			$(OBJ)/maths.o 	\
+			$(OBJ)/cudakernels.o \
+			$(OBJ)/FESolver_cuda.o $(ALL_INC) $(CUDA_INC) $(ALL_LIBS) $(CUDA_LIB) -lopp_cuda_mpi
 
 cuda_mpi_hdf5: mpi_common
 		 $(NVCC) $(NVCCFLAGS) -DUSE_MPI -c FESolver_cuda.cu -o $(OBJ)/FESolver_cuda.o $(ALL_INC)	

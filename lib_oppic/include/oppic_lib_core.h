@@ -169,8 +169,13 @@ typedef struct oppic_map_core *oppic_map;
 struct oppic_dat_core;
 typedef struct oppic_dat_core *oppic_dat;
 
+// TODO : Remove below two and keep opp_
 typedef int oppic_access;       /* holds OP_READ, OP_WRITE, OP_RW, OP_INC, OP_MIN, OP_MAX */
 typedef int oppic_arg_type;     /* holds OP_ARG_GBL, OP_ARG_DAT, OP_ARG_MAP */
+
+typedef int opp_access;       /* holds OP_READ, OP_WRITE, OP_RW, OP_INC, OP_MIN, OP_MAX */
+typedef int opp_arg_type;     /* holds OP_ARG_GBL, OP_ARG_DAT, OP_ARG_MAP */
+
 
 struct oppic_arg {
     int index;                  /* index */
@@ -340,6 +345,7 @@ extern int OP_hybrid_gpu;
 extern double OP_hybrid_balance;
 extern int OP_maps_base_index;
 extern int OP_auto_soa;
+extern int OP_gpu_direct;
 extern int OP_part_alloc_mult;
 extern int OP_auto_sort;
 extern int OPP_mpi_part_alloc_mult;

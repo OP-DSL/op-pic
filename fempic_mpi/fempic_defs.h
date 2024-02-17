@@ -37,7 +37,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "oppic_lib.h"
 #ifdef USE_MPI
-    #include "opp_mpi.h"
+    #include "opp_mpi_core.h"
 #endif
 #include "opp_cluster.h"
 

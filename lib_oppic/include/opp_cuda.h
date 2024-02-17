@@ -69,6 +69,9 @@ extern int *OPP_move_indices_d;
 extern int *OPP_move_count_d;
 extern thrust::device_vector<int> OPP_thrust_move_indices_d;
 
+// arrays for global constants and reductions
+extern char *OP_consts_h, *OP_consts_d, *OP_reduct_h, *OP_reduct_d;
+
 //*************************************************************************************************
 
 void __cudaSafeCall(cudaError_t err, const char *file, const int line);
@@ -116,6 +119,151 @@ void sort_dat_according_to_index_int(oppic_dat dat, const thrust::device_vector<
 void sort_dat_according_to_index_double(oppic_dat dat, const thrust::device_vector<int>& new_idx_dv, 
     int set_capacity, int size, bool hole_filling, int out_start_idx);
 
+
+inline void opp_mpi_reduce(opp_arg *args, double *data) 
+{
+#ifdef USE_MPI
+    opp_mpi_reduce_double(args, data);
+#else
+    (void)args;
+    (void)data;
+#endif
+}
+
+inline void opp_mpi_reduce(opp_arg *args, int *data) 
+{
+#ifdef USE_MPI
+    opp_mpi_reduce_int(args, data);
+#else
+    (void)args;
+    (void)data;
+#endif
+}
+
+/*******************************************************************************/
+// routines to resize constant/reduct arrays, if necessary
+
+void opp_reallocReductArrays(int reduct_bytes);
+
+void opp_mvReductArraysToDevice(int reduct_bytes);
+
+void opp_mvReductArraysToHost(int reduct_bytes);
+
+template <opp_access reduction, class T>
+__inline__ __device__ void opp_reduction(volatile T *dat_g, T dat_l) 
+{
+    extern __shared__ volatile double temp2[];
+    __shared__ volatile T *temp;
+    temp = (T *)temp2;
+    T dat_t;
+
+    __syncthreads(); /* important to finish all previous activity */
+
+    int tid = threadIdx.x;
+    temp[tid] = dat_l;
+
+    // first, cope with blockDim.x perhaps not being a power of 2
+
+    __syncthreads();
+
+    int d = 1 << (31 - __clz(((int)blockDim.x - 1)));
+    // d = blockDim.x/2 rounded up to nearest power of 2
+
+    if (tid + d < blockDim.x) {
+        dat_t = temp[tid + d];
+
+        switch (reduction) {
+        case OP_INC:
+        dat_l = dat_l + dat_t;
+        break;
+        case OP_MIN:
+        if (dat_t < dat_l)
+            dat_l = dat_t;
+        break;
+        case OP_MAX:
+        if (dat_t > dat_l)
+            dat_l = dat_t;
+        break;
+        }
+
+        temp[tid] = dat_l;
+    }
+
+    // second, do reductions involving more than one warp
+
+    for (d >>= 1; d > warpSize; d >>= 1) {
+        __syncthreads();
+
+        if (tid < d) {
+            dat_t = temp[tid + d];
+
+            switch (reduction) {
+            case OP_INC:
+                dat_l = dat_l + dat_t;
+                break;
+            case OP_MIN:
+                if (dat_t < dat_l)
+                dat_l = dat_t;
+                break;
+            case OP_MAX:
+                if (dat_t > dat_l)
+                dat_l = dat_t;
+                break;
+            }
+
+            temp[tid] = dat_l;
+        }
+    }
+
+    // third, do reductions involving just one warp
+
+    __syncthreads();
+
+    if (tid < warpSize) {
+        for (; d > 0; d >>= 1) {
+            __syncwarp();
+            if (tid < d) {
+                dat_t = temp[tid + d];
+
+                switch (reduction) {
+                case OP_INC:
+                dat_l = dat_l + dat_t;
+                break;
+                case OP_MIN:
+                if (dat_t < dat_l)
+                    dat_l = dat_t;
+                break;
+                case OP_MAX:
+                if (dat_t > dat_l)
+                    dat_l = dat_t;
+                break;
+                }
+
+                temp[tid] = dat_l;
+            }
+        }
+
+        // finally, update global reduction variable
+
+        if (tid == 0) {
+            switch (reduction) {
+            case OP_INC:
+                *dat_g = *dat_g + dat_l;
+                break;
+            case OP_MIN:
+                if (dat_l < *dat_g)
+                *dat_g = dat_l;
+                break;
+            case OP_MAX:
+                if (dat_l > *dat_g)
+                *dat_g = dat_l;
+                break;
+            }
+        }
+    }
+}
+
+/*******************************************************************************/
 /*
 This function arranges the multi dimensional values in input array to output array according to the indices provided
     in_dat_dv - Input array with correct values

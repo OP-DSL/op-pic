@@ -186,25 +186,14 @@ inline void print_per_cell_particle_counts(oppic_dat c_part_count, oppic_dat par
 }
 
 //*************************************************************************************************
-inline std::string get_global_level_log(oppic_dat n_charge_density, oppic_dat n_potential, int local_part_count, 
-    int local_parts_injected, int local_part_removed)
+inline std::string get_global_level_log(double max_n_charge_density, double max_n_potential, 
+    int local_part_count, int local_parts_injected, int local_part_removed)
 {
     std::string log = "";
-    double max_den = 0.0, max_phi = 0.0;
-    double global_max_den = 0.0, global_max_phi = 0.0;
     int64_t global_part_size = 0, global_inj_size = 0, global_removed = 0;
     int global_max_comm_iteration = 0;
 
-    // ideally, need to copy data from device to host, but at this point host has correct data
-    for (int n = 0; n< n_potential->set->size; n++) 
-    {
-        if (abs(((double*)n_charge_density->data)[n]) > max_den) max_den = abs(((double*)n_charge_density->data)[n]);
-        if (abs(((double*)n_potential->data)[n]) > max_phi) max_phi = abs(((double*)n_potential->data)[n]);   
-    }
-
 #ifdef USE_MPI
-    MPI_Reduce(&max_den, &global_max_den, 1, MPI_DOUBLE, MPI_MAX, OPP_ROOT, MPI_COMM_WORLD);
-    MPI_Reduce(&max_phi, &global_max_phi, 1, MPI_DOUBLE, MPI_MAX, OPP_ROOT, MPI_COMM_WORLD);
     MPI_Reduce(&OPP_max_comm_iteration, &global_max_comm_iteration, 1, MPI_INT, MPI_MAX, OPP_ROOT, MPI_COMM_WORLD);
 
     int64_t temp_local_part_count     = (int64_t)local_part_count;
@@ -215,8 +204,6 @@ inline std::string get_global_level_log(oppic_dat n_charge_density, oppic_dat n_
     MPI_Reduce(&temp_local_part_removed, &global_removed, 1, MPI_INT64_T, MPI_SUM, OPP_ROOT, MPI_COMM_WORLD);
     
 #else
-    global_max_den = max_den;
-    global_max_phi = max_phi;
     global_part_size = local_part_count;
     global_inj_size = local_parts_injected;
     global_removed = local_part_removed;
@@ -226,8 +213,8 @@ inline std::string get_global_level_log(oppic_dat n_charge_density, oppic_dat n_
     log += std::string("\t np: ") + str(global_part_size, "%" PRId64);
     log += std::string(" (") + str(global_inj_size, "%" PRId64);
     log += std::string(" added, ") + str(global_removed, "%" PRId64);
-    log += std::string(" removed)\t max den: ") + str(global_max_den, "%2.25lE");
-    log += std::string(" max |phi|: ") + str(global_max_phi, "%2.10lE");
+    log += std::string(" removed)\t max den: ") + str(max_n_charge_density, "%2.25lE");
+    log += std::string(" max |phi|: ") + str(max_n_potential, "%2.10lE");
     log += std::string(" max_comm_iteration: ") + str(global_max_comm_iteration, "%d");
     return log;
 }

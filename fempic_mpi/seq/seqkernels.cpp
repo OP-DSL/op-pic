@@ -94,7 +94,7 @@ void opp_loop_inject__InjectIons(
     opp_arg arg7,     // iface_v,
     opp_arg arg8,     // iface_normal,
     opp_arg arg9,     // iface_node_pos
-    opp_arg arg10      // dummy_part_random
+    opp_arg arg10     // dummy_part_random
 )
 {
 
@@ -604,4 +604,38 @@ void opp_particle_mover__Move(
     opp_finalize_particle_move(set);
 
     opp_profiler->end("Move");
+}
+
+//*************************************************************************************************
+void opp_loop_all__GetFinalMaxValues(
+    opp_set set,     // cells set
+    opp_arg arg0,    // n_charge_den            // OPP_READ
+    opp_arg arg1,    // global_max_n_charge_den // OPP_MAX
+    opp_arg arg2,    // n_pot                   // OPP_READ
+    opp_arg arg3     // global_max_n_pot        // OPP_MAX
+)
+{
+    if (FP_DEBUG) opp_printf("FEMPIC", "opp_loop_all__get_max set_size %d", set->size);
+
+    opp_profiler->start("GetMax");
+
+    const int nargs = 4;
+    opp_arg args[nargs];
+
+    args[0] = arg0;
+    args[1] = arg1;
+    args[2] = arg2;
+    args[3] = arg3;
+
+    for (int n = 0; n < set->size; n++)
+    {
+        get_final_max_values_kernel(
+            &((double*) args[0].data)[n * args[0].dim],     // n_charge_den  
+            (double*) args[1].data,
+            &((double*) args[2].data)[n * args[2].dim],     // n_pot  
+            (double*) args[3].data
+        );
+    }
+
+    opp_profiler->end("GetMax");
 }

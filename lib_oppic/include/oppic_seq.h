@@ -47,3 +47,15 @@ void oppic_par_loop_particle(void (*kernel)(T *...), char const *name, oppic_set
     printf("oppic_par_looppic_particle %s iterate %s\n", name, (iter_type == OP_ITERATE_ALL) ? "all" : "only injected");
 }
 
+
+inline void opp_mpi_reduce(opp_arg *args, double *data) 
+{
+    (void)args;
+    (void)data;
+}
+
+inline void opp_mpi_reduce(opp_arg *args, int *data) 
+{
+    (void)args;
+    (void)data;
+}

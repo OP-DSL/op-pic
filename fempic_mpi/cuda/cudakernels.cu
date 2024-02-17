@@ -40,6 +40,8 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 __constant__ int OPP_cells_set_size_d;
 int OPP_cells_set_size;
 
+__constant__ int OPP_comm_iteration_d;
+
 // TODO : This should be removed - only for testing
 double CONST_spwt = 0, CONST_ion_velocity = 0, CONST_dt = 0, CONST_plasma_den = 0, CONST_mass = 0, CONST_charge = 0, CONST_wall_potential = 0;
 
@@ -115,3 +117,5 @@ void opp_decl_const_impl(int dim, int size, char* data, const char* name)
 //*************************************************************************************************
 #include "opp_loop_all__InitBndPotential.cu"
 
+//*************************************************************************************************
+#include "opp_loop_all__GetFinalMaxValues.cu"

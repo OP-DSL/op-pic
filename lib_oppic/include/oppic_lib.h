@@ -78,7 +78,7 @@ oppic_dat oppic_decl_particle_dat_txt(oppic_set set, int dim, opp_data_type dtyp
 template <typename T> 
 void opp_decl_const(int dim, T* data, const char* name)
 {
-   opp_decl_const_impl(dim, sizeof(T), (char*)data, name);
+    opp_decl_const_impl(dim, sizeof(T), (char*)data, name);
 }
 
 void oppic_increase_particle_count(oppic_set particles_set, int num_particles_to_insert);

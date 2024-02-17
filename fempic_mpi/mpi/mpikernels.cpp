@@ -887,3 +887,45 @@ void opp_particle_mover__Move(
 
     opp_profiler->end("Move");
 }
+
+//*************************************************************************************************
+void opp_loop_all__GetFinalMaxValues(
+    opp_set set,     // cells set
+    opp_arg arg0,    // n_charge_den            // OPP_READ
+    opp_arg arg1,    // global_max_n_charge_den // OPP_MAX
+    opp_arg arg2,    // n_pot                   // OPP_READ
+    opp_arg arg3     // global_max_n_pot        // OPP_MAX
+)
+{
+    if (FP_DEBUG) opp_printf("FEMPIC", "opp_loop_all__GetFinalMaxValues set_size %d", set->size);
+
+    opp_profiler->start("GetMax");
+
+    const int nargs = 4;
+    opp_arg args[nargs];
+
+    args[0] = arg0;
+    args[1] = arg1;
+    args[2] = arg2;
+    args[3] = arg3;
+
+    int set_size = opp_mpi_halo_exchanges(set, nargs, args);
+    opp_mpi_halo_wait_all(nargs, args);  
+
+    for (int n = 0; n < set->size; n++)
+    {
+        get_final_max_values_kernel(
+            &((double*) args[0].data)[n * args[0].dim],     // n_charge_den  
+            (double*) args[1].data,
+            &((double*) args[2].data)[n * args[2].dim],     // n_pot  
+            (double*) args[3].data
+        );
+    }
+
+    opp_mpi_reduce_double(&args[1], (double*)args[1].data);
+    opp_mpi_reduce_double(&args[3], (double*)args[3].data);
+
+    opp_set_dirtybit(nargs, args);
+    
+    opp_profiler->end("GetMax");
+}

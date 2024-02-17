@@ -213,6 +213,7 @@ __global__ void opp_cuda_all_MoveToCells(
         int n = tid + start;
 
         opp_move_var m;
+        m.iteration_one = (OPP_comm_iteration_d > 0) ? false : true;
         int* map0idx = nullptr; //MAX_CELL_INDEX;
 
         do
@@ -284,6 +285,7 @@ void opp_particle_mover__Move(
             cudaMemcpyToSymbol(move_stride_OPP_CUDA_2, &move_stride_OPP_HOST_2, sizeof(int));
             cudaMemcpyToSymbol(move_stride_OPP_CUDA_4, &move_stride_OPP_HOST_4, sizeof(int));
             cudaMemcpyToSymbol(move_stride_OPP_CUDA_5, &move_stride_OPP_HOST_5, sizeof(int));
+            cudaMemcpyToSymbol(OPP_comm_iteration_d, &OPP_comm_iteration, sizeof(int));
 
             opp_profiler->start("FMv_init_part");
             opp_init_particle_move(set, nargs, args);

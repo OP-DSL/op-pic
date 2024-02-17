@@ -410,3 +410,15 @@ inline opp_move_status getCellIndexKernel(const double *point_pos, int* current_
         return OPP_NEED_REMOVE;
     }
 }
+
+//*******************************************************************************
+inline void get_final_max_values_kernel(
+    const OPP_REAL* n_charge_den,
+    OPP_REAL* max_n_charge_den,
+    const OPP_REAL* n_pot,
+    OPP_REAL* max_n_pot)
+{
+    *max_n_charge_den = MAX(abs(*n_charge_den), *max_n_charge_den);
+    
+    *max_n_pot = MAX(*n_pot, *max_n_pot);
+}

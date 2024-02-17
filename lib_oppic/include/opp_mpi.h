@@ -34,8 +34,6 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <opp_mpi_core.h>
 
-void opp_partition(std::string lib_name, op_set prime_set, op_map prime_map = nullptr, op_dat data = nullptr);
-
 /*******************************************************************************/
 void opp_halo_create();
 void opp_halo_destroy();
@@ -48,10 +46,15 @@ void opp_mpi_halo_wait_all(int nargs, oppic_arg *args);
 void opp_exchange_double_indirect_reductions(oppic_dat dat, opp_reduc_comm reduc_comm);
 void opp_complete_double_indirect_reductions(oppic_dat dat);
 
-void print_dat_to_txtfile_mpi(op_dat dat, const char *file_name);
-void opp_mpi_print_dat_to_txtfile(op_dat dat, const char *file_name);
-
-// returns true, if the current particle needs to be removed from the rank
-bool opp_part_checkForGlobalMove(opp_set set, const opp_point& point, const int partIndex, int& cellIdx);
-
 void cleanSendRecvBuffers(oppic_set set);
+
+
+inline void opp_mpi_reduce(opp_arg *args, double *data) 
+{
+    opp_mpi_reduce_double(args, data);
+}
+
+inline void opp_mpi_reduce(opp_arg *args, int *data) 
+{
+    opp_mpi_reduce_int(args, data);
+}
