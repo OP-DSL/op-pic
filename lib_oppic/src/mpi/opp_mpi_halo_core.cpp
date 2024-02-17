@@ -52,6 +52,13 @@ int OP_export_index = 0, OP_export_max = 0;
 op_import_handle *OP_import_list = NULL;
 op_export_handle *OP_export_list = NULL;
 
+int **export_exec_list_d = NULL;
+int **export_nonexec_list_d = NULL;
+int **export_exec_list_disps_d = NULL;
+int **export_nonexec_list_disps_d = NULL;
+int **import_exec_list_disps_d = NULL;
+int **import_nonexec_list_disps_d = NULL;
+
 // Timing
 double t1, t2, c1, c2;
 
