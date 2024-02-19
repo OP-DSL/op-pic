@@ -352,11 +352,11 @@ void opp_loop_all__GetFinalMaxValues(
         { 
             get_final_max_values_kernel(
                 &((double*) args[0].data)[n * args[0].dim],     // cell_j  
-                (double*) args[1].data,
+                &((double*) arg1_l)[1 * thr],
                 &((double*) args[2].data)[n * args[2].dim],     // cell_e  
-                (double*) args[3].data,
+                &((double*) arg3_l)[1 * thr],
                 &((double*) args[4].data)[n * args[4].dim],     // cell_b  
-                (double*) args[5].data
+                &((double*) arg5_l)[1 * thr]
             );
         }
     }

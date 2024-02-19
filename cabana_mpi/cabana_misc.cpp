@@ -235,7 +235,6 @@ void init_particles(opp_dat part_index, opp_dat part_pos, opp_dat part_vel, opp_
                                      opp_params->get<OPP_REAL>("c_width_z") };
 
     std::mt19937 rng_pos(52234234 + OPP_rank);
-    std::mt19937 rng_vel(52234231 + OPP_rank);
 
     const int cell_count        = cell_pos_ll->set->size;
     const int rank_npart        = npart_per_cell * cell_count;
@@ -257,12 +256,15 @@ void init_particles(opp_dat part_index, opp_dat part_pos, opp_dat part_vel, opp_
         opp_printf("Setup", "%d particles to add in rank %d [part start idx = %d]", 
                     rank_npart, OPP_rank, rank_part_start);
 
-    std::vector<std::vector<double>> positions;
-    std::vector<int> cells;
+    std::mt19937 rng(52234234);
+    std::uniform_real_distribution<double> uniform_rng(0.0, 1.0);
 
-    // Sample particles randomly in each local cell.
-    uniform_within_cartesian_cells(DIM, extents, (OPP_REAL*)cell_pos_ll->data, cell_count, npart_per_cell, 
-                                positions, cells, rng_pos);
+    std::vector<double> uniform_dist_vec(npart_per_cell * DIM);
+    for (int px = 0; px < npart_per_cell; px++) {
+        for (int dimx = 0; dimx < DIM; dimx++) {
+            uniform_dist_vec[px * DIM + dimx] = extents[dimx] * uniform_rng(rng);
+        }
+    }
 
     if (OPP_rank == OPP_ROOT)
         opp_printf("Setup", "Init particles oppic_increase_particle_count rank_npart=%d", rank_npart);
@@ -273,24 +275,37 @@ void init_particles(opp_dat part_index, opp_dat part_pos, opp_dat part_vel, opp_
     if (OPP_rank == OPP_ROOT)
         opp_printf("Setup", "Init particles Load data to dats Start");
 
+    // std::string log = "";
+    // for (const double& num : uniform_dist_vec)
+    //     log += str(num, "%.15f ");
+    // opp_printf("W", "%s", log.c_str());
+
     // Populate the host space with particle data.
-    for (int px = 0; px < rank_npart; px++) {
-        
-        ((OPP_REAL*)part_pos->data)[px * DIM + Dim::x] = positions.at(Dim::x).at(px);
-        ((OPP_REAL*)part_pos->data)[px * DIM + Dim::y] = positions.at(Dim::y).at(px);
-        ((OPP_REAL*)part_pos->data)[px * DIM + Dim::z] = positions.at(Dim::z).at(px);
-        
-        ((OPP_REAL*)part_vel->data)[px * DIM + Dim::x] = 0.0;
-        ((OPP_REAL*)part_vel->data)[px * DIM + Dim::y] = init_vel;
-        ((OPP_REAL*)part_vel->data)[px * DIM + Dim::z] = 0.0;
+    int p_idx = 0;
+    for (int cx = 0; cx < cell_count; cx++) {
+        for (int px = 0; px < npart_per_cell; px++) {
+            
+            ((OPP_REAL*)part_pos->data)[p_idx * DIM + Dim::x] = uniform_dist_vec[px * DIM + Dim::x] + 
+                                                            ((OPP_REAL*)cell_pos_ll->data)[cx * DIM + Dim::x];
+            ((OPP_REAL*)part_pos->data)[p_idx * DIM + Dim::y] = uniform_dist_vec[px * DIM + Dim::y] + 
+                                                            ((OPP_REAL*)cell_pos_ll->data)[cx * DIM + Dim::y];
+            ((OPP_REAL*)part_pos->data)[p_idx * DIM + Dim::z] = uniform_dist_vec[px * DIM + Dim::z] + 
+                                                            ((OPP_REAL*)cell_pos_ll->data)[cx * DIM + Dim::z];
 
-        ((OPP_REAL*)part_streak_mid->data)[px * DIM + Dim::x] = 0.0;
-        ((OPP_REAL*)part_streak_mid->data)[px * DIM + Dim::y] = 0.0;
-        ((OPP_REAL*)part_streak_mid->data)[px * DIM + Dim::z] = 0.0;
+            ((OPP_REAL*)part_vel->data)[p_idx * DIM + Dim::x] = 0.0;
+            ((OPP_REAL*)part_vel->data)[p_idx * DIM + Dim::y] = init_vel;
+            ((OPP_REAL*)part_vel->data)[p_idx * DIM + Dim::z] = 0.0;
 
-        ((OPP_INT*)part_mesh_rel->data)[px] = cells.at(px);
-        ((OPP_INT*)part_index->data)[px]    = (px + rank_part_start); 
-        ((OPP_REAL*)part_weight->data)[px]  = weight;
+            ((OPP_REAL*)part_streak_mid->data)[p_idx * DIM + Dim::x] = 0.0;
+            ((OPP_REAL*)part_streak_mid->data)[p_idx * DIM + Dim::y] = 0.0;
+            ((OPP_REAL*)part_streak_mid->data)[p_idx * DIM + Dim::z] = 0.0;
+
+            ((OPP_INT*)part_mesh_rel->data)[p_idx] = cx;
+            ((OPP_INT*)part_index->data)[p_idx]    = (cx * npart_per_cell + px + rank_part_start); // this might not exactly match with MPI versions
+            ((OPP_REAL*)part_weight->data)[p_idx]  = weight;
+
+            p_idx++;
+        }
     }
 
     if (OPP_rank == OPP_ROOT)

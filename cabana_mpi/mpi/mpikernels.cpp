@@ -81,7 +81,7 @@ void opp_loop_all__interpolate_mesh_fields(
 )
 {
 
-    if (FP_DEBUG) opp_printf("CABANA", "opp_loop_all__interpolate_mesh_fields set_size %d", set->size);
+    if (OP_DEBUG) opp_printf("CABANA", "opp_loop_all__interpolate_mesh_fields set_size %d", set->size);
 
     opp_profiler->start("Interpolate");
 
@@ -159,7 +159,7 @@ void opp_particle_mover__Move(
 )
 {
 
-    if (FP_DEBUG) 
+    if (OP_DEBUG) 
         opp_printf("CABANA", "opp_particle_mover__Move set_size %d diff %d", set->size, set->diff);
 
     opp_profiler->start("Move");
@@ -234,7 +234,7 @@ void opp_loop_all__accumulate_current_to_cells(
 )
 {
 
-    if (FP_DEBUG) opp_printf("CABANA", "opp_particle_mover__Move set_size %d", set->size);
+    if (OP_DEBUG) opp_printf("CABANA", "opp_loop_all__accumulate_current_to_cells set_size %d", set->size);
 
     opp_profiler->start("Acc_Current");
 
@@ -297,7 +297,7 @@ void opp_loop_all__half_advance_b(
 )
 {
 
-    if (FP_DEBUG) opp_printf("CABANA", "opp_loop_all__half_advance_b set_size %d", set->size);
+    if (OP_DEBUG) opp_printf("CABANA", "opp_loop_all__half_advance_b set_size %d", set->size);
 
     opp_profiler->start("HalfAdv_B");
 
@@ -352,7 +352,7 @@ void opp_loop_all__advance_e(
 )
 {
 
-    if (FP_DEBUG) opp_printf("CABANA", "opp_loop_all__advance_e set_size %d", set->size);
+    if (OP_DEBUG) opp_printf("CABANA", "opp_loop_all__advance_e set_size %d", set->size);
 
     opp_profiler->start("Adv_E");
 
@@ -408,7 +408,7 @@ void opp_loop_all__GetFinalMaxValues(
     opp_arg arg5     // max_b        // OPP_MAX
 )
 {
-    if (FP_DEBUG) opp_printf("CABANA", "opp_loop_all__get_max set_size %d", set->size);
+    if (OP_DEBUG) opp_printf("CABANA", "opp_loop_all__get_max set_size %d", set->size);
 
     opp_profiler->start("GetMax");
 
@@ -423,10 +423,13 @@ void opp_loop_all__GetFinalMaxValues(
     args[5] = arg5;
 
     int set_size = opp_mpi_halo_exchanges(set, nargs, args);
-    opp_mpi_halo_wait_all(nargs, args);  
 
     for (int n = 0; n < set->size; n++)
     {
+        if (n == set->core_size) {
+            opp_mpi_halo_wait_all(nargs, args);
+        }
+
         get_final_max_values_kernel(
             &((double*) args[0].data)[n * args[0].dim],     // cell_j  
             (double*) args[1].data,
@@ -435,6 +438,10 @@ void opp_loop_all__GetFinalMaxValues(
             &((double*) args[4].data)[n * args[4].dim],     // cell_b  
             (double*) args[5].data
         );
+    }
+
+    if (set->size == 0 || set->size == set->core_size) {
+        opp_mpi_halo_wait_all(nargs, args);
     }
 
     opp_mpi_reduce_double(&args[1], (double*)args[1].data);

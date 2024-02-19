@@ -97,15 +97,15 @@ int opp_mpi_halo_exchanges(oppic_set set, int nargs, oppic_arg *args)
             // Check if dat was already done within these args
             for (int m = 0; m < n; m++) 
             {
-                if (args[n].dat == args[m].dat)
+                if ((args[n].dat == args[m].dat) && (args[m].idx != -1))
                     already_done = true;
             }
 
             if (!already_done)
             {
                 if (OP_DEBUG) 
-                    opp_printf("opp_mpi_halo_exchanges", "opp_exchange_halo for dat [%s] exec_flag %d", 
-                        args[n].dat->name, exec_flag);
+                    opp_printf("opp_mpi_halo_exchanges", "opp_exchange_halo for dat [%s] exec_flag %d idx=%d", 
+                        args[n].dat->name, exec_flag, args[n].idx);
                 opp_mpi_halo_exchange(&args[n], exec_flag);
             }
         }
@@ -131,6 +131,9 @@ void opp_mpi_halo_exchange(oppic_arg *arg, int exec_flag)
         // need to exchange both direct and indirect data sets if they are dirty
     if ((arg->acc == OP_READ || arg->acc == OP_RW) && (dat->dirtybit == 1)) 
     {
+        if (OP_DEBUG) 
+            opp_printf("opp_mpi_halo_exchange", "__opp_mpi_host_halo_exchange for dat [%s] exec_flag %d", 
+                arg->dat->name, exec_flag);
         __opp_mpi_host_halo_exchange(arg, exec_flag);
     }
 }
