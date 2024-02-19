@@ -37,7 +37,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <oppic_lib.h>
 #ifdef USE_MPI
-    #include <opp_mpi.h>
+    #include <opp_mpi_core.h>
 #endif
 
 #ifdef DEBUG_LOG
@@ -287,4 +287,14 @@ void opp_loop_all__advance_e(
     opp_arg arg3,    // cell0_b         // OPP_READ
     opp_arg arg4,    // cell0_j         // OPP_READ
     opp_arg arg5     // cell0_e         // OPP_INC
+);
+
+void opp_loop_all__GetFinalMaxValues(
+    opp_set set,     // cells set
+    opp_arg arg0,    // cell_j       // OPP_READ
+    opp_arg arg1,    // max_j        // OPP_MAX
+    opp_arg arg2,    // cell_e       // OPP_READ
+    opp_arg arg3,    // max_e        // OPP_MAX
+    opp_arg arg4,    // cell_b       // OPP_READ
+    opp_arg arg5     // max_b        // OPP_MAX
 );

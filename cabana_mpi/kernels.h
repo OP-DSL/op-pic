@@ -421,3 +421,19 @@ inline void advance_e_kernel (
         ( CONST_p[Dim::x] * (cell0_b[Dim::y] - cell_x_b[Dim::y]) - 
         CONST_p[Dim::y] * (cell0_b[Dim::x] - cell_y_b[Dim::x]) );
 }
+
+//*******************************************************************************
+inline void get_final_max_values_kernel(
+    const OPP_REAL* cell_j,
+    OPP_REAL* max_j,
+    const OPP_REAL* cell_e,
+    OPP_REAL* max_e,
+    const OPP_REAL* cell_b,
+    OPP_REAL* max_b)
+{
+    *max_j = MAX(*cell_j, *max_j);
+    
+    *max_e = MAX(*cell_e, *max_e);
+
+    *max_b = MAX(*cell_b, *max_b);
+}

@@ -186,6 +186,24 @@ int main(int argc, char **argv)
             );
 
             std::string log = ""; // TODO : print some unseful information to verify
+            if (opp_params->get<OPP_BOOL>("print_final"))
+            {
+                OPP_REAL max_j = 0.0, max_e = 0.0, max_b = 0.0;
+
+                opp_loop_all__GetFinalMaxValues( // plan is to get only the x values reduced here
+                    cell_set,
+                    opp_get_arg(cell_j, OP_READ),
+                    opp_get_arg_gbl(&max_j, 1, "double", OP_MAX),
+                    opp_get_arg(cell_e, OP_READ),
+                    opp_get_arg_gbl(&max_e, 1, "double", OP_MAX),
+                    opp_get_arg(cell_b, OP_READ),
+                    opp_get_arg_gbl(&max_b, 1, "double", OP_MAX)
+                );
+
+                log += str(max_j, " max_j: %2.15lE");
+                log += str(max_e, " max_e: %2.15lE");
+                log += str(max_b, " max_b: %2.15lE");
+            }
             if (OPP_rank == OPP_ROOT) 
                 opp_printf("Main", "ts: %d %s ****", OPP_main_loop_iter, log.c_str());
         }

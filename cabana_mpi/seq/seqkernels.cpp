@@ -140,16 +140,16 @@ void opp_particle_mover__Move(
 
     int* cellIdx = nullptr;
 
-int int_hops = 0;
-int max_int_hops = 0;
+// int int_hops = 0;
+// int max_int_hops = 0;
     for (int n = 0; n < set->size; n++)
     {
         opp_move_var m; // = opp_get_move_var();
-int_hops = 0;
+// int_hops = 0;
         do
         {
             cellIdx = &(OPP_mesh_relation_data[n]);
-int_hops++;
+// int_hops++;
             push_particles_kernel(m, 
                 &((int*)    arg0.data)[n * arg0.dim],        // part_cid 
                 &((double*) arg1.data)[n * arg1.dim],        // part_vel 
@@ -163,10 +163,10 @@ int_hops++;
 
         } while (opp_part_check_status(m, *cellIdx, set, n, set->particle_remove_count)); 
     
-max_int_hops = (max_int_hops > int_hops ? max_int_hops : int_hops );  
+// max_int_hops = (max_int_hops > int_hops ? max_int_hops : int_hops );  
     }
 
-opp_printf("MOVE", "Max hops %d", max_int_hops);
+// opp_printf("MOVE", "Max hops %d", max_int_hops);
 
     opp_finalize_particle_move(set);
 
@@ -281,3 +281,42 @@ void opp_loop_all__advance_e(
     opp_profiler->end("Adv_E");
 }
 
+//*************************************************************************************************
+void opp_loop_all__GetFinalMaxValues(
+    opp_set set,     // cells set
+    opp_arg arg0,    // cell_j       // OPP_READ
+    opp_arg arg1,    // max_j        // OPP_MAX
+    opp_arg arg2,    // cell_e       // OPP_READ
+    opp_arg arg3,    // max_e        // OPP_MAX
+    opp_arg arg4,    // cell_b       // OPP_READ
+    opp_arg arg5     // max_b        // OPP_MAX
+)
+{
+    if (FP_DEBUG) opp_printf("CABANA", "opp_loop_all__get_max set_size %d", set->size);
+
+    opp_profiler->start("GetMax");
+
+    const int nargs = 6;
+    opp_arg args[nargs];
+
+    args[0] = arg0;
+    args[1] = arg1;
+    args[2] = arg2;
+    args[3] = arg3;
+    args[4] = arg4;
+    args[5] = arg5;
+
+    for (int n = 0; n < set->size; n++)
+    {
+        get_final_max_values_kernel(
+            &((double*) args[0].data)[n * args[0].dim],     // cell_j  
+            (double*) args[1].data,
+            &((double*) args[2].data)[n * args[2].dim],     // cell_e  
+            (double*) args[3].data,
+            &((double*) args[4].data)[n * args[4].dim],     // cell_b  
+            (double*) args[5].data
+        );
+    }
+
+    opp_profiler->end("GetMax");
+}

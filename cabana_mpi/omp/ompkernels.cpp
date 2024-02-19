@@ -196,7 +196,7 @@ void opp_loop_all__accumulate_current_to_cells(
 )
 {
 
-    if (FP_DEBUG) opp_printf("CABANA", "opp_particle_mover__Move set_size %d", set->size);
+    if (FP_DEBUG) opp_printf("CABANA", "opp_loop_all__accumulate_current_to_cells set_size %d", set->size);
 
     opp_profiler->start("Acc_Current");
 
@@ -295,3 +295,91 @@ void opp_loop_all__advance_e(
     opp_profiler->end("Adv_E");
 }
 
+//*************************************************************************************************
+void opp_loop_all__GetFinalMaxValues(
+    opp_set set,     // cells set
+    opp_arg arg0,    // cell_j       // OPP_READ
+    opp_arg arg1,    // max_j        // OPP_MAX
+    opp_arg arg2,    // cell_e       // OPP_READ
+    opp_arg arg3,    // max_e        // OPP_MAX
+    opp_arg arg4,    // cell_b       // OPP_READ
+    opp_arg arg5     // max_b        // OPP_MAX
+)
+{
+    if (FP_DEBUG) opp_printf("CABANA", "opp_loop_all__get_max set_size %d", set->size);
+
+    opp_profiler->start("GetMax");
+
+    const int nargs = 6;
+    opp_arg args[nargs];
+
+    args[0] = arg0;
+    args[1] = arg1;
+    args[2] = arg2;
+    args[3] = arg3;
+    args[4] = arg4;
+    args[5] = arg5;
+
+    const int set_size = set->size;
+    const int nthreads = omp_get_max_threads();
+
+    OPP_REAL arg1_l[nthreads*1];
+    for (int thr = 0; thr < nthreads; thr++)
+    {
+        for (int d = 0; d < 1; d++) // can have multiple dimension defined for global_arg
+            arg1_l[1 * thr + d] = ZERO_double;
+    }
+    OPP_REAL arg3_l[nthreads*1];
+    for (int thr = 0; thr < nthreads; thr++)
+    {
+        for (int d = 0; d < 1; d++) // can have multiple dimension defined for global_arg
+            arg3_l[1 * thr + d] = ZERO_double;
+    }   
+    OPP_REAL arg5_l[nthreads*1];
+    for (int thr = 0; thr < nthreads; thr++)
+    {
+        for (int d = 0; d < 1; d++) // can have multiple dimension defined for global_arg
+            arg5_l[1 * thr + d] = ZERO_double;
+    }  
+
+    #pragma omp parallel for
+    for (int thr = 0; thr < nthreads; thr++)
+    {
+        size_t start  = ((size_t)set_size * thr) / nthreads;
+        size_t finish = ((size_t)set_size * (thr+1)) / nthreads;
+
+        for (size_t n = start; n < finish; n++)
+        { 
+            get_final_max_values_kernel(
+                &((double*) args[0].data)[n * args[0].dim],     // cell_j  
+                (double*) args[1].data,
+                &((double*) args[2].data)[n * args[2].dim],     // cell_e  
+                (double*) args[3].data,
+                &((double*) args[4].data)[n * args[4].dim],     // cell_b  
+                (double*) args[5].data
+            );
+        }
+    }
+
+    // combine reduction data -- TODO : Create a MAX API call!
+    for (int thr = 0; thr < nthreads; thr++) 
+    {
+        for (int d = 0; d < 1; d++) // can have multiple dimension defined for global_arg
+            ((double*)args[1].data)[d] = (((double*)args[1].data)[d] > arg1_l[1 * thr + d]) ? 
+                                                    ((double*)args[1].data)[d] : arg1_l[1 * thr + d];
+    }
+    for (int thr = 0; thr < nthreads; thr++) 
+    {
+        for (int d = 0; d < 1; d++) // can have multiple dimension defined for global_arg
+            ((double*)args[3].data)[d] = (((double*)args[3].data)[d] > arg3_l[1 * thr + d]) ? 
+                                                    ((double*)args[3].data)[d] : arg3_l[1 * thr + d];
+    }
+    for (int thr = 0; thr < nthreads; thr++) 
+    {
+        for (int d = 0; d < 1; d++) // can have multiple dimension defined for global_arg
+            ((double*)args[5].data)[d] = (((double*)args[5].data)[d] > arg5_l[1 * thr + d]) ? 
+                                                    ((double*)args[5].data)[d] : arg5_l[1 * thr + d];
+    }
+
+    opp_profiler->end("GetMax");
+}

@@ -50,6 +50,7 @@ void opp_loop_all__ComputeElectricField(opp_set,opp_arg,opp_arg,opp_arg,opp_arg,
 void opp_loop_all__CalculateNewPartPosVel(opp_set,opp_arg,opp_arg,opp_arg);
 void opp_loop_all__DepositChargeOnNodes(opp_set,opp_arg,opp_arg,opp_arg,opp_arg,opp_arg);
 void opp_particle_mover__Move(opp_set,opp_arg,opp_arg,opp_arg,opp_arg,opp_arg,opp_arg);
+void opp_loop_all__GetFinalMaxValues(opp_set,opp_arg,opp_arg,opp_arg,opp_arg);
 
 void initializeParticleMover(const double gridSpacing, int dim, const opp_dat node_pos_dat, 
     const opp_dat cellVolume_dat, const opp_dat cellDet_dat, const opp_dat global_cell_id_dat);
@@ -253,7 +254,17 @@ int main(int argc, char **argv)
 
             if (print_final_log || OPP_main_loop_iter + 1 == max_iter)
             {
-                log = get_global_level_log(node_charge_den, node_potential, particle_set->size, 
+                OPP_REAL max_n_chg_den = 0.0, max_n_pot = 0.0;
+
+                opp_loop_all__GetFinalMaxValues(
+                    node_set,
+                    opp_get_arg(node_charge_den, OP_READ),
+                    opp_get_arg_gbl(&max_n_chg_den, 1, "double", OP_MAX),
+                    opp_get_arg(node_potential, OP_READ),
+                    opp_get_arg_gbl(&max_n_pot, 1, "double", OP_MAX)
+                );
+
+                log = get_global_level_log(max_n_chg_den, max_n_pot, particle_set->size, 
                     n_parts_to_inject, (old_nparts - particle_set->size));
             }
 
