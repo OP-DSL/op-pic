@@ -57,6 +57,7 @@ int main(int argc, char **argv)
         OPP_REAL dt         = opp_params->get<OPP_REAL>("dt");
         OPP_REAL cell_width = opp_params->get<OPP_REAL>("cell_width");
         OPP_REAL extents[2] = {opp_params->get<OPP_INT>("nx")*cell_width, opp_params->get<OPP_INT>("ny")*cell_width};
+        OPP_INT ndimcells[2] = {opp_params->get<OPP_INT>("nx"), opp_params->get<OPP_INT>("ny")};
 
         std::shared_ptr<DataPointers> m = LoadData();
 
@@ -75,6 +76,7 @@ int main(int argc, char **argv)
         opp_decl_const<OPP_REAL>(TWO, extents,     "CONST_extents");
         opp_decl_const<OPP_REAL>(ONE, &dt,         "CONST_dt");
         opp_decl_const<OPP_REAL>(ONE, &cell_width, "CONST_cell_width");
+        opp_decl_const<OPP_INT>(TWO,  ndimcells,   "CONST_ndimcells");
 
         m->DeleteValues();
 
@@ -120,8 +122,22 @@ int main(int argc, char **argv)
                 opp_get_arg(cell_cell_map, OP_READ, OPP_Map_from_Mesh_Rel)
             );
 #endif
+            std::string log = "";
+            if (opp_params->get<OPP_BOOL>("verify_particles"))
+            {
+                int incorrect_part_count = 0;
+                opp_loop_all__Verify(
+                    part_set,
+                    opp_get_arg(part_mesh_rel, OP_READ),
+                    opp_get_arg(part_pos,      OP_READ),
+                    opp_get_arg(cell_index,    OP_READ, OPP_Map_from_Mesh_Rel),
+                    opp_get_arg_gbl(&incorrect_part_count, 1, "int", OP_INC)
+                );
+                log += str(incorrect_part_count, "%d Errors");
+            }
 
-            if (OPP_rank == OPP_ROOT) opp_printf("Main", "ts: %d ****", OPP_main_loop_iter);
+            if (OPP_rank == OPP_ROOT) 
+                opp_printf("Main", "ts: %d | %s ****", OPP_main_loop_iter, log.c_str());
         
         } // End Main loop
         opp_profiler->end("MainLoop");

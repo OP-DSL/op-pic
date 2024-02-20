@@ -47,11 +47,13 @@ __constant__ int OPP_comm_iteration_d;
 OPP_REAL CONST_extents[2];
 OPP_REAL CONST_dt = 0.0;
 OPP_REAL CONST_cell_width = 0.0;
+OPP_INT CONST_ndimcells[2];
 
 //****************************************
 __constant__ OPP_REAL CONST_DEVICE_extents[2];
 __constant__ OPP_REAL CONST_DEVICE_dt;
 __constant__ OPP_REAL CONST_DEVICE_cell_width;
+__constant__ OPP_INT CONST_DEVICE_ndimcells[2];
 
 void opp_decl_const_impl(int dim, int size, char* data, const char* name)
 {
@@ -61,18 +63,24 @@ void opp_decl_const_impl(int dim, int size, char* data, const char* name)
         cutilSafeCall(hipMemcpyToSymbol(HIP_SYMBOL(CONST_DEVICE_dt), data, dim*size));
     else if (!strcmp(name,"CONST_cell_width"))           
         cutilSafeCall(hipMemcpyToSymbol(HIP_SYMBOL(CONST_DEVICE_cell_width), data, dim*size));
+    else if (!strcmp(name,"CONST_ndimcells"))           
+        cutilSafeCall(hipMemcpyToSymbol(HIP_SYMBOL(CONST_DEVICE_ndimcells), data, dim*size));
     else 
         std::cerr << "error: unknown const name" << std::endl;
 
     // TODO : This block should be removed - only for testing
     {
-        if (!strcmp(name,"CONST_extents"))         std::memcpy(&CONST_extents, data, (size*dim));
+        if (!strcmp(name,"CONST_extents"))         std::memcpy(CONST_extents, data, (size*dim));
         else if (!strcmp(name,"CONST_dt"))         std::memcpy(&CONST_dt, data, (size*dim));
         else if (!strcmp(name,"CONST_cell_width")) std::memcpy(&CONST_cell_width, data, (size*dim));
+        else if (!strcmp(name,"CONST_ndimcells"))  std::memcpy(CONST_ndimcells, data, (size*dim));
         else std::cerr << "error: unknown const name" << std::endl;
     } // TODO : This block should be removed
 }
 //****************************************
 
-// //*************************************************************************************************
+//*************************************************************************************************
 #include "opp_loop_all_part__Move.cpp"
+
+//*************************************************************************************************
+#include "opp_loop_all__Verify.cpp"

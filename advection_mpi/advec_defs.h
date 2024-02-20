@@ -37,7 +37,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <oppic_lib.h>
 #ifdef USE_MPI
-    #include <opp_mpi.h>
+    #include <opp_mpi_core.h>
 #endif
 
 #define FUSE_KERNELS
@@ -56,7 +56,15 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
     if (_y < 0) _y = (ny-1); \
     if (_x >= nx) _x = 0; \
     if (_y >= ny) _y = 0; \
-    OUT = (_x + nx*_y); } \
+    OUT = (_x + nx*_y); }
+
+#define RANK_TO_INDEX(rank,ix,iy,_x) \
+    int _ix, _iy;                                         \
+    _ix  = (rank);        /* ix = ix+gpx*( iy+gpy*iz ) */ \
+    _iy  = _ix/int(_x);   /* iy = iy+gpy*iz */            \
+    _ix -= _iy*int(_x);   /* ix = ix */                   \
+    (ix) = _ix;                                           \
+    (iy) = _iy; 
 
 enum Dim {
     x = 0,
@@ -96,3 +104,11 @@ void opp_particle_mover__Move(
     opp_arg arg3        // cell_cell_map, OP_READ
 );
 #endif
+
+void opp_loop_all__Verify(
+    opp_set set,        // particles_set
+    opp_arg arg0,       // part_mesh_rel,        OP_RW
+    opp_arg arg1,       // part_pos,             OP_READ
+    opp_arg arg2,       // cell_global_index,    OP_READ
+    opp_arg arg3        // incorrect_part_count, OP_INC
+);

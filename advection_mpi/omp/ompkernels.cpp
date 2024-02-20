@@ -40,13 +40,15 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 OPP_REAL CONST_extents[2];
 OPP_REAL CONST_dt = 0.0;
 OPP_REAL CONST_cell_width = 0.0;
+OPP_INT CONST_ndimcells[2];
 
 //****************************************
 void opp_decl_const_impl(int dim, int size, char* data, const char* name)
 {
-    if (!strcmp(name,"CONST_extents"))         std::memcpy(&CONST_extents, data, (size*dim));
+    if (!strcmp(name,"CONST_extents"))         std::memcpy(CONST_extents, data, (size*dim));
     else if (!strcmp(name,"CONST_dt"))         std::memcpy(&CONST_dt, data, (size*dim));
     else if (!strcmp(name,"CONST_cell_width")) std::memcpy(&CONST_cell_width, data, (size*dim));
+    else if (!strcmp(name,"CONST_ndimcells"))  std::memcpy(CONST_ndimcells, data, (size*dim));
     else std::cerr << "error: unknown const name" << std::endl;
 }
 //****************************************
@@ -127,4 +129,66 @@ void opp_particle_mover__UpdatePosMove(
     
 
     opp_profiler->end("Move");
+}
+
+//*******************************************************************************
+void opp_loop_all__Verify(
+    opp_set set,        // particles_set
+    opp_arg arg0,       // part_mesh_rel,        OP_RW
+    opp_arg arg1,       // part_pos,             OP_READ
+    opp_arg arg2,       // cell_global_index,    OP_READ
+    opp_arg arg3        // incorrect_part_count, OP_INC
+)
+{
+    if (OP_DEBUG) 
+        opp_printf("ADVEC", "opp_loop_all__Verify set_size %d diff %d", set->size, set->diff);
+
+    opp_profiler->start("Verify");
+
+    const int nargs = 4;
+    opp_arg args[nargs];
+
+    args[0] = arg0;
+    args[1] = arg1;
+    args[2] = arg2;
+    args[3] = arg3;
+
+    const int set_size = set->size;
+    const int nthreads = omp_get_max_threads();
+
+    OPP_mesh_relation_data = ((int *)set->mesh_relation_dat->data); 
+
+    OPP_REAL arg3_l[nthreads*1];
+    for (int thr = 0; thr < nthreads; thr++)
+    {
+        for (int d = 0; d < 1; d++) // can have multiple dimension defined for global_arg
+            arg3_l[1 * thr + d] = ZERO_double;
+    }  
+
+    #pragma omp parallel for
+    for (int thr = 0; thr < nthreads; thr++)
+    {
+        size_t start  = ((size_t)set_size * thr) / nthreads;
+        size_t finish = ((size_t)set_size * (thr+1)) / nthreads;
+
+        for (size_t n = start; n < finish; n++)
+        { 
+            const int map0idx = OPP_mesh_relation_data[n];
+
+            verify_kernel( 
+                &((OPP_INT*)  arg0.data)[n * arg0.dim],       // part_mesh_rel,      
+                &((OPP_REAL*) arg1.data)[n * arg1.dim],       // part_pos,           
+                &((OPP_INT*)  arg2.data)[map0idx * arg2.dim], // cell_global_index,  
+                (int*) arg3.data                              // incorrect_part_count
+            );
+        }
+    }
+
+    for (int thr = 0; thr < nthreads; thr++) 
+    {
+        for (int d = 0; d < 1; d++) // can have multiple dimension defined for global_arg
+            ((double*)args[3].data)[d] += arg3_l[1 * thr + d];
+    }
+
+    opp_profiler->end("Verify");
 }

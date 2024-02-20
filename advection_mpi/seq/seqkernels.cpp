@@ -40,13 +40,15 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 OPP_REAL CONST_extents[2];
 OPP_REAL CONST_dt = 0.0;
 OPP_REAL CONST_cell_width = 0.0;
+OPP_INT CONST_ndimcells[2];
 
 //****************************************
 void opp_decl_const_impl(int dim, int size, char* data, const char* name)
 {
-    if (!strcmp(name,"CONST_extents"))         std::memcpy(&CONST_extents, data, (size*dim));
+    if (!strcmp(name,"CONST_extents"))         std::memcpy(CONST_extents, data, (size*dim));
     else if (!strcmp(name,"CONST_dt"))         std::memcpy(&CONST_dt, data, (size*dim));
     else if (!strcmp(name,"CONST_cell_width")) std::memcpy(&CONST_cell_width, data, (size*dim));
+    else if (!strcmp(name,"CONST_ndimcells"))  std::memcpy(CONST_ndimcells, data, (size*dim));
     else std::cerr << "error: unknown const name" << std::endl;
 }
 //****************************************
@@ -174,3 +176,34 @@ void opp_particle_mover__Move(
 }
 
 #endif
+
+//*******************************************************************************
+void opp_loop_all__Verify(
+    opp_set set,        // particles_set
+    opp_arg arg0,       // part_mesh_rel,        OP_RW
+    opp_arg arg1,       // part_pos,             OP_READ
+    opp_arg arg2,       // cell_global_index,    OP_READ
+    opp_arg arg3        // incorrect_part_count, OP_INC
+)
+{
+    if (OP_DEBUG) 
+        opp_printf("ADVEC", "opp_loop_all__Verify set_size %d diff %d", set->size, set->diff);
+
+    opp_profiler->start("Verify");
+
+    OPP_mesh_relation_data = ((int *)set->mesh_relation_dat->data); 
+
+    for (int n = 0; n < set->size; n++)
+    { 
+        const int map0idx = OPP_mesh_relation_data[n];
+
+        verify_kernel( 
+            &((OPP_INT*)  arg0.data)[n * arg0.dim],       // part_mesh_rel,      
+            &((OPP_REAL*) arg1.data)[n * arg1.dim],       // part_pos,           
+            &((OPP_INT*)  arg2.data)[map0idx * arg2.dim], // cell_global_index,  
+            (int*) arg3.data                              // incorrect_part_count
+        );
+    }
+
+    opp_profiler->end("Verify");
+}

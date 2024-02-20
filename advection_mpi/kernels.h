@@ -109,5 +109,41 @@ inline void push_particles_kernel(opp_move_var& m,
 }
 
 //*************************************************************************************************
+inline void verify_kernel(
+        const OPP_INT* part_cid, 
+        const OPP_REAL* part_pos,
+        const OPP_INT* cell_global_idx,
+        OPP_INT* incorrect_part_count)
+{
+    // get the cell boundaries for the current cell_index - using global cell index 
+    int ix = -1, iy = -1;
+    RANK_TO_INDEX((*cell_global_idx), ix, iy, CONST_ndimcells[Dim::x]); 
+    
+    if (ix < 0 || iy < 0)
+    {
+        opp_printf("VERIFY", "Incorrect ix[%d] iy[%d] for global cell[%d] nx[%d]",
+            ix, iy, (*cell_global_idx), CONST_ndimcells[Dim::x]);
+        (*incorrect_part_count)++;
+        return;
+    }
+    
+    // get the boundaries of that cell
+    const OPP_REAL boundary_ll[DIM] = { (ix * CONST_cell_width), (iy * CONST_cell_width) };
+ 
+    // check whether the current particle is within those boundaries or not!
+    const OPP_REAL part_pos_x = part_pos[Dim::x];
+    if (part_pos_x < boundary_ll[Dim::x] ||
+            part_pos_x > (boundary_ll[Dim::x] + CONST_cell_width)) {
+        
+        (*incorrect_part_count)++;
+        return;
+    }
 
-
+    const OPP_REAL part_pos_y = part_pos[Dim::y];
+    if (part_pos_y < boundary_ll[Dim::y] ||
+            part_pos_y > (boundary_ll[Dim::y] + CONST_cell_width)) {
+        
+        (*incorrect_part_count)++;
+        return;
+    }
+}

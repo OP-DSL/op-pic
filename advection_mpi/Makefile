@@ -19,7 +19,7 @@ DEBUG ?= 0
 ifeq ($(DEBUG), 1)
 	CPPFLAGS   += -O0 -g
 	NVCCFLAGS  += -O0 -g -lineinfo
-	HIPCCFLAGS += -O0 -g -lineinfo
+	HIPCCFLAGS += -O0 -g
 	DEBUG_LOG   = 1
 else
 	CPPFLAGS   += -O3 -g
