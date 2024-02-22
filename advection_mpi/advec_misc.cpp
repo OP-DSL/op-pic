@@ -158,17 +158,13 @@ void init_particles(opp_dat part_index, opp_dat part_pos, opp_dat part_vel, opp_
     if (OPP_rank == OPP_ROOT)
         opp_printf("Setup", "Init particles START");
 
-    OPP_INT nx          = opp_params->get<OPP_INT>("nx");
-    OPP_INT ny          = opp_params->get<OPP_INT>("ny");
-    OPP_INT n_particles = opp_params->get<OPP_INT>("n_particles");
+    OPP_INT npart_per_cell = opp_params->get<OPP_INT>("npart_per_cell");
 
     std::mt19937 rng_pos(52234234 + OPP_rank);
     std::mt19937 rng_vel(52234231 + OPP_rank);
 
-    const int cell_count        = cell_pos_ll->set->size;
-    const int global_cell_count = nx * ny;
-    const int npart_per_cell    = std::round((double) n_particles / (double) global_cell_count);
-    const int rank_npart        = npart_per_cell * cell_count;
+    const int cell_count = cell_pos_ll->set->size;
+    const int rank_npart = npart_per_cell * cell_count;
 
     if (rank_npart <= 0) {
         opp_printf("Setup", "Error No particles to add in rank %d", OPP_rank);

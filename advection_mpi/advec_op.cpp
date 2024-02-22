@@ -53,11 +53,12 @@ int main(int argc, char **argv)
     {
         opp_profiler->start("Setup");
 
-        OPP_INT max_iter    = opp_params->get<OPP_INT>("max_iter");   
-        OPP_REAL dt         = opp_params->get<OPP_REAL>("dt");
-        OPP_REAL cell_width = opp_params->get<OPP_REAL>("cell_width");
-        OPP_REAL extents[2] = {opp_params->get<OPP_INT>("nx")*cell_width, opp_params->get<OPP_INT>("ny")*cell_width};
-        OPP_INT ndimcells[2] = {opp_params->get<OPP_INT>("nx"), opp_params->get<OPP_INT>("ny")};
+        OPP_INT max_iter      = opp_params->get<OPP_INT>("max_iter");   
+        OPP_REAL dt           = opp_params->get<OPP_REAL>("dt");
+        OPP_REAL cell_width   = opp_params->get<OPP_REAL>("cell_width");
+        OPP_REAL extents[2]   = {opp_params->get<OPP_INT>("nx")*cell_width, opp_params->get<OPP_INT>("ny")*cell_width};
+        OPP_INT ndimcells[2]  = {opp_params->get<OPP_INT>("nx"), opp_params->get<OPP_INT>("ny")};
+        OPP_BOOL verify_parts = opp_params->get<OPP_BOOL>("verify_particles");
 
         std::shared_ptr<DataPointers> m = LoadData();
 
@@ -123,7 +124,7 @@ int main(int argc, char **argv)
             );
 #endif
             std::string log = "";
-            if (opp_params->get<OPP_BOOL>("verify_particles"))
+            if (verify_parts)
             {
                 int incorrect_part_count = 0;
                 opp_loop_all__Verify(
@@ -150,6 +151,21 @@ int main(int argc, char **argv)
 
     return 0;
 }
+
+/*
+NOTE: ------------------------------------------------------------------
+    cell_set     	        28bytes
+    part_set     	        40bytes
+
+    Assume, 1024 x 1024 mesh 
+    cell_set->size          1,048,576     29,360,128bytes
+    
+    Assume 16GB of GPU memory and we have two thrust vectors per opp_dat
+    max particles           ~374,000,000
+    max particles per cell  ~175
+------------------------------------------------------------------------
+*/
+
 
 // opp_print_dat_to_txtfile(part_mesh_rel, "FINAL", "part_mesh_rel.dat");
 // opp_print_dat_to_txtfile(part_pos, "FINAL", "part_pos.dat");

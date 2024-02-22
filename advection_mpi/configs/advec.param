@@ -4,7 +4,7 @@ INT nx = 32
 INT ny = 32
 REAL dt = 0.01
 REAL cell_width = 0.5
-INT n_particles = 6000000
+INT npart_per_cell = 100
 BOOL verify_particles = true
 
 # System parameters

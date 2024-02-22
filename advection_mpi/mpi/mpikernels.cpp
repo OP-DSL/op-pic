@@ -199,7 +199,7 @@ void opp_loop_all__Verify(
         );
     }
 
-    opp_mpi_reduce_double(&args[3], (double*)args[3].data);
+    opp_mpi_reduce(&args[3], (int*)args[3].data);
 
     opp_set_dirtybit(nargs, args);
 

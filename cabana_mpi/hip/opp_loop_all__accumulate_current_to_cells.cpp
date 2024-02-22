@@ -162,7 +162,6 @@ void opp_loop_all__accumulate_current_to_cells(
         acc_OPP_HOST_2 = args[2].dat->set->set_capacity;
         acc_OPP_HOST_2_MAP_STRIDE = args[2].size;
 
-        opp_profiler->start("Acc_Symbol");
         cutilSafeCall(hipMemcpyToSymbol(HIP_SYMBOL(acc_OPP_DEV_0), 
                                                     &acc_OPP_HOST_0, sizeof(int)));
         cutilSafeCall(hipMemcpyToSymbol(HIP_SYMBOL(acc_OPP_DEV_2), 

@@ -249,7 +249,7 @@ void opp_loop_all__GetFinalMaxValues(
         opp_mpi_reduce(&args[5],arg5h);
 
         opp_set_dirtybit_grouped(nargs, args, Device_GPU);
-        cutilSafeCall(cudaDeviceSynchronize());       
+        cutilSafeCall(hipDeviceSynchronize());       
     }
 
     opp_profiler->end("GetMax");

@@ -79,22 +79,22 @@ __device__ void dev_weight_current_to_accumulator__kernel(
     v3 += v5;                    /* v3 = q ux [ (1+dy)(1+dz) + uy*uz/3 ] */
 
     CALC_J( x,y,z );
-    atomicAdd(&(cell0_acc[m_OPP_DEVICE_6 * CellAcc::jfx + 0]), v0); 
-    atomicAdd(&(cell0_acc[m_OPP_DEVICE_6 * CellAcc::jfx + 1]), v1); 
-    atomicAdd(&(cell0_acc[m_OPP_DEVICE_6 * CellAcc::jfx + 2]), v2); 
-    atomicAdd(&(cell0_acc[m_OPP_DEVICE_6 * CellAcc::jfx + 3]), v3); 
+    atomicAdd(&(cell0_acc[m_OPP_DEVICE_6 * (CellAcc::jfx + 0)]), v0); 
+    atomicAdd(&(cell0_acc[m_OPP_DEVICE_6 * (CellAcc::jfx + 1)]), v1); 
+    atomicAdd(&(cell0_acc[m_OPP_DEVICE_6 * (CellAcc::jfx + 2)]), v2); 
+    atomicAdd(&(cell0_acc[m_OPP_DEVICE_6 * (CellAcc::jfx + 3)]), v3); 
 
     CALC_J( y,z,x );
-    atomicAdd(&(cell0_acc[m_OPP_DEVICE_6 * CellAcc::jfy + 0]), v0); 
-    atomicAdd(&(cell0_acc[m_OPP_DEVICE_6 * CellAcc::jfy + 1]), v1); 
-    atomicAdd(&(cell0_acc[m_OPP_DEVICE_6 * CellAcc::jfy + 2]), v2); 
-    atomicAdd(&(cell0_acc[m_OPP_DEVICE_6 * CellAcc::jfy + 3]), v3); 
+    atomicAdd(&(cell0_acc[m_OPP_DEVICE_6 * (CellAcc::jfy + 0)]), v0); 
+    atomicAdd(&(cell0_acc[m_OPP_DEVICE_6 * (CellAcc::jfy + 1)]), v1); 
+    atomicAdd(&(cell0_acc[m_OPP_DEVICE_6 * (CellAcc::jfy + 2)]), v2); 
+    atomicAdd(&(cell0_acc[m_OPP_DEVICE_6 * (CellAcc::jfy + 3)]), v3); 
 
     CALC_J( z,x,y );
-    atomicAdd(&(cell0_acc[m_OPP_DEVICE_6 * CellAcc::jfz + 0]), v0); 
-    atomicAdd(&(cell0_acc[m_OPP_DEVICE_6 * CellAcc::jfz + 1]), v1); 
-    atomicAdd(&(cell0_acc[m_OPP_DEVICE_6 * CellAcc::jfz + 2]), v2); 
-    atomicAdd(&(cell0_acc[m_OPP_DEVICE_6 * CellAcc::jfz + 3]), v3); 
+    atomicAdd(&(cell0_acc[m_OPP_DEVICE_6 * (CellAcc::jfz + 0)]), v0); 
+    atomicAdd(&(cell0_acc[m_OPP_DEVICE_6 * (CellAcc::jfz + 1)]), v1); 
+    atomicAdd(&(cell0_acc[m_OPP_DEVICE_6 * (CellAcc::jfz + 2)]), v2); 
+    atomicAdd(&(cell0_acc[m_OPP_DEVICE_6 * (CellAcc::jfz + 3)]), v3); 
 
     // CALC_J( x,y,z );
     // cell0_acc[m_OPP_DEVICE_6 * CellAcc::jfx + 0] += v0; 

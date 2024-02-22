@@ -200,9 +200,9 @@ int main(int argc, char **argv)
                     opp_get_arg_gbl(&max_b, 1, "double", OP_MAX)
                 );
 
-                log += str(max_j, " max_j: %2.15lE");
-                log += str(max_e, " max_e: %2.15lE");
-                log += str(max_b, " max_b: %2.15lE");
+                log += str(max_j, " max_jx: %.10f"); // %2.15lE");
+                log += str(max_e, " max_ex: %.10f"); // %2.15lE");
+                log += str(max_b, " max_bx: %.10f"); // %2.15lE");
             }
             if (OPP_rank == OPP_ROOT) 
                 opp_printf("Main", "ts: %d %s ****", OPP_main_loop_iter, log.c_str());
