@@ -53,13 +53,9 @@ int main(int argc, char **argv)
     {
         opp_profiler->start("Setup");
 
-        OPP_INT max_iter = opp_params->get<OPP_INT>("max_iter");   
-        OPP_REAL dt      = opp_params->get<OPP_REAL>("dt");
-        OPP_REAL qsp     = opp_params->get<OPP_REAL>("qsp");
-        OPP_REAL qdt_2mc = cabana_get_qdt_2mc();
-        OPP_REAL dt_eps0 = cabana_get_dt_eps0();
+        Deck deck(*opp_params);
 
-        std::shared_ptr<DataPointers> m = LoadData();
+        std::shared_ptr<DataPointers> m = load_mesh(deck);
 
         opp_set cell_set        = opp_decl_mesh_set(m->n_cells, "mesh_cells");
         opp_map cell_cell_map   = opp_decl_mesh_map(cell_set, cell_set, NEIGHBOURS, m->cell_cell_map, "c_c_map");
@@ -80,26 +76,31 @@ int main(int argc, char **argv)
         opp_dat part_weight     = opp_decl_part_dat(part_set, ONE, DT_REAL, nullptr, "p_weight");
         opp_dat part_mesh_rel   = opp_decl_part_dat(part_set, ONE, DT_INT,  nullptr, "p_mesh_rel", true);
 
-        opp_decl_const<OPP_INT>(DIM,  cabana_get_cells_per_dim().data(), "CONST_c_per_dim");
-        opp_decl_const<OPP_REAL>(ONE, &dt,                               "CONST_dt");
-        opp_decl_const<OPP_REAL>(ONE, &qsp,                              "CONST_qsp");
-        opp_decl_const<OPP_REAL>(DIM, cabana_get_cdt_d().data(),         "CONST_cdt_d");
-        opp_decl_const<OPP_REAL>(DIM, cabana_get_p().data(),             "CONST_p");
-        opp_decl_const<OPP_REAL>(ONE, &qdt_2mc,                          "CONST_qdt_2mc");
-        opp_decl_const<OPP_REAL>(ONE, &dt_eps0,                          "CONST_dt_eps0");
-        opp_decl_const<OPP_REAL>(DIM, cabana_get_acc_coef().data(),      "CONST_acc_coef");
+        OPP_REAL cdt_d[DIM]        = { deck.cdt_dx, deck.cdt_dy, deck.cdt_dy };
+        OPP_INT cells_per_dim[DIM] = { deck.nx, deck.ny, deck.ny };
+        OPP_REAL p[DIM]            = { deck.px, deck.py, deck.py };
+        OPP_REAL acc_coef[DIM]     = { deck.acc_coefx, deck.acc_coefy, deck.acc_coefy };
+
+        opp_decl_const<OPP_INT>(DIM,  cells_per_dim,   "CONST_c_per_dim");
+        opp_decl_const<OPP_REAL>(ONE, &(deck.dt),      "CONST_dt");
+        opp_decl_const<OPP_REAL>(ONE, &(deck.qsp),     "CONST_qsp");
+        opp_decl_const<OPP_REAL>(DIM, cdt_d,           "CONST_cdt_d");
+        opp_decl_const<OPP_REAL>(DIM, p,               "CONST_p");
+        opp_decl_const<OPP_REAL>(ONE, &(deck.qdt_2mc), "CONST_qdt_2mc");
+        opp_decl_const<OPP_REAL>(ONE, &(deck.dt_eps0), "CONST_dt_eps0");
+        opp_decl_const<OPP_REAL>(DIM, acc_coef,        "CONST_acc_coef");
 
         m->DeleteValues();
 
         // ideally opp_colour_cartesian_mesh is not required for non-mpi runs
-        opp_colour_cartesian_mesh(DIM, cabana_get_cells_per_dim(), cell_index, cell_colors);
+        opp_colour_cartesian_mesh(DIM, std::vector<OPP_INT>(cells_per_dim, cells_per_dim + DIM), cell_index, cell_colors);
 
 #ifdef USE_MPI
         opp_partition(std::string("EXTERNAL"), cell_set, nullptr, cell_colors);
 #endif
 
-        init_particles(part_index, part_pos, part_vel, part_streak_mid, part_weight, part_mesh_rel, 
-                        cell_pos_ll);
+        init_particles(deck, part_index, part_pos, part_vel, part_streak_mid, part_weight, part_mesh_rel, 
+                        cell_pos_ll, cell_index);
 
         opp_printf("Setup", "Cells[%d] Particles[%d]", cell_set->size, part_set->size);
 
@@ -107,7 +108,7 @@ int main(int argc, char **argv)
 
         opp_profiler->start("MainLoop");
 
-        for (OPP_main_loop_iter = 0; OPP_main_loop_iter < max_iter; OPP_main_loop_iter++)
+        for (OPP_main_loop_iter = 0; OPP_main_loop_iter < deck.num_steps; OPP_main_loop_iter++)
         {
             if (OP_DEBUG && OPP_rank == OPP_ROOT) 
                 opp_printf("Main", "Starting main loop iteration %d ****", OPP_main_loop_iter);
@@ -210,7 +211,7 @@ int main(int argc, char **argv)
         opp_profiler->end("MainLoop");
         
         if (OPP_rank == OPP_ROOT) 
-            opp_printf("Main", "Main loop completed after %d iterations ****", max_iter);
+            opp_printf("Main", "Main loop completed after %d iterations ****", deck.num_steps);
     }
 
     opp_exit();
@@ -250,3 +251,8 @@ int main(int argc, char **argv)
 //                 opp_print_dat_to_txtfile(cell_acc, f.c_str(), "cell_acc.dat");
 // #endif
 //             }
+
+// opp_print_dat_to_txtfile(part_mesh_rel, "INIT", "part_mesh_rel.dat");
+// opp_print_dat_to_txtfile(part_pos, "INIT", "part_pos.dat");
+// opp_print_dat_to_txtfile(part_vel, "INIT", "part_vel.dat");
+// opp_print_dat_to_txtfile(part_weight, "INIT", "part_weight.dat");

@@ -40,6 +40,8 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
     #include <opp_mpi_core.h>
 #endif
 
+#include "cabana_deck.h"
+
 #ifdef DEBUG_LOG
     #define FP_DEBUG true
 #else

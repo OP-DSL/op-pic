@@ -30,15 +30,16 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
 //*********************************************
-// AUTO GENERATED CODE
+// USER WRITTEN CODE
 //*********************************************
 
 #include "cabana_defs.h"
+#include "cabana_part_distribution.h"
 
 using namespace opp;
 
 class DataPointers;
-void init_mesh(std::shared_ptr<DataPointers> m);
+void init_mesh(const Deck& deck, std::shared_ptr<DataPointers> m);
 void distribute_data_over_ranks(std::shared_ptr<DataPointers>& g_m, std::shared_ptr<DataPointers>& m);
 
 //*************************************************************************************************
@@ -109,12 +110,12 @@ class DataPointers
  * @brief Initialize the rank specific mesh data to a DataPointers utility class shared pointer
  * @return std::shared_ptr<DataPointers>
  */
-std::shared_ptr<DataPointers> LoadData() {
+std::shared_ptr<DataPointers> load_mesh(const Deck& deck) {
 
     std::shared_ptr<DataPointers> g_m(new DataPointers());
 
     if (OPP_rank == OPP_ROOT)      
-        init_mesh(g_m);
+        init_mesh(deck, g_m);
 
     std::shared_ptr<DataPointers> m;
     distribute_data_over_ranks(g_m, m);
@@ -129,14 +130,13 @@ std::shared_ptr<DataPointers> LoadData() {
  * @param m std::shared_ptr<DataPointers> loaded with mesh data
  * @return (void)
  */
-void init_mesh(std::shared_ptr<DataPointers> m) {
+void init_mesh(const Deck& deck, std::shared_ptr<DataPointers> m) {
 
-    const OPP_INT nx             = opp_params->get<OPP_INT>("nx");
-    const OPP_INT ny             = opp_params->get<OPP_INT>("ny");
-    const OPP_INT nz             = opp_params->get<OPP_INT>("nz");
-    const OPP_REAL c_widths[DIM] = { opp_params->get<OPP_REAL>("c_width_x"),
-                                   opp_params->get<OPP_REAL>("c_width_y"),
-                                   opp_params->get<OPP_REAL>("c_width_z") };
+    const OPP_INT nx             = deck.nx;
+    const OPP_INT ny             = deck.ny;
+    const OPP_INT nz             = deck.nz;
+    const OPP_REAL c_widths[DIM] = { deck.dx, deck.dy, deck.dz };
+
     m->n_cells   = (nx * ny * nz);
 
     opp_printf("Setup", "init_mesh global n_cells=%d nx=%d ny=%d nz=%d", m->n_cells, nx, ny, nz);
@@ -221,27 +221,21 @@ void init_mesh(std::shared_ptr<DataPointers> m) {
  * @param cell_pos_ll - opp_dat : Lower left 2D position coordicate of the cell
  * @return (void)
  */
-void init_particles(opp_dat part_index, opp_dat part_pos, opp_dat part_vel, opp_dat part_streak_mid,
-                    opp_dat part_weight, opp_dat part_mesh_rel, opp_dat cell_pos_ll) 
+void init_particles(const Deck& deck, opp_dat part_index, opp_dat part_pos, opp_dat part_vel, opp_dat part_streak_mid,
+                    opp_dat part_weight, opp_dat part_mesh_rel, opp_dat cell_pos_ll, opp_dat cell_cgid) 
 {
     if (OPP_rank == OPP_ROOT)
         opp_printf("Setup", "Init particles START");
 
-    const OPP_INT npart_per_cell = opp_params->get<OPP_INT>("num_part_per_cell");
-    const OPP_REAL weight        = opp_params->get<OPP_REAL>("part_weight");
-    const OPP_REAL init_vel      = opp_params->get<OPP_REAL>("init_vel");
-    const double extents[DIM]    = { opp_params->get<OPP_REAL>("c_width_x"),
-                                     opp_params->get<OPP_REAL>("c_width_y"),
-                                     opp_params->get<OPP_REAL>("c_width_z") };
+    const OPP_INT npart_per_cell = deck.nppc;
 
-    std::mt19937 rng_pos(52234234 + OPP_rank);
-
-    const int cell_count        = cell_pos_ll->set->size;
-    const int rank_npart        = npart_per_cell * cell_count;
-    int rank_part_start = 0;
+    const int cell_count = cell_pos_ll->set->size;
+    const int rank_npart = npart_per_cell * cell_count;
+    int rank_part_start  = 0;
 
     if (rank_npart <= 0) {
         opp_printf("Setup", "Error No particles to add in rank %d", OPP_rank);
+        return;
     }
 
 #ifdef USE_MPI // canculate the starting particle index incase of MPI
@@ -253,18 +247,7 @@ void init_particles(opp_dat part_index, opp_dat part_pos, opp_dat part_vel, opp_
 #endif
 
     if (OP_DEBUG)
-        opp_printf("Setup", "%d particles to add in rank %d [part start idx = %d]", 
-                    rank_npart, OPP_rank, rank_part_start);
-
-    std::mt19937 rng(52234234);
-    std::uniform_real_distribution<double> uniform_rng(0.0, 1.0);
-
-    std::vector<double> uniform_dist_vec(npart_per_cell * DIM);
-    for (int px = 0; px < npart_per_cell; px++) {
-        for (int dimx = 0; dimx < DIM; dimx++) {
-            uniform_dist_vec[px * DIM + dimx] = extents[dimx] * uniform_rng(rng);
-        }
-    }
+        opp_printf("Setup", "%d parts to add in rank %d [part_start=%d]", rank_npart, OPP_rank, rank_part_start);
 
     if (OPP_rank == OPP_ROOT)
         opp_printf("Setup", "Init particles oppic_increase_particle_count rank_npart=%d", rank_npart);
@@ -272,41 +255,14 @@ void init_particles(opp_dat part_index, opp_dat part_pos, opp_dat part_vel, opp_
     // Host/Device space to store the particles.
     oppic_increase_particle_count(part_index->set, rank_npart);
 
-    if (OPP_rank == OPP_ROOT)
-        opp_printf("Setup", "Init particles Load data to dats Start");
-
-    // std::string log = "";
-    // for (const double& num : uniform_dist_vec)
-    //     log += str(num, "%.15f ");
-    // opp_printf("W", "%s", log.c_str());
-
-    // Populate the host space with particle data.
-    int p_idx = 0;
-    for (int cx = 0; cx < cell_count; cx++) {
-        for (int px = 0; px < npart_per_cell; px++) {
-            
-            ((OPP_REAL*)part_pos->data)[p_idx * DIM + Dim::x] = uniform_dist_vec[px * DIM + Dim::x] + 
-                                                            ((OPP_REAL*)cell_pos_ll->data)[cx * DIM + Dim::x];
-            ((OPP_REAL*)part_pos->data)[p_idx * DIM + Dim::y] = uniform_dist_vec[px * DIM + Dim::y] + 
-                                                            ((OPP_REAL*)cell_pos_ll->data)[cx * DIM + Dim::y];
-            ((OPP_REAL*)part_pos->data)[p_idx * DIM + Dim::z] = uniform_dist_vec[px * DIM + Dim::z] + 
-                                                            ((OPP_REAL*)cell_pos_ll->data)[cx * DIM + Dim::z];
-
-            ((OPP_REAL*)part_vel->data)[p_idx * DIM + Dim::x] = 0.0;
-            ((OPP_REAL*)part_vel->data)[p_idx * DIM + Dim::y] = init_vel;
-            ((OPP_REAL*)part_vel->data)[p_idx * DIM + Dim::z] = 0.0;
-
-            ((OPP_REAL*)part_streak_mid->data)[p_idx * DIM + Dim::x] = 0.0;
-            ((OPP_REAL*)part_streak_mid->data)[p_idx * DIM + Dim::y] = 0.0;
-            ((OPP_REAL*)part_streak_mid->data)[p_idx * DIM + Dim::z] = 0.0;
-
-            ((OPP_INT*)part_mesh_rel->data)[p_idx] = cx;
-            ((OPP_INT*)part_index->data)[p_idx]    = (cx * npart_per_cell + px + rank_part_start); // this might not exactly match with MPI versions
-            ((OPP_REAL*)part_weight->data)[p_idx]  = weight;
-
-            p_idx++;
-        }
-    }
+    if (opp_params->get<OPP_STRING>("part_enrich") == "two_stream")
+        enrich_particles_two_stream(deck, cell_count, (OPP_REAL*)part_pos->data, (OPP_REAL*)part_vel->data, 
+                (OPP_REAL*)part_streak_mid->data, (OPP_INT*)part_mesh_rel->data, (OPP_INT*)part_index->data, 
+                (OPP_REAL*)part_weight->data, (OPP_REAL*)cell_pos_ll->data, rank_part_start, (OPP_INT*)cell_cgid->data);
+    else
+        enrich_particles_random(deck, cell_count, (OPP_REAL*)part_pos->data, (OPP_REAL*)part_vel->data, 
+            (OPP_REAL*)part_streak_mid->data, (OPP_INT*)part_mesh_rel->data, (OPP_INT*)part_index->data, 
+            (OPP_REAL*)part_weight->data, (OPP_REAL*)cell_pos_ll->data, rank_part_start);
 
     if (OPP_rank == OPP_ROOT)
         opp_printf("Setup", "Init particles Uploading Start");
@@ -321,107 +277,6 @@ void init_particles(opp_dat part_index, opp_dat part_pos, opp_dat part_vel, opp_
         opp_printf("Setup", "Init particles END");
 }
 
-inline std::vector<OPP_INT> cabana_get_cells_per_dim() {
-    
-    std::vector<OPP_INT> arr = { 
-        opp_params->get<OPP_INT>("nx"),
-        opp_params->get<OPP_INT>("ny"),
-        opp_params->get<OPP_INT>("nz") 
-    };
-
-    if (OP_DEBUG)
-        opp_printf("N", "%d %d %d", arr[0], arr[1], arr[2]);
-
-    return arr;
-}
-
-inline std::array<OPP_REAL, DIM> cabana_get_c_widths() {
-
-    std::array<OPP_REAL, DIM> arr = { 
-        opp_params->get<OPP_REAL>("c_width_x"),
-        opp_params->get<OPP_REAL>("c_width_y"),
-        opp_params->get<OPP_REAL>("c_width_z") 
-    };
-
-    if (OP_DEBUG)
-        opp_printf("c_widths", "%2.25lE %2.25lE %2.25lE", arr[0], arr[1], arr[2]);
-
-    return arr;
-}
-
-inline std::array<OPP_REAL, DIM> cabana_get_cdt_d() {
-
-    const OPP_REAL c = opp_params->get<OPP_REAL>("c");
-    const OPP_REAL dt = opp_params->get<OPP_REAL>("dt");
-
-    std::array<OPP_REAL, DIM> arr = {
-        (c * dt / opp_params->get<OPP_REAL>("c_width_x")),
-        (c * dt / opp_params->get<OPP_REAL>("c_width_y")),
-        (c * dt / opp_params->get<OPP_REAL>("c_width_z"))
-    };
-    
-    if (OP_DEBUG)
-        opp_printf("cdt_d", "%2.25lE %2.25lE %2.25lE", arr[0], arr[1], arr[2]);
-
-    return arr;
-}
-
-inline OPP_REAL cabana_get_qdt_2mc() {
-    OPP_REAL a = (opp_params->get<OPP_REAL>("qsp") * opp_params->get<OPP_REAL>("dt") / 
-                    (2 * opp_params->get<OPP_REAL>("me") * opp_params->get<OPP_REAL>("c")));
-    
-    if (OP_DEBUG)
-        opp_printf("qdt_2mc", "%2.25lE", a);
-
-    return a;
-}
-
-inline std::array<OPP_REAL, DIM> cabana_get_p() {
-
-    const OPP_REAL c = opp_params->get<OPP_REAL>("c");
-    const OPP_REAL dt = opp_params->get<OPP_REAL>("dt");
-    const OPP_REAL frac = 1.0f;
-
-    std::array<OPP_REAL, DIM> arr = {
-        (opp_params->get<OPP_INT>("nx")>0) ? (frac * c * dt / opp_params->get<OPP_REAL>("c_width_x")) : 0,
-        (opp_params->get<OPP_INT>("ny")>0) ? (frac * c * dt / opp_params->get<OPP_REAL>("c_width_y")) : 0,
-        (opp_params->get<OPP_INT>("nz")>0) ? (frac * c * dt / opp_params->get<OPP_REAL>("c_width_z")) : 0
-    };
-    
-    if (OP_DEBUG)
-        opp_printf("p", "%2.25lE %2.25lE %2.25lE", arr[0], arr[1], arr[2]);
-
-    return arr;
-}
-
-inline std::array<OPP_REAL, DIM> cabana_get_acc_coef() {
-
-    const OPP_REAL dt = opp_params->get<OPP_REAL>("dt");
-    const OPP_REAL dx = opp_params->get<OPP_REAL>("c_width_x");
-    const OPP_REAL dy = opp_params->get<OPP_REAL>("c_width_y");
-    const OPP_REAL dz = opp_params->get<OPP_REAL>("c_width_z");
-
-    std::array<OPP_REAL, DIM> arr = {
-        0.25 / (dy * dz * dt),
-        0.25 / (dz * dx * dt),
-        0.25 / (dx * dy * dt)
-    };
-    
-    if (OP_DEBUG)
-        opp_printf("acc_coef", "%2.25lE %2.25lE %2.25lE", arr[0], arr[1], arr[2]);
-
-    return arr;
-}
-
-inline OPP_REAL cabana_get_dt_eps0() {
-    
-    OPP_REAL a = (opp_params->get<OPP_REAL>("dt") / opp_params->get<OPP_REAL>("eps"));
-
-    if (OP_DEBUG)
-        opp_printf("dt_eps0", "%2.25lE", a);
-
-    return a;
-}
 
 //*************************************************************************************************
 /**
