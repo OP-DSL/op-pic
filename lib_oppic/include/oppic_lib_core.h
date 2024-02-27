@@ -450,9 +450,11 @@ namespace opp {
         const opp_point& getGlobalMax() const;
         bool isCoordinateInBoundingBox(const opp_point& point);
         bool isCoordinateInGlobalBoundingBox(const opp_point& point);
+        inline int getDim() const { return dim; }
 
     private:
-        void generateGlobalBoundingBox(int dim, int count, const std::shared_ptr<Comm> comm);
+        void generateGlobalBoundingBox(int count, const std::shared_ptr<Comm> comm);
+        int dim = 0;
 
         std::array<opp_point,2> boundingBox; // index 0 is min, index 1 is max
         std::array<opp_point,2> globalBoundingBox; // index 0 is min, index 1 is max
@@ -482,6 +484,7 @@ namespace opp {
         ~CellMapper();
 
         opp_point getCentroidOfBox(const opp_point& coordinate);
+        size_t findStructuredCellIndex2D(const opp_point& position);
         size_t findStructuredCellIndex(const opp_point& position);
         int findClosestCellIndex(const size_t& structCellIdx);
         int findClosestCellRank(const size_t& structCellIdx);

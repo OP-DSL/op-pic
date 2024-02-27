@@ -37,6 +37,9 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 using namespace opp;
 
+void initialize_particle_mover(const double grid_spacing, int dim, 
+    const opp_dat cell_pos_ll_dat, const opp_dat global_cid_dat, const opp_map cell_cell_map);
+
 #include "advec_misc.cpp"
 
 //*********************************************MAIN****************************************************
@@ -59,6 +62,7 @@ int main(int argc, char **argv)
         OPP_REAL extents[2]   = {opp_params->get<OPP_INT>("nx")*cell_width, opp_params->get<OPP_INT>("ny")*cell_width};
         OPP_INT ndimcells[2]  = {opp_params->get<OPP_INT>("nx"), opp_params->get<OPP_INT>("ny")};
         OPP_BOOL verify_parts = opp_params->get<OPP_BOOL>("verify_particles");
+        OPP_REAL grid_spacing = opp_params->get<OPP_REAL>("grid_spacing");
 
         std::shared_ptr<DataPointers> m = LoadData();
 
@@ -90,6 +94,8 @@ int main(int argc, char **argv)
 #endif
         
         init_particles(part_index, part_pos, part_vel, part_mesh_rel, cell_pos_ll);
+
+        initialize_particle_mover(grid_spacing, DIM, cell_pos_ll, cell_index, cell_cell_map);
 
         opp_printf("Setup", "Cells[%d] Particles[%d]", cell_set->size, part_set->size);
 

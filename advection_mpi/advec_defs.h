@@ -40,7 +40,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
     #include <opp_mpi_core.h>
 #endif
 
-#define FUSE_KERNELS
+// #define FUSE_KERNELS
 
 #define ONE                       1
 #define TWO                       2
@@ -48,14 +48,24 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #define VOXEL(x,y, nx0) (x + nx0 * y)
 
+// #define VOXEL_MAP(_ix,_iy, nx,ny, OUT) \
+//     { \
+//     int _x = _ix; \
+//     int _y = _iy; \
+//     if (_x < 0) _x = (nx-1); \
+//     if (_y < 0) _y = (ny-1); \
+//     if (_x >= nx) _x = 0; \
+//     if (_y >= ny) _y = 0; \
+//     OUT = (_x + nx*_y); }
+
 #define VOXEL_MAP(_ix,_iy, nx,ny, OUT) \
     { \
     int _x = _ix; \
     int _y = _iy; \
-    if (_x < 0) _x = (nx-1); \
-    if (_y < 0) _y = (ny-1); \
-    if (_x >= nx) _x = 0; \
-    if (_y >= ny) _y = 0; \
+    if (_x < 0) _x = -1; \
+    if (_y < 0) _y = -1; \
+    if (_x >= nx) _x = -1; \
+    if (_y >= ny) _y = -1; \
     OUT = (_x + nx*_y); }
 
 #define RANK_TO_INDEX(rank,ix,iy,_x) \

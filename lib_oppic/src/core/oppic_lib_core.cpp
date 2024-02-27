@@ -1262,12 +1262,13 @@ void opp_set_dirtybit_grouped(int nargs, oppic_arg *args, DeviceType device)
 #define BOUNDING_TOLERENCE 1e-12
 
 //*******************************************************************************
-BoundingBox::BoundingBox(int dim, opp_point minCoordinate, opp_point maxCoordinate, const std::shared_ptr<Comm> comm) {
+BoundingBox::BoundingBox(int dim, opp_point minCoordinate, opp_point maxCoordinate, const std::shared_ptr<Comm> comm) :
+    dim(dim) {
 
     this->boundingBox[0] = minCoordinate;
     this->boundingBox[1] = maxCoordinate;
 
-    generateGlobalBoundingBox(dim, 0, comm);
+    generateGlobalBoundingBox(0, comm);
 
     if (OP_DEBUG)
         opp_printf("Local BoundingBox [provided]", "Min[%2.6lE %2.6lE %2.6lE] Max[%2.6lE %2.6lE %2.6lE]", 
@@ -1278,10 +1279,11 @@ BoundingBox::BoundingBox(int dim, opp_point minCoordinate, opp_point maxCoordina
 
 // For now, only 3D is implemented
 //*******************************************************************************
-BoundingBox::BoundingBox(const opp_dat node_pos_dat, int dim, const std::shared_ptr<Comm> comm) {
+BoundingBox::BoundingBox(const opp_dat node_pos_dat, int dim, const std::shared_ptr<Comm> comm) :
+    dim(dim) {
     
-    if (dim != 3) {
-        opp_abort(std::string("For now, only 3D BoundingBox is implemented"));
+    if (dim != 3 && dim != 2) {
+        opp_abort(std::string("For now, only 2D/3D BoundingBox is implemented"));
     }
 
     const double* node_pos_data = (const double*)node_pos_dat->data;
@@ -1291,29 +1293,38 @@ BoundingBox::BoundingBox(const opp_dat node_pos_dat, int dim, const std::shared_
     opp_point minCoordinate = opp_point(MAX_REAL, MAX_REAL, MAX_REAL);
     opp_point maxCoordinate = opp_point(MIN_REAL, MIN_REAL, MIN_REAL);
 
+    if (dim == 2) {
+        minCoordinate.z = 0;
+        maxCoordinate.z = 0;
+    }
+
     // make the bounding box even over the halo regions
     for (int i = 0; i < node_count; i++) {
         minCoordinate.x = std::min(node_pos_data[i * dim + 0], minCoordinate.x);
-        minCoordinate.y = std::min(node_pos_data[i * dim + 1], minCoordinate.y);
-        minCoordinate.z = std::min(node_pos_data[i * dim + 2], minCoordinate.z);
         maxCoordinate.x = std::max(node_pos_data[i * dim + 0], maxCoordinate.x);
+        minCoordinate.y = std::min(node_pos_data[i * dim + 1], minCoordinate.y);
         maxCoordinate.y = std::max(node_pos_data[i * dim + 1], maxCoordinate.y);
-        maxCoordinate.z = std::max(node_pos_data[i * dim + 2], maxCoordinate.z);
+        if (dim == 3) {
+            minCoordinate.z = std::min(node_pos_data[i * dim + 2], minCoordinate.z);
+            maxCoordinate.z = std::max(node_pos_data[i * dim + 2], maxCoordinate.z);
+        }
     }
 
     if (node_count != 0) {
         minCoordinate.x -= BOUNDING_TOLERENCE;
-        minCoordinate.y -= BOUNDING_TOLERENCE;
-        minCoordinate.z -= BOUNDING_TOLERENCE;
         maxCoordinate.x += BOUNDING_TOLERENCE;
+        minCoordinate.y -= BOUNDING_TOLERENCE;
         maxCoordinate.y += BOUNDING_TOLERENCE;
-        maxCoordinate.z += BOUNDING_TOLERENCE;
+        if (dim == 3) {
+            minCoordinate.z -= BOUNDING_TOLERENCE;
+            maxCoordinate.z += BOUNDING_TOLERENCE;
+        }
     }
 
     this->boundingBox[0] = minCoordinate;
     this->boundingBox[1] = maxCoordinate;
 
-    generateGlobalBoundingBox(dim, node_count, comm);
+    generateGlobalBoundingBox(node_count, comm);
 
     if (OP_DEBUG)
         opp_printf("Local BoundingBox [computed]", "Min[%2.6lE %2.6lE %2.6lE] Max[%2.6lE %2.6lE %2.6lE]", 
@@ -1322,7 +1333,7 @@ BoundingBox::BoundingBox(const opp_dat node_pos_dat, int dim, const std::shared_
 }
 
 //*******************************************************************************
-void BoundingBox::generateGlobalBoundingBox(int dim, int count, const std::shared_ptr<Comm> comm) {
+void BoundingBox::generateGlobalBoundingBox(int count, const std::shared_ptr<Comm> comm) {
 
 #ifdef USE_MPI
 
@@ -1481,7 +1492,7 @@ CellMapper::CellMapper(const std::shared_ptr<BoundingBox> boundingBox, const dou
         this->globalGridDims.z = az + 1; 
     }
 
-    if (OPP_rank == OPP_ROOT)
+    // if (OPP_rank == OPP_ROOT)
         opp_printf("CellMapper", "Global Grid Size - [%d %d %d] gridSpacing [%2.10lE]", 
             this->globalGridDims.x, this->globalGridDims.y, this->globalGridDims.z, this->gridSpacing); 
     
@@ -1574,6 +1585,33 @@ size_t CellMapper::findStructuredCellIndex(const opp_point& position) {
     // Calculate the cell index mapping index
     size_t index = ((size_t)(xIndex) + (size_t)(yIndex * globalGridDims.x) + 
                 (size_t)(zIndex * globalGridDims.x * globalGridDims.y));
+
+    if (index >= globalGridSize) {
+        // opp_printf("CellMapper", "Error index %zu generated is larger than globalGridSize %zu", 
+        //     index, globalGridSize);
+        return MAX_CELL_INDEX;
+    }
+
+    return index;
+}
+
+//*******************************************************************************
+// Returns the global cell index
+size_t CellMapper::findStructuredCellIndex2D(const opp_point& position) { 
+
+    // Perform the calculations in higher precision (double)
+    double xDiff = position.x - this->minGlbCoordinate.x;
+    double yDiff = position.y - this->minGlbCoordinate.y;
+
+    xDiff = xDiff * this->oneOverGridSpacing;
+    yDiff = yDiff * this->oneOverGridSpacing;
+
+    // Round to the nearest integer to minimize rounding errors
+    const int xIndex = static_cast<int>(xDiff);
+    const int yIndex = static_cast<int>(yDiff);
+
+    // Calculate the cell index mapping index
+    size_t index = ((size_t)(xIndex) + (size_t)(yIndex * globalGridDims.x));
 
     if (index >= globalGridSize) {
         // opp_printf("CellMapper", "Error index %zu generated is larger than globalGridSize %zu", 
