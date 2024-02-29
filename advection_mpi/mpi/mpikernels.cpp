@@ -293,6 +293,8 @@ void opp_loop_all__UpdatePos(
     opp_profiler->end("UpdatePos");
 }
 
+// #define DEBUG_INTERNAL
+
 //*******************************************************************************
 void opp_particle_mover__Move(
     opp_set set,        // particles_set
@@ -320,8 +322,16 @@ void opp_particle_mover__Move(
     const int args2_dim = args[2].dim;
     const int args3_dim = args[3].dim;
 
+#ifdef DEBUG_INTERNAL // ----------------------------------------------------------------------------
+    int global_max_comms = 0, internal_comms = 0, global_max_multi = 0, max_multi_hops = 0, max_internal_hops = 0;
+#endif // DEBUG_INTERNAL ----------------------------------------------------------------------------
+
     // lambda function for multi hop particle movement
     auto multihop_mover = [&](const int i) {
+
+#ifdef DEBUG_INTERNAL // ----------------------------------------------------------------------------
+        max_internal_hops = 0;
+#endif // DEBUG_INTERNAL ----------------------------------------------------------------------------
 
         int& cellIdx = ((int*)args[0].data)[i];
 
@@ -339,7 +349,15 @@ void opp_particle_mover__Move(
                 &((OPP_INT*)  args[3].data)[cellIdx * args3_dim]  // cell_cell_map  
             );
 
+#ifdef DEBUG_INTERNAL // ----------------------------------------------------------------------------
+            max_internal_hops++;
+#endif // DEBUG_INTERNAL ----------------------------------------------------------------------------
+
         } while (opp_part_check_status(m, cellIdx, set, i, set->particle_remove_count));
+
+#ifdef DEBUG_INTERNAL // ----------------------------------------------------------------------------
+        if (max_internal_hops > max_multi_hops) max_multi_hops = max_internal_hops;
+#endif // DEBUG_INTERNAL ----------------------------------------------------------------------------
     };
 
     // ----------------------------------------------------------------------------
@@ -408,7 +426,11 @@ void opp_particle_mover__Move(
     // Do neighbour communication and if atleast one particle is received by the currect rank, 
     // then iterate over the newly added particles
     while (opp_finalize_particle_move(set)) {
-        
+
+#ifdef DEBUG_INTERNAL // ----------------------------------------------------------------------------
+        internal_comms++;
+#endif // DEBUG_INTERNAL ----------------------------------------------------------------------------
+
         std::string profName = std::string("Mv_AllMv") + std::to_string(OPP_comm_iteration);
         opp_profiler->start(profName);
         
@@ -423,6 +445,11 @@ void opp_particle_mover__Move(
         opp_profiler->end(profName);
     }
 
+#ifdef DEBUG_INTERNAL // ----------------------------------------------------------------------------
+    MPI_Reduce(&internal_comms, &global_max_comms, 1, MPI_INT, MPI_MAX, 0, MPI_COMM_WORLD);
+    MPI_Reduce(&max_multi_hops, &global_max_multi, 1, MPI_INT, MPI_MAX, 0, MPI_COMM_WORLD);
+    if (OPP_rank == 0) opp_printf("Move", "Max comms %d Max multi %d", global_max_comms, global_max_multi);
+#endif // DEBUG_INTERNAL ----------------------------------------------------------------------------
     opp_set_dirtybit(nargs, args);
 
     opp_profiler->end("Move");
@@ -610,11 +637,11 @@ void initialize_particle_mover(const double grid_spacing, int dim,
         comm = std::make_shared<Comm>(MPI_COMM_WORLD);
         globalMover = std::make_unique<GlobalParticleMover>(comm->comm_parent);
 #endif
-opp_printf("XX", "HERE j");
+
         boundingBox = std::make_shared<BoundingBox>(cell_pos_ll_dat, dim, comm);
-opp_printf("XX", "HERE k");
+
         cellMapper = std::make_shared<CellMapper>(boundingBox, grid_spacing, comm);
-opp_printf("XX", "HERE z");
+
         // generateStructMeshToGlobalCellMappings(cellVolume_dat->set, global_cell_id_dat, 
         //     cellVolume_dat, cellDet_dat);
         generate_struct_mesh_to_gbl_cell_maps(cell_pos_ll_dat, global_cid_dat, cell_cell_map);

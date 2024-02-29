@@ -66,12 +66,10 @@ inline opp_move_status is_point_in_current_cell_kernel(
     const OPP_REAL part_pos_x = part_pos[Dim::x];
     if (part_pos_x < cell_pos_ll[Dim::x]) {
         part_cid[0] = cell_cell_map[CellMap::xd_y];
-        if (part_cid[0] == -1) return OPP_NEED_REMOVE;
         return OPP_NEED_MOVE;
     }
     if (part_pos_x > (cell_pos_ll[Dim::x] + CONST_cell_width)) {
         part_cid[0] = cell_cell_map[CellMap::xu_y];
-        if (part_cid[0] == -1) return OPP_NEED_REMOVE;
         return OPP_NEED_MOVE;
     }
 
@@ -79,12 +77,10 @@ inline opp_move_status is_point_in_current_cell_kernel(
     const OPP_REAL part_pos_y = part_pos[Dim::y];
     if (part_pos_y < cell_pos_ll[Dim::y]) {
         part_cid[0] = cell_cell_map[CellMap::x_yd];
-        if (part_cid[0] == -1) return OPP_NEED_REMOVE;
         return OPP_NEED_MOVE;
     }
     if (part_pos_y > (cell_pos_ll[Dim::y] + CONST_cell_width)) {
         part_cid[0] = cell_cell_map[CellMap::x_yu];
-        if (part_cid[0] == -1) return OPP_NEED_REMOVE;
         return OPP_NEED_MOVE;
     }
 

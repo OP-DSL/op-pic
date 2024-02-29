@@ -149,8 +149,12 @@ int main(int argc, char **argv)
         } // End Main loop
         opp_profiler->end("MainLoop");
         
+        int64_t total_glb_particles = 0, local_particles = (int64_t)(part_set->size);
+        MPI_Reduce(&local_particles, &total_glb_particles, 1, MPI_INT64_T, MPI_SUM, OPP_ROOT, MPI_COMM_WORLD);
+
         if (OPP_rank == OPP_ROOT) 
-            opp_printf("Main", "Main loop completed after %d iterations ****", max_iter);
+            opp_printf("Main", "Main loop completed after %d iterations {particles=%d} ****", 
+                max_iter, total_glb_particles);
     }
 
     opp_exit();
