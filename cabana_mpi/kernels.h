@@ -453,7 +453,11 @@ inline void get_final_max_values_kernel(
 }
 
 //*******************************************************************************
-inline void update_ghosts_B_kernel(const OPP_INT* c_mask_ugb,const OPP_REAL* from_cell,OPP_REAL* to_cell,const OPP_INT* m_idx)
+inline void update_ghosts_B_kernel(
+    const OPP_INT* c_mask_ugb,
+    const OPP_REAL* from_cell,
+    OPP_REAL* to_cell,
+    const OPP_INT* m_idx)
 {
     if (c_mask_ugb[*m_idx] == 1)
     {
@@ -463,7 +467,12 @@ inline void update_ghosts_B_kernel(const OPP_INT* c_mask_ugb,const OPP_REAL* fro
     }  
 }
 //*******************************************************************************
-inline void update_ghosts_kernel(const OPP_INT* c_mask_ug,const OPP_REAL* from_cell,OPP_REAL* to_cell,const OPP_INT* m_idx, const OPP_INT* dim)
+inline void update_ghosts_kernel(
+    const OPP_INT* c_mask_ug,
+    const OPP_REAL* from_cell,
+    OPP_REAL* to_cell,
+    const OPP_INT* m_idx, 
+    const OPP_INT* dim)
 {
     if (c_mask_ug[*m_idx] == 1)
         to_cell[*dim] += from_cell[*dim];

@@ -52,20 +52,26 @@ __device__ void dev_advance_e__kernel(
     const OPP_REAL* cell_z_b, 
     const OPP_REAL* cell0_b, 
     const OPP_REAL* cell0_j, 
-    OPP_REAL* cell0_e
+    OPP_REAL* cell0_e,
+    const OPP_INT* iter_adv_e
 )
 {
-    cell0_e[ae_OPP_DEVICE_5 * Dim::x] += ( - CONST_DEV_dt_eps0 * cell0_j[ae_OPP_DEVICE_4 * Dim::x] ) + 
-        ( CONST_DEV_p[Dim::y] * (cell0_b[ae_OPP_DEVICE_0 * Dim::z] - cell_y_b[ae_OPP_DEVICE_0 * Dim::z]) - 
-        CONST_DEV_p[Dim::z] * (cell0_b[ae_OPP_DEVICE_0 * Dim::y] - cell_z_b[ae_OPP_DEVICE_0 * Dim::y]) );
+    if (iter_adv_e[0] == 1)
+    {
+        // No need of atomics here, since we are directly incrementing core elements 
 
-    cell0_e[ae_OPP_DEVICE_5 * Dim::y] += ( - CONST_DEV_dt_eps0 * cell0_j[ae_OPP_DEVICE_4 * Dim::y] ) +            
-        ( CONST_DEV_p[Dim::z] * (cell0_b[ae_OPP_DEVICE_0 * Dim::x] - cell_z_b[ae_OPP_DEVICE_0 * Dim::x]) - 
-        CONST_DEV_p[Dim::x] * (cell0_b[ae_OPP_DEVICE_0 * Dim::z] - cell_x_b[ae_OPP_DEVICE_0 * Dim::z]) );
+        cell0_e[ae_OPP_DEVICE_5 * Dim::x] += ( - CONST_DEV_dt_eps0 * cell0_j[ae_OPP_DEVICE_4 * Dim::x] ) + 
+            ( CONST_DEV_p[Dim::y] * (cell0_b[ae_OPP_DEVICE_0 * Dim::z] - cell_y_b[ae_OPP_DEVICE_0 * Dim::z]) - 
+            CONST_DEV_p[Dim::z] * (cell0_b[ae_OPP_DEVICE_0 * Dim::y] - cell_z_b[ae_OPP_DEVICE_0 * Dim::y]) );
 
-    cell0_e[ae_OPP_DEVICE_5 * Dim::z] += ( - CONST_DEV_dt_eps0 * cell0_j[ae_OPP_DEVICE_4 * Dim::z] ) +           
-        ( CONST_DEV_p[Dim::x] * (cell0_b[ae_OPP_DEVICE_0 * Dim::y] - cell_x_b[ae_OPP_DEVICE_0 * Dim::y]) - 
-        CONST_DEV_p[Dim::y] * (cell0_b[ae_OPP_DEVICE_0 * Dim::x] - cell_y_b[ae_OPP_DEVICE_0 * Dim::x]) );  
+        cell0_e[ae_OPP_DEVICE_5 * Dim::y] += ( - CONST_DEV_dt_eps0 * cell0_j[ae_OPP_DEVICE_4 * Dim::y] ) +            
+            ( CONST_DEV_p[Dim::z] * (cell0_b[ae_OPP_DEVICE_0 * Dim::x] - cell_z_b[ae_OPP_DEVICE_0 * Dim::x]) - 
+            CONST_DEV_p[Dim::x] * (cell0_b[ae_OPP_DEVICE_0 * Dim::z] - cell_x_b[ae_OPP_DEVICE_0 * Dim::z]) );
+
+        cell0_e[ae_OPP_DEVICE_5 * Dim::z] += ( - CONST_DEV_dt_eps0 * cell0_j[ae_OPP_DEVICE_4 * Dim::z] ) +           
+            ( CONST_DEV_p[Dim::x] * (cell0_b[ae_OPP_DEVICE_0 * Dim::y] - cell_x_b[ae_OPP_DEVICE_0 * Dim::y]) - 
+            CONST_DEV_p[Dim::y] * (cell0_b[ae_OPP_DEVICE_0 * Dim::x] - cell_y_b[ae_OPP_DEVICE_0 * Dim::x]) );  
+    }
 }
 
 // DEVICE kernel function
@@ -78,6 +84,7 @@ __global__ void dev_advance_e(
     const OPP_REAL *__restrict arg3_dir,
     const OPP_REAL *__restrict arg4_dir,
     OPP_REAL *__restrict arg5_dir,
+    const OPP_INT *__restrict arg6_dir,
     int start,
     int end) 
 {
@@ -98,7 +105,8 @@ __global__ void dev_advance_e(
             (arg2_ind + map2idx),
             (arg3_dir + n),
             (arg4_dir + n),
-            (arg5_dir + n)
+            (arg5_dir + n),
+            (arg6_dir + n)
         );
     }
 }
@@ -111,15 +119,16 @@ void opp_loop_all__advance_e(
     opp_arg arg2,    // cell_z_b        // OPP_READ
     opp_arg arg3,    // cell0_b         // OPP_READ
     opp_arg arg4,    // cell0_j         // OPP_READ
-    opp_arg arg5     // cell0_e         // OPP_INC
+    opp_arg arg5,    // cell0_e         // OPP_INC
+    opp_arg arg6     // iter_adv_e      // OPP_READ
 )
 {
 
-    if (FP_DEBUG) opp_printf("CABANA", "opp_loop_all__advance_e set_size %d", set->size);
+    if (OP_DEBUG) opp_printf("CABANA", "opp_loop_all__advance_e set_size %d", set->size);
 
     opp_profiler->start("Adv_E");
 
-    const int nargs = 6;
+    const int nargs = 7;
     opp_arg args[nargs];
 
     args[0] = std::move(arg0);
@@ -128,13 +137,12 @@ void opp_loop_all__advance_e(
     args[3] = std::move(arg3);
     args[4] = std::move(arg4);
     args[5] = std::move(arg5);
+    args[6] = std::move(arg6);
 
-    opp_profiler->start("Adv_E_HaloSend");
+    opp_profiler->start("Adv_E_Halo");
     int set_size = opp_mpi_halo_exchanges_grouped(set, nargs, args, Device_GPU);
-    opp_profiler->end("Adv_E_HaloSend");
-    opp_profiler->start("Adv_E_HaloWait");
     opp_mpi_halo_wait_all(nargs, args);
-    opp_profiler->end("Adv_E_HaloWait");
+    opp_profiler->end("Adv_E_Halo");
 
     if (set_size > 0) 
     {
@@ -143,14 +151,10 @@ void opp_loop_all__advance_e(
         ae_OPP_HOST_5 = args[5].dat->set->set_capacity;
         ae_OPP_HOST_0_MAP = args[0].size;
 
-        cutilSafeCall(cudaMemcpyToSymbol(ae_OPP_DEVICE_0, 
-                                                    &ae_OPP_HOST_0, sizeof(int)));
-        cutilSafeCall(cudaMemcpyToSymbol(ae_OPP_DEVICE_4, 
-                                                    &ae_OPP_HOST_4, sizeof(int)));
-        cutilSafeCall(cudaMemcpyToSymbol(ae_OPP_DEVICE_5, 
-                                                    &ae_OPP_HOST_5, sizeof(int)));
-        cutilSafeCall(cudaMemcpyToSymbol(ae_OPP_DEVICE_0_MAP, 
-                                                    &ae_OPP_HOST_0_MAP, sizeof(int)));
+        cutilSafeCall(cudaMemcpyToSymbol(ae_OPP_DEVICE_0, &ae_OPP_HOST_0, sizeof(int)));
+        cutilSafeCall(cudaMemcpyToSymbol(ae_OPP_DEVICE_4, &ae_OPP_HOST_4, sizeof(int)));
+        cutilSafeCall(cudaMemcpyToSymbol(ae_OPP_DEVICE_5, &ae_OPP_HOST_5, sizeof(int)));
+        cutilSafeCall(cudaMemcpyToSymbol(ae_OPP_DEVICE_0_MAP, &ae_OPP_HOST_0_MAP, sizeof(int)));
 
         int start = 0;
         int end   = set->size;
@@ -168,6 +172,7 @@ void opp_loop_all__advance_e(
                 (OPP_REAL*) args[3].data_d,         // cell0_b         // OPP_READ
                 (OPP_REAL*) args[4].data_d,         // cell0_j         // OPP_READ
                 (OPP_REAL*) args[5].data_d,         // cell0_e         // OPP_INC
+                (OPP_INT*)  args[6].data_d,         // iter_adv_e      // OPP_READ
                 start, 
                 end);
         }

@@ -11,7 +11,7 @@ NVCC       = nvcc
 HIPCC      = hipcc
 
 CPPFLAGS   = -std=c++17 -Wall -fPIC -march=native
-NVCCFLAGS  = -m64 -Xptxas -dlcm=ca -Xptxas=-v $(NVCCFLAGS_ADD)
+NVCCFLAGS  = -std=c++14 -m64 -Xptxas -dlcm=ca -Xptxas=-v $(NVCCFLAGS_ADD)
 HIPCCFLAGS = -std=c++17 -Wall -isystem -D__HIP_PLATFORM_AMD__ -munsafe-fp-atomics 
 
 DEBUG ?= 0

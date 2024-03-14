@@ -58,61 +58,66 @@ __device__ void dev_interpolate_mesh_fields__kernel(
     const OPP_REAL* cell_x_b, 
     const OPP_REAL* cell_y_b, 
     const OPP_REAL* cell_z_b, 
-    OPP_REAL* cell0_interp
+    OPP_REAL* cell0_interp,
+    const OPP_INT* cell0_ghost
 )
 {
-    OPP_REAL w0 = 0.0, w1 = 0.0, w2 = 0.0, w3 = 0.0;
+    if (cell0_ghost[0] == 0)
+    {
 
-    // ex interpolation coefficients
-    w0 = cell0_e[imf_OPP_DEV_0 * Dim::x];                       // pf0->ex;
-    w1 = cell_y_e[imf_OPP_DEV_0 * Dim::x];                      // pfy->ex;
-    w2 = cell_z_e[imf_OPP_DEV_0 * Dim::x];                      // pfz->ex;
-    w3 = cell_yz_e[imf_OPP_DEV_0 * Dim::x];                     // pfyz->ex;
+        OPP_REAL w0 = 0.0, w1 = 0.0, w2 = 0.0, w3 = 0.0;
 
-    cell0_interp[imf_OPP_DEV_11 * CellInterp::ex]       = CONST_DEV_fourth*( (w3 + w0) + (w1 + w2) );
-    cell0_interp[imf_OPP_DEV_11 * CellInterp::dexdy]    = CONST_DEV_fourth*( (w3 - w0) + (w1 - w2) );
-    cell0_interp[imf_OPP_DEV_11 * CellInterp::dexdz]    = CONST_DEV_fourth*( (w3 - w0) - (w1 - w2) );
-    cell0_interp[imf_OPP_DEV_11 * CellInterp::d2exdydz] = CONST_DEV_fourth*( (w3 + w0) - (w1 + w2) );
+        // ex interpolation coefficients
+        w0 = cell0_e[imf_OPP_DEV_0 * Dim::x];                       // pf0->ex;
+        w1 = cell_y_e[imf_OPP_DEV_0 * Dim::x];                      // pfy->ex;
+        w2 = cell_z_e[imf_OPP_DEV_0 * Dim::x];                      // pfz->ex;
+        w3 = cell_yz_e[imf_OPP_DEV_0 * Dim::x];                     // pfyz->ex;
 
-    // ey interpolation coefficients
-    w0 = cell0_e[imf_OPP_DEV_0 * Dim::y];
-    w1 = cell_z_e[imf_OPP_DEV_0 * Dim::y];                       // pfz->ey;
-    w2 = cell_x_e[imf_OPP_DEV_0 * Dim::y];                       // pfx->ey;
-    w3 = cell_xz_e[imf_OPP_DEV_0 * Dim::y];                      // pfzx->ey;
+        cell0_interp[imf_OPP_DEV_11 * CellInterp::ex]       = CONST_DEV_fourth*( (w3 + w0) + (w1 + w2) );
+        cell0_interp[imf_OPP_DEV_11 * CellInterp::dexdy]    = CONST_DEV_fourth*( (w3 - w0) + (w1 - w2) );
+        cell0_interp[imf_OPP_DEV_11 * CellInterp::dexdz]    = CONST_DEV_fourth*( (w3 - w0) - (w1 - w2) );
+        cell0_interp[imf_OPP_DEV_11 * CellInterp::d2exdydz] = CONST_DEV_fourth*( (w3 + w0) - (w1 + w2) );
 
-    cell0_interp[imf_OPP_DEV_11 * CellInterp::ey]       = CONST_DEV_fourth*( (w3 + w0) + (w1 + w2) );
-    cell0_interp[imf_OPP_DEV_11 * CellInterp::deydz]    = CONST_DEV_fourth*( (w3 - w0) + (w1 - w2) );
-    cell0_interp[imf_OPP_DEV_11 * CellInterp::deydx]    = CONST_DEV_fourth*( (w3 - w0) - (w1 - w2) );
-    cell0_interp[imf_OPP_DEV_11 * CellInterp::d2eydzdx] = CONST_DEV_fourth*( (w3 + w0) - (w1 + w2) );
+        // ey interpolation coefficients
+        w0 = cell0_e[imf_OPP_DEV_0 * Dim::y];
+        w1 = cell_z_e[imf_OPP_DEV_0 * Dim::y];                       // pfz->ey;
+        w2 = cell_x_e[imf_OPP_DEV_0 * Dim::y];                       // pfx->ey;
+        w3 = cell_xz_e[imf_OPP_DEV_0 * Dim::y];                      // pfzx->ey;
 
-    // ez interpolation coefficients
-    w0 = cell0_e[imf_OPP_DEV_0 * Dim::z];                       // pf0->ez;
-    w1 = cell_x_e[imf_OPP_DEV_0 * Dim::z];                      // pfx->ez;
-    w2 = cell_y_e[imf_OPP_DEV_0 * Dim::z];                      // pfy->ez;
-    w3 = cell_xy_e[imf_OPP_DEV_0 * Dim::z];                     // pfxy->ez;
+        cell0_interp[imf_OPP_DEV_11 * CellInterp::ey]       = CONST_DEV_fourth*( (w3 + w0) + (w1 + w2) );
+        cell0_interp[imf_OPP_DEV_11 * CellInterp::deydz]    = CONST_DEV_fourth*( (w3 - w0) + (w1 - w2) );
+        cell0_interp[imf_OPP_DEV_11 * CellInterp::deydx]    = CONST_DEV_fourth*( (w3 - w0) - (w1 - w2) );
+        cell0_interp[imf_OPP_DEV_11 * CellInterp::d2eydzdx] = CONST_DEV_fourth*( (w3 + w0) - (w1 + w2) );
 
-    cell0_interp[imf_OPP_DEV_11 * CellInterp::ez]       = CONST_DEV_fourth*( (w3 + w0) + (w1 + w2) );
-    cell0_interp[imf_OPP_DEV_11 * CellInterp::dezdx]    = CONST_DEV_fourth*( (w3 - w0) + (w1 - w2) );
-    cell0_interp[imf_OPP_DEV_11 * CellInterp::dezdy]    = CONST_DEV_fourth*( (w3 - w0) - (w1 - w2) );
-    cell0_interp[imf_OPP_DEV_11 * CellInterp::d2ezdxdy] = CONST_DEV_fourth*( (w3 + w0) - (w1 + w2) );
+        // ez interpolation coefficients
+        w0 = cell0_e[imf_OPP_DEV_0 * Dim::z];                       // pf0->ez;
+        w1 = cell_x_e[imf_OPP_DEV_0 * Dim::z];                      // pfx->ez;
+        w2 = cell_y_e[imf_OPP_DEV_0 * Dim::z];                      // pfy->ez;
+        w3 = cell_xy_e[imf_OPP_DEV_0 * Dim::z];                     // pfxy->ez;
 
-    // bx interpolation coefficients
-    w0 = cell0_b[imf_OPP_DEV_1 * Dim::x];                      // pf0->cbx;
-    w1 = cell_x_b[imf_OPP_DEV_1 * Dim::x];                     // pfx->cbx;
-    cell0_interp[imf_OPP_DEV_11 * CellInterp::cbx]    = CONST_DEV_half*( w1 + w0 );
-    cell0_interp[imf_OPP_DEV_11 * CellInterp::dcbxdx] = CONST_DEV_half*( w1 - w0 );
+        cell0_interp[imf_OPP_DEV_11 * CellInterp::ez]       = CONST_DEV_fourth*( (w3 + w0) + (w1 + w2) );
+        cell0_interp[imf_OPP_DEV_11 * CellInterp::dezdx]    = CONST_DEV_fourth*( (w3 - w0) + (w1 - w2) );
+        cell0_interp[imf_OPP_DEV_11 * CellInterp::dezdy]    = CONST_DEV_fourth*( (w3 - w0) - (w1 - w2) );
+        cell0_interp[imf_OPP_DEV_11 * CellInterp::d2ezdxdy] = CONST_DEV_fourth*( (w3 + w0) - (w1 + w2) );
 
-    // by interpolation coefficients
-    w0 = cell0_b[imf_OPP_DEV_1 * Dim::y];                      // pf0->cby;
-    w1 = cell_y_b[imf_OPP_DEV_1 * Dim::y];                     // pfy->cby;
-    cell0_interp[imf_OPP_DEV_11 * CellInterp::cby]    = CONST_DEV_half*( w1 + w0 );
-    cell0_interp[imf_OPP_DEV_11 * CellInterp::dcbydy] = CONST_DEV_half*( w1 - w0 );
+        // bx interpolation coefficients
+        w0 = cell0_b[imf_OPP_DEV_1 * Dim::x];                      // pf0->cbx;
+        w1 = cell_x_b[imf_OPP_DEV_1 * Dim::x];                     // pfx->cbx;
+        cell0_interp[imf_OPP_DEV_11 * CellInterp::cbx]    = CONST_DEV_half*( w1 + w0 );
+        cell0_interp[imf_OPP_DEV_11 * CellInterp::dcbxdx] = CONST_DEV_half*( w1 - w0 );
 
-    // bz interpolation coefficients
-    w0 = cell0_b[imf_OPP_DEV_1 * Dim::z];                      // pf0->cbz;
-    w1 = cell_z_b[imf_OPP_DEV_1 * Dim::z];                     // pfz->cbz;
-    cell0_interp[imf_OPP_DEV_11 * CellInterp::cbz]    = CONST_DEV_half*( w1 + w0 );
-    cell0_interp[imf_OPP_DEV_11 * CellInterp::dcbzdz] = CONST_DEV_half*( w1 - w0 );
+        // by interpolation coefficients
+        w0 = cell0_b[imf_OPP_DEV_1 * Dim::y];                      // pf0->cby;
+        w1 = cell_y_b[imf_OPP_DEV_1 * Dim::y];                     // pfy->cby;
+        cell0_interp[imf_OPP_DEV_11 * CellInterp::cby]    = CONST_DEV_half*( w1 + w0 );
+        cell0_interp[imf_OPP_DEV_11 * CellInterp::dcbydy] = CONST_DEV_half*( w1 - w0 );
+
+        // bz interpolation coefficients
+        w0 = cell0_b[imf_OPP_DEV_1 * Dim::z];                      // pf0->cbz;
+        w1 = cell_z_b[imf_OPP_DEV_1 * Dim::z];                     // pfz->cbz;
+        cell0_interp[imf_OPP_DEV_11 * CellInterp::cbz]    = CONST_DEV_half*( w1 + w0 );
+        cell0_interp[imf_OPP_DEV_11 * CellInterp::dcbzdz] = CONST_DEV_half*( w1 - w0 );
+    }
 }
 
 // DEVICE kernel function
@@ -131,6 +136,7 @@ __global__ void dev_interpolate_mesh_fields(
     const OPP_REAL *__restrict__ ind_arg9,
     const OPP_REAL *__restrict__ ind_arg10,
     OPP_REAL *__restrict__ dir_arg11,
+    const OPP_INT *__restrict__ dir_arg12,
     const int start,
     const int end) 
 {
@@ -163,7 +169,8 @@ __global__ void dev_interpolate_mesh_fields(
             (ind_arg8 + map_8idx),
             (ind_arg9 + map_9idx),
             (ind_arg10 + map_10idx),
-            (dir_arg11 + n)
+            (dir_arg11 + n),
+            (dir_arg12 + n)
         );
     }
 }
@@ -182,15 +189,16 @@ void opp_loop_all__interpolate_mesh_fields(
     opp_arg arg8,       // cell_x_b,       // OPP_READ
     opp_arg arg9,       // cell_y_b,       // OPP_READ
     opp_arg arg10,      // cell_z_b        // OPP_READ
-    opp_arg arg11       // cell0_interp    // OPP_WRITE
+    opp_arg arg11,      // cell0_interp    // OPP_WRITE
+    opp_arg arg12       // cell0_ghost     // OPP_READ
 )
 { 
     
-    if (FP_DEBUG) opp_printf("CABANA", "opp_loop_all__interpolate_mesh_fields set_size %d", set->size);
+    if (OP_DEBUG) opp_printf("CABANA", "opp_loop_all__interpolate_mesh_fields set_size %d", set->size);
 
     opp_profiler->start("Interpolate");
 
-    const int nargs = 12;
+    const int nargs = 13;
     opp_arg args[nargs];
 
     args[0] = std::move(arg0);
@@ -205,13 +213,12 @@ void opp_loop_all__interpolate_mesh_fields(
     args[9] = std::move(arg9);
     args[10] = std::move(arg10);
     args[11] = std::move(arg11);
+    args[12] = std::move(arg12);
 
-    opp_profiler->start("Interp_HaloSend");
+    opp_profiler->start("Interp_Halo");
     int set_size = opp_mpi_halo_exchanges_grouped(set, nargs, args, Device_GPU);
-    opp_profiler->end("Interp_HaloSend");
-    opp_profiler->start("Interp_HaloWait");
     opp_mpi_halo_wait_all(nargs, args);
-    opp_profiler->end("Interp_HaloWait");
+    opp_profiler->end("Interp_Halo");
     
     if (set_size > 0) 
     {
@@ -251,6 +258,7 @@ void opp_loop_all__interpolate_mesh_fields(
                 (OPP_REAL*) args[9].data_d,     // cell_y_b,       // OPP_READ
                 (OPP_REAL*) args[10].data_d,    // cell_z_b        // OPP_READ
                 (OPP_REAL*) args[11].data_d,    // cell0_interp    // OPP_WRITE
+                (OPP_INT*) args[12].data_d,     // cell0_ghost,    // OPP_READ
                 start, 
                 end
             );
