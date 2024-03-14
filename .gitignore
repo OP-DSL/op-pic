@@ -10,6 +10,8 @@ simpic_seq
 simpic_genseq*
 simpic_openmp*
 
+MPI_*
+OMP_*
 *.log
 files*/
 backup*
@@ -23,3 +25,19 @@ Log*/
 save_*
 *_backup
 outputFolder
+mpi_files*
+vtune*
+scalling*
+build/
+junk/
+*.out
+*.nvvp
+*nsight*
+*.qdrep
+*.sqlite
+advisor*
+archive*
+run*
+vg*
+old
+neso_2D3V

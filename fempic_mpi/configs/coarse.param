@@ -1,0 +1,39 @@
+# System parameters
+REAL plasma_den           = 0.50e17
+REAL ion_velocity         = 1e8
+REAL electron_temperature = 2e8
+REAL wall_potential       = 10000000
+STRING plasma_species     = Duterium
+REAL spwt                 = 2e2
+
+# Simulation parameters
+INT max_iter           = 250
+REAL dt                = 1e-12
+STRING fesolver_method = petsc
+BOOL check_max_values  = true
+
+# Input files
+STRING global_mesh  = /home/dcs/csrcnj/phd/box_mesh_gen/96000/mesh.dat
+STRING inlet_mesh   = /home/dcs/csrcnj/phd/box_mesh_gen/96000/inlet.dat
+STRING wall_mesh    = /home/dcs/csrcnj/phd/box_mesh_gen/96000/wall.dat
+# OR
+STRING hdf_filename = /home/dcs/csrcnj/phd/box_mesh_gen/hdf5/box_96000.hdf5
+
+STRING rand_file    = /home/dcs/csrcnj/phd/box_mesh_gen/random_100k.dat
+
+BOOL invert_normals = false
+
+BOOL opp_auto_sort          = false
+INT opp_allocation_multiple = 11
+INT opp_threads_per_block   = 512
+
+BOOL opp_profile_all        = false
+
+REAL grid_spacing  = 25e-6
+BOOL print_final   = true
+
+BOOL opp_global_move = false
+
+# block k-means
+STRING cluster = block
+

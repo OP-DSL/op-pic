@@ -1,0 +1,48 @@
+# Simulation parameters
+XINT max_iter = 10  
+XINT nx = 100
+XINT ny = 20
+XINT nz = 20
+
+XINT num_part_per_cell = 500
+XSTRING part_enrich = two_stream
+
+
+XREAL part_weight = 6.3187617682929376406917275E-08
+
+XREAL c_width_x = 1.0000000000000000555111512E-01
+XREAL c_width_y = 3.1593808841464687819922119E-01
+XREAL c_width_z = 5.0000000000000000000000000E-01
+XREAL dt = 9.2714535369621021987374121E-03
+
+XREAL c = 1.0
+XREAL qsp = -1.0
+XREAL me = 1.0
+XREAL eps = 1.0
+XREAL background_plasma_density = 2.0
+XREAL init_vel = 0.0866025403784439
+
+XSTRING part_file_name = /ext-home/zl/phd/OP-PIC/app_cabana_opp/config/particles_120.data
+
+# System parameters
+BOOL opp_auto_sort          = false
+INT opp_allocation_multiple = 2
+INT opp_threads_per_block   = 512
+BOOL opp_profile_all        = false
+BOOL print_final   = true
+INT opp_gpu_direct = 0
+
+
+INT num_steps = 100
+REAL init_vel = 0.0866025403784439
+INT num_part_per_cell = 100
+INT nx = 50
+INT ny = 40
+INT nz = 30
+REAL c = 1.0
+REAL qsp = -1.0
+REAL me = 1.0
+REAL default_grid_len = 1.0
+REAL eps = 1.0
+STRING part_enrich = two_stream
+BOOL print_energy = true

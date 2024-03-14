@@ -35,15 +35,26 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <oppic_lib.h>
 #include <omp.h>
 
+#ifdef USE_MPI
+    #include <opp_mpi_core.h>
+#endif
+
+extern std::vector<int> part_remove_count_per_thr;
 
 // TODO : May need to write with array capcity and realloc always if partticle dats are used
 template <class T> 
-void oppic_create_thread_level_data(oppic_arg arg, T init_value)
+void opp_create_thread_level_data(oppic_arg arg, T init_value)
 {
     oppic_dat dat = arg.dat;
     int nthreads = omp_get_max_threads();
 
-    if (OP_DEBUG) printf("oppic_create_thread_level_data template[%d]\n", nthreads);
+    if (dat->set->is_particle)
+    {
+        std::cerr << "Cannot create thread level data for particle dat [" << dat->name << "] (dat in a dynamic set)" << std::endl;
+        exit(-1);
+    }
+
+    if (OP_DEBUG) printf("opp_create_thread_level_data template[%d]\n", nthreads);
 
     if (dat->thread_data->size() <= 0)
     {
@@ -51,14 +62,14 @@ void oppic_create_thread_level_data(oppic_arg arg, T init_value)
 
         for (int thr = 1; thr < nthreads; thr++)
         {
-            char* thr_data = (char *)malloc((size_t)dat->size * (size_t)(dat->set->size) * sizeof(char));;
+            char* thr_data = (char *)opp_host_malloc((size_t)dat->size * (size_t)(dat->set->size) * sizeof(char));;
             dat->thread_data->push_back(thr_data);
         }
     }
 
     if ((int)dat->thread_data->size() != nthreads)
     {
-        std::cerr << "oppic_create_thread_level_data dat [" << dat->name << "] thread_data not properly created [(int)dat->thread_data.size():" << (int)dat->thread_data->size() << " nthreads:" << nthreads << std::endl;
+        std::cerr << "opp_create_thread_level_data dat [" << dat->name << "] thread_data not properly created [(int)dat->thread_data.size():" << (int)dat->thread_data->size() << " nthreads:" << nthreads << std::endl;
         return;
     }
 
@@ -70,7 +81,7 @@ void oppic_create_thread_level_data(oppic_arg arg, T init_value)
 
 // TODO : May need to write with array capcity and realloc always if partticle dats are used
 template <class T> 
-void oppic_reduce_thread_level_data(oppic_arg arg)
+void opp_reduce_thread_level_data(oppic_arg arg)
 {
     oppic_dat dat = arg.dat;
     oppic_set set = dat->set;
@@ -78,7 +89,7 @@ void oppic_reduce_thread_level_data(oppic_arg arg)
 
     int nthreads = omp_get_max_threads();
 
-    if (OP_DEBUG) printf("oppic_reduce_thread_level_data dat [%s] nthreads [%d]\n", dat->name, nthreads);
+    if (OP_DEBUG) printf("opp_reduce_thread_level_data dat [%s] nthreads [%d]\n", dat->name, nthreads);
 
     if (set->size > 0) 
     {
@@ -100,7 +111,7 @@ void oppic_reduce_thread_level_data(oppic_arg arg)
                             ((T*)dat->data)[n] += td[n];
                             break;
                         default:
-                            std::cerr << "oppic_reduce_thread_level_data dat [" << dat->name << "] acc [" << (int)arg.acc << "] not implemented" << std::endl;
+                            std::cerr << "opp_reduce_thread_level_data dat [" << dat->name << "] acc [" << (int)arg.acc << "] not implemented" << std::endl;
                     }
                 }
             }
@@ -110,3 +121,28 @@ void oppic_reduce_thread_level_data(oppic_arg arg)
 
 void oppic_finalize_particle_move_omp(oppic_set set);
 
+bool opp_part_check_status_omp(opp_move_var& m, int map0idx, oppic_set set, 
+    int particle_index, int& remove_count, int thread);
+/*******************************************************************************/
+
+void opp_halo_create();
+void opp_halo_destroy();
+
+/*******************************************************************************/
+
+void print_dat_to_txtfile_mpi(op_dat dat, const char *file_name);
+void opp_mpi_print_dat_to_txtfile(op_dat dat, const char *file_name);
+
+/*******************************************************************************/
+
+inline void opp_mpi_reduce(opp_arg *args, double *data) 
+{
+    (void)args;
+    (void)data;
+}
+
+inline void opp_mpi_reduce(opp_arg *args, int *data) 
+{
+    (void)args;
+    (void)data;
+}
