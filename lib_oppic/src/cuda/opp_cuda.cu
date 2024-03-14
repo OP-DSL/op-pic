@@ -904,11 +904,11 @@ void print_last_cuda_error()
 }
 
 //*******************************************************************************
-void opp_colour_cartesian_mesh(const int ndim, const std::vector<int> cell_counts, opp_dat cell_index, 
-                            const opp_dat cell_colors) 
+void opp_colour_cartesian_mesh(const int ndim, std::vector<int> cell_counts, opp_dat cell_index, 
+                            const opp_dat cell_colors, const int cell_ghosts) 
 {
 #ifdef USE_MPI  
-    __opp_colour_cartesian_mesh(ndim, cell_counts, cell_index, cell_colors);
+    __opp_colour_cartesian_mesh(ndim, cell_counts, cell_index, cell_colors, cell_ghosts);
 #endif
 }
 

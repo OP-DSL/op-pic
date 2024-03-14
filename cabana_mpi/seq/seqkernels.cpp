@@ -58,9 +58,27 @@ void opp_decl_const_impl(int dim, int size, char* data, const char* name)
     else if (!strcmp(name,"CONST_dt_eps0"))  std::memcpy(&CONST_dt_eps0, data, (size*dim));
     else if (!strcmp(name,"CONST_acc_coef")) std::memcpy(&CONST_acc_coef, data, (size*dim));
     else std::cerr << "error: unknown const name" << std::endl;
+
+    // if (!strcmp(name,"CONST_c_per_dim")) 
+    //     opp_printf("CONST", "%s %d %d %d", name, CONST_c_per_dim[0], CONST_c_per_dim[1], CONST_c_per_dim[2]);
+    // if (!strcmp(name,"CONST_dt"))
+    //     opp_printf("CONST", "%s %2.25lE", name, CONST_dt);
+    // if (!strcmp(name,"CONST_qsp"))
+    //     opp_printf("CONST", "%s %2.25lE", name, CONST_qsp);
+    // if (!strcmp(name,"CONST_qdt_2mc"))
+    //     opp_printf("CONST", "%s %2.25lE", name, CONST_qdt_2mc);
+    // if (!strcmp(name,"CONST_dt_eps0"))
+    //     opp_printf("CONST", "%s %2.25lE", name, CONST_dt_eps0);
+    // if (!strcmp(name,"CONST_cdt_d")) 
+    //     opp_printf("CONST", "%s %2.25lE %2.25lE %2.25lE", name, CONST_cdt_d[0], CONST_cdt_d[1], CONST_cdt_d[2]);   
+    // if (!strcmp(name,"CONST_p")) 
+    //     opp_printf("CONST", "%s %2.25lE %2.25lE %2.25lE", name, CONST_p[0], CONST_p[1], CONST_p[2]);      
+    // if (!strcmp(name,"CONST_acc_coef")) 
+    //     opp_printf("CONST", "%s %2.25lE %2.25lE %2.25lE", name, CONST_acc_coef[0], CONST_acc_coef[1], CONST_acc_coef[2]);   
 }
 //****************************************
-
+int int_hops = 0;
+int max_int_hops = 0;
 #include "../kernels.h"
 
 //*************************************************************************************************
@@ -77,11 +95,12 @@ void opp_loop_all__interpolate_mesh_fields(
     opp_arg arg8,       // cell_x_b,       // OPP_READ
     opp_arg arg9,       // cell_y_b,       // OPP_READ
     opp_arg arg10,      // cell_z_b        // OPP_READ
-    opp_arg arg11       // cell0_interp    // OPP_WRITE
+    opp_arg arg11,      // cell0_interp    // OPP_WRITE
+    opp_arg arg12       // cell0_ghost     // OPP_READ
 )
 {
 
-    if (FP_DEBUG) opp_printf("CABANA", "opp_loop_all__interpolate_mesh_fields set_size %d", set->size);
+    if (OP_DEBUG) opp_printf("CABANA", "opp_loop_all__interpolate_mesh_fields set_size %d", set->size);
 
     opp_profiler->start("Interpolate");
 
@@ -109,7 +128,8 @@ void opp_loop_all__interpolate_mesh_fields(
             &((double*) arg8.data)[map_8idx * arg8.dim],     // cell_x_b,       // OPP_READ
             &((double*) arg9.data)[map_9idx * arg9.dim],     // cell_y_b,       // OPP_READ
             &((double*) arg10.data)[map_10idx * arg10.dim],  // cell_z_b        // OPP_READ
-            &((double*) arg11.data)[n * arg11.dim]           // cell0_interp    // OPP_WRITE
+            &((double*) arg11.data)[n * arg11.dim],          // cell0_interp    // OPP_WRITE
+            &((int*)    arg12.data)[n * arg12.dim]           // cell0_ghost,    // OPP_READ
         );
     }
 
@@ -131,7 +151,7 @@ void opp_particle_mover__Move(
 )
 {
 
-    if (FP_DEBUG) 
+    if (OP_DEBUG) 
         opp_printf("CABANA", "opp_particle_mover__Move set_size %d diff %d", set->size, set->diff);
 
     opp_profiler->start("Move");
@@ -139,17 +159,18 @@ void opp_particle_mover__Move(
     opp_init_particle_move(set, 0, nullptr);
 
     int* cellIdx = nullptr;
+    max_int_hops = 0;
 
-// int int_hops = 0;
-// int max_int_hops = 0;
     for (int n = 0; n < set->size; n++)
     {
         opp_move_var m; // = opp_get_move_var();
-// int_hops = 0;
+        int_hops = -1;
+
         do
         {
             cellIdx = &(OPP_mesh_relation_data[n]);
-// int_hops++;
+            int_hops++;
+
             push_particles_kernel(m, 
                 &((int*)    arg0.data)[n * arg0.dim],        // part_cid 
                 &((double*) arg1.data)[n * arg1.dim],        // part_vel 
@@ -163,10 +184,10 @@ void opp_particle_mover__Move(
 
         } while (opp_part_check_status(m, *cellIdx, set, n, set->particle_remove_count)); 
     
-// max_int_hops = (max_int_hops > int_hops ? max_int_hops : int_hops );  
+        max_int_hops = (max_int_hops > int_hops ? max_int_hops : int_hops );  
     }
 
-// opp_printf("MOVE", "Max hops %d", max_int_hops);
+    printf("MOVE Max hops %d ", max_int_hops);
 
     opp_finalize_particle_move(set);
 
@@ -183,11 +204,12 @@ void opp_loop_all__accumulate_current_to_cells(
     opp_arg arg4,    // cell_zd_acc     // OPP_READ
     opp_arg arg5,    // cell_xyd_acc    // OPP_READ
     opp_arg arg6,    // cell_yzd_acc    // OPP_READ
-    opp_arg arg7     // cell_xzd_acc    // OPP_READ
+    opp_arg arg7,    // cell_xzd_acc    // OPP_READ
+    opp_arg arg8     // iter_acc        // OPP_READ
 )
 {
 
-    if (FP_DEBUG) opp_printf("CABANA", "opp_loop_all__accumulate_current_to_cells set_size %d", set->size);
+    if (OP_DEBUG) opp_printf("CABANA", "opp_loop_all__accumulate_current_to_cells set_size %d", set->size);
 
     opp_profiler->start("Acc_Current");
 
@@ -208,7 +230,8 @@ void opp_loop_all__accumulate_current_to_cells(
             &((double*) arg4.data)[map_4idx * arg4.dim],     // cell_zd_acc
             &((double*) arg5.data)[map_5idx * arg5.dim],     // cell_xyd_acc 
             &((double*) arg6.data)[map_6idx * arg6.dim],     // cell_yzd_acc 
-            &((double*) arg7.data)[map_7idx * arg7.dim]      // cell_xzd_acc
+            &((double*) arg7.data)[map_7idx * arg7.dim],     // cell_xzd_acc
+            &((int*)    arg8.data)[n * arg8.dim]             // iter_acc 
         );
     }
 
@@ -222,10 +245,12 @@ void opp_loop_all__half_advance_b(
     opp_arg arg1,    // cell_y_e        // OPP_READ
     opp_arg arg2,    // cell_z_e        // OPP_READ
     opp_arg arg3,    // cell0_e         // OPP_READ
-    opp_arg arg4     // cell0_b         // OPP_INC
+    opp_arg arg4,    // cell0_b         // OPP_INC
+    opp_arg arg5     // cell0_ghost     // OPP_READ
 )
 {
-    if (FP_DEBUG) opp_printf("CABANA", "opp_loop_all__half_advance_b set_size %d", set->size);
+
+    if (OP_DEBUG) opp_printf("CABANA", "opp_loop_all__half_advance_b set_size %d", set->size);
 
     opp_profiler->start("HalfAdv_B");
 
@@ -240,7 +265,8 @@ void opp_loop_all__half_advance_b(
             &((double*) arg1.data)[map_1idx * arg1.dim],     // cell_y_e, 
             &((double*) arg2.data)[map_2idx * arg2.dim],     // cell_z_e, 
             &((double*) arg3.data)[n * arg3.dim],            // cell0_e, 
-            &((double*) arg4.data)[n * arg4.dim]             // cell0_b
+            &((double*) arg4.data)[n * arg4.dim],            // cell0_b
+            &((int*)    arg5.data)[n * arg5.dim]             // cell0_ghost
         );
     }
 
@@ -255,10 +281,12 @@ void opp_loop_all__advance_e(
     opp_arg arg2,    // cell_z_b        // OPP_READ
     opp_arg arg3,    // cell0_b         // OPP_READ
     opp_arg arg4,    // cell0_j         // OPP_READ
-    opp_arg arg5     // cell0_e         // OPP_INC
+    opp_arg arg5,    // cell0_e         // OPP_INC
+    opp_arg arg6     // iter_adv_e      // OPP_READ
 )
 {
-    if (FP_DEBUG) opp_printf("CABANA", "opp_loop_all__advance_e set_size %d", set->size);
+
+    if (OP_DEBUG) opp_printf("CABANA", "opp_loop_all__advance_e set_size %d", set->size);
 
     opp_profiler->start("Adv_E");
 
@@ -274,7 +302,8 @@ void opp_loop_all__advance_e(
             &((double*) arg2.data)[map_2idx * arg2.dim],     // cell_z_b  
             &((double*) arg3.data)[n * arg3.dim],            // cell0_b   
             &((double*) arg4.data)[n * arg4.dim],            // cell0_j   
-            &((double*) arg5.data)[n * arg5.dim]             // cell0_e   
+            &((double*) arg5.data)[n * arg5.dim],            // cell0_e
+            &((int*)    arg6.data)[n * arg6.dim]             // iter_adv_e   
         );
     }
 
@@ -292,7 +321,7 @@ void opp_loop_all__GetFinalMaxValues(
     opp_arg arg5     // max_b        // OPP_MAX
 )
 {
-    if (FP_DEBUG) opp_printf("CABANA", "opp_loop_all__get_max set_size %d", set->size);
+    if (OP_DEBUG) opp_printf("CABANA", "opp_loop_all__get_max set_size %d", set->size);
 
     opp_profiler->start("GetMax");
 
@@ -320,3 +349,111 @@ void opp_loop_all__GetFinalMaxValues(
 
     opp_profiler->end("GetMax");
 }
+
+//*************************************************************************************************
+void opp_loop_all__update_ghosts_B(
+    opp_set set,     // cells set
+    opp_arg arg0,    // cell_mask_ugb,       OP_READ
+    opp_arg arg1,    // cell,                OP_READ
+    opp_arg arg2,    // cell, 0, c2cugb_map, OP_WRITE
+    opp_arg arg3     // mask_idx global
+)
+{
+    if (OP_DEBUG) opp_printf("CABANA", "opp_loop_all__update_ghosts_B set_size %d", set->size);
+
+    opp_profiler->start("UpGhostB");
+
+    const int nargs = 4;
+    opp_arg args[nargs];
+
+    args[0] = arg0;
+    args[1] = arg1;
+    args[2] = arg2;
+    args[3] = arg3;
+
+    for (int n = 0; n < set->size; n++)
+    {
+        const int map_0idx  = args[2].map_data[n * args[2].map->dim + 0];
+
+        update_ghosts_B_kernel(
+            &((OPP_INT*) args[0].data)[n * args[0].dim],        
+            &((OPP_REAL*) args[1].data)[n * args[1].dim],       
+            &((OPP_REAL*) args[2].data)[map_0idx * args[2].dim],
+            (OPP_INT*) args[3].data
+        );
+    }
+
+    opp_profiler->end("UpGhostB");   
+}
+
+//*************************************************************************************************
+void opp_loop_all__update_ghosts(
+    opp_set set,     // cells set
+    opp_arg arg0,    // cell_mask_ug,       OP_READ
+    opp_arg arg1,    // cell,               OP_READ
+    opp_arg arg2,    // cell, 0, c2cug_map, OP_INC
+    opp_arg arg3,    // mask_idx global
+    opp_arg arg4     // dim_idx
+)
+{
+    if (OP_DEBUG) opp_printf("CABANA", "opp_loop_all__update_ghosts set_size %d", set->size);
+
+    opp_profiler->start("UpGhost");
+
+    const int nargs = 5;
+    opp_arg args[nargs];
+
+    args[0] = arg0;
+    args[1] = arg1;
+    args[2] = arg2;
+    args[3] = arg3;
+    args[4] = arg4;
+
+    for (int n = 0; n < set->size; n++)
+    {
+        const int map_0idx  = args[2].map_data[n * args[2].map->dim + 0];
+
+        update_ghosts_kernel(
+            &((OPP_INT*) args[0].data)[n * args[0].dim],        
+            &((OPP_REAL*) args[1].data)[n * args[1].dim],       
+            &((OPP_REAL*) args[2].data)[map_0idx * args[2].dim],
+            (OPP_INT*) args[3].data,
+            (OPP_INT*) args[4].data
+        );
+    }
+
+    opp_profiler->end("UpGhost");   
+}
+
+//*************************************************************************************************
+void opp_loop_all__compute_energy(
+    opp_set set,     // cells set
+    opp_arg arg0,    // cell0_ghost, OP_READ
+    opp_arg arg1,    // cell_field,  OP_READ
+    opp_arg arg2     // energy,      OP_INC
+)
+{
+    if (OP_DEBUG) opp_printf("CABANA", "opp_loop_all__compute_energy set_size %d", set->size);
+
+    opp_profiler->start("Energy");
+
+    const int nargs = 3;
+    opp_arg args[nargs];
+
+    args[0] = arg0;
+    args[1] = arg1;
+    args[2] = arg2;
+
+    for (int n = 0; n < set->size; n++)
+    {
+        field_energy(
+            &((OPP_INT*) args[0].data)[n * args[0].dim],        
+            &((OPP_REAL*) args[1].data)[n * args[1].dim],       
+            (OPP_REAL*) args[2].data
+        );
+    }
+
+    opp_profiler->end("Energy");   
+}
+
+//*************************************************************************************************

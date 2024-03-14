@@ -292,7 +292,7 @@ void __opp_halo_create()
             halo_list exec_map_list = OP_import_exec_list[map->from->index];
 
             // need to select  mappings TO this set
-            if (compare_sets(map->to, set) == 1 && compare_sets(map->from, map->to) != 1) 
+            if (compare_sets(map->to, set) == 1 )  // && compare_sets(map->from, map->to) != 1
             { 
                 // for each entry in this mapping table: original+execlist
                 int len = map->from->size + exec_map_list->size;

@@ -87,6 +87,32 @@ void opp_partition_core(std::string lib_name, op_set prime_set, op_map prime_map
         opp_abort("opp_partition Error: Unsupported lib_name - UNSUPPORTED Partitioner Specification");
     }
 
+    // for (int s = 0; s < OP_set_index; s++) // for each set
+    // { 
+    //     op_set set = OP_set_list[s];
+
+    //     if (std::string(set->name) != std::string("mesh_cells")) continue;
+
+    //     for (int m = 0; m < OP_map_index; m++) // for each maping table
+    //     { 
+    //         op_map map = OP_map_list[m];
+
+    //         if (compare_sets(map->from, set) == 1) // need to select mappings FROM this set
+    //         { 
+    //             opp_print_map_to_txtfile(map  , "BACKEND", map->name);
+    //         }
+    //     }
+    //     for (int k = 0; k < OP_dat_index; k++) // for each dat
+    //     {
+    //         op_dat dat = OP_dat_list[k];
+
+    //         if (std::string(dat->name) == std::string("c_index")) // if this data array is defined on this set
+    //         { 
+    //             opp_print_dat_to_txtfile(dat, "BACKEND", dat->name);
+    //         }
+    //     }
+    // }
+
     opp_halo_create();
 
     opp_part_comm_init(); 
@@ -171,7 +197,11 @@ void opp_sanitize_all_maps()
             }
             else
             {
-                opp_printf("opp_sanitize_all_maps", "Error: No positive mapping found at %d in map: %s", n, map->name);
+                std::string log = "";
+                for (int d = 0; d < map->dim; d++)
+                    log += std::to_string(map->map[n * map->dim + d]) + " ";
+                opp_printf("opp_sanitize_all_maps", "Error: XNo positive mapping found at %d in map: %s [%s]", 
+                    n, map->name, log.c_str());
             }
         }
     }
@@ -314,8 +344,8 @@ Comm::~Comm() {
 // cell_counts : cell_counts in each direction
 // cell_index : cell_index dat which holds global numbering
 // cell_colors : local cell_colors dat to colour with most appropriate MPI rank
-void __opp_colour_cartesian_mesh(const int ndim, const std::vector<int> cell_counts, opp_dat cell_index, 
-                            const opp_dat cell_colors)
+void __opp_colour_cartesian_mesh(const int ndim, std::vector<int> cell_counts, opp_dat cell_index, 
+                            const opp_dat cell_colors, const int cell_ghosts)
 {
 
     MPI_Comm comm_cart;
@@ -339,6 +369,11 @@ void __opp_colour_cartesian_mesh(const int ndim, const std::vector<int> cell_cou
     for (int dimx = 0; dimx < ndim; dimx++) 
         get_decomp_1d(mpi_dims[dimx], cell_counts[dimx], coords[dimx], &cell_starts[dimx], &cell_ends[dimx]);
 
+    for (int dimx = 0; dimx < ndim; dimx++) {
+        cell_starts[dimx] += cell_ghosts;
+        cell_ends[dimx] += cell_ghosts;
+    }
+
     std::vector<int> all_cell_starts(OPP_comm_size * ndim);
     std::vector<int> all_cell_ends(OPP_comm_size * ndim);
 
@@ -360,9 +395,9 @@ void __opp_colour_cartesian_mesh(const int ndim, const std::vector<int> cell_cou
         opp_printf("__opp_colour_cartesian_mesh", "%s", log.c_str());
     }
 
-#define CART_RANK_TO_INDEX(rank,ix,iy,iz,_x,_y) \
+#define CART_RANK_TO_INDEX(gcidx,ix,iy,iz,_x,_y) \
     int _ix, _iy, _iz;                                                    \
-    _ix  = (rank);                        /* ix = ix+gpx*( iy+gpy*iz ) */ \
+    _ix  = (gcidx);                        /* ix = ix+gpx*( iy+gpy*iz ) */ \
     _iy  = _ix/int(_x);                   /* iy = iy+gpy*iz */            \
     _ix -= _iy*int(_x);                   /* ix = ix */                   \
     _iz  = _iy/int(_y);                   /* iz = iz */                   \
@@ -371,12 +406,24 @@ void __opp_colour_cartesian_mesh(const int ndim, const std::vector<int> cell_cou
     (iy) = _iy;                                                           \
     (iz) = _iz;                                                           \
 
+    for (int dimx = 0; dimx < ndim; dimx++) 
+        cell_counts[dimx] += (2 * cell_ghosts);
+
     // used global id of cell and assign the color to the correct MPI rank
     const OPP_INT* gcid = ((OPP_INT*)cell_index->data);
     for (OPP_INT i = 0; i < cell_index->set->size; i++)
     {
         int coord[3] = {-1, -1 -1};
         CART_RANK_TO_INDEX(gcid[i], coord[0], coord[1], coord[2], cell_counts[0], cell_counts[1]);
+
+        if (cell_ghosts > 0) {
+            for (int dimx = 0; dimx < ndim; dimx++) {
+                if (coord[dimx] < cell_ghosts) 
+                    coord[dimx] = cell_ghosts;
+                if (coord[dimx] >= (cell_counts[dimx] - cell_ghosts)) 
+                    coord[dimx] = (cell_counts[dimx] - cell_ghosts - 1);
+            }
+        }
 
         for (int rank = 0; rank < OPP_comm_size; rank++) 
         {

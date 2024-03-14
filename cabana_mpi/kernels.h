@@ -22,60 +22,64 @@ inline void interpolate_mesh_fields_kernel(
     const OPP_REAL* cell_x_b,  
     const OPP_REAL* cell_y_b,  
     const OPP_REAL* cell_z_b,  
-    OPP_REAL* cell0_interp)    
+    OPP_REAL* cell0_interp,
+    const OPP_INT* cell0_ghost)    
 {
-    OPP_REAL w0 = 0.0, w1 = 0.0, w2 = 0.0, w3 = 0.0;
+    if (cell0_ghost[0] == 0)
+    {
+        OPP_REAL w0 = 0.0, w1 = 0.0, w2 = 0.0, w3 = 0.0;
 
-    // ex interpolation coefficients
-    w0 = cell0_e[Dim::x];                       // pf0->ex;
-    w1 = cell_y_e[Dim::x];                      // pfy->ex;
-    w2 = cell_z_e[Dim::x];                      // pfz->ex;
-    w3 = cell_yz_e[Dim::x];                     // pfyz->ex;
+        // ex interpolation coefficients
+        w0 = cell0_e[Dim::x];                       // pf0->ex;
+        w1 = cell_y_e[Dim::x];                      // pfy->ex;
+        w2 = cell_z_e[Dim::x];                      // pfz->ex;
+        w3 = cell_yz_e[Dim::x];                     // pfyz->ex;
 
-    cell0_interp[CellInterp::ex]       = fourth*( (w3 + w0) + (w1 + w2) );
-    cell0_interp[CellInterp::dexdy]    = fourth*( (w3 - w0) + (w1 - w2) );
-    cell0_interp[CellInterp::dexdz]    = fourth*( (w3 - w0) - (w1 - w2) );
-    cell0_interp[CellInterp::d2exdydz] = fourth*( (w3 + w0) - (w1 + w2) );
+        cell0_interp[CellInterp::ex]       = fourth*( (w3 + w0) + (w1 + w2) );
+        cell0_interp[CellInterp::dexdy]    = fourth*( (w3 - w0) + (w1 - w2) );
+        cell0_interp[CellInterp::dexdz]    = fourth*( (w3 - w0) - (w1 - w2) );
+        cell0_interp[CellInterp::d2exdydz] = fourth*( (w3 + w0) - (w1 + w2) );
 
-    // ey interpolation coefficients
-    w0 = cell0_e[Dim::y];
-    w1 = cell_z_e[Dim::y];                       // pfz->ey;
-    w2 = cell_x_e[Dim::y];                       // pfx->ey;
-    w3 = cell_xz_e[Dim::y];                      // pfzx->ey;
+        // ey interpolation coefficients
+        w0 = cell0_e[Dim::y];
+        w1 = cell_z_e[Dim::y];                       // pfz->ey;
+        w2 = cell_x_e[Dim::y];                       // pfx->ey;
+        w3 = cell_xz_e[Dim::y];                      // pfzx->ey;
 
-    cell0_interp[CellInterp::ey]       = fourth*( (w3 + w0) + (w1 + w2) );
-    cell0_interp[CellInterp::deydz]    = fourth*( (w3 - w0) + (w1 - w2) );
-    cell0_interp[CellInterp::deydx]    = fourth*( (w3 - w0) - (w1 - w2) );
-    cell0_interp[CellInterp::d2eydzdx] = fourth*( (w3 + w0) - (w1 + w2) );
+        cell0_interp[CellInterp::ey]       = fourth*( (w3 + w0) + (w1 + w2) );
+        cell0_interp[CellInterp::deydz]    = fourth*( (w3 - w0) + (w1 - w2) );
+        cell0_interp[CellInterp::deydx]    = fourth*( (w3 - w0) - (w1 - w2) );
+        cell0_interp[CellInterp::d2eydzdx] = fourth*( (w3 + w0) - (w1 + w2) );
 
-    // ez interpolation coefficients
-    w0 = cell0_e[Dim::z];                       // pf0->ez;
-    w1 = cell_x_e[Dim::z];                      // pfx->ez;
-    w2 = cell_y_e[Dim::z];                      // pfy->ez;
-    w3 = cell_xy_e[Dim::z];                     // pfxy->ez;
+        // ez interpolation coefficients
+        w0 = cell0_e[Dim::z];                       // pf0->ez;
+        w1 = cell_x_e[Dim::z];                      // pfx->ez;
+        w2 = cell_y_e[Dim::z];                      // pfy->ez;
+        w3 = cell_xy_e[Dim::z];                     // pfxy->ez;
 
-    cell0_interp[CellInterp::ez]       = fourth*( (w3 + w0) + (w1 + w2) );
-    cell0_interp[CellInterp::dezdx]    = fourth*( (w3 - w0) + (w1 - w2) );
-    cell0_interp[CellInterp::dezdy]    = fourth*( (w3 - w0) - (w1 - w2) );
-    cell0_interp[CellInterp::d2ezdxdy] = fourth*( (w3 + w0) - (w1 + w2) );
+        cell0_interp[CellInterp::ez]       = fourth*( (w3 + w0) + (w1 + w2) );
+        cell0_interp[CellInterp::dezdx]    = fourth*( (w3 - w0) + (w1 - w2) );
+        cell0_interp[CellInterp::dezdy]    = fourth*( (w3 - w0) - (w1 - w2) );
+        cell0_interp[CellInterp::d2ezdxdy] = fourth*( (w3 + w0) - (w1 + w2) );
 
-    // bx interpolation coefficients
-    w0 = cell0_b[Dim::x];                      // pf0->cbx;
-    w1 = cell_x_b[Dim::x];                     // pfx->cbx;
-    cell0_interp[CellInterp::cbx]    = half*( w1 + w0 );
-    cell0_interp[CellInterp::dcbxdx] = half*( w1 - w0 );
+        // bx interpolation coefficients
+        w0 = cell0_b[Dim::x];                      // pf0->cbx;
+        w1 = cell_x_b[Dim::x];                     // pfx->cbx;
+        cell0_interp[CellInterp::cbx]    = half*( w1 + w0 );
+        cell0_interp[CellInterp::dcbxdx] = half*( w1 - w0 );
 
-    // by interpolation coefficients
-    w0 = cell0_b[Dim::y];                      // pf0->cby;
-    w1 = cell_y_b[Dim::y];                     // pfy->cby;
-    cell0_interp[CellInterp::cby]    = half*( w1 + w0 );
-    cell0_interp[CellInterp::dcbydy] = half*( w1 - w0 );
+        // by interpolation coefficients
+        w0 = cell0_b[Dim::y];                      // pf0->cby;
+        w1 = cell_y_b[Dim::y];                     // pfy->cby;
+        cell0_interp[CellInterp::cby]    = half*( w1 + w0 );
+        cell0_interp[CellInterp::dcbydy] = half*( w1 - w0 );
 
-    // bz interpolation coefficients
-    w0 = cell0_b[Dim::z];                      // pf0->cbz;
-    w1 = cell_z_b[Dim::z];                     // pfz->cbz;
-    cell0_interp[CellInterp::cbz]    = half*( w1 + w0 );
-    cell0_interp[CellInterp::dcbzdz] = half*( w1 - w0 );
+        // bz interpolation coefficients
+        w0 = cell0_b[Dim::z];                      // pf0->cbz;
+        w1 = cell_z_b[Dim::z];                     // pfz->cbz;
+        cell0_interp[CellInterp::cbz]    = half*( w1 + w0 );
+        cell0_interp[CellInterp::dcbzdz] = half*( w1 - w0 );
+    }
 }
 
 //*************************************************************************************************
@@ -147,28 +151,28 @@ inline void push_particles_kernel(opp_move_var& m,
 {
     if (m.iteration_one)
     {
-        const OPP_REAL ex       = cell_interp[CellInterp::ex];
-        const OPP_REAL dexdy    = cell_interp[CellInterp::dexdy];
-        const OPP_REAL dexdz    = cell_interp[CellInterp::dexdz];
-        const OPP_REAL d2exdydz = cell_interp[CellInterp::d2exdydz];
-        const OPP_REAL ey       = cell_interp[CellInterp::ey];
-        const OPP_REAL deydz    = cell_interp[CellInterp::deydz];
-        const OPP_REAL deydx    = cell_interp[CellInterp::deydx];
-        const OPP_REAL d2eydzdx = cell_interp[CellInterp::d2eydzdx];
-        const OPP_REAL ez       = cell_interp[CellInterp::ez];
-        const OPP_REAL dezdx    = cell_interp[CellInterp::dezdx];
-        const OPP_REAL dezdy    = cell_interp[CellInterp::dezdy];
-        const OPP_REAL d2ezdxdy = cell_interp[CellInterp::d2ezdxdy];
-        OPP_REAL cbx            = cell_interp[CellInterp::cbx];
-        const OPP_REAL dcbxdx   = cell_interp[CellInterp::dcbxdx];
-        OPP_REAL cby            = cell_interp[CellInterp::cby];
-        const OPP_REAL dcbydy   = cell_interp[CellInterp::dcbydy];
-        OPP_REAL cbz            = cell_interp[CellInterp::cbz];
-        const OPP_REAL dcbzdz   = cell_interp[CellInterp::dcbzdz];
+        const OPP_REAL& ex       = cell_interp[CellInterp::ex];
+        const OPP_REAL& dexdy    = cell_interp[CellInterp::dexdy];
+        const OPP_REAL& dexdz    = cell_interp[CellInterp::dexdz];
+        const OPP_REAL& d2exdydz = cell_interp[CellInterp::d2exdydz];
+        const OPP_REAL& ey       = cell_interp[CellInterp::ey];
+        const OPP_REAL& deydz    = cell_interp[CellInterp::deydz];
+        const OPP_REAL& deydx    = cell_interp[CellInterp::deydx];
+        const OPP_REAL& d2eydzdx = cell_interp[CellInterp::d2eydzdx];
+        const OPP_REAL& ez       = cell_interp[CellInterp::ez];
+        const OPP_REAL& dezdx    = cell_interp[CellInterp::dezdx];
+        const OPP_REAL& dezdy    = cell_interp[CellInterp::dezdy];
+        const OPP_REAL& d2ezdxdy = cell_interp[CellInterp::d2ezdxdy];
+        OPP_REAL cbx             = cell_interp[CellInterp::cbx];
+        const OPP_REAL& dcbxdx   = cell_interp[CellInterp::dcbxdx];
+        OPP_REAL cby             = cell_interp[CellInterp::cby];
+        const OPP_REAL& dcbydy   = cell_interp[CellInterp::dcbydy];
+        OPP_REAL cbz             = cell_interp[CellInterp::cbz];
+        const OPP_REAL& dcbzdz   = cell_interp[CellInterp::dcbzdz];
 
-        OPP_REAL dx = part_pos[Dim::x];             // Load position
-        OPP_REAL dy = part_pos[Dim::y];             // Load position
-        OPP_REAL dz = part_pos[Dim::z];             // Load position
+        const OPP_REAL& dx = part_pos[Dim::x];             // Load position
+        const OPP_REAL& dy = part_pos[Dim::y];             // Load position
+        const OPP_REAL& dz = part_pos[Dim::z];             // Load position
 
         const OPP_REAL hax  = CONST_qdt_2mc * ( ( ex + dy*dexdy ) + dz * ( dexdz + dy*d2exdydz ) );
         const OPP_REAL hay  = CONST_qdt_2mc * ( ( ey + dz*deydz ) + dx * ( deydx + dz*d2eydzdx ) );
@@ -222,14 +226,9 @@ inline void push_particles_kernel(opp_move_var& m,
         v1   = dy + uy;
         v2   = dz + uz;
 
-        part_streak_mid[Dim::x] = ux;
-        part_streak_mid[Dim::y] = uy;
-        part_streak_mid[Dim::z] = uz;
-
         v3   = v0 + ux;                             // New position
         v4   = v1 + uy;
         const OPP_REAL v5   = v2 + uz;
-        const OPP_REAL q = part_weight[0] * CONST_qsp;
 
         // moving within the cell // Likely
         if (  v3<=one &&  v4<=one &&  v5<=one && -v3<=one && -v4<=one && -v5<=one ) 
@@ -237,6 +236,8 @@ inline void push_particles_kernel(opp_move_var& m,
             part_pos[Dim::x] = v3;            // save new position
             part_pos[Dim::y] = v4;            // save new position
             part_pos[Dim::z] = v5;            // save new position
+
+            const OPP_REAL q = part_weight[0] * CONST_qsp;
 
             weight_current_to_accumulator_kernel(
                 cell_acc,
@@ -246,6 +247,12 @@ inline void push_particles_kernel(opp_move_var& m,
 
             m.move_status = OPP_MOVE_DONE;
             return;
+        }
+        else
+        {
+            part_streak_mid[Dim::x] = ux;
+            part_streak_mid[Dim::y] = uy;
+            part_streak_mid[Dim::z] = uz;
         }
     }
 
@@ -334,13 +341,8 @@ inline void push_particles_kernel(opp_move_var& m,
         // _exactly_ on the boundary.
         face = axis;
         if( v0>0 ) face += 3;
-
-        if (face == FACE_X_MIN ) { part_cid[0] =  cell_cell_map[CellMap::xd_y_z]; }
-        else if (face == FACE_X_PLUS) { part_cid[0] =  cell_cell_map[CellMap::xu_y_z]; }
-        else if (face == FACE_Y_MIN ) { part_cid[0] =  cell_cell_map[CellMap::x_yd_z]; }
-        else if (face == FACE_Y_PLUS) { part_cid[0] =  cell_cell_map[CellMap::x_yu_z]; }
-        else if (face == FACE_Z_MIN ) { part_cid[0] =  cell_cell_map[CellMap::x_y_zd]; }
-        else if (face == FACE_Z_PLUS) { part_cid[0] =  cell_cell_map[CellMap::x_y_zu]; }
+        
+        part_cid[0] =  cell_cell_map[face];
 
         // TODO: this conditional/branching could be better
         if (axis == 0) { part_pos[Dim::x] = -v0; /* printf("0\n"); */ }
@@ -364,22 +366,26 @@ inline void accumulate_current_to_cells_kernel(
         const OPP_REAL* cell_zd_acc, 
         const OPP_REAL* cell_xyd_acc, 
         const OPP_REAL* cell_yzd_acc, 
-        const OPP_REAL* cell_xzd_acc)
+        const OPP_REAL* cell_xzd_acc,
+        const OPP_INT* iter_acc)
 {
-    cell0_j[Dim::x] = CONST_acc_coef[Dim::x] * (cell0_acc[CellAcc::jfx + 0] +
-                                                cell_yd_acc[CellAcc::jfx + 1] +
-                                                cell_zd_acc[CellAcc::jfx + 2] +
-                                                cell_yzd_acc[CellAcc::jfx + 3]);
+    if (iter_acc[0] == 1)
+    {
+        cell0_j[Dim::x] = CONST_acc_coef[Dim::x] * (cell0_acc[CellAcc::jfx + 0] +
+                                                    cell_yd_acc[CellAcc::jfx + 1] +
+                                                    cell_zd_acc[CellAcc::jfx + 2] +
+                                                    cell_yzd_acc[CellAcc::jfx + 3]);
 
-    cell0_j[Dim::y] = CONST_acc_coef[Dim::y] * (cell0_acc[CellAcc::jfy + 0] +
-                                                cell_zd_acc[CellAcc::jfy + 1] +
-                                                cell_xd_acc[CellAcc::jfy + 2] +
-                                                cell_xzd_acc[CellAcc::jfy + 3]);
+        cell0_j[Dim::y] = CONST_acc_coef[Dim::y] * (cell0_acc[CellAcc::jfy + 0] +
+                                                    cell_zd_acc[CellAcc::jfy + 1] +
+                                                    cell_xd_acc[CellAcc::jfy + 2] +
+                                                    cell_xzd_acc[CellAcc::jfy + 3]);
 
-    cell0_j[Dim::z] = CONST_acc_coef[Dim::z] * (cell0_acc[CellAcc::jfz + 0] +
-                                                cell_xd_acc[CellAcc::jfz + 1] +
-                                                cell_yd_acc[CellAcc::jfz + 2] +
-                                                cell_xyd_acc[CellAcc::jfz + 3]);
+        cell0_j[Dim::z] = CONST_acc_coef[Dim::z] * (cell0_acc[CellAcc::jfz + 0] +
+                                                    cell_xd_acc[CellAcc::jfz + 1] +
+                                                    cell_yd_acc[CellAcc::jfz + 2] +
+                                                    cell_xyd_acc[CellAcc::jfz + 3]);
+    }
 }
 
 //*************************************************************************************************
@@ -388,16 +394,20 @@ inline void half_advance_b_kernel (
     const OPP_REAL* cell_y_e, 
     const OPP_REAL* cell_z_e, 
     const OPP_REAL* cell0_e, 
-    OPP_REAL* cell0_b)
+    OPP_REAL* cell0_b,
+    const OPP_INT* cell0_ghost)
 {
-    cell0_b[Dim::x] -= (0.5 * CONST_p[Dim::y] * (cell_y_e[Dim::z] - cell0_e[Dim::z]) 
+    if (cell0_ghost[0] == 0)
+    {
+        cell0_b[Dim::x] -= (0.5 * CONST_p[Dim::y] * (cell_y_e[Dim::z] - cell0_e[Dim::z]) 
                             - 0.5 * CONST_p[Dim::z] * (cell_z_e[Dim::y] - cell0_e[Dim::y]));
 
-    cell0_b[Dim::y] -= (0.5 * CONST_p[Dim::z] * (cell_z_e[Dim::x] - cell0_e[Dim::x]) 
+        cell0_b[Dim::y] -= (0.5 * CONST_p[Dim::z] * (cell_z_e[Dim::x] - cell0_e[Dim::x]) 
                             - 0.5 * CONST_p[Dim::x] * (cell_x_e[Dim::z] - cell0_e[Dim::z]));
 
-    cell0_b[Dim::z] -= (0.5 * CONST_p[Dim::x] * (cell_x_e[Dim::y] - cell0_e[Dim::y]) 
+        cell0_b[Dim::z] -= (0.5 * CONST_p[Dim::x] * (cell_x_e[Dim::y] - cell0_e[Dim::y]) 
                             - 0.5 * CONST_p[Dim::y] * (cell_y_e[Dim::x] - cell0_e[Dim::x]));
+    }
 }
 
 //*************************************************************************************************
@@ -407,19 +417,23 @@ inline void advance_e_kernel (
     const OPP_REAL* cell_z_b, 
     const OPP_REAL* cell0_b, 
     const OPP_REAL* cell0_j, 
-    OPP_REAL* cell0_e)
+    OPP_REAL* cell0_e,
+    const OPP_INT* iter_adv_e)
 {
-    cell0_e[Dim::x] += ( - CONST_dt_eps0 * cell0_j[Dim::x] ) + 
-        ( CONST_p[Dim::y] * (cell0_b[Dim::z] - cell_y_b[Dim::z]) - 
-        CONST_p[Dim::z] * (cell0_b[Dim::y] - cell_z_b[Dim::y]) );
+    if (iter_adv_e[0] == 1)
+    {
+        cell0_e[Dim::x] += ( - CONST_dt_eps0 * cell0_j[Dim::x] ) + 
+            ( CONST_p[Dim::y] * (cell0_b[Dim::z] - cell_y_b[Dim::z]) - 
+            CONST_p[Dim::z] * (cell0_b[Dim::y] - cell_z_b[Dim::y]) );
 
-    cell0_e[Dim::y] += ( - CONST_dt_eps0 * cell0_j[Dim::y] ) +            
-        ( CONST_p[Dim::z] * (cell0_b[Dim::x] - cell_z_b[Dim::x]) - 
-        CONST_p[Dim::x] * (cell0_b[Dim::z] - cell_x_b[Dim::z]) );
+        cell0_e[Dim::y] += ( - CONST_dt_eps0 * cell0_j[Dim::y] ) +            
+            ( CONST_p[Dim::z] * (cell0_b[Dim::x] - cell_z_b[Dim::x]) - 
+            CONST_p[Dim::x] * (cell0_b[Dim::z] - cell_x_b[Dim::z]) );
 
-    cell0_e[Dim::z] += ( - CONST_dt_eps0 * cell0_j[Dim::z] ) +           
-        ( CONST_p[Dim::x] * (cell0_b[Dim::y] - cell_x_b[Dim::y]) - 
-        CONST_p[Dim::y] * (cell0_b[Dim::x] - cell_y_b[Dim::x]) );
+        cell0_e[Dim::z] += ( - CONST_dt_eps0 * cell0_j[Dim::z] ) +           
+            ( CONST_p[Dim::x] * (cell0_b[Dim::y] - cell_x_b[Dim::y]) - 
+            CONST_p[Dim::y] * (cell0_b[Dim::x] - cell_y_b[Dim::x]) );
+    }
 }
 
 //*******************************************************************************
@@ -437,3 +451,35 @@ inline void get_final_max_values_kernel(
 
     *max_b = MAX(*cell_b, *max_b);
 }
+
+//*******************************************************************************
+inline void update_ghosts_B_kernel(const OPP_INT* c_mask_ugb,const OPP_REAL* from_cell,OPP_REAL* to_cell,const OPP_INT* m_idx)
+{
+    if (c_mask_ugb[*m_idx] == 1)
+    {
+        to_cell[Dim::x] = from_cell[Dim::x];
+        to_cell[Dim::y] = from_cell[Dim::y];
+        to_cell[Dim::z] = from_cell[Dim::z];
+    }  
+}
+//*******************************************************************************
+inline void update_ghosts_kernel(const OPP_INT* c_mask_ug,const OPP_REAL* from_cell,OPP_REAL* to_cell,const OPP_INT* m_idx, const OPP_INT* dim)
+{
+    if (c_mask_ug[*m_idx] == 1)
+        to_cell[*dim] += from_cell[*dim];
+}
+
+
+//*******************************************************************************
+inline void field_energy(
+    const OPP_INT* cell0_ghost, 
+    const OPP_REAL* cell_field, 
+    OPP_REAL* energy)
+{
+    if (cell0_ghost[0] == 0) 
+    {
+        energy[0] += cell_field[Dim::x] * cell_field[Dim::x] +
+                    cell_field[Dim::y] * cell_field[Dim::y] +
+                    cell_field[Dim::z] * cell_field[Dim::z];
+    }
+};

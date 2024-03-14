@@ -77,7 +77,8 @@ void opp_loop_all__interpolate_mesh_fields(
     opp_arg arg8,       // cell_x_b,       // OPP_READ
     opp_arg arg9,       // cell_y_b,       // OPP_READ
     opp_arg arg10,      // cell_z_b        // OPP_READ
-    opp_arg arg11       // cell0_interp    // OPP_WRITE
+    opp_arg arg11,      // cell0_interp    // OPP_WRITE
+    opp_arg arg12       // cell0_ghost     // OPP_READ
 )
 {
 
@@ -85,7 +86,7 @@ void opp_loop_all__interpolate_mesh_fields(
 
     opp_profiler->start("Interpolate");
 
-    const int nargs = 12;
+    const int nargs = 13;
     opp_arg args[nargs];
 
     args[0] = std::move(arg0);
@@ -100,6 +101,7 @@ void opp_loop_all__interpolate_mesh_fields(
     args[9] = std::move(arg9);
     args[10] = std::move(arg10);
     args[11] = std::move(arg11);
+    args[12] = std::move(arg12);
 
     int set_size = opp_mpi_halo_exchanges(set, nargs, args);
 
@@ -131,7 +133,8 @@ void opp_loop_all__interpolate_mesh_fields(
             &((double*) args[8].data)[map_8idx * args[8].dim],     // cell_x_b,       // OPP_READ
             &((double*) args[9].data)[map_9idx * args[9].dim],     // cell_y_b,       // OPP_READ
             &((double*) args[10].data)[map_10idx * args[10].dim],  // cell_z_b        // OPP_READ
-            &((double*) args[11].data)[n * args[11].dim]           // cell0_interp    // OPP_WRITE
+            &((double*) args[11].data)[n * args[11].dim],          // cell0_interp    // OPP_WRITE
+            &((int*)    args[12].data)[n * args[12].dim]           // cell0_ghost,    // OPP_READ
         );
     }
 
@@ -230,7 +233,8 @@ void opp_loop_all__accumulate_current_to_cells(
     opp_arg arg4,    // cell_zd_acc     // OPP_READ
     opp_arg arg5,    // cell_xyd_acc    // OPP_READ
     opp_arg arg6,    // cell_yzd_acc    // OPP_READ
-    opp_arg arg7     // cell_xzd_acc    // OPP_READ
+    opp_arg arg7,    // cell_xzd_acc    // OPP_READ
+    opp_arg arg8     // iter_acc        // OPP_READ
 )
 {
 
@@ -238,7 +242,7 @@ void opp_loop_all__accumulate_current_to_cells(
 
     opp_profiler->start("Acc_Current");
 
-    const int nargs = 8;
+    const int nargs = 9;
     opp_arg args[nargs];
 
     args[0] = std::move(arg0);
@@ -249,6 +253,7 @@ void opp_loop_all__accumulate_current_to_cells(
     args[5] = std::move(arg5);
     args[6] = std::move(arg6);
     args[7] = std::move(arg7);
+    args[8] = std::move(arg8);
 
     int set_size = opp_mpi_halo_exchanges(set, nargs, args);
 
@@ -273,7 +278,8 @@ void opp_loop_all__accumulate_current_to_cells(
             &((double*) args[4].data)[map_4idx * args[4].dim],     // cell_zd_acc
             &((double*) args[5].data)[map_5idx * args[5].dim],     // cell_xyd_acc 
             &((double*) args[6].data)[map_6idx * args[6].dim],     // cell_yzd_acc 
-            &((double*) args[7].data)[map_7idx * args[7].dim]      // cell_xzd_acc
+            &((double*) args[7].data)[map_7idx * args[7].dim],     // cell_xzd_acc
+            &((int*)    args[8].data)[n * args[8].dim]             // iter_acc 
         );
     }
 
@@ -293,7 +299,8 @@ void opp_loop_all__half_advance_b(
     opp_arg arg1,    // cell_y_e        // OPP_READ
     opp_arg arg2,    // cell_z_e        // OPP_READ
     opp_arg arg3,    // cell0_e         // OPP_READ
-    opp_arg arg4     // cell0_b         // OPP_INC
+    opp_arg arg4,    // cell0_b         // OPP_INC
+    opp_arg arg5     // cell0_ghost     // OPP_READ
 )
 {
 
@@ -301,7 +308,7 @@ void opp_loop_all__half_advance_b(
 
     opp_profiler->start("HalfAdv_B");
 
-    const int nargs = 5;
+    const int nargs = 6;
     opp_arg args[nargs];
 
     args[0] = std::move(arg0);
@@ -309,6 +316,7 @@ void opp_loop_all__half_advance_b(
     args[2] = std::move(arg2);
     args[3] = std::move(arg3);
     args[4] = std::move(arg4);
+    args[5] = std::move(arg5);
 
     int set_size = opp_mpi_halo_exchanges(set, nargs, args);
 
@@ -327,7 +335,8 @@ void opp_loop_all__half_advance_b(
             &((double*) args[1].data)[map_1idx * args[1].dim],     // cell_y_e, 
             &((double*) args[2].data)[map_2idx * args[2].dim],     // cell_z_e, 
             &((double*) args[3].data)[n * args[3].dim],            // cell0_e, 
-            &((double*) args[4].data)[n * args[4].dim]             // cell0_b
+            &((double*) args[4].data)[n * args[4].dim],            // cell0_b
+            &((int*)    args[5].data)[n * args[5].dim]             // cell0_ghost
         );
     }
 
@@ -348,7 +357,8 @@ void opp_loop_all__advance_e(
     opp_arg arg2,    // cell_z_b        // OPP_READ
     opp_arg arg3,    // cell0_b         // OPP_READ
     opp_arg arg4,    // cell0_j         // OPP_READ
-    opp_arg arg5     // cell0_e         // OPP_INC
+    opp_arg arg5,    // cell0_e         // OPP_INC
+    opp_arg arg6     // iter_adv_e      // OPP_READ
 )
 {
 
@@ -356,7 +366,7 @@ void opp_loop_all__advance_e(
 
     opp_profiler->start("Adv_E");
 
-    const int nargs = 6;
+    const int nargs = 7;
     opp_arg args[nargs];
 
     args[0] = std::move(arg0);
@@ -365,6 +375,7 @@ void opp_loop_all__advance_e(
     args[3] = std::move(arg3);
     args[4] = std::move(arg4);
     args[5] = std::move(arg5);
+    args[6] = std::move(arg6);
 
     int set_size = opp_mpi_halo_exchanges(set, nargs, args);
 
@@ -384,7 +395,8 @@ void opp_loop_all__advance_e(
             &((double*) args[2].data)[map_2idx * args[2].dim],     // cell_z_b  
             &((double*) args[3].data)[n * args[3].dim],            // cell0_b   
             &((double*) args[4].data)[n * args[4].dim],            // cell0_j   
-            &((double*) args[5].data)[n * args[5].dim]             // cell0_e   
+            &((double*) args[5].data)[n * args[5].dim],            // cell0_e
+            &((int*)    args[6].data)[n * args[6].dim]             // iter_adv_e 
         );
     }
 
@@ -452,3 +464,149 @@ void opp_loop_all__GetFinalMaxValues(
 
     opp_profiler->end("GetMax");
 }
+
+//*************************************************************************************************
+void opp_loop_all__update_ghosts_B(
+    opp_set set,     // cells set
+    opp_arg arg0,    // cell_mask_ugb,       OP_READ
+    opp_arg arg1,    // cell,                OP_READ
+    opp_arg arg2,    // cell, 0, c2cugb_map, OP_WRITE
+    opp_arg arg3     // mask_idx global
+)
+{
+    if (FP_DEBUG) opp_printf("CABANA", "opp_loop_all__update_ghosts_B set_size %d", set->size);
+
+    opp_profiler->start("UpGhostB");
+
+    const int nargs = 4;
+    opp_arg args[nargs];
+
+    args[0] = arg0;
+    args[1] = arg1;
+    args[2] = arg2;
+    args[3] = arg3;
+
+    int set_size = opp_mpi_halo_exchanges(set, nargs, args);
+
+    for (int n = 0; n < set_size; n++)
+    {
+        if (n == set->core_size) {
+            opp_mpi_halo_wait_all(nargs, args);
+        }
+
+        const int map_0idx  = args[2].map_data[n * args[2].map->dim + 0];
+
+        update_ghosts_B_kernel(
+            &((OPP_INT*) args[0].data)[n * args[0].dim],        
+            &((OPP_REAL*) args[1].data)[n * args[1].dim],       
+            &((OPP_REAL*) args[2].data)[map_0idx * args[2].dim],
+            (OPP_INT*) args[3].data
+        );
+    }
+
+    if (set->size == 0 || set->size == set->core_size) {
+        opp_mpi_halo_wait_all(nargs, args);
+    }
+
+    opp_set_dirtybit(nargs, args);
+
+    opp_profiler->end("UpGhostB");   
+}
+
+//*************************************************************************************************
+void opp_loop_all__update_ghosts(
+    opp_set set,     // cells set
+    opp_arg arg0,    // cell_mask_ug,       OP_READ
+    opp_arg arg1,    // cell,               OP_READ
+    opp_arg arg2,    // cell, 0, c2cug_map, OP_INC
+    opp_arg arg3,    // mask_idx global
+    opp_arg arg4     // dim_idx
+)
+{
+    if (FP_DEBUG) opp_printf("CABANA", "opp_loop_all__update_ghosts set_size %d", set->size);
+
+    opp_profiler->start("UpGhost");
+
+    const int nargs = 5;
+    opp_arg args[nargs];
+
+    args[0] = arg0;
+    args[1] = arg1;
+    args[2] = arg2;
+    args[3] = arg3;
+    args[4] = arg4;
+
+    int set_size = opp_mpi_halo_exchanges(set, nargs, args);
+
+    for (int n = 0; n < set_size; n++)
+    {
+        if (n == set->core_size) {
+            opp_mpi_halo_wait_all(nargs, args);
+        }
+
+        const int map_0idx  = args[2].map_data[n * args[2].map->dim + 0];
+
+        update_ghosts_kernel(
+            &((OPP_INT*) args[0].data)[n * args[0].dim],        
+            &((OPP_REAL*) args[1].data)[n * args[1].dim],       
+            &((OPP_REAL*) args[2].data)[map_0idx * args[2].dim],
+            (OPP_INT*) args[3].data,
+            (OPP_INT*) args[4].data
+        );
+    }
+
+    if (set->size == 0 || set->size == set->core_size) {
+        opp_mpi_halo_wait_all(nargs, args);
+    }
+
+    opp_set_dirtybit(nargs, args);
+
+    opp_profiler->end("UpGhost");   
+}
+
+//*************************************************************************************************
+void opp_loop_all__compute_energy(
+    opp_set set,     // cells set
+    opp_arg arg0,    // cell0_ghost, OP_READ
+    opp_arg arg1,    // cell_field,  OP_READ
+    opp_arg arg2     // energy,      OP_INC
+)
+{
+    if (FP_DEBUG) opp_printf("CABANA", "opp_loop_all__compute_energy set_size %d", set->size);
+
+    opp_profiler->start("Energy");
+
+    const int nargs = 3;
+    opp_arg args[nargs];
+
+    args[0] = arg0;
+    args[1] = arg1;
+    args[2] = arg2;
+
+    int set_size = opp_mpi_halo_exchanges(set, nargs, args);
+
+    for (int n = 0; n < set->size; n++)
+    {
+        if (n == set->core_size) {
+            opp_mpi_halo_wait_all(nargs, args);
+        }
+
+        field_energy(
+            &((OPP_INT*) args[0].data)[n * args[0].dim],        
+            &((OPP_REAL*) args[1].data)[n * args[1].dim],       
+            (OPP_REAL*) args[2].data
+        );
+    }
+
+    if (set->size == 0 || set->size == set->core_size) {
+        opp_mpi_halo_wait_all(nargs, args);
+    }
+
+    opp_mpi_reduce_double(&args[2], (double*)args[2].data);
+
+    opp_set_dirtybit(nargs, args);
+
+    opp_profiler->end("Energy");   
+}
+
+//*************************************************************************************************

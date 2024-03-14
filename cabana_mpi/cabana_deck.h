@@ -87,8 +87,6 @@ class Deck {
         acc_coefy = 0.25 / (dz * dx * dt);
         acc_coefz = 0.25 / (dx * dy * dt);
         dt_eps0 = dt / eps;
-
-        print();
     }
 
     inline void print() {

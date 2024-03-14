@@ -1492,7 +1492,7 @@ CellMapper::CellMapper(const std::shared_ptr<BoundingBox> boundingBox, const dou
         this->globalGridDims.z = az + 1; 
     }
 
-    // if (OPP_rank == OPP_ROOT)
+    if (OPP_rank == OPP_ROOT)
         opp_printf("CellMapper", "Global Grid Size - [%d %d %d] gridSpacing [%2.10lE]", 
             this->globalGridDims.x, this->globalGridDims.y, this->globalGridDims.z, this->gridSpacing); 
     

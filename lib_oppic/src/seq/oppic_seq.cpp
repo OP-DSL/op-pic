@@ -384,8 +384,8 @@ void opp_download_particle_set(opp_set particles_set, bool force_download) {}
 void opp_upload_particle_set(opp_set particles_set, bool realloc) {}
 
 //*******************************************************************************
-void opp_colour_cartesian_mesh(const int ndim, const std::vector<int> cell_counts, opp_dat cell_index, 
-                            const opp_dat cell_colors) {}
+void opp_colour_cartesian_mesh(const int ndim, std::vector<int> cell_counts, opp_dat cell_index, 
+                            const opp_dat cell_colors, const int cell_ghosts) {}
 
 //*******************************************************************************
 void* opp_host_malloc(size_t size)

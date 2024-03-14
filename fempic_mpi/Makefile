@@ -11,8 +11,9 @@ CPP        = mpicxx
 MPICPP	   = mpicxx
 NVCC       = nvcc
 HIPCC      = hipcc
+# -qopt-zmm-usage=high
 
-CPPFLAGS   = -std=c++14 -Wall -fPIC 
+CPPFLAGS   = -std=c++14 -Wall -fPIC -march=native 
 NVCCFLAGS  = -m64 -Xptxas -dlcm=ca -Xptxas=-v $(NVCCFLAGS_ADD) -DUSE_THRUST 
 HIPCCFLAGS = -std=c++17 -isystem -D__HIP_PLATFORM_AMD__ -munsafe-fp-atomics -DUSE_THRUST
 
@@ -80,8 +81,8 @@ ifeq ($(REDUCE_BY_KEY), 1)
 	ALL_INC  += -DUSE_REDUCE_BY_KEY
 endif
 
-ALL_INC    += -I$(OPPIC_PATH)/include $(PETSC_INC) -I$(HDF5_INSTALL_PATH)/include
-ALL_LIBS   += -L$(OPPIC_PATH)/lib $(PETSC_LIB) -L$(HDF5_INSTALL_PATH)/lib
+ALL_INC    += -I$(OPPIC_PATH)/include $(PETSC_INC) -I$(HDF5_INSTALL_PATH)/include 
+ALL_LIBS   += -L$(OPPIC_PATH)/lib $(PETSC_LIB) -L$(HDF5_INSTALL_PATH)/lib 
 
 .PHONY: clean mklib
 

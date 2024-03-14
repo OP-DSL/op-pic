@@ -37,10 +37,11 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #pragma once
 
 //*************************************************************************************************
-inline void enrich_particles_random(const Deck& deck, OPP_INT cell_count, OPP_REAL* pos, OPP_REAL* vel, 
-    OPP_REAL* str_mid, OPP_INT* cid, OPP_INT* idx, OPP_REAL* weight, OPP_REAL* cell_pos_ll, OPP_INT rank_part_start) {
+inline void enrich_particles_random(const Deck& deck, const OPP_INT cell_count, OPP_REAL* pos, 
+        OPP_REAL* vel, OPP_REAL* str_mid, OPP_INT* cid, OPP_INT* idx, OPP_REAL* weight, 
+        const OPP_REAL* cell_pos_ll, const OPP_INT rank_part_start, const OPP_INT* ghost) {
     
-    printf("Setup[0][0] - enrich_particles_random\n");
+    if (OPP_rank == OPP_ROOT) opp_printf("Setup", "enrich_particles_random");
 
     const OPP_INT npart_per_cell = deck.nppc;
     const OPP_REAL const_weight  = deck.we;
@@ -65,18 +66,19 @@ inline void enrich_particles_random(const Deck& deck, OPP_INT cell_count, OPP_RE
     // Populate the host space with particle data.
     int p_idx = 0;
     for (int cx = 0; cx < cell_count; cx++) {
+        if (ghost[cx] == 1) continue;
         for (int px = 0; px < npart_per_cell; px++) {
             
-            pos[p_idx * DIM + Dim::x] = uniform_dist_vec[px * DIM + Dim::x] + 
-                                                            cell_pos_ll[cx * DIM + Dim::x];
-            pos[p_idx * DIM + Dim::y] = uniform_dist_vec[px * DIM + Dim::y] + 
-                                                            cell_pos_ll[cx * DIM + Dim::y];
-            pos[p_idx * DIM + Dim::z] = uniform_dist_vec[px * DIM + Dim::z] + 
-                                                            cell_pos_ll[cx * DIM + Dim::z];
+            // pos[p_idx * DIM + Dim::x] = uniform_dist_vec[px * DIM + Dim::x] + 
+            //                                                 cell_pos_ll[cx * DIM + Dim::x];
+            // pos[p_idx * DIM + Dim::y] = uniform_dist_vec[px * DIM + Dim::y] + 
+            //                                                 cell_pos_ll[cx * DIM + Dim::y];
+            // pos[p_idx * DIM + Dim::z] = uniform_dist_vec[px * DIM + Dim::z] + 
+            //                                                 cell_pos_ll[cx * DIM + Dim::z];
 
-            // pos[p_idx * DIM + Dim::x] = uniform_dist_vec[px * DIM + Dim::x];
-            // pos[p_idx * DIM + Dim::y] = uniform_dist_vec[px * DIM + Dim::y];
-            // pos[p_idx * DIM + Dim::z] = uniform_dist_vec[px * DIM + Dim::z];
+            pos[p_idx * DIM + Dim::x] = uniform_dist_vec[px * DIM + Dim::x];
+            pos[p_idx * DIM + Dim::y] = uniform_dist_vec[px * DIM + Dim::y];
+            pos[p_idx * DIM + Dim::z] = uniform_dist_vec[px * DIM + Dim::z];
 
             const int sign = (px % 2) ? 1 : -1; // For two stream
             // const int sign = 1; // For one stream
@@ -90,7 +92,7 @@ inline void enrich_particles_random(const Deck& deck, OPP_INT cell_count, OPP_RE
             str_mid[p_idx * DIM + Dim::z] = 0.0;
 
             cid[p_idx]    = cx;
-            idx[p_idx]    = (cx * npart_per_cell + px + rank_part_start); // this might not exactly match with MPI versions
+            idx[p_idx]    = (p_idx + rank_part_start); // this might not exactly match with MPI versions
             weight[p_idx] = const_weight;
 
             p_idx++;
@@ -99,53 +101,71 @@ inline void enrich_particles_random(const Deck& deck, OPP_INT cell_count, OPP_RE
 }
 
 //*************************************************************************************************
-inline void enrich_particles_two_stream(const Deck& deck, OPP_INT cell_count, OPP_REAL* pos,  
-                    OPP_REAL* vel, OPP_REAL* str_mid, OPP_INT* cid, OPP_INT* idx, OPP_REAL* weight,
-                    OPP_REAL* cell_pos_ll, OPP_INT rank_part_start, OPP_INT* global_cids) {
+inline void enrich_particles_two_stream(const Deck& deck, const OPP_INT cell_count, 
+        OPP_REAL* pos,  OPP_REAL* vel, OPP_REAL* str_mid, OPP_INT* cid, 
+        OPP_INT* idx, OPP_REAL* weight, const OPP_INT* global_cids, const OPP_INT* ghost) {
     
-    printf("Setup[0][0] - enrich_particles_two_stream\n");
+    if (OPP_rank == OPP_ROOT) opp_printf("Setup", "enrich_particles_two_stream");
 
     const OPP_INT npart_per_cell = deck.nppc;
     const OPP_REAL const_weight  = deck.we;
     const OPP_REAL v0            = deck.v0;
+    const OPP_INT nx             = deck.nx;
     const OPP_INT ny             = deck.ny;
+    const OPP_INT nz             = deck.nz;
     const OPP_REAL dxp           = (2.0 / npart_per_cell);
-    const OPP_REAL n_particles   = (npart_per_cell * cell_count);
 
     // Populate the host space with particle data.
-    for (int p_idx = 0; p_idx < n_particles; p_idx++) {
-
-        int sign =  -1;
-        const size_t pi2 = (rank_part_start + p_idx);
-        const size_t pi = ((pi2) / 2);
-        if (pi2 % 2 == 0)
-            sign = 1;
-
-        const int local_cid = (2 * pi / npart_per_cell);
-        const int global_cid = global_cids[local_cid];
-
-        const int pic = (2 * pi) % npart_per_cell; //Every 2 particles have the same "pic".
-        const double x = pic * dxp + 0.5 * dxp - 1.0;
-
-        // Initialize velocity.(each cell length is 2)
-        const double gam = 1.0 / sqrt(1.0 - v0 * v0);
-
-        const double na = 0.0001 * sin(2.0 * 3.1415926 * ((x + 1.0 + global_cid * 2) / (2 * ny)));
+    int part_idx = 0;
+    for (int cx = 0; cx < cell_count; cx++) {
         
-        pos[p_idx * DIM + Dim::x] = 0.0;
-        pos[p_idx * DIM + Dim::y] = x;
-        pos[p_idx * DIM + Dim::z] = 0.0;
+        if (ghost[cx] == 1) {
+            // opp_printf("SKIP", "ghost[cx] %d local %d global %d", ghost[cx], cx, global_cids[cx]);
+            continue;
+        }
+        const int global_cid = global_cids[cx];
+        const int cell_particle_start = (global_cid * npart_per_cell);
 
-        vel[p_idx * DIM + Dim::x] = sign * v0 * gam * (1.0 + na * sign);
-        vel[p_idx * DIM + Dim::y] = 0;
-        vel[p_idx * DIM + Dim::z] = 0;
+        // opp_printf("ADD PART", "ghost[cx] %d local %d global %d", ghost[cx], cx, global_cids[cx]);
+        int ix, iy, iz;
+        RANK_TO_INDEX(global_cid,ix,iy,iz,nx+2*NG,ny+2*NG);
+        ix-=1; iy-=1; iz-=1;
+        const int pre_ghost = (ix + nx * (iy + (ny * iz)));
 
-        str_mid[p_idx * DIM + Dim::x] = 0.0;
-        str_mid[p_idx * DIM + Dim::y] = 0.0;
-        str_mid[p_idx * DIM + Dim::z] = 0.0;
+        for (int p_idx = 0; p_idx < npart_per_cell; p_idx++) {
+            
+            int sign =  -1;
+            const size_t pi2 = (cell_particle_start + p_idx); // TODO : looks like cell_particle_start is wrong due to ghosts
+            const size_t pi = ((pi2) / 2);
+            if (pi2 % 2 == 0)
+                sign = 1;
 
-        cid[p_idx]    = local_cid;
-        idx[p_idx]    = (p_idx + rank_part_start); // this might not exactly match with MPI versions
-        weight[p_idx] = const_weight;  
+            const int pic = (2 * pi) % npart_per_cell; //Every 2 particles have the same "pic".
+            const double x = pic * dxp + 0.5 * dxp - 1.0;
+
+            // Initialize velocity.(each cell length is 2)
+            const double gam = 1.0 / sqrt(1.0 - v0 * v0);
+
+            const double na = 0.0001 * sin(2.0 * 3.1415926 * ((x + 1.0 + pre_ghost * 2) / (2 * ny)));
+            
+            pos[part_idx * DIM + Dim::x] = 0.0;
+            pos[part_idx * DIM + Dim::y] = x;
+            pos[part_idx * DIM + Dim::z] = 0.0;
+
+            vel[part_idx * DIM + Dim::x] = sign * v0 * gam * (1.0 + na * sign);
+            vel[part_idx * DIM + Dim::y] = 0; 
+            // vel[part_idx * DIM + Dim::y] = sign * 0.1 * v0 * gam * (1.0 + na * sign);
+            vel[part_idx * DIM + Dim::z] = 0;
+
+            str_mid[part_idx * DIM + Dim::x] = 0.0;
+            str_mid[part_idx * DIM + Dim::y] = 0.0;
+            str_mid[part_idx * DIM + Dim::z] = 0.0;
+
+            cid[part_idx]    = cx;
+            idx[part_idx]    = (cell_particle_start + p_idx); // this might not exactly match with MPI versions
+            weight[part_idx] = const_weight;  
+
+            part_idx++;
+        }
     }
 }
