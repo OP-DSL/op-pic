@@ -474,7 +474,7 @@ void opp_loop_all__update_ghosts_B(
     opp_arg arg3     // mask_idx global
 )
 {
-    if (FP_DEBUG) opp_printf("CABANA", "opp_loop_all__update_ghosts_B set_size %d", set->size);
+    if (OP_DEBUG) opp_printf("CABANA", "opp_loop_all__update_ghosts_B set_size %d", set->size);
 
     opp_profiler->start("UpGhostB");
 
@@ -523,7 +523,7 @@ void opp_loop_all__update_ghosts(
     opp_arg arg4     // dim_idx
 )
 {
-    if (FP_DEBUG) opp_printf("CABANA", "opp_loop_all__update_ghosts set_size %d", set->size);
+    if (OP_DEBUG) opp_printf("CABANA", "opp_loop_all__update_ghosts set_size %d", set->size);
 
     opp_profiler->start("UpGhost");
 
@@ -572,7 +572,7 @@ void opp_loop_all__compute_energy(
     opp_arg arg2     // energy,      OP_INC
 )
 {
-    if (FP_DEBUG) opp_printf("CABANA", "opp_loop_all__compute_energy set_size %d", set->size);
+    if (OP_DEBUG) opp_printf("CABANA", "opp_loop_all__compute_energy set_size %d", set->size);
 
     opp_profiler->start("Energy");
 
