@@ -47,7 +47,7 @@ int OP_hybrid_gpu                   = 0;
 int OP_maps_base_index              = 0;
 int OP_auto_soa                     = 0;
 int OP_gpu_direct                   = 0;
-int OP_part_alloc_mult              = 1;
+double OP_part_alloc_mult           = 1;
 int OP_auto_sort                    = 1;
 int OPP_mpi_part_alloc_mult         = 1;
 int OPP_rank                        = 0;
@@ -84,7 +84,7 @@ void oppic_init_core(int argc, char **argv)
 
     // these will be overidden by args
     OP_auto_sort = opp_params->get<OPP_BOOL>("opp_auto_sort");
-    OP_part_alloc_mult = opp_params->get<OPP_INT>("opp_allocation_multiple");
+    OP_part_alloc_mult = opp_params->get<OPP_REAL>("opp_allocation_multiple");
 
     for (int n = 1; n < argc; n++) 
     {
@@ -142,9 +142,9 @@ void oppic_set_args_core(char *argv)
     if (pch != NULL) 
     {
         strncpy(temp, pch, 20);
-        OP_part_alloc_mult = atoi(temp + 15);
+        OP_part_alloc_mult = atof(temp + 15);
         
-        printf("\toppic_set_args_core OP_part_alloc_mult = %d\n", OP_part_alloc_mult);
+        printf("\toppic_set_args_core OP_part_alloc_mult = %lf\n", OP_part_alloc_mult);
     }
 
     pch = strstr(argv, "OPP_AUTO_SORT=");
@@ -514,7 +514,7 @@ bool oppic_increase_particle_count_core(oppic_set part_set, const int num_parts_
     }
 
     // if the set needs resizing, then use alloc multiple to increase set capacity to reduce regular resizing of the set
-    size_t new_part_set_capacity = part_set->size + num_parts_to_insert * OP_part_alloc_mult;
+    size_t new_part_set_capacity = part_set->size + (int)(num_parts_to_insert * OP_part_alloc_mult);
     bool return_flag = true;
 
     if (OP_DEBUG) //  || part_set->size != 0

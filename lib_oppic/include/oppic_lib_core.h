@@ -346,7 +346,7 @@ extern double OP_hybrid_balance;
 extern int OP_maps_base_index;
 extern int OP_auto_soa;
 extern int OP_gpu_direct;
-extern int OP_part_alloc_mult;
+extern double OP_part_alloc_mult;
 extern int OP_auto_sort;
 extern int OPP_mpi_part_alloc_mult;
 extern int OPP_rank;

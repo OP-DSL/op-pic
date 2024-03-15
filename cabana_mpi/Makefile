@@ -22,7 +22,7 @@ ifeq ($(DEBUG), 1)
 	DEBUG_LOG   = 1
 else
 	CPPFLAGS   += -O3 -g
-	NVCCFLAGS  += -O3 -g
+	NVCCFLAGS  += -O3 -g -lineinfo
 	HIPCCFLAGS += -O3 -g
 endif
 

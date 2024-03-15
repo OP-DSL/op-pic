@@ -68,21 +68,21 @@ int main(int argc, char **argv)
 
         std::shared_ptr<DataPointers> m = load_mesh(deck);
 
-        opp_set c_set = opp_decl_mesh_set(m->n_cells, "mesh_cells");
-        opp_map c2c_map    = opp_decl_mesh_map(c_set, c_set, NEIGHBOURS, m->c2c_map, "c2c_map");
-        opp_map c2ngc_map  = opp_decl_mesh_map(c_set, c_set, FACES, m->c2ngc_map, "c2c_non_ghost_map");
-        opp_map c2cug0_map = opp_decl_mesh_map(c_set, c_set, 1, m->c2cug0_map, "c2c_ug_0_map");
-        opp_map c2cug1_map = opp_decl_mesh_map(c_set, c_set, 1, m->c2cug1_map, "c2c_ug_1_map");
-        opp_map c2cug2_map = opp_decl_mesh_map(c_set, c_set, 1, m->c2cug2_map, "c2c_ug_2_map");
-        opp_map c2cug3_map = opp_decl_mesh_map(c_set, c_set, 1, m->c2cug3_map, "c2c_ug_3_map");
-        opp_map c2cug4_map = opp_decl_mesh_map(c_set, c_set, 1, m->c2cug4_map, "c2c_ug_4_map");
-        opp_map c2cug5_map = opp_decl_mesh_map(c_set, c_set, 1, m->c2cug5_map, "c2c_ug_5_map");
-        opp_map c2cugb0_map = opp_decl_mesh_map(c_set, c_set, 1, m->c2cugb0_map, "c2c_ugb_0_map");
-        opp_map c2cugb1_map = opp_decl_mesh_map(c_set, c_set, 1, m->c2cugb1_map, "c2c_ugb_1_map");
-        opp_map c2cugb2_map = opp_decl_mesh_map(c_set, c_set, 1, m->c2cugb2_map, "c2c_ugb_2_map");
-        opp_map c2cugb3_map = opp_decl_mesh_map(c_set, c_set, 1, m->c2cugb3_map, "c2c_ugb_3_map");
-        opp_map c2cugb4_map = opp_decl_mesh_map(c_set, c_set, 1, m->c2cugb4_map, "c2c_ugb_4_map");
-        opp_map c2cugb5_map = opp_decl_mesh_map(c_set, c_set, 1, m->c2cugb5_map, "c2c_ugb_5_map");
+        opp_set c_set       = opp_decl_mesh_set(m->n_cells, "mesh_cells");
+        opp_map c2c_map     = opp_decl_mesh_map(c_set, c_set, NEIGHBOURS, m->c2c_map,     "c2c_map");
+        opp_map c2ngc_map   = opp_decl_mesh_map(c_set, c_set, FACES,      m->c2ngc_map,   "c2c_non_ghost_map");
+        opp_map c2cug0_map  = opp_decl_mesh_map(c_set, c_set, 1,          m->c2cug0_map,  "c2c_ug_0_map");
+        opp_map c2cug1_map  = opp_decl_mesh_map(c_set, c_set, 1,          m->c2cug1_map,  "c2c_ug_1_map");
+        opp_map c2cug2_map  = opp_decl_mesh_map(c_set, c_set, 1,          m->c2cug2_map,  "c2c_ug_2_map");
+        opp_map c2cug3_map  = opp_decl_mesh_map(c_set, c_set, 1,          m->c2cug3_map,  "c2c_ug_3_map");
+        opp_map c2cug4_map  = opp_decl_mesh_map(c_set, c_set, 1,          m->c2cug4_map,  "c2c_ug_4_map");
+        opp_map c2cug5_map  = opp_decl_mesh_map(c_set, c_set, 1,          m->c2cug5_map,  "c2c_ug_5_map");
+        opp_map c2cugb0_map = opp_decl_mesh_map(c_set, c_set, 1,          m->c2cugb0_map, "c2c_ugb_0_map");
+        opp_map c2cugb1_map = opp_decl_mesh_map(c_set, c_set, 1,          m->c2cugb1_map, "c2c_ugb_1_map");
+        opp_map c2cugb2_map = opp_decl_mesh_map(c_set, c_set, 1,          m->c2cugb2_map, "c2c_ugb_2_map");
+        opp_map c2cugb3_map = opp_decl_mesh_map(c_set, c_set, 1,          m->c2cugb3_map, "c2c_ugb_3_map");
+        opp_map c2cugb4_map = opp_decl_mesh_map(c_set, c_set, 1,          m->c2cugb4_map, "c2c_ugb_4_map");
+        opp_map c2cugb5_map = opp_decl_mesh_map(c_set, c_set, 1,          m->c2cugb5_map, "c2c_ugb_5_map");
 
         opp_dat c_index      = opp_decl_mesh_dat(c_set, ONE,        DT_INT,  m->c_index,      "c_index");
         opp_dat c_e          = opp_decl_mesh_dat(c_set, DIM,        DT_REAL, m->c_e,          "c_e");  
@@ -132,16 +132,13 @@ int main(int argc, char **argv)
                         c_pos_ll, c_index, c_mask_ghost);
 
         FILE *fptre = nullptr;
-        
-        if (OPP_rank == OPP_ROOT)
-        {
-            fptre = fopen("energy.csv", "w");
-            fprintf(fptre,"timestep, e_energy, b_energy\n");
-        }
+        if (OPP_rank == OPP_ROOT) fptre = fopen("energy.csv", "w");
+        if (OPP_rank == OPP_ROOT) fprintf(fptre, "timestep,e_energy,b_energy\n");
 
         int ghosts = 0;
         for (int i = 0; i < c_set->size; i++) if (((int*)c_mask_ghost->data)[i] == 1) ghosts++;
         opp_printf("Setup", "Cells[%d][ghosts:%d] Particles[%d]", c_set->size, ghosts, p_set->size);
+        
         opp_profiler->end("Setup");
 
         opp_profiler->start("MainLoop");
@@ -252,7 +249,7 @@ int main(int argc, char **argv)
                 opp_get_arg(c_b, CellMap::x_yd_z, c2c_map, OP_READ),
                 opp_get_arg(c_b, CellMap::x_y_zd, c2c_map, OP_READ),
                 opp_get_arg(c_b,                           OP_READ),
-                opp_get_arg(c_j,                           OP_READ), // not ex j
+                opp_get_arg(c_j,                           OP_READ), 
                 opp_get_arg(c_e,                           OP_INC),
                 opp_get_arg(c_mask_right,                  OP_READ)
             );
