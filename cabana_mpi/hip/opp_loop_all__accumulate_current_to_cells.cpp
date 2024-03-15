@@ -34,8 +34,6 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 // AUTO GENERATED CODE
 //*********************************************
 
-#include "hip/hip_runtime.h"
-
 int acc_OPP_HOST_0 = -1;
 int acc_OPP_HOST_2 = -1;
 int acc_OPP_HOST_2_MAP_STRIDE = -1;
@@ -54,26 +52,30 @@ __device__ void dev_accumulate_current_to_cells__kernel(
     const OPP_REAL* cell_zd_acc, 
     const OPP_REAL* cell_xyd_acc, 
     const OPP_REAL* cell_yzd_acc, 
-    const OPP_REAL* cell_xzd_acc
+    const OPP_REAL* cell_xzd_acc,
+    const OPP_INT* iter_acc
 )
 {
-    cell0_j[acc_OPP_DEV_0 * Dim::x] = CONST_DEV_acc_coef[Dim::x] * 
+    if (iter_acc[0] == 1)
+    {
+        cell0_j[acc_OPP_DEV_0 * Dim::x] = CONST_DEV_acc_coef[Dim::x] * 
                                         (cell0_acc[acc_OPP_DEV_2 * (CellAcc::jfx + 0)] +
                                         cell_yd_acc[acc_OPP_DEV_2 * (CellAcc::jfx + 1)] +
                                         cell_zd_acc[acc_OPP_DEV_2 * (CellAcc::jfx + 2)] +
                                         cell_yzd_acc[acc_OPP_DEV_2 * (CellAcc::jfx + 3)]);
 
-    cell0_j[acc_OPP_DEV_0 * Dim::y] = CONST_DEV_acc_coef[Dim::y] * 
+        cell0_j[acc_OPP_DEV_0 * Dim::y] = CONST_DEV_acc_coef[Dim::y] * 
                                         (cell0_acc[acc_OPP_DEV_2 * (CellAcc::jfy + 0)] +
                                         cell_zd_acc[acc_OPP_DEV_2 * (CellAcc::jfy + 1)] +
                                         cell_xd_acc[acc_OPP_DEV_2 * (CellAcc::jfy + 2)] +
                                         cell_xzd_acc[acc_OPP_DEV_2 * (CellAcc::jfy + 3)]);
 
-    cell0_j[acc_OPP_DEV_0 * Dim::z] = CONST_DEV_acc_coef[Dim::z] * 
+        cell0_j[acc_OPP_DEV_0 * Dim::z] = CONST_DEV_acc_coef[Dim::z] * 
                                         (cell0_acc[acc_OPP_DEV_2 * (CellAcc::jfz + 0)] +
                                         cell_xd_acc[acc_OPP_DEV_2 * (CellAcc::jfz + 1)] +
                                         cell_yd_acc[acc_OPP_DEV_2 * (CellAcc::jfz + 2)] +
                                         cell_xyd_acc[acc_OPP_DEV_2 * (CellAcc::jfz + 3)]);
+    }
 }
 
 // DEVICE kernel function
@@ -88,6 +90,7 @@ __global__ void dev_accumulate_current_to_cells(
     const OPP_REAL *__restrict__ arg5_ind,
     const OPP_REAL *__restrict__ arg6_ind,
     const OPP_REAL *__restrict__ arg7_ind,
+    const OPP_INT *__restrict__ arg8_dir,
     int start,
     int end
 ) 
@@ -114,7 +117,8 @@ __global__ void dev_accumulate_current_to_cells(
             (arg4_ind + map_4idx),
             (arg5_ind + map_5idx),
             (arg6_ind + map_6idx),
-            (arg7_ind + map_7idx)
+            (arg7_ind + map_7idx),
+            (arg8_dir + n)
         );
     }
 }
@@ -129,15 +133,16 @@ void opp_loop_all__accumulate_current_to_cells(
     opp_arg arg4,    // cell_zd_acc     // OPP_READ
     opp_arg arg5,    // cell_xyd_acc    // OPP_READ
     opp_arg arg6,    // cell_yzd_acc    // OPP_READ
-    opp_arg arg7     // cell_xzd_acc    // OPP_READ
+    opp_arg arg7,    // cell_xzd_acc    // OPP_READ
+    opp_arg arg8     // iter_acc        // OPP_READ
 )
 { 
     
-    if (FP_DEBUG) opp_printf("CABANA", "opp_particle_mover__Move set_size %d", set->size);
+    if (OP_DEBUG) opp_printf("CABANA", "opp_loop_all__accumulate_current_to_cells set_size %d", set->size);
 
     opp_profiler->start("Acc_Current");
 
-    const int nargs = 8;
+    const int nargs = 9;
     opp_arg args[nargs];
 
     args[0] = std::move(arg0);
@@ -148,13 +153,12 @@ void opp_loop_all__accumulate_current_to_cells(
     args[5] = std::move(arg5);
     args[6] = std::move(arg6);
     args[7] = std::move(arg7);
+    args[8] = std::move(arg8);
 
-    opp_profiler->start("Acc_HaloSend");
+    opp_profiler->start("Acc_Halo");
     int set_size = opp_mpi_halo_exchanges_grouped(set, nargs, args, Device_GPU);
-    opp_profiler->end("Acc_HaloSend");
-    opp_profiler->start("Acc_HaloWait");
     opp_mpi_halo_wait_all(nargs, args);
-    opp_profiler->end("Acc_HaloWait");
+    opp_profiler->end("Acc_Halo");
 
     if (set_size > 0) 
     {
@@ -186,6 +190,7 @@ void opp_loop_all__accumulate_current_to_cells(
                 (OPP_REAL*) args[5].data_d,         // cell_xyd_acc    // OPP_READ
                 (OPP_REAL*) args[6].data_d,         // cell_yzd_acc    // OPP_READ
                 (OPP_REAL*) args[7].data_d,         // cell_xzd_acc    // OPP_READ
+                (OPP_INT*)  args[8].data_d,         // iter_acc        // OPP_READ
                 start, 
                 end);
         } 

@@ -100,7 +100,7 @@ class Deck {
         opp_printf("Deck", "dt: %2.25lE ", dt);
         opp_printf("Deck", "c: %2.25lE ", c);
         opp_printf("Deck", "Npe: %2.25lE ", Npe);
-        opp_printf("Deck", "Ne: %"PRId64"", Ne);
+        opp_printf("Deck", "Ne: %" PRId64 "", Ne);
         opp_printf("Deck", "we: %2.25lE ", we);
         opp_printf("Deck", "eps: %2.25lE ", eps);
         opp_printf("Deck", "qsp: %2.25lE ", qsp);

@@ -34,8 +34,6 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 // AUTO GENERATED CODE
 //*********************************************
 
-#include "hip/hip_runtime.h"
-
 int m_OPP_HOST_1 = -1;
 int m_OPP_HOST_2 = -1;
 int m_OPP_HOST_3 = -1;
@@ -96,24 +94,6 @@ __device__ void dev_weight_current_to_accumulator__kernel(
     atomicAdd(&(cell0_acc[m_OPP_DEVICE_6 * (CellAcc::jfz + 2)]), v2); 
     atomicAdd(&(cell0_acc[m_OPP_DEVICE_6 * (CellAcc::jfz + 3)]), v3); 
 
-    // CALC_J( x,y,z );
-    // cell0_acc[m_OPP_DEVICE_6 * CellAcc::jfx + 0] += v0; 
-    // cell0_acc[m_OPP_DEVICE_6 * CellAcc::jfx + 1] += v1; 
-    // cell0_acc[m_OPP_DEVICE_6 * CellAcc::jfx + 2] += v2; 
-    // cell0_acc[m_OPP_DEVICE_6 * CellAcc::jfx + 3] += v3; 
-
-    // CALC_J( y,z,x );
-    // cell0_acc[m_OPP_DEVICE_6 * CellAcc::jfy + 0] += v0; 
-    // cell0_acc[m_OPP_DEVICE_6 * CellAcc::jfy + 1] += v1; 
-    // cell0_acc[m_OPP_DEVICE_6 * CellAcc::jfy + 2] += v2; 
-    // cell0_acc[m_OPP_DEVICE_6 * CellAcc::jfy + 3] += v3; 
-
-    // CALC_J( z,x,y );
-    // cell0_acc[m_OPP_DEVICE_6 * CellAcc::jfz + 0] += v0; 
-    // cell0_acc[m_OPP_DEVICE_6 * CellAcc::jfz + 1] += v1; 
-    // cell0_acc[m_OPP_DEVICE_6 * CellAcc::jfz + 2] += v2; 
-    // cell0_acc[m_OPP_DEVICE_6 * CellAcc::jfz + 3] += v3; 
-
     #undef CALC_J
 }
 
@@ -129,28 +109,28 @@ __device__ void dev_push_particles__kernel(opp_move_var& m,
 {
     if (m.iteration_one)
     {
-        const OPP_REAL ex       = cell_interp[m_OPP_DEVICE_5 * CellInterp::ex];
-        const OPP_REAL dexdy    = cell_interp[m_OPP_DEVICE_5 * CellInterp::dexdy];
-        const OPP_REAL dexdz    = cell_interp[m_OPP_DEVICE_5 * CellInterp::dexdz];
-        const OPP_REAL d2exdydz = cell_interp[m_OPP_DEVICE_5 * CellInterp::d2exdydz];
-        const OPP_REAL ey       = cell_interp[m_OPP_DEVICE_5 * CellInterp::ey];
-        const OPP_REAL deydz    = cell_interp[m_OPP_DEVICE_5 * CellInterp::deydz];
-        const OPP_REAL deydx    = cell_interp[m_OPP_DEVICE_5 * CellInterp::deydx];
-        const OPP_REAL d2eydzdx = cell_interp[m_OPP_DEVICE_5 * CellInterp::d2eydzdx];
-        const OPP_REAL ez       = cell_interp[m_OPP_DEVICE_5 * CellInterp::ez];
-        const OPP_REAL dezdx    = cell_interp[m_OPP_DEVICE_5 * CellInterp::dezdx];
-        const OPP_REAL dezdy    = cell_interp[m_OPP_DEVICE_5 * CellInterp::dezdy];
-        const OPP_REAL d2ezdxdy = cell_interp[m_OPP_DEVICE_5 * CellInterp::d2ezdxdy];
-        OPP_REAL cbx            = cell_interp[m_OPP_DEVICE_5 * CellInterp::cbx];
-        const OPP_REAL dcbxdx   = cell_interp[m_OPP_DEVICE_5 * CellInterp::dcbxdx];
-        OPP_REAL cby            = cell_interp[m_OPP_DEVICE_5 * CellInterp::cby];
-        const OPP_REAL dcbydy   = cell_interp[m_OPP_DEVICE_5 * CellInterp::dcbydy];
-        OPP_REAL cbz            = cell_interp[m_OPP_DEVICE_5 * CellInterp::cbz];
-        const OPP_REAL dcbzdz   = cell_interp[m_OPP_DEVICE_5 * CellInterp::dcbzdz];
+        const OPP_REAL& ex       = cell_interp[m_OPP_DEVICE_5 * CellInterp::ex];
+        const OPP_REAL& dexdy    = cell_interp[m_OPP_DEVICE_5 * CellInterp::dexdy];
+        const OPP_REAL& dexdz    = cell_interp[m_OPP_DEVICE_5 * CellInterp::dexdz];
+        const OPP_REAL& d2exdydz = cell_interp[m_OPP_DEVICE_5 * CellInterp::d2exdydz];
+        const OPP_REAL& ey       = cell_interp[m_OPP_DEVICE_5 * CellInterp::ey];
+        const OPP_REAL& deydz    = cell_interp[m_OPP_DEVICE_5 * CellInterp::deydz];
+        const OPP_REAL& deydx    = cell_interp[m_OPP_DEVICE_5 * CellInterp::deydx];
+        const OPP_REAL& d2eydzdx = cell_interp[m_OPP_DEVICE_5 * CellInterp::d2eydzdx];
+        const OPP_REAL& ez       = cell_interp[m_OPP_DEVICE_5 * CellInterp::ez];
+        const OPP_REAL& dezdx    = cell_interp[m_OPP_DEVICE_5 * CellInterp::dezdx];
+        const OPP_REAL& dezdy    = cell_interp[m_OPP_DEVICE_5 * CellInterp::dezdy];
+        const OPP_REAL& d2ezdxdy = cell_interp[m_OPP_DEVICE_5 * CellInterp::d2ezdxdy];
+        OPP_REAL cbx             = cell_interp[m_OPP_DEVICE_5 * CellInterp::cbx];
+        const OPP_REAL& dcbxdx   = cell_interp[m_OPP_DEVICE_5 * CellInterp::dcbxdx];
+        OPP_REAL cby             = cell_interp[m_OPP_DEVICE_5 * CellInterp::cby];
+        const OPP_REAL& dcbydy   = cell_interp[m_OPP_DEVICE_5 * CellInterp::dcbydy];
+        OPP_REAL cbz             = cell_interp[m_OPP_DEVICE_5 * CellInterp::cbz];
+        const OPP_REAL& dcbzdz   = cell_interp[m_OPP_DEVICE_5 * CellInterp::dcbzdz];
 
-        OPP_REAL dx = part_pos[m_OPP_DEVICE_2 * Dim::x];             // Load position
-        OPP_REAL dy = part_pos[m_OPP_DEVICE_2 * Dim::y];             // Load position
-        OPP_REAL dz = part_pos[m_OPP_DEVICE_2 * Dim::z];             // Load position
+        const OPP_REAL& dx = part_pos[m_OPP_DEVICE_2 * Dim::x];             // Load position
+        const OPP_REAL& dy = part_pos[m_OPP_DEVICE_2 * Dim::y];             // Load position
+        const OPP_REAL& dz = part_pos[m_OPP_DEVICE_2 * Dim::z];             // Load position
 
         const OPP_REAL hax  = CONST_DEV_qdt_2mc * ( ( ex + dy*dexdy ) + dz * ( dexdz + dy*d2exdydz ) );
         const OPP_REAL hay  = CONST_DEV_qdt_2mc * ( ( ey + dz*deydz ) + dx * ( deydx + dz*d2eydzdx ) );
@@ -168,12 +148,12 @@ __device__ void dev_push_particles__kernel(opp_move_var& m,
         uy  += hay;
         uz  += haz;
 
-        OPP_REAL v0   = CONST_DEV_qdt_2mc/sqrt(CONST_DEV_one + (ux*ux + (uy*uy + uz*uz)));
+        OPP_REAL v0   = CONST_DEV_qdt_2mc/sqrt(1 + (ux*ux + (uy*uy + uz*uz)));
                                                     // Boris - scalars
         OPP_REAL v1   = cbx*cbx + (cby*cby + cbz*cbz);
         OPP_REAL v2   = (v0*v0)*v1;
-        OPP_REAL v3   = v0*(CONST_DEV_one+v2*(CONST_DEV_one_third+v2*CONST_DEV_two_fifteenths));
-        OPP_REAL v4   = v3/(CONST_DEV_one+v1*(v3*v3));
+        OPP_REAL v3   = v0*(1+v2*(CONST_DEV_one_third+v2*CONST_DEV_two_fifteenths));
+        OPP_REAL v4   = v3/(1+v1*(v3*v3));
         v4  += v4;
     
         v0   = ux + v3*( uy*cbz - uz*cby );         // Boris - uprime
@@ -191,7 +171,7 @@ __device__ void dev_push_particles__kernel(opp_move_var& m,
         part_vel[m_OPP_DEVICE_1 * Dim::z] = uz;                      // save new velocity
 
         /**/                                        // Get norm displacement
-        v0   = CONST_DEV_one/sqrt(CONST_DEV_one + (ux*ux+ (uy*uy + uz*uz)));
+        v0   = 1/sqrt(1 + (ux*ux+ (uy*uy + uz*uz)));
         ux  *= CONST_DEV_cdt_d[Dim::x];
         uy  *= CONST_DEV_cdt_d[Dim::y];
         uz  *= CONST_DEV_cdt_d[Dim::z];
@@ -203,22 +183,18 @@ __device__ void dev_push_particles__kernel(opp_move_var& m,
         v0   = dx + ux;                             // Streak midpoint (inbnds)
         v1   = dy + uy;
         v2   = dz + uz;
-
-        part_streak_mid[m_OPP_DEVICE_3 * Dim::x] = ux;
-        part_streak_mid[m_OPP_DEVICE_3 * Dim::y] = uy;
-        part_streak_mid[m_OPP_DEVICE_3 * Dim::z] = uz;
-
         v3   = v0 + ux;                             // New position
         v4   = v1 + uy;
         const OPP_REAL v5   = v2 + uz;
-        const OPP_REAL q = part_weight[0] * CONST_DEV_qsp;
 
         // moving within the cell // Likely
-        if (  v3<=CONST_DEV_one &&  v4<=CONST_DEV_one &&  v5<=CONST_DEV_one && -v3<=CONST_DEV_one && -v4<=CONST_DEV_one && -v5<=CONST_DEV_one ) 
+        if (  v3<=1 &&  v4<=1 &&  v5<=1 && -v3<=1 && -v4<=1 && -v5<=1 ) 
         {
             part_pos[m_OPP_DEVICE_2 * Dim::x] = v3;            // save new position
             part_pos[m_OPP_DEVICE_2 * Dim::y] = v4;            // save new position
             part_pos[m_OPP_DEVICE_2 * Dim::z] = v5;            // save new position
+
+            const OPP_REAL q = part_weight[0] * CONST_DEV_qsp;
 
             dev_weight_current_to_accumulator__kernel(
                 cell_acc,
@@ -228,6 +204,12 @@ __device__ void dev_push_particles__kernel(opp_move_var& m,
 
             m.move_status = OPP_MOVE_DONE;
             return;
+        }
+        else
+        {
+            part_streak_mid[m_OPP_DEVICE_3 * Dim::x] = ux;
+            part_streak_mid[m_OPP_DEVICE_3 * Dim::y] = uy;
+            part_streak_mid[m_OPP_DEVICE_3 * Dim::z] = uz;
         }
     }
 
@@ -317,12 +299,7 @@ __device__ void dev_push_particles__kernel(opp_move_var& m,
         face = axis;
         if( v0>0 ) face += 3;
 
-        if (face == FACE_X_MIN ) { part_cid[0] =  cell_cell_map[m_OPP_DEVICE_7 * CellMap::xd_y_z]; }
-        else if (face == FACE_X_PLUS) { part_cid[0] =  cell_cell_map[m_OPP_DEVICE_7 * CellMap::xu_y_z]; }
-        else if (face == FACE_Y_MIN ) { part_cid[0] =  cell_cell_map[m_OPP_DEVICE_7 * CellMap::x_yd_z]; }
-        else if (face == FACE_Y_PLUS) { part_cid[0] =  cell_cell_map[m_OPP_DEVICE_7 * CellMap::x_yu_z]; }
-        else if (face == FACE_Z_MIN ) { part_cid[0] =  cell_cell_map[m_OPP_DEVICE_7 * CellMap::x_y_zd]; }
-        else if (face == FACE_Z_PLUS) { part_cid[0] =  cell_cell_map[m_OPP_DEVICE_7 * CellMap::x_y_zu]; }
+        part_cid[0] = cell_cell_map[m_OPP_DEVICE_7 * face]; 
 
         // TODO: this conditional/branching could be better
         if (axis == 0) { part_pos[m_OPP_DEVICE_2 * Dim::x] = -v0; /* printf("0\n"); */ }
@@ -439,7 +416,7 @@ void opp_particle_mover__Move(
 )
 {
 
-    if (FP_DEBUG) 
+    if (OP_DEBUG) 
         opp_printf("CABANA", "opp_particle_mover__Move set_size %d diff %d", set->size, set->diff);
 
     opp_profiler->start("Move");
