@@ -114,7 +114,7 @@ void opp_loop_all__update_ghosts_B(
     if (set_size > 0) 
     {
         const int start = 0;
-        const int end   = set->size;
+        const int end   = set_size;
 
         ugb_OPP_HOST_0 = args[0].dat->set->set_capacity;
         ugb_OPP_HOST_1 = args[1].dat->set->set_capacity;
@@ -127,21 +127,18 @@ void opp_loop_all__update_ghosts_B(
         cutilSafeCall(cudaMalloc((void**)&(args[3].data_d), sizeof(int)));
         cutilSafeCall(cudaMemcpy((int*)(args[3].data_d), (int*)(args[3].data), sizeof(int), cudaMemcpyHostToDevice));
 
-        if (end - start > 0) 
-        {
-            int nthread = OPP_gpu_threads_per_block;
-            int nblocks = (end - start - 1) / nthread + 1;
+        int nthread = OPP_gpu_threads_per_block;
+        int nblocks = (end - start - 1) / nthread + 1;
 
-            opp_dev_update_ghosts_B<<<nblocks,nthread>>> (
-                (OPP_INT *) args[0].data_d,
-                (OPP_REAL*) args[1].data_d,
-                (OPP_REAL*) args[2].data_d,
-                (OPP_INT *) args[2].map_data_d,
-                (OPP_INT *) args[3].data_d,
-                start, 
-                end
-            );
-        }
+        opp_dev_update_ghosts_B<<<nblocks,nthread>>> (
+            (OPP_INT *) args[0].data_d,
+            (OPP_REAL*) args[1].data_d,
+            (OPP_REAL*) args[2].data_d,
+            (OPP_INT *) args[2].map_data_d,
+            (OPP_INT *) args[3].data_d,
+            start, 
+            end
+        );
 
         cutilSafeCall(cudaFree(args[3].data_d));
 

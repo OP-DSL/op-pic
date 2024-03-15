@@ -606,7 +606,7 @@ void opp_upload_dat(oppic_dat dat)
 void opp_upload_map(opp_map map, bool create_new) 
 {
     if (OP_DEBUG) opp_printf("opp_upload_map", "CPU->GPU | %s %s", map->name, create_new ? "NEW" : "COPY");
-    int set_size = map->from->size + map->from->exec_size;
+    int set_size = map->from->size + map->from->exec_size + map->from->nonexec_size;
     int *temp_map = (int *)opp_host_malloc(map->dim * set_size * sizeof(int));
 
     for (int i = 0; i < map->dim; i++) 

@@ -115,7 +115,7 @@ void opp_loop_all__update_ghosts(
     if (set_size > 0) 
     {
         const int start = 0;
-        const int end   = set->size;
+        const int end   = set_size;
 
         ug_OPP_HOST_0 = args[0].dat->set->set_capacity;
         ug_OPP_HOST_1 = args[1].dat->set->set_capacity;

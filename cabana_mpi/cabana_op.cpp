@@ -131,6 +131,14 @@ int main(int argc, char **argv)
         init_particles(deck, p_index, p_pos, p_vel, p_streak_mid, p_weight, p_mesh_rel, 
                         c_pos_ll, c_index, c_mask_ghost);
 
+        FILE *fptre = nullptr;
+        
+        if (OPP_rank == OPP_ROOT)
+        {
+            fptre = fopen("energy.csv", "w");
+            fprintf(fptre,"timestep, e_energy, b_energy\n");
+        }
+
         int ghosts = 0;
         for (int i = 0; i < c_set->size; i++) if (((int*)c_mask_ghost->data)[i] == 1) ghosts++;
         opp_printf("Setup", "Cells[%d][ghosts:%d] Particles[%d]", c_set->size, ghosts, p_set->size);
@@ -288,6 +296,8 @@ int main(int argc, char **argv)
                 );
                 log += str(e_energy*0.5, " e_energy: \t%.15f");
                 log += str(b_energy*0.5, " b_energy: \t%.15f");
+
+                if (OPP_rank == OPP_ROOT) fprintf(fptre,"%d, %.15f, %.15f\n", OPP_main_loop_iter, e_energy*0.5, b_energy*0.5);
             }
             if (opp_params->get<OPP_BOOL>("print_final"))
             {
@@ -311,6 +321,8 @@ int main(int argc, char **argv)
         }
         opp_profiler->end("MainLoop");
         
+        if (OPP_rank == OPP_ROOT) fclose(fptre);
+
         if (OPP_rank == OPP_ROOT) 
             opp_printf("Main", "Main loop completed after %d iterations ****", deck.num_steps);
     }
