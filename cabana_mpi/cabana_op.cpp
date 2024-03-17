@@ -122,7 +122,15 @@ int main(int argc, char **argv)
         m->DeleteValues();
 
         // opp_colour_cartesian_mesh does nothing for non-mpi runs
-        opp_colour_cartesian_mesh(DIM, std::vector<OPP_INT>(cells_per_dim, cells_per_dim + DIM), c_index, c_colors, 1);
+        if (opp_params->get<OPP_STRING>("cluster") == "block")
+            cabana_color_block_x(deck, c_index, c_colors);
+        else if (opp_params->get<OPP_STRING>("cluster") == "pencil")
+            cabana_color_pencil_x(deck, c_index, c_colors);
+        else if (opp_params->get<OPP_STRING>("cluster") == "cart")      
+            opp_colour_cartesian_mesh(DIM, std::vector<OPP_INT>(cells_per_dim, cells_per_dim + DIM), 
+                                        c_index, c_colors, 1);
+        else
+            opp_abort("cluster type not supported");
 
 #ifdef USE_MPI
         opp_partition(std::string("EXTERNAL"), c_set, nullptr, c_colors);

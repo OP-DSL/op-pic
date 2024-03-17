@@ -112,7 +112,7 @@ inline void enrich_particles_two_stream(const Deck& deck, const OPP_INT cell_cou
     const OPP_REAL v0            = deck.v0;
     const OPP_INT nx             = deck.nx;
     const OPP_INT ny             = deck.ny;
-    const OPP_INT nz             = deck.nz;
+    // const OPP_INT nz             = deck.nz;
     const OPP_REAL dxp           = (2.0 / npart_per_cell);
 
     // Populate the host space with particle data.
