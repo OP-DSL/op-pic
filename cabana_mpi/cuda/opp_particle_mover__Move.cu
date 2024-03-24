@@ -317,7 +317,7 @@ __device__ void dev_push_particles__kernel(opp_move_var& m,
 //*******************************************************************************
 // Returns true only if another hop is required by the current rank
 __device__ bool opp_part_check_status_device(opp_move_var& m, int* map0idx, int particle_index, 
-                    int& remove_count, int *move_indices, int *move_count) 
+        int& remove_count, int *move_particle_indices, int *move_cell_indices, int *move_count) 
 {
     m.iteration_one = false;
 
@@ -336,7 +336,8 @@ __device__ bool opp_part_check_status_device(opp_move_var& m, int* map0idx, int 
     {
         // map0idx cell is not owned by the current mpi rank (it is in the import exec halo region), need to communicate
         int moveArrayIndex = atomicAdd(move_count, 1);
-        move_indices[moveArrayIndex] = particle_index;
+        move_particle_indices[moveArrayIndex] = particle_index;
+        move_cell_indices[moveArrayIndex] = *map0idx;
 
         // Needs to be removed from the current rank, bdw particle packing will be dCONST_DEV_one just prior exchange and removal
         m.move_status = OPP_NEED_REMOVE; 
@@ -362,7 +363,8 @@ __global__ void opp_device_all_MoveToCells(
     OPP_REAL *__restrict arg6_ind,          // cell_acc           // OPP_INC
     const OPP_INT *__restrict arg7_ind,     // cell_cell_map      // OPP_READ
     int *__restrict particle_remove_count,
-    int *__restrict move_indices,
+    int *__restrict move_particle_indices,
+    int *__restrict move_cell_indices,
     int *__restrict move_count,
     int start,
     int end) 
@@ -398,7 +400,7 @@ __global__ void opp_device_all_MoveToCells(
             );                
 
         } while (opp_part_check_status_device(m, map0idx, n, 
-                        *particle_remove_count, move_indices, move_count));
+            *particle_remove_count, move_particle_indices, move_cell_indices, move_count));
     }
 }
 
@@ -491,7 +493,8 @@ void opp_particle_mover__Move(
                     (OPP_REAL *) args[6].data_d,                   // cell_acc           // OPP_INC
                     (OPP_INT *)  args[7].data_d,                   // cell_cell_map      // OPP_READ
                     (int *)      set->particle_remove_count_d,
-                    (int*)       OPP_move_indices_d,
+                    (int*)       OPP_move_particle_indices_d,
+                    (int*)       OPP_move_cell_indices_d,
                     (int*)       OPP_move_count_d,
                     OPP_iter_start, 
                     OPP_iter_end);

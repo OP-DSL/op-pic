@@ -42,6 +42,10 @@ void opp_init(int argc, char **argv)
     PetscInitialize(&argc, &argv, PETSC_NULL, "opp::PetscSEQ");
 #endif
 
+    std::string log = "Running on SEQ";
+    opp_printf("OP-PIC", "%s", log.c_str());
+    opp_printf("OP-PIC", "---------------------------------------------");
+
     oppic_init_core(argc, argv);
 }
 

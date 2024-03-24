@@ -58,6 +58,20 @@ void opp_init(int argc, char **argv)
     MPI_Comm_size(OP_MPI_WORLD, &OPP_comm_size);
 #endif
 
+    if (OPP_rank == OPP_ROOT)
+    {
+        std::string log = "Running on HIP";
+#ifdef USE_MPI
+        log += "+MPI with " + std::to_string(OPP_comm_size) + " ranks";
+#endif        
+        opp_printf("OP-PIC", "%s", log.c_str());
+        opp_printf("OP-PIC", "---------------------------------------------");
+    }
+
+#ifdef USE_MPI
+    MPI_Barrier(MPI_COMM_WORLD);
+#endif  
+
     oppic_init_core(argc, argv);
     cutilDeviceInit(argc, argv);
 

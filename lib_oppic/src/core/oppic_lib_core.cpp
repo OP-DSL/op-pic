@@ -700,8 +700,8 @@ void oppic_finalize_particle_move_core(oppic_set set)
 void oppic_finalize_particle_move_core(oppic_set set)
 {
     if (OP_DEBUG) 
-        opp_printf("oppic_finalize_particle_move_core", "set [%s] size[%d] with particle_remove_count [%d]", 
-        set->name, set->size, set->particle_remove_count);
+        opp_printf("oppic_finalize_particle_move_core", "set [%s] size[%d] with particle_remove_count [%d] diff [%d]", 
+        set->name, set->size, set->particle_remove_count, set->diff);
 
     // return if there are no particles to be removed
     if (set->particle_remove_count <= 0) 

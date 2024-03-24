@@ -58,33 +58,54 @@ void opp_init(int argc, char **argv)
     MPI_Comm_size(OP_MPI_WORLD, &OPP_comm_size);
 #endif
 
+    if (OPP_rank == OPP_ROOT)
+    {
+        std::string log = "Running on CUDA";
+#ifdef USE_MPI
+        log += "+MPI with " + std::to_string(OPP_comm_size) + " ranks";
+#endif        
+        opp_printf("OP-PIC", "%s", log.c_str());
+        opp_printf("OP-PIC", "---------------------------------------------");
+    }
+
+#ifdef USE_MPI
+    MPI_Barrier(MPI_COMM_WORLD);
+#endif  
+
     oppic_init_core(argc, argv);
     cutilDeviceInit(argc, argv);
 
+    // cutilSafeCall(cudaDeviceSetCacheConfig(cudaFuncCachePreferL1));
     cutilSafeCall(cudaDeviceSetCacheConfig(cudaFuncCachePreferShared));
     cutilSafeCall(cudaDeviceSetSharedMemConfig(cudaSharedMemBankSizeEightByte));
 
     OP_auto_soa = 1; // TODO : Make this configurable with args
-    //OP_auto_sort = 1;
 
-    int threads_per_block = opp_params->get<OPP_INT>("opp_threads_per_block");   
+    const int threads_per_block = opp_params->get<OPP_INT>("opp_threads_per_block");   
     if (threads_per_block > 0 && threads_per_block < INT_MAX)
         OPP_gpu_threads_per_block = threads_per_block;
 
-    int gpu_direct = opp_params->get<OPP_INT>("opp_gpu_direct");   
+    const int gpu_direct = opp_params->get<OPP_INT>("opp_gpu_direct");   
     if (gpu_direct > 0 && gpu_direct < INT_MAX)
         OP_gpu_direct = gpu_direct;
 
     int deviceId = -1;
     cudaGetDevice(&deviceId);
-    cudaDeviceProp deviceProp;
-    cutilSafeCall(cudaGetDeviceProperties(&deviceProp, deviceId));
+    cudaDeviceProp prop;
+    cutilSafeCall(cudaGetDeviceProperties(&prop, deviceId));
 
-    OPP_gpu_shared_mem_per_block = deviceProp.sharedMemPerBlock;
+    OPP_gpu_shared_mem_per_block = prop.sharedMemPerBlock;
+
+    char hostname[256];
+    if (gethostname(hostname, sizeof(hostname)) != 0) 
+    {
+        opp_printf("cutilDeviceInit", "Failed to get hostname of MPI rank %d", OPP_rank);
+        opp_abort();
+    }
 
     opp_printf("opp_init", 
-        "CUDA device: %d %s OPP_gpu_threads_per_block=%d Shared memory per block=%lu bytes gpu_direct=%d", 
-        deviceId, deviceProp.name, OPP_gpu_threads_per_block, deviceProp.sharedMemPerBlock, OP_gpu_direct);
+        "Device: %d [%s] on Host [%s] threads=%d Shared_Mem=%lubytes GPU_Direct=%d", deviceId, 
+        prop.name, hostname, OPP_gpu_threads_per_block, prop.sharedMemPerBlock, OP_gpu_direct);
 }
 
 //****************************************
@@ -164,8 +185,29 @@ void oppic_cuda_exit()
     temp_real_dv.clear();
     temp_real_dv.shrink_to_fit();
 
-    OPP_thrust_move_indices_d.clear();
-    OPP_thrust_move_indices_d.shrink_to_fit();
+    OPP_thrust_move_particle_indices_d.clear();
+    OPP_thrust_move_particle_indices_d.shrink_to_fit();
+
+    OPP_thrust_move_cell_indices_d.clear();
+    OPP_thrust_move_cell_indices_d.shrink_to_fit();
+
+    for (auto it = particle_indices_hv.begin(); it != particle_indices_hv.end(); it++) it->second.clear();
+    for (auto it = cell_indices_hv.begin(); it != cell_indices_hv.end(); it++) it->second.clear();
+    for (auto it = particle_indices_dv.begin(); it != particle_indices_dv.end(); it++)
+    {
+        it->second.clear();
+        it->second.shrink_to_fit();
+    }
+    for (auto it = send_data.begin(); it != send_data.end(); it++)
+    {
+        it->second.clear();
+        it->second.shrink_to_fit();
+    }
+    for (auto it = recv_data.begin(); it != recv_data.end(); it++)
+    {
+        it->second.clear();
+        it->second.shrink_to_fit();
+    }
 
     if (OPP_need_remove_flags_d != nullptr)
     {
@@ -769,9 +811,11 @@ void __cudaSafeCall(cudaError_t err, const char *file, const int line)
 {
     if (cudaSuccess != err) 
     {
-        fprintf(stderr, "%s(%i) : cutilSafeCall() Runtime API error : %s.\n", file, line, 
-            cudaGetErrorString(err));
-        opp_abort();
+        // fprintf(stderr, "%s(%i) : cutilSafeCall() Runtime API error : %s.\n", file, line, 
+        //     cudaGetErrorString(err));
+        std::string log = std::string(file) + "(" + std::to_string(line);
+        log += std::string(") cutilSafeCall() Runtime API error : ") + cudaGetErrorString(err);
+        opp_abort(log.c_str());
     }
 }
 
@@ -865,13 +909,6 @@ void cutilDeviceInit(int argc, char **argv)
         opp_printf("cutilDeviceInit", "cutil error: no devices supporting CUDA");
         opp_abort();
     }
-
-    char hostname[256];
-    if (gethostname(hostname, sizeof(hostname)) != 0) 
-    {
-        opp_printf("cutilDeviceInit", "Failed to get hostname of MPI rank %d", OPP_rank);
-        opp_abort();
-    }
   
     int int_rank = OPP_rank;
 #ifdef USE_MPI
@@ -893,18 +930,7 @@ void cutilDeviceInit(int argc, char **argv)
         }
     }
 
-    if (OP_hybrid_gpu) 
-    {
-        // cutilSafeCall(cudaDeviceSetCacheConfig(cudaFuncCachePreferL1));
-
-        int deviceId = -1;
-        cudaGetDevice(&deviceId);
-        cudaDeviceProp deviceProp;
-        cutilSafeCall(cudaGetDeviceProperties(&deviceProp, deviceId));
-        opp_printf("cutilDeviceInit", "Rank [%d] using CUDA device: %d %s on host %s", 
-            OPP_rank, deviceId, deviceProp.name, hostname);
-    } 
-    else 
+    if (OP_hybrid_gpu == 0) 
     {
         opp_printf("cutilDeviceInit", "Error... Init Cuda Device Failed");
         opp_abort();

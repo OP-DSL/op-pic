@@ -59,12 +59,24 @@ void opp_init(int argc, char **argv)
     MPI_Comm_size(OP_MPI_WORLD, &OPP_comm_size);
 #endif
 
-    oppic_init_core(argc, argv);
-
     OPP_nthreads = omp_get_max_threads();
 
-    if (OPP_rank == OPP_ROOT) 
-        opp_printf("oppic_init", "initialized with %d OMP threads", OPP_nthreads);
+    if (OPP_rank == OPP_ROOT)
+    {
+        std::string log = "Running on OMP";
+#ifdef USE_MPI
+        log += "+MPI with " + std::to_string(OPP_comm_size) + " ranks";
+#endif    
+        log += " and " + std::to_string(OPP_nthreads) + " threads per rank";
+        opp_printf("OP-PIC", "%s", log.c_str());
+        opp_printf("OP-PIC", "---------------------------------------------");
+    }
+
+#ifdef USE_MPI
+    MPI_Barrier(MPI_COMM_WORLD);
+#endif  
+
+    oppic_init_core(argc, argv);
 }
 
 //****************************************
