@@ -138,7 +138,7 @@ void opp_loop_all__Verify(
     args[2] = arg2;
     args[3] = arg3;
 
-    OPP_REAL* arg3h = (OPP_REAL *)args[3].data;
+    OPP_INT* arg3h = (OPP_INT *)args[3].data;
 
     int set_size = opp_mpi_halo_exchanges_grouped(set, nargs, args, Device_GPU);
     opp_mpi_halo_wait_all(nargs, args);

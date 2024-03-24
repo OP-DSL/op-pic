@@ -965,7 +965,7 @@ void FESolver::sanityCheck()
         oppic_dat node_type, 
         oppic_dat node_pos,  
         oppic_dat node_bnd_pot,
-        int argc, char **argv) {};
+        int argc, char **argv) : cell_to_nodes_map(cell_to_nodes_map) {};
     FESolver::~FESolver() {};
 
     void FESolver::computePhi(oppic_arg arg0, oppic_arg arg1, oppic_arg arg2) {};

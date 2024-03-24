@@ -58,7 +58,7 @@ int OPP_iter_start                  = 0;
 int OPP_iter_end                    = 0;
 int OPP_main_loop_iter              = 0;
 int OPP_gpu_threads_per_block       = OPP_DEFAULT_GPU_THREADS_PER_BLOCK;
-size_t OPP_gpu_shared_mem_per_block = -1;
+size_t OPP_gpu_shared_mem_per_block = 0;
 int *OPP_mesh_relation_data         = nullptr;
 int *OPP_mesh_relation_data_d       = nullptr;
 int OPP_part_cells_set_size         = 0;
@@ -313,8 +313,7 @@ oppic_arg oppic_arg_dat_core(oppic_dat dat, int idx, oppic_map map, oppic_access
     if (dat == nullptr) 
     { 
         std::cerr << "dat is NULL at oppic_arg_dat" << std::endl; 
-        oppic_arg arg; 
-        return arg; 
+        return oppic_arg(); 
     }
     
     return oppic_arg_dat_core(dat, idx, map, dat->dim, dat->type, acc, mapping);
@@ -325,8 +324,7 @@ oppic_arg oppic_arg_dat_core(oppic_dat dat, oppic_access acc, opp_mapping mappin
     if (dat == nullptr) 
     { 
         std::cerr << "dat is NULL at oppic_arg_dat" << std::endl; 
-        oppic_arg arg; 
-        return arg; 
+        return oppic_arg(); 
     }
     
     return oppic_arg_dat_core(dat, -1, NULL, dat->dim, dat->type, acc, mapping);
@@ -1041,7 +1039,7 @@ void oppic_print_map_to_txtfile_core(oppic_map map, const char *file_name_prefix
         exit(2);
     }
 
-    for (int i = 0; i < map->from->size + map->from->exec_size + map->from->nonexec_size; i++) 
+    for (int i = 0; i < map->from->size + map->from->exec_size; i++) 
     {
         // fprintf(fp, "%d", i);
 

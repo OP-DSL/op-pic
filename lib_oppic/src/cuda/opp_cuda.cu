@@ -155,6 +155,15 @@ void oppic_cuda_exit()
     i_dv.clear();
     i_dv.shrink_to_fit();
 
+    send_part_cell_idx_dv.clear();
+    send_part_cell_idx_dv.shrink_to_fit();
+
+    temp_int_dv.clear();
+    temp_int_dv.shrink_to_fit();
+
+    temp_real_dv.clear();
+    temp_real_dv.shrink_to_fit();
+
     OPP_thrust_move_indices_d.clear();
     OPP_thrust_move_indices_d.shrink_to_fit();
 
@@ -609,11 +618,16 @@ void opp_upload_map(opp_map map, bool create_new)
     int set_size = map->from->size + map->from->exec_size + map->from->nonexec_size;
     int *temp_map = (int *)opp_host_malloc(map->dim * set_size * sizeof(int));
 
+    const int set_size_plus_exec = map->from->size + map->from->exec_size;
+    
     for (int i = 0; i < map->dim; i++) 
     {
         for (int j = 0; j < set_size; j++) 
         {
-            temp_map[i * set_size + j] = map->map[map->dim * j + i];
+            if (j >= set_size_plus_exec)
+                temp_map[i * set_size + j] = -10;
+            else
+                temp_map[i * set_size + j] = map->map[map->dim * j + i];
         }
     }
 

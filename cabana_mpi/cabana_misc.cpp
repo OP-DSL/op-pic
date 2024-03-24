@@ -480,21 +480,21 @@ void init_particles(const Deck& deck, opp_dat part_index, opp_dat part_pos, opp_
         opp_printf("Setup", "%d parts to add in rank %d [part_start=%d]", rank_npart, OPP_rank, rank_part_start);
 
     // Host/Device space to store the particles.
-    oppic_increase_particle_count(part_index->set, rank_npart);
+    oppic_increase_particle_count(part_pos->set, rank_npart);
 
     if (opp_params->get<OPP_STRING>("part_enrich") == "two_stream")
         enrich_particles_two_stream(deck, all_cell_count, (OPP_REAL*)part_pos->data, (OPP_REAL*)part_vel->data, 
-            (OPP_REAL*)part_streak_mid->data, (OPP_INT*)part_mesh_rel->data, (OPP_INT*)part_index->data, 
+            (OPP_REAL*)part_streak_mid->data, (OPP_INT*)part_mesh_rel->data, nullptr, // (OPP_INT*)part_index->data, 
             (OPP_REAL*)part_weight->data, (OPP_INT*)cell_cgid->data, (OPP_INT*)cell_ghost->data);
     else
         enrich_particles_random(deck, all_cell_count, (OPP_REAL*)part_pos->data, (OPP_REAL*)part_vel->data, 
-            (OPP_REAL*)part_streak_mid->data, (OPP_INT*)part_mesh_rel->data, (OPP_INT*)part_index->data, 
+            (OPP_REAL*)part_streak_mid->data, (OPP_INT*)part_mesh_rel->data, nullptr, // (OPP_INT*)part_index->data, 
             (OPP_REAL*)part_weight->data, (OPP_REAL*)cell_pos_ll->data, rank_part_start, (OPP_INT*)cell_ghost->data);
 
     if (OPP_rank == OPP_ROOT)
         opp_printf("Setup", "Init particles Uploading Start");
 
-    opp_upload_particle_set(part_index->set);
+    opp_upload_particle_set(part_pos->set);
 
 #ifdef USE_MPI
     MPI_Barrier(MPI_COMM_WORLD);

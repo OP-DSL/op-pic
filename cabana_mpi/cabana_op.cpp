@@ -98,7 +98,7 @@ int main(int argc, char **argv)
         opp_dat c_mask_ugb   = opp_decl_mesh_dat(c_set, 6,          DT_INT,  m->c_mask_ugb,   "c_mask_ugb");
 
         opp_set p_set        = opp_decl_part_set("particles", c_set);  // Zero particles, inject after partitioning
-        opp_dat p_index      = opp_decl_part_dat(p_set, ONE, DT_INT,  nullptr, "p_index"); // Unused
+        opp_dat p_index      = nullptr; // opp_decl_part_dat(p_set, ONE, DT_INT,  nullptr, "p_index"); // Unused
         opp_dat p_pos        = opp_decl_part_dat(p_set, DIM, DT_REAL, nullptr, "p_pos");
         opp_dat p_vel        = opp_decl_part_dat(p_set, DIM, DT_REAL, nullptr, "p_vel");    
         opp_dat p_streak_mid = opp_decl_part_dat(p_set, DIM, DT_REAL, nullptr, "p_streak_mid");
@@ -302,7 +302,8 @@ int main(int argc, char **argv)
                 log += str(e_energy*0.5, " e_energy: \t%.15f");
                 log += str(b_energy*0.5, " b_energy: \t%.15f");
 
-                if (OPP_rank == OPP_ROOT) fprintf(fptre,"%d, %.15f, %.15f\n", OPP_main_loop_iter, e_energy*0.5, b_energy*0.5);
+                if (OPP_rank == OPP_ROOT) 
+                    fprintf(fptre,"%d, %.15f, %.15f\n", OPP_main_loop_iter, e_energy*0.5, b_energy*0.5);
             }
             if (opp_params->get<OPP_BOOL>("print_final"))
             {
@@ -319,7 +320,7 @@ int main(int argc, char **argv)
 
                 log += str(max_j, " max_jx: %.10f"); // %2.15lE");
                 log += str(max_e, " max_ex: %.10f"); // %2.15lE");
-                log += str(max_b, " max_bx: %.20f"); // %2.15lE");
+                log += str(max_b, " max_bx: %.16f"); // %2.15lE");
             }
             if (OPP_rank == OPP_ROOT) 
                 opp_printf("Main", "ts: %d %s ****", OPP_main_loop_iter, log.c_str());

@@ -57,6 +57,36 @@ struct RandomFunctor
     }
 };
 
+__global__ void copy_int(const int* in_dat_d, int* out_dat_d, const int* indices, int in_stride, 
+                                    int out_stride, int in_offset, int out_offset, int dim, int size) 
+{
+    const int tid = blockIdx.x * blockDim.x + threadIdx.x;
+
+    if (tid < size) 
+    {
+        const int idx = indices[tid];
+        for (int d = 0; d < dim; d++)
+        {
+            out_dat_d[out_offset + tid + d * in_stride] = in_dat_d[in_offset + idx + d * out_stride];
+        }
+    }
+}
+
+__global__ void copy_double(const double* in_dat_d, double* out_dat_d, const int* indices, int in_stride, 
+                                    int out_stride, int in_offset, int out_offset, int dim, int size) 
+{
+    const int tid = blockIdx.x * blockDim.x + threadIdx.x;
+
+    if (tid < size) 
+    {
+        const int idx = indices[tid];
+        for (int d = 0; d < dim; d++)
+        {
+            out_dat_d[out_offset + tid + d * in_stride] = in_dat_d[in_offset + idx + d * out_stride];
+        }
+    }
+}
+
 //****************************************
 
 thrust::device_vector<int> cellIdx_dv;
@@ -84,14 +114,19 @@ void particle_sort_cuda(oppic_set set, bool hole_filling)
             "setSize[%d] setDiff[%d] setCap[%d] size+rem[%d] fill[%s] comIter[%d] startIdx[%d] sortSize[%d]", 
             set->size, set->diff, set_capacity, set_size_plus_removed, 
             (hole_filling ? "TRUE" : "FALSE"), OPP_comm_iteration, sort_start_index, sort_size);
- 
+    
+    opp_profiler->start("XResize");
     cellIdx_dv.reserve(sort_size);
     cellIdx_dv.resize(sort_size);
+    opp_profiler->end("XResize");
 
+    opp_profiler->start("XCopy");
     // copy the cell index to the thrust vector
     int* cellIdx_dp = (int*)set->mesh_relation_dat->data_d;
     thrust::copy(cellIdx_dp + sort_start_index, cellIdx_dp + set_size_plus_removed, cellIdx_dv.begin());
+    opp_profiler->end("XCopy");
 
+    opp_profiler->start("XHoleFill");
     if (hole_filling)
     {
         // in hole filling, randomize the cell indices to minimize shared memory issues
@@ -106,13 +141,19 @@ void particle_sort_cuda(oppic_set set, bool hole_filling)
         //     0                                            // New value to assign (zero in this case)
         // );
     }
+    opp_profiler->end("XHoleFill");
 
+    opp_profiler->start("XSequence");
     i_dv.reserve(sort_size);
     i_dv.resize(sort_size);
     thrust::sequence(i_dv.begin(), i_dv.end(), sort_start_index);
+    opp_profiler->end("XSequence");
 
+    opp_profiler->start("XSortKey");
     thrust::sort_by_key(cellIdx_dv.begin(), cellIdx_dv.end(), i_dv.begin());
+    opp_profiler->end("XSortKey");
 
+    opp_profiler->start("XSortDats");
     for (int i = 0; i < (int)set->particle_dats->size(); i++)
     {    
         oppic_dat& dat = set->particle_dats->at(i);
@@ -139,8 +180,7 @@ void particle_sort_cuda(oppic_set set, bool hole_filling)
                 dat->name << "]" << std::endl;
         }
     }
-
-    cutilSafeCall(cudaDeviceSynchronize());
+    opp_profiler->end("XSortDats");
 }
 
 //****************************************
@@ -152,19 +192,29 @@ void sort_dat_according_to_index_int(oppic_dat dat, const thrust::device_vector<
     // in to sorted_dat array and copy to the dat array 
     // else: arrange all and swap the array pointers of the dat
 
-    thrust::device_vector<int>* dat_dv = dat->thrust_int;
-    thrust::device_vector<int>* sorted_dat_dv = dat->thrust_int_sort;
-
-    copy_according_to_index<int>(dat_dv, sorted_dat_dv, new_idx_dv, 
-            set_capacity, set_capacity, 0, out_start_idx, size, dat->dim);
+    // NOTE: Both commented thrust routine and cuda_kernel function has approx same performance
+    // copy_according_to_index<int>(dat->thrust_int, dat->thrust_int_sort, new_idx_dv, 
+    //         set_capacity, set_capacity, 0, out_start_idx, size, dat->dim);
+    const int nblocks  = (size - 1) / 192 + 1;
+    copy_int <<<nblocks, 192>>> (
+        (int*)thrust::raw_pointer_cast(dat->thrust_int->data()),
+        (int*)thrust::raw_pointer_cast(dat->thrust_int_sort->data()),
+        (int*)thrust::raw_pointer_cast(new_idx_dv.data()),
+        set_capacity,
+        set_capacity,
+        0,
+        out_start_idx,
+        dat->dim,
+        size);
 
     if (hole_filling && OPP_comm_iteration != 0) 
     {
+        cutilSafeCall(cudaDeviceSynchronize());
         for (int d = 0; d < dat->dim; d++) 
             thrust::copy(
-                (sorted_dat_dv->begin() + d * set_capacity + out_start_idx), 
-                (sorted_dat_dv->begin() + d * set_capacity + out_start_idx + size), 
-                (dat_dv->begin() + d * set_capacity + out_start_idx));
+                (dat->thrust_int_sort->begin() + d * set_capacity + out_start_idx), 
+                (dat->thrust_int_sort->begin() + d * set_capacity + out_start_idx + size), 
+                (dat->thrust_int->begin() + d * set_capacity + out_start_idx));
     }
     else
     {
@@ -185,19 +235,29 @@ void sort_dat_according_to_index_double(oppic_dat dat, const thrust::device_vect
     // in to sorted_dat array and copy to the dat array 
     // else: arrange all and swap the array pointers of the dat
     
-    thrust::device_vector<double>* dat_dv = dat->thrust_real;
-    thrust::device_vector<double>* sorted_dat_dv = dat->thrust_real_sort;
-
-    copy_according_to_index<double>(dat_dv, sorted_dat_dv, new_idx_dv, 
-            set_capacity, set_capacity, 0, out_start_idx, size, dat->dim);
+    // NOTE: Both commented thrust routine and cuda_kernel function has approx same performance
+    // copy_according_to_index<double>(dat->thrust_real, dat->thrust_real_sort, new_idx_dv, 
+    //         set_capacity, set_capacity, 0, out_start_idx, size, dat->dim);
+    const int nblocks  = (size - 1) / 192 + 1;
+    copy_double <<<nblocks, 192>>> (
+        (double*)thrust::raw_pointer_cast(dat->thrust_real->data()),
+        (double*)thrust::raw_pointer_cast(dat->thrust_real_sort->data()),
+        (int*)thrust::raw_pointer_cast(new_idx_dv.data()),
+        set_capacity,
+        set_capacity,
+        0,
+        out_start_idx,
+        dat->dim,
+        size);
 
     if (hole_filling && OPP_comm_iteration != 0) 
     {
+        cutilSafeCall(cudaDeviceSynchronize());
         for (int d = 0; d < dat->dim; d++) 
             thrust::copy(
-                (sorted_dat_dv->begin() + d * set_capacity + out_start_idx), 
-                (sorted_dat_dv->begin() + d * set_capacity + out_start_idx + size), 
-                (dat_dv->begin() + d * set_capacity + out_start_idx));
+                (dat->thrust_real_sort->begin() + d * set_capacity + out_start_idx), 
+                (dat->thrust_real_sort->begin() + d * set_capacity + out_start_idx + size), 
+                (dat->thrust_real->begin() + d * set_capacity + out_start_idx));
     }
     else
     {

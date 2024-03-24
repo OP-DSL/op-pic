@@ -92,7 +92,7 @@ inline void enrich_particles_random(const Deck& deck, const OPP_INT cell_count, 
             str_mid[p_idx * DIM + Dim::z] = 0.0;
 
             cid[p_idx]    = cx;
-            idx[p_idx]    = (p_idx + rank_part_start); // this might not exactly match with MPI versions
+            // idx[p_idx]    = (p_idx + rank_part_start); // this might not exactly match with MPI versions
             weight[p_idx] = const_weight;
 
             p_idx++;
@@ -162,7 +162,7 @@ inline void enrich_particles_two_stream(const Deck& deck, const OPP_INT cell_cou
             str_mid[part_idx * DIM + Dim::z] = 0.0;
 
             cid[part_idx]    = cx;
-            idx[part_idx]    = (cell_particle_start + p_idx); // this might not exactly match with MPI versions
+            // idx[part_idx]    = (cell_particle_start + p_idx); // this might not exactly match with MPI versions
             weight[part_idx] = const_weight;  
 
             part_idx++;

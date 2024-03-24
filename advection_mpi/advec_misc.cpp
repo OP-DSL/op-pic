@@ -153,7 +153,7 @@ void init_mesh(std::shared_ptr<DataPointers> m) {
  * @return (void)
  */
 void init_particles(opp_dat part_index, opp_dat part_pos, opp_dat part_vel, opp_dat part_mesh_rel, 
-                    opp_dat cell_pos_ll) 
+                    opp_dat cell_pos_ll, opp_dat gcid) 
 {
     if (OPP_rank == OPP_ROOT)
         opp_printf("Setup", "Init particles START");
@@ -206,7 +206,7 @@ void init_particles(opp_dat part_index, opp_dat part_pos, opp_dat part_vel, opp_
         ((OPP_REAL*)part_vel->data)[px * DIM + Dim::y] = velocities.at(Dim::y).at(px);
 
         ((OPP_INT*)part_mesh_rel->data)[px]            = cells.at(px);
-        ((OPP_INT*)part_index->data)[px]               = px; 
+        ((OPP_INT*)part_index->data)[px]               = px; //((int*)gcid->data)[cells.at(px)]; 
     }
     opp_profiler->end("Init_assign");
 
