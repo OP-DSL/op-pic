@@ -14,7 +14,7 @@ HIPCC      = hipcc
 # -qopt-zmm-usage=high
 
 CPPFLAGS   = -std=c++14 -Wall -fPIC -march=native 
-NVCCFLAGS  = -m64 -Xptxas -dlcm=ca -Xptxas=-v $(NVCCFLAGS_ADD) -DUSE_THRUST 
+NVCCFLAGS  = --extended-lambda -m64 -Xptxas -dlcm=ca -Xptxas=-v $(NVCCFLAGS_ADD) -DUSE_THRUST 
 HIPCCFLAGS = -std=c++17 -isystem -D__HIP_PLATFORM_AMD__ -munsafe-fp-atomics -DUSE_THRUST
 
 DEBUG ?= 0

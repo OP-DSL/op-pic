@@ -144,7 +144,7 @@ int main(int argc, char **argv)
         // opp_partition(std::string("EXTERNAL"), node_set, nullptr, node_colors);
         opp_partition(std::string("EXTERNAL"), cell_set, nullptr, cell_colors);
 #endif
-
+        
         opp_loop_all__InitBndPotential(
             node_set, 
             opp_get_arg(node_type, OP_READ), 
@@ -167,9 +167,9 @@ int main(int argc, char **argv)
 #ifdef USE_MPI
         MPI_Barrier(MPI_COMM_WORLD);
 #endif
+
+        int64_t total_part_iter = 0;
         opp_profiler->start("MainLoop");
-
-
         for (OPP_main_loop_iter = 0; OPP_main_loop_iter < max_iter; OPP_main_loop_iter++)
         {
             if (OP_DEBUG && OPP_rank == OPP_ROOT) 
@@ -177,7 +177,6 @@ int main(int argc, char **argv)
 
             if (OPP_main_loop_iter != 0)
                 opp_inc_part_count_with_distribution(particle_set, n_parts_to_inject, iface_dist, false);
-            // logSetSizeStatistics(particle_set, 4);
 
             int old_nparts = particle_set->size;
             opp_loop_inject__InjectIons(
@@ -225,7 +224,6 @@ int main(int argc, char **argv)
                 opp_get_arg(node_charge_den, 3, cell_v_nodes_map, OP_INC,  OPP_Map_from_Mesh_Rel)
             );
 
-
             opp_loop_all__ComputeNodeChargeDensity(
                 node_set,                            
                 opp_get_arg(node_charge_den,  OP_RW), 
@@ -267,6 +265,9 @@ int main(int argc, char **argv)
                 log = get_global_level_log(max_n_chg_den, max_n_pot, particle_set->size, 
                     n_parts_to_inject, (old_nparts - particle_set->size));
             }
+            // opp_printf("XXX", "particle_set->size=%d", particle_set->size); 
+            
+            total_part_iter += particle_set->size;  
 
             if ((print_final_log || OPP_main_loop_iter + 1 == max_iter) && OPP_rank == OPP_ROOT) 
             {
@@ -276,10 +277,11 @@ int main(int argc, char **argv)
             if (OP_DEBUG)
                 print_per_cell_particle_counts(cell_colors, part_mesh_rel); // cell_colors will reset
         }
+        opp_profiler->end("MainLoop");
 
         if (OPP_rank == OPP_ROOT) opp_printf("Main", "Main loop completed after %d iterations ****", max_iter);
 
-        opp_profiler->end("MainLoop");
+        opp_printf("Main","total particles= %" PRId64, total_part_iter); 
     }
 
     opp_exit();

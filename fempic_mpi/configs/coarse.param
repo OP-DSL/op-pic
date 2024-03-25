@@ -34,6 +34,6 @@ BOOL print_final   = true
 
 BOOL opp_global_move = false
 
-# block k-means
+# block k-means mpi-block
 STRING cluster = block
-
+BOOL use_reg_red = false
