@@ -34,18 +34,22 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "opp_hip.h"
 
-//*******************************************************************************
-void opp_part_pack_hip(oppic_set set);
-void opp_part_unpack_hip(oppic_set set);
-void particle_sort_hip(oppic_set set, bool hole_filling);
+#define MPI_COUNT_EXCHANGE 0
+#define MPI_TAG_PART_EX 1
 
+//*******************************************************************************
+void opp_part_pack_device(oppic_set set);
+void opp_part_unpack_device(oppic_set set);
+void particle_sort_device(oppic_set set, bool hole_filling);
+void particle_hole_fill_device(oppic_set set, bool hole_filling);
 std::vector<char> OPP_need_remove_flags;
 char *OPP_need_remove_flags_d = nullptr;
 int OPP_need_remove_flags_size = 0;
 
-thrust::host_vector<int> OPP_thrust_move_indices_h;
-thrust::device_vector<int> OPP_thrust_move_indices_d;
-int *OPP_move_indices_d = nullptr;
+thrust::device_vector<int> OPP_thrust_move_particle_indices_d;
+thrust::device_vector<int> OPP_thrust_move_cell_indices_d;
+int *OPP_move_particle_indices_d = nullptr;
+int *OPP_move_cell_indices_d = nullptr;
 int *OPP_move_count_d = nullptr;
 int OPP_move_count_h = 0;
 
@@ -61,13 +65,6 @@ struct CopyMaxCellIndexFunctor {
     }
 };
 
-__global__ void setArrayToMaxCID(int* array, int size) {
-    int tid = blockIdx.x * blockDim.x + threadIdx.x;
-    if (tid < size) {
-        array[tid] = MAX_CELL_INDEX;
-    }
-}
-
 //*******************************************************************************
 void opp_init_particle_move(oppic_set set, int nargs, oppic_arg *args)
 { 
@@ -77,23 +74,13 @@ void opp_init_particle_move(oppic_set set, int nargs, oppic_arg *args)
     cutilSafeCall(hipMemcpy(set->particle_remove_count_d, &(set->particle_remove_count), sizeof(int), 
                     hipMemcpyHostToDevice));
 
-    // if (set->size >= OPP_need_remove_flags_size)
-    // {
-    //     if (OPP_need_remove_flags_d != NULL) 
-    //         cutilSafeCall(hipFree(OPP_need_remove_flags_d));
-        
-    //     OPP_need_remove_flags_size = set->size;
-    //     cutilSafeCall(hipMalloc(&OPP_need_remove_flags_d, OPP_need_remove_flags_size * sizeof(char)));
-    // }
-
-    // cutilSafeCall(hipMemset(OPP_need_remove_flags_d, 0, OPP_need_remove_flags_size));
-
-    if (set->size > (int)OPP_thrust_move_indices_d.size())
+    if (set->size > (int)OPP_thrust_move_particle_indices_d.size())
     {     
-        OPP_thrust_move_indices_d.resize(set->size);
-        OPP_thrust_move_indices_h.resize(set->size);
+        OPP_thrust_move_particle_indices_d.resize(set->size);
+        OPP_thrust_move_cell_indices_d.resize(set->size);
 
-        OPP_move_indices_d = (int*)thrust::raw_pointer_cast(OPP_thrust_move_indices_d.data());
+        OPP_move_particle_indices_d = (int*)thrust::raw_pointer_cast(OPP_thrust_move_particle_indices_d.data());
+        OPP_move_cell_indices_d = (int*)thrust::raw_pointer_cast(OPP_thrust_move_cell_indices_d.data());
 
         if (OPP_move_count_d == nullptr) {
             cutilSafeCall(hipMalloc(&OPP_move_count_d, sizeof(int)));
@@ -102,11 +89,6 @@ void opp_init_particle_move(oppic_set set, int nargs, oppic_arg *args)
 
     OPP_move_count_h = 0;
     cutilSafeCall(hipMemcpy(OPP_move_count_d, &OPP_move_count_h, sizeof(int), hipMemcpyHostToDevice));
-
-    // TODO : redundant - remove below
-    // init the array to MAX_CELL_INDEX
-    // const int blocksPerGrid = (size - 1) / OPP_gpu_threads_per_block + 1;
-    // setArrayToMaxCID<<<blocksPerGrid, OPP_gpu_threads_per_block>>>(OPP_move_indices_d, set->size);
 
     if (OPP_comm_iteration == 0)
     {
@@ -134,109 +116,115 @@ void opp_init_particle_move(oppic_set set, int nargs, oppic_arg *args)
 //*******************************************************************************
 // 1. keep track of whether atleast one need mpi comm [WRONG] I might not require to send to others, but some one might try to send to me 
 // 2. if yes, download dats from device and use opp_part_exchange (in this particle will get copied so we can override the space)
-// 3. do the below, oppic_particle_sort or particle_sort_hip
+// 3. do the below, oppic_particle_sort or particle_sort_device
 // 4. check whether all mpi ranks are done and if yes, return false
 // 5. if no, wait for all to complete and copy only the received particles to the device buffer 
 //        (may need to write another path and to expand device array sizes)
 // 6. set new start and ends and return true
-bool opp_finalize_particle_move(oppic_set set)
-{ 
-    opp_profiler->start("Mv_Finalize");
+// bool opp_finalize_particle_move(oppic_set set)
+// { 
+//     opp_profiler->start("Mv_Finalize");
 
-    cutilSafeCall(hipDeviceSynchronize());
+//     cutilSafeCall(hipDeviceSynchronize());
 
-    OPP_move_count_h = 0;
-    cutilSafeCall(hipMemcpy(&OPP_move_count_h, OPP_move_count_d, sizeof(int), 
-        hipMemcpyDeviceToHost));
+//     OPP_move_count_h = 0;
+//     cutilSafeCall(hipMemcpy(&OPP_move_count_h, OPP_move_count_d, sizeof(int), 
+//         hipMemcpyDeviceToHost));
 
-    cutilSafeCall(hipMemcpy(&(set->particle_remove_count), set->particle_remove_count_d, 
-                    sizeof(int), hipMemcpyDeviceToHost));
+//     cutilSafeCall(hipMemcpy(&(set->particle_remove_count), set->particle_remove_count_d, 
+//                     sizeof(int), hipMemcpyDeviceToHost));
 
-    if (OP_DEBUG) //  || OPP_comm_iteration != 0
-        opp_printf("oppic_finalize_particle_move", "set [%s][%d] remove_count [%d] move count [%d]", 
-            set->name, set->size, set->particle_remove_count, OPP_move_count_h);
+//     if (OP_DEBUG) //  || OPP_comm_iteration != 0
+//         opp_printf("oppic_finalize_particle_move", "set [%s][%d] remove_count [%d] move count [%d]", 
+//             set->name, set->size, set->particle_remove_count, OPP_move_count_h);
 
-#ifdef USE_MPI
-    // At this stage, particles of device is clean
+// #ifdef USE_MPI
+//     // At this stage, particles of device is clean
 
-    // download only the required particles to send and pack them in rank based mpi buffers
-    opp_profiler->start("Mv_F_pack");
-    opp_part_pack_hip(set);
-    opp_profiler->end("Mv_F_pack");
+//     // download only the required particles to send and pack them in rank based mpi buffers
+//     opp_profiler->start("Mv_F_pack");
+//     opp_part_pack_device(set);
+//     opp_profiler->end("Mv_F_pack");
 
-    // send the counts and send the particles  
-    opp_profiler->start("Mv_F_ex");   
-    opp_part_exchange(set); 
-    opp_profiler->end("Mv_F_ex");
+//     // send the counts and send the particles  
+//     opp_profiler->start("Mv_F_ex");   
+//     opp_part_exchange(set); 
+//     opp_profiler->end("Mv_F_ex");
 
-#endif
+// #endif
 
-    opp_profiler->start("Mv_F_fill");
-    if (set->particle_remove_count > 0)
-    {
-        set->size -= set->particle_remove_count;
+//     opp_profiler->start("Mv_F_fill");
+//     if (set->particle_remove_count > 0)
+//     {
+//         set->size -= set->particle_remove_count;
 
-        if (OP_auto_sort == 1)
-        {
-            if (OP_DEBUG) 
-                opp_printf("oppic_finalize_particle_move", "auto sorting particle set [%s]", 
-                set->name);
-            oppic_particle_sort(set);
-        }
-        else
-        {
-            particle_sort_hip(set, true); // Does only hole filling
-        }
-    }
-    opp_profiler->end("Mv_F_fill");
+//         if (OP_auto_sort == 1)
+//         {
+//             if (OP_DEBUG) 
+//                 opp_printf("oppic_finalize_particle_move", "auto sorting particle set [%s]", 
+//                 set->name);
+//             oppic_particle_sort(set);
+//         }
+//         else
+//         {
+//             particle_sort_device(set, true); // Does only hole filling
+//         }
+//     }
+//     opp_profiler->end("Mv_F_fill");
 
-#ifdef USE_MPI
-    opp_profiler->start("Mv_F_check");
-    if (opp_part_check_all_done(set))
-    {
-        if (OPP_max_comm_iteration < OPP_comm_iteration)
-            OPP_max_comm_iteration = OPP_comm_iteration;
+// #ifdef USE_MPI
+//     opp_profiler->start("Mv_F_check");
+//     if (opp_part_check_all_done(set))
+//     {
+//         if (OPP_max_comm_iteration < OPP_comm_iteration)
+//             OPP_max_comm_iteration = OPP_comm_iteration;
 
-        OPP_comm_iteration = 0; // reset for the next par loop
+//         OPP_comm_iteration = 0; // reset for the next par loop
         
-        opp_profiler->end("Mv_Finalize");
-        opp_profiler->end("Mv_F_check");
-        return false; // all mpi ranks do not have anything to communicate to any rank
-    }
-    opp_profiler->end("Mv_F_check");
+//         opp_profiler->end("Mv_Finalize");
+//         opp_profiler->end("Mv_F_check");
+//         return false; // all mpi ranks do not have anything to communicate to any rank
+//     }
+//     opp_profiler->end("Mv_F_check");
 
-    opp_profiler->start("Mv_F_wait");
-    opp_part_wait_all(set); // wait till all the particles are communicated
-    opp_profiler->end("Mv_F_wait");
+//     opp_profiler->start("Mv_F_wait");
+//     opp_part_wait_all(set); // wait till all the particles are communicated
+//     opp_profiler->end("Mv_F_wait");
 
-    if (OP_DEBUG)
-        opp_printf("opp_finalize_particle_move", "set [%s] size prior unpack %d", set->name, set->size);
+//     if (OP_DEBUG)
+//         opp_printf("opp_finalize_particle_move", "set [%s] size prior unpack %d", set->name, set->size);
+    
+//     cutilSafeCall(hipDeviceSynchronize());
 
-    // increase the particle count if required and unpack the communicated particle buffer 
-    // in to separate particle dats
-    opp_profiler->start("Mv_F_unpack");
-    opp_part_unpack_hip(set);    
-    opp_profiler->end("Mv_F_unpack");
+//     // increase the particle count if required and unpack the communicated particle buffer 
+//     // in to separate particle dats
+//     opp_profiler->start("Mv_F_unpack");
+//     opp_part_unpack_device(set);    
+//     opp_profiler->end("Mv_F_unpack");
 
-    OPP_iter_start = set->size - set->diff;
-    OPP_iter_end   = set->size;  
+//     OPP_iter_start = set->size - set->diff;
+//     OPP_iter_end   = set->size;  
 
-    OPP_comm_iteration++;  
+//     OPP_comm_iteration++;  
 
-    opp_profiler->end("Mv_Finalize");
+//     opp_profiler->end("Mv_Finalize");
 
-    return true;
-#else
-    return false;
-#endif
-}
+//     return true;
+// #else
+//     return false;
+// #endif
+// }
+
+thrust::device_vector<int> send_part_cell_idx_dv;
+thrust::device_vector<int> temp_int_dv;
+thrust::device_vector<double> temp_real_dv;
 
 // Cannot use multiple packs before sending them, if opp_part_pack() is called multiple times with PACK_SOA, 
 // the communication data may get currupted
 //*******************************************************************************
-void opp_part_pack_hip(opp_set set)
+void opp_part_pack_device(opp_set set)
 {
-    if (OP_DEBUG) opp_printf("opp_part_pack_hip", "start");
+    if (OP_DEBUG) opp_printf("opp_part_pack_device", "start");
 
 #ifdef USE_MPI
     opp_profiler->start("Mv_Pack");
@@ -256,37 +244,41 @@ void opp_part_pack_hip(opp_set set)
         return;
     }
 
-    // Since hip kernel threads are not synced, there could be a random order in OPP_thrust_move_indices_d
-    thrust::sort(OPP_thrust_move_indices_d.begin(), 
-        OPP_thrust_move_indices_d.begin() + OPP_move_count_h);
+    // Since hip kernel threads are not synced, there could be a random order
+    // thrust::sort(OPP_thrust_move_particle_indices_d.begin(), 
+    //     OPP_thrust_move_particle_indices_d.begin() + OPP_move_count_h);
 
-    thrust::copy(OPP_thrust_move_indices_d.begin(), 
-        OPP_thrust_move_indices_d.begin() + OPP_move_count_h, OPP_thrust_move_indices_h.begin());
+    // thrust::copy(OPP_thrust_move_particle_indices_d.begin(), 
+    //     OPP_thrust_move_particle_indices_d.begin() + OPP_move_count_h, OPP_thrust_move_indices_h.begin());
     
     // std::string loggg = std::to_string(OPP_move_count_h) + " | ";
     // for (int k = 0; k < OPP_move_count_h; k++)
     //     loggg += std::to_string(OPP_thrust_move_indices_h[k]) + std::string(" ");
-    // opp_printf("opp_part_pack_hip", "Part indices : %s", loggg.c_str());
+    // opp_printf("opp_part_pack_device", "Part indices : %s", loggg.c_str());
 
     // copy the cell indices of the particles to be sent
-    thrust::device_vector<int> send_part_cell_idx_dv(OPP_move_count_h);
-    copy_according_to_index(set->mesh_relation_dat->thrust_int, &send_part_cell_idx_dv, 
-        OPP_thrust_move_indices_d, -1, -1, OPP_move_count_h, 1);
-    thrust::host_vector<int> send_part_cell_idx_hv(send_part_cell_idx_dv);
+    // send_part_cell_idx_dv.reserve(OPP_move_count_h);
+    // send_part_cell_idx_dv.resize(OPP_move_count_h);
+    // copy_according_to_index(set->mesh_relation_dat->thrust_int, &send_part_cell_idx_dv, 
+    //     OPP_thrust_move_particle_indices_d, -1, -1, OPP_move_count_h, 1);
+    thrust::host_vector<int> send_part_cell_idx_hv(OPP_move_count_h);
+    thrust::copy(OPP_thrust_move_cell_indices_d.begin(), 
+            OPP_thrust_move_cell_indices_d.begin() + OPP_move_count_h, send_part_cell_idx_hv.begin());
 
     // enrich the particles to communicate with the correct external cell index and mpi rank
     std::map<int, opp_particle_comm_data>& set_part_com_data = opp_part_comm_neighbour_data[set];
     for (int index = 0; index < OPP_move_count_h; index++)
     {
-        int particle_index = OPP_thrust_move_indices_h[index];
+        // int particle_index = OPP_thrust_move_indices_h[index];
         int map0idx = send_part_cell_idx_hv[index];
 
         auto it = set_part_com_data.find(map0idx);
         if (it == set_part_com_data.end())
         {
-            opp_printf("opp_part_pack_hip", 
-                "Error: cell %d cannot be found in opp_part_comm_neighbour_data map", map0idx);
-            return; // unlikely, need opp_abort() instead!
+            opp_printf("opp_part_pack_device", 
+                "Error: cell %d cannot be found in opp_part_comm_neighbour_data map [%d/%d]", 
+                map0idx, index, OPP_move_count_h);
+            continue; // unlikely, need opp_abort() instead!
         }
 
         opp_part_mark_move(set, index, it->second); // it->second is the local cell index in foreign rank
@@ -296,9 +288,6 @@ void opp_part_pack_hip(opp_set set)
 
     // download the particles to send
     {
-        thrust::device_vector<int> temp_int_dv;
-        thrust::device_vector<double> temp_real_dv;
-
         for (auto& dat : *(set->particle_dats)) 
         {
             size_t bytes_to_copy = (OPP_move_count_h * dat->size);
@@ -308,8 +297,9 @@ void opp_part_pack_hip(opp_set set)
 
             if (strcmp(dat->type, "double") == 0)
             {
+                temp_real_dv.reserve(OPP_move_count_h * dat->dim);
                 temp_real_dv.resize(OPP_move_count_h * dat->dim);
-                copy_according_to_index(dat->thrust_real, &temp_real_dv, OPP_thrust_move_indices_d, 
+                copy_according_to_index(dat->thrust_real, &temp_real_dv, OPP_thrust_move_particle_indices_d, 
                     dat->set->set_capacity, OPP_move_count_h, OPP_move_count_h, dat->dim);
                 
                 hipMemcpy(move_dat_data.data(), thrust::raw_pointer_cast(&temp_real_dv[0]), 
@@ -317,8 +307,9 @@ void opp_part_pack_hip(opp_set set)
             }
             else if (strcmp(dat->type, "int") == 0)
             {
+                temp_int_dv.reserve(OPP_move_count_h * dat->dim);
                 temp_int_dv.resize(OPP_move_count_h * dat->dim);
-                copy_according_to_index(dat->thrust_int, &temp_int_dv, OPP_thrust_move_indices_d, 
+                copy_according_to_index(dat->thrust_int, &temp_int_dv, OPP_thrust_move_particle_indices_d, 
                     dat->set->set_capacity, OPP_move_count_h, OPP_move_count_h, dat->dim);
                 
                 hipMemcpy(move_dat_data.data(), thrust::raw_pointer_cast(&temp_int_dv[0]), 
@@ -415,19 +406,19 @@ void opp_part_pack_hip(opp_set set)
 
     // This particle is already packed, hence needs to be removed from the current rank
     CopyMaxCellIndexFunctor copyMaxCellIndexFunctor((int*)set->mesh_relation_dat->data_d);
-    thrust::for_each(OPP_thrust_move_indices_d.begin(), OPP_thrust_move_indices_d.begin() + OPP_move_count_h, 
+    thrust::for_each(OPP_thrust_move_particle_indices_d.begin(), OPP_thrust_move_particle_indices_d.begin() + OPP_move_count_h, 
         copyMaxCellIndexFunctor);
 
     opp_profiler->end("Mv_Pack");
 #endif
 
-    if (OP_DEBUG) opp_printf("opp_part_pack_hip", "end");
+    if (OP_DEBUG) opp_printf("opp_part_pack_device", "end");
 }
 
 //*******************************************************************************
-void opp_part_unpack_hip(oppic_set set)
+void opp_part_unpack_device(oppic_set set)
 {
-    if (OP_DEBUG) opp_printf("opp_part_unpack_hip", "set [%s]", set->name);
+    if (OP_DEBUG) opp_printf("opp_part_unpack_device", "set [%s]", set->name);
 
 #ifdef USE_MPI
     opp_profiler->start("Mv_Unpack");
@@ -544,7 +535,526 @@ void opp_part_unpack_hip(oppic_set set)
     opp_profiler->end("Mv_Unpack");
 #endif
 
-    if (OP_DEBUG) opp_printf("opp_part_unpack_hip", "END");    
+    if (OP_DEBUG) opp_printf("opp_part_unpack_device", "END");    
 }
 
 //*******************************************************************************
+
+
+__global__ void copy_intX(const int* in_dat_d, int* out_dat_d, const int* indices,
+                    const int in_stride, const int out_stride, const int dim, const int size) 
+{
+    const int tid = blockIdx.x * blockDim.x + threadIdx.x;
+
+    if (tid < size) 
+    {
+        const int idx = indices[tid];
+        for (int d = 0; d < dim; d++)
+        {
+            out_dat_d[tid + d * out_stride] = in_dat_d[idx + d * in_stride];
+
+            // printf("copting index=%d value %d [d=%d] to out_index=%d\n", idx, in_dat_d[idx + d * in_stride], d, tid + d * out_stride);
+        }
+    }
+}
+
+__global__ void copy_doubleX(const double* in_dat_d, double* out_dat_d, const int* indices, 
+                    const int in_stride, const int out_stride, const int dim, const int size) 
+{
+    const int tid = blockIdx.x * blockDim.x + threadIdx.x;
+
+    if (tid < size) 
+    {
+        const int idx = indices[tid];
+        for (int d = 0; d < dim; d++)
+        {
+            out_dat_d[tid + d * out_stride] = in_dat_d[idx + d * in_stride];
+        }
+    }
+}
+
+__global__ void copy_doubleY(const double* in_dat_d, double* out_dat_d, int in_stride, 
+                                    int out_stride, int dim, int size) 
+{
+    const int tid = blockIdx.x * blockDim.x + threadIdx.x;
+
+    if (tid < size) 
+    {
+        for (int d = 0; d < dim; d++)
+        {
+            out_dat_d[tid + d * out_stride] = in_dat_d[tid + d * in_stride];
+        }
+    }
+}
+__global__ void copy_intY(const int* in_dat_d, int* out_dat_d, int in_stride, 
+                                    int out_stride, int dim, int size, int x) 
+{
+    const int tid = blockIdx.x * blockDim.x + threadIdx.x;
+
+    if (tid < size) 
+    {
+        for (int d = 0; d < dim; d++)
+        {
+            // printf("unpacking %d index=%d value %d [d=%d] to out_index=%d\n", x, tid, in_dat_d[tid + d * in_stride], d, tid + d * out_stride);
+            out_dat_d[tid + d * out_stride] = in_dat_d[tid + d * in_stride];
+        }
+    }
+}
+
+__global__ void setArrayToMaxCID(int* array, int* indices, int size) 
+{
+    int tid = blockIdx.x * blockDim.x + threadIdx.x;
+    if (tid < size) {
+        int idx = indices[tid];
+        array[idx] = MAX_CELL_INDEX;
+    }
+}
+
+std::map<int, thrust::host_vector<OPP_INT>> particle_indices_hv;    // particle ids to send, arrange according to rank
+std::map<int, thrust::host_vector<OPP_INT>> cell_indices_hv;        // cellid in the foreign rank, arrange according to rank
+std::map<int, thrust::device_vector<OPP_INT>> particle_indices_dv;
+std::map<int, thrust::device_vector<char>> send_data;
+std::map<int, thrust::device_vector<char>> recv_data;
+const int threads = 64;
+const double opp_comm_buff_resize_multiple = 1.5;
+
+// Cannot use multiple packs before sending them, if opp_part_pack() is called multiple times with PACK_SOA, 
+// the communication data may get currupted
+//*******************************************************************************
+void opp_part_pack_and_exchange_hip_direct(opp_set set)
+{
+    if (OP_DEBUG) opp_printf("opp_part_pack_and_exchange_hip_direct", "OPP_move_count_h %d", OPP_move_count_h);
+
+#ifdef USE_MPI
+    opp_profiler->start("Mv_PackExDir");
+
+    std::map<int, hipStream_t> streams;
+
+    cutilSafeCall(hipStreamCreate(&(streams[-1])));
+    cutilSafeCall(hipStreamCreate(&(streams[-2])));
+
+    thrust::host_vector<int> tmp_cell_indices_hv(OPP_move_count_h);
+    cutilSafeCall(hipMemcpyAsync(thrust::raw_pointer_cast(tmp_cell_indices_hv.data()), 
+            thrust::raw_pointer_cast(OPP_thrust_move_cell_indices_d.data()),
+            OPP_move_count_h * sizeof(int), hipMemcpyDeviceToHost, streams[-1]));
+    
+    thrust::host_vector<int> tmp_particle_indices_hv(OPP_move_count_h);
+    cutilSafeCall(hipMemcpyAsync(thrust::raw_pointer_cast(tmp_particle_indices_hv.data()), 
+            thrust::raw_pointer_cast(OPP_thrust_move_particle_indices_d.data()),
+            OPP_move_count_h * sizeof(int), hipMemcpyDeviceToHost, streams[-2]));
+
+    opp_all_mpi_part_buffers* mpi_buffers = (opp_all_mpi_part_buffers*)set->mpi_part_buffers;
+    const std::vector<int>& neighbours = mpi_buffers->neighbours;
+    const int neighbour_count = neighbours.size();
+    mpi_buffers->total_recv = 0;
+    for (auto it = mpi_buffers->import_counts.begin(); it != mpi_buffers->import_counts.end(); it++)
+        it->second = 0;
+    
+    for (auto it = particle_indices_hv.begin(); it != particle_indices_hv.end(); it++) it->second.clear();
+    for (auto it = cell_indices_hv.begin(); it != cell_indices_hv.end(); it++) it->second.clear();
+    for (auto it = particle_indices_dv.begin(); it != particle_indices_dv.end(); it++) it->second.clear();
+    for (auto it = send_data.begin(); it != send_data.end(); it++) it->second.clear();
+    for (auto it = recv_data.begin(); it != recv_data.end(); it++) it->second.clear();
+
+    mpi_buffers->recv_req.clear();
+    mpi_buffers->send_req.clear();
+    std::vector<MPI_Request> send_req_count(neighbour_count);
+    std::vector<MPI_Request> recv_req_count(neighbour_count);
+    double total_send_size = 0.0;
+
+    std::map<int, opp_particle_comm_data>& set_part_com_data = opp_part_comm_neighbour_data[set];
+
+    cutilSafeCall(hipStreamSynchronize(streams[-1]));
+    cutilSafeCall(hipStreamSynchronize(streams[-2]));
+
+    // enrich and arrange the particles to communicate with the correct external cell index and mpi rank
+    for (int index = 0; index < OPP_move_count_h; index++)
+    {
+        auto it = set_part_com_data.find(tmp_cell_indices_hv[index]);
+        if (it == set_part_com_data.end()) 
+        {
+            opp_printf("opp_part_pack_and_exchange_hip_direct", 
+                "Error: cell %d cannot be found in opp_part_comm_neighbour_data map", tmp_cell_indices_hv[index]);
+            continue; // unlikely, need opp_abort() instead!
+        }
+
+        const auto& comm_data = it->second;
+        particle_indices_hv[comm_data.cell_residing_rank].push_back(tmp_particle_indices_hv[index]);
+        cell_indices_hv[comm_data.cell_residing_rank].push_back(comm_data.local_index); // convert cid to local cid of recv rank
+    }
+    
+    // copy particle_indices_dv to device asynchronously 
+    for (const auto& x : particle_indices_hv)
+    {
+        const int rank = x.first;
+        cutilSafeCall(hipStreamCreate(&(streams[rank]))); 
+        const size_t tmp_cpy_size = x.second.size();
+
+        if (tmp_cpy_size > particle_indices_dv[rank].capacity()) 
+            particle_indices_dv[rank].reserve(tmp_cpy_size * opp_comm_buff_resize_multiple);
+        particle_indices_dv[rank].resize(tmp_cpy_size);
+
+        cutilSafeCall(hipMemcpyAsync(thrust::raw_pointer_cast(particle_indices_dv[rank].data()), 
+            x.second.data(), (tmp_cpy_size * sizeof(int)), hipMemcpyHostToDevice, streams[rank]));
+        
+        mpi_buffers->export_counts[rank] = tmp_cpy_size;
+    }
+
+    // send/receive send_counts to/from all immediate neighbours
+    for (int i = 0; i < neighbour_count; i++)
+    {
+        const int64_t& send_count = mpi_buffers->export_counts[neighbours[i]];
+        MPI_Isend((void*)&send_count, 1, MPI_INT64_T, neighbours[i], MPI_COUNT_EXCHANGE, 
+            OP_MPI_WORLD, &(send_req_count[i]));
+
+        const int64_t& recv_count = mpi_buffers->import_counts[neighbours[i]];
+        MPI_Irecv((void*)&recv_count, 1, MPI_INT64_T, neighbours[i], MPI_COUNT_EXCHANGE, 
+            OP_MPI_WORLD, &(recv_req_count[i]));
+    }
+
+    // pack the send data to device memory arranged according to rank asynchronously
+    for (auto& x : particle_indices_dv)
+    {
+        const int send_rank = x.first;
+        const int64_t particle_count = x.second.size();
+        const int64_t send_bytes = particle_count * set->particle_size;
+        auto& send_data_dv = send_data[send_rank];
+
+        if (send_bytes > send_data_dv.capacity()) 
+            send_data_dv.reserve(send_bytes * opp_comm_buff_resize_multiple);
+        send_data_dv.resize(send_bytes);
+
+        char* send_buff = (char*)thrust::raw_pointer_cast(send_data_dv.data());
+    
+        int* particle_indices = (int*)thrust::raw_pointer_cast(particle_indices_dv[send_rank].data());
+        const int nblocks = (particle_count - 1) / threads + 1;
+        int64_t offset = 0;
+
+// thrust::host_vector<int> h_vec = particle_indices_dv[send_rank];
+// std::string log = "";
+// for (int i = 0; i < h_vec.size(); ++i) log += std::to_string(h_vec[i]) + " ";
+// opp_printf("TO_SEND", "%s", log.c_str());
+
+        cutilSafeCall(hipStreamSynchronize(streams[send_rank]));
+
+        for (auto& dat : *(set->particle_dats)) 
+        {
+            const int64_t dat_bytes_to_copy = (particle_count * dat->size);
+
+            if (dat->is_cell_index)
+            {
+                // cell indices relative to the receiving rank is copied here
+                cutilSafeCall(hipMemcpyAsync((send_buff + offset), 
+                    (char*)cell_indices_hv[send_rank].data(), dat_bytes_to_copy, 
+                    hipMemcpyHostToDevice, streams[send_rank]));
+            }
+            else if (strcmp(dat->type, "double") == 0)
+            {
+                copy_doubleX<<<nblocks,threads,0,streams[send_rank]>>> (
+                    (OPP_REAL*)dat->data_d,
+                    (OPP_REAL*)(send_buff + offset),
+                    particle_indices,
+                    set->set_capacity, particle_count,
+                    dat->dim, particle_count);
+            }
+            else if (strcmp(dat->type, "int") == 0)
+            {
+                copy_intX<<<nblocks,threads,0,streams[send_rank]>>> (
+                    (OPP_INT*)dat->data_d,
+                    (OPP_INT*)(send_buff + offset),
+                    particle_indices,
+                    set->set_capacity, particle_count,
+                    dat->dim, particle_count);
+            }
+            else
+            {
+                opp_printf("", "Error: %s type unimplemented in opp_part_pack_and_exchange_hip_direct", dat->type);
+                opp_abort("datatype not implemented in opp_part_pack_and_exchange_hip_direct");
+            }
+
+            offset += dat_bytes_to_copy;
+        }
+    }
+
+    // since move particles ids are extracted already, mark cell index as MAX_CELL_ID to remove from current rank
+    const int nblocks = (OPP_move_count_h - 1) / threads + 1;
+    setArrayToMaxCID<<<nblocks,threads>>> (
+        (OPP_INT*)set->mesh_relation_dat->data_d,
+        (OPP_INT*)thrust::raw_pointer_cast(OPP_thrust_move_particle_indices_d.data()),
+        OPP_move_count_h);
+
+    // send the particle data only to immediate neighbours
+    for (int i = 0; i < neighbour_count; i++)
+    {
+        const int send_rank = neighbours[i];
+        const int64_t send_count = mpi_buffers->export_counts[send_rank];
+
+        if (send_count <= 0) {
+            if (OP_DEBUG) opp_printf("opp_part_exchange", "nothing to send to rank %d", send_rank);
+            continue;
+        }
+        else {   
+            char* send_buff = (char*)thrust::raw_pointer_cast(send_data[send_rank].data());
+            if (OP_DEBUG) 
+                opp_printf("opp_part_exchange", "sending %lld particle/s (size: %lld) to rank %d | %p", 
+                send_count, (int64_t)(send_count*set->particle_size), send_rank, send_buff);
+        }
+
+        MPI_Request req;
+        const int64_t send_size = set->particle_size * send_count;
+
+        cutilSafeCall(hipStreamSynchronize(streams[send_rank])); // wait till hip aync copy is done
+
+        char* send_buff = (char*)thrust::raw_pointer_cast(send_data[send_rank].data());
+        MPI_Isend(send_buff, send_size, MPI_CHAR, send_rank, MPI_TAG_PART_EX, OP_MPI_WORLD, &req);
+        mpi_buffers->send_req.push_back(req);
+
+        total_send_size += (send_size * 1.0f);
+    }
+
+    // wait for the counts to receive only from neighbours
+    MPI_Waitall(neighbour_count, &recv_req_count[0], MPI_STATUSES_IGNORE);
+
+    // create/resize data structures and receive particle data from neighbours
+    for (int i = 0; i < neighbour_count; i++)
+    {
+        const int recv_rank = neighbours[i];
+        const int64_t recv_bytes = (int64_t)set->particle_size * mpi_buffers->import_counts[recv_rank];
+        mpi_buffers->total_recv += mpi_buffers->import_counts[recv_rank];
+
+        if (recv_bytes <= 0)
+        {
+            if (OP_DEBUG) 
+                opp_printf("opp_part_exchange", "nothing to receive from rank %d", recv_rank);
+            continue;
+        }
+
+        auto& recv_data_dv = recv_data[recv_rank];
+        if (recv_bytes > recv_data_dv.capacity()) 
+            recv_data_dv.reserve(recv_bytes * opp_comm_buff_resize_multiple);
+        recv_data_dv.resize(recv_bytes);
+        
+        MPI_Request req;
+        MPI_Irecv((char*)thrust::raw_pointer_cast(recv_data_dv.data()), recv_bytes, MPI_CHAR, 
+            recv_rank, MPI_TAG_PART_EX, OP_MPI_WORLD, &req);
+        mpi_buffers->recv_req.push_back(req);
+    }
+
+    // reset the export counts for another iteration
+    for (auto it = mpi_buffers->export_counts.begin(); it != mpi_buffers->export_counts.end(); it++)
+    {
+        it->second = 0; // make the export count to zero for the next iteration
+        mpi_buffers->buffers[it->first].buf_export_index = 0; // make export indices to zero for next iteration
+    }
+
+    // for (const auto& x : streams) hipStreamDestroy(x.second);
+    cutilSafeCall(hipDeviceSynchronize());
+
+    opp_profiler->end("Mv_PackExDir");
+#endif
+
+    if (OP_DEBUG) opp_printf("opp_part_pack_device_direct", "end");
+}
+
+
+void opp_part_unpack_device_direct(opp_set set)
+{
+    if (OP_DEBUG) opp_printf("opp_part_unpack_device_direct", "set [%s] size %d", set->name, set->size);
+
+#ifdef USE_MPI
+    opp_profiler->start("Mv_UnpackDir");
+
+    opp_all_mpi_part_buffers* recv_buffers = (opp_all_mpi_part_buffers*)set->mpi_part_buffers;
+    const auto& neighbours = recv_buffers->neighbours;
+    int64_t num_new_particles = 0;
+    std::map<int,int64_t> particle_start;
+
+    // count the number of particles to be received from all ranks
+    for (size_t i = 0; i < neighbours.size(); i++)
+    {
+        const int rank = neighbours[i];
+
+        num_new_particles += (recv_buffers->import_counts)[rank];
+        if (i == 0) 
+            particle_start[i] = set->size;
+        else 
+            particle_start[i] = particle_start[i-1] + (recv_buffers->import_counts)[neighbours[i-1]];
+    }
+
+    if (num_new_particles > 0)
+    {
+        oppic_increase_particle_count(set, (int)num_new_particles);
+
+        for (int i = 0; i < (int)neighbours.size(); i++)
+        {
+            const int recv_rank = neighbours[i];
+            const int recv_count = (int)recv_buffers->import_counts[recv_rank];
+
+            if (recv_count <= 0) continue;
+
+            char* recv_buff = (char*)thrust::raw_pointer_cast(recv_data[recv_rank].data()); 
+            const int nblocks = (recv_count - 1) / threads + 1;
+            int64_t offset = 0;
+
+// opp_printf("UNPACK", "recv count %d || to dat starting from %lld", recv_count, particle_start[i]);
+
+            for (auto& dat : *(set->particle_dats)) 
+            {
+                const int64_t dat_bytes = (recv_count * dat->size);
+                const int64_t dat_per_dim_size = dat->size / dat->dim;
+
+                if (strcmp(dat->type, "double") == 0)
+                {
+                    copy_doubleY<<<nblocks,threads>>> (
+                        (OPP_REAL*)(recv_buff + offset),
+                        (OPP_REAL*)(dat->data_d + particle_start[i] * dat_per_dim_size),
+                        recv_count, set->set_capacity, dat->dim, recv_count);
+                }
+                else if (strcmp(dat->type, "int") == 0)
+                {
+                    int x = 0;
+
+                    if (strcmp(dat->name, "p_index") == 0) x = 111;
+
+                    copy_intY<<<nblocks,threads>>> (
+                        (OPP_INT*)(recv_buff + offset),
+                        (OPP_INT*)(dat->data_d + particle_start[i] * dat_per_dim_size),
+                        recv_count, set->set_capacity, dat->dim, recv_count, x);
+                }
+                else
+                {
+                    opp_printf("", "Error: %s type unimplemented in opp_part_unpack_device_direct", dat->type);
+                    opp_abort("datatype not implemented in opp_part_unpack_device_direct");
+                }
+
+                offset += dat_bytes;
+            }         
+        }
+
+        cutilSafeCall(hipDeviceSynchronize());
+    }
+
+    opp_profiler->end("Mv_UnpackDir");
+#endif
+
+    if (OP_DEBUG) opp_printf("opp_part_unpack_device_direct", "END");    
+}
+
+
+
+
+
+bool opp_finalize_particle_move(oppic_set set)
+{ 
+    opp_profiler->start("Mv_Finalize");
+
+    cutilSafeCall(hipDeviceSynchronize());
+
+    OPP_move_count_h = 0;
+    cutilSafeCall(hipMemcpy(&OPP_move_count_h, OPP_move_count_d, sizeof(int), 
+                    hipMemcpyDeviceToHost));
+
+    cutilSafeCall(hipMemcpy(&(set->particle_remove_count), set->particle_remove_count_d, 
+                    sizeof(int), hipMemcpyDeviceToHost));
+
+    if (OP_DEBUG)
+        opp_printf("oppic_finalize_particle_move", "set [%s][%d] remove_count [%d] move count [%d]", 
+            set->name, set->size, set->particle_remove_count, OPP_move_count_h);
+
+#ifdef USE_MPI
+    // At this stage, particles of device is clean
+// opp_printf("oppic_finalize_particle_move", "GPU DIRECT IS FALSE FOR PARTICLE MOVE FOR DEBUGGING");
+    if (OP_gpu_direct)
+    {
+        opp_profiler->start("Mv_F_SendDir");
+        opp_part_pack_and_exchange_hip_direct(set);
+        opp_profiler->end("Mv_F_SendDir");
+    }
+    else
+    {
+        // download only the required particles to send and pack them in rank based mpi buffers
+        opp_profiler->start("Mv_F_pack");
+        opp_part_pack_device(set);
+        opp_profiler->end("Mv_F_pack");
+
+        // send the counts and send the particle data  
+        opp_profiler->start("Mv_F_ex");    
+        opp_part_exchange(set); 
+        opp_profiler->end("Mv_F_ex");
+    }
+#endif
+
+    opp_profiler->start("Mv_F_fill");
+    if (set->particle_remove_count > 0)
+    {
+        set->size -= set->particle_remove_count;
+
+        if (OP_auto_sort == 1)
+        {
+            if (OP_DEBUG) 
+                opp_printf("oppic_finalize_particle_move", "auto sorting set [%s]", set->name);
+            oppic_particle_sort(set);
+        }
+        else
+        {
+            if (OP_DEBUG) 
+                opp_printf("oppic_finalize_particle_move", "Hole filling set [%s]", set->name);
+            // if (opp_params->get<OPP_STRING>("fill") == "r")
+                particle_sort_device(set, true); // Does only hole filling
+            // else
+            //     particle_hole_fill_device(set, true);
+        }
+    }
+    opp_profiler->end("Mv_F_fill");
+
+#ifdef USE_MPI
+    opp_profiler->start("Mv_F_check");
+    if (opp_part_check_all_done(set))
+    {
+        if (OPP_max_comm_iteration < OPP_comm_iteration)
+            OPP_max_comm_iteration = OPP_comm_iteration;
+
+        OPP_comm_iteration = 0; // reset for the next par loop
+        
+        cutilSafeCall(hipDeviceSynchronize());
+        opp_profiler->end("Mv_Finalize");
+        opp_profiler->end("Mv_F_check");
+        return false; // all mpi ranks do not have anything to communicate to any rank
+    }
+    opp_profiler->end("Mv_F_check");
+
+    opp_profiler->start("Mv_F_wait");
+    opp_part_wait_all(set); // wait till all the particles are communicated
+    opp_profiler->end("Mv_F_wait");
+
+    if (OP_DEBUG)
+        opp_printf("opp_finalize_particle_move", "set [%s] size prior unpack %d", set->name, set->size);
+    
+    cutilSafeCall(hipDeviceSynchronize());
+
+    // increase the particle count if required and unpack the communicated particles to separate dats
+    if (OP_gpu_direct)
+    {
+        opp_profiler->start("Mv_F_UnpackDir");
+        opp_part_unpack_device_direct(set);    
+        opp_profiler->end("Mv_F_UnpackDir");
+    }
+    else
+    {
+        opp_profiler->start("Mv_F_Unpack");
+        opp_part_unpack_device(set);    
+        opp_profiler->end("Mv_F_Unpack");
+    }
+
+    OPP_iter_start = set->size - set->diff;
+    OPP_iter_end   = set->size;  
+
+    OPP_comm_iteration++;  
+
+    opp_profiler->end("Mv_Finalize");
+
+    return true;
+#else
+    return false;
+#endif
+}

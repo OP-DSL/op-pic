@@ -37,10 +37,10 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #define MPI_TAG_PART_EX 1
 
 //*******************************************************************************
-void opp_part_pack_cuda(oppic_set set);
-void opp_part_unpack_cuda(oppic_set set);
-void particle_sort_cuda(oppic_set set, bool hole_filling);
-void particle_hole_fill_cuda(oppic_set set, bool hole_filling);
+void opp_part_pack_device(oppic_set set);
+void opp_part_unpack_device(oppic_set set);
+void particle_sort_device(oppic_set set, bool hole_filling);
+void particle_hole_fill_device(oppic_set set, bool hole_filling);
 std::vector<char> OPP_need_remove_flags;
 char *OPP_need_remove_flags_d = nullptr;
 int OPP_need_remove_flags_size = 0;
@@ -115,7 +115,7 @@ void opp_init_particle_move(oppic_set set, int nargs, oppic_arg *args)
 //*******************************************************************************
 // 1. keep track of whether atleast one need mpi comm [WRONG] I might not require to send to others, but some one might try to send to me 
 // 2. if yes, download dats from device and use opp_part_exchange (in this particle will get copied so we can override the space)
-// 3. do the below, oppic_particle_sort or particle_sort_cuda
+// 3. do the below, oppic_particle_sort or particle_sort_device
 // 4. check whether all mpi ranks are done and if yes, return false
 // 5. if no, wait for all to complete and copy only the received particles to the device buffer 
 //        (may need to write another path and to expand device array sizes)
@@ -145,7 +145,7 @@ void opp_init_particle_move(oppic_set set, int nargs, oppic_arg *args)
 //     if (OPP_comm_iteration == 0) opp_profiler->start("Mv_F_pack0");
 //     else if (OPP_comm_iteration == 1) opp_profiler->start("Mv_F_pack1");
 //     else opp_profiler->start("Mv_F_pack");
-//     opp_part_pack_cuda(set);
+//     opp_part_pack_device(set);
 //     if (OPP_comm_iteration == 0) opp_profiler->end("Mv_F_pack0");
 //     else if (OPP_comm_iteration == 1) opp_profiler->end("Mv_F_pack1");
 //     else opp_profiler->end("Mv_F_pack");
@@ -181,7 +181,7 @@ void opp_init_particle_move(oppic_set set, int nargs, oppic_arg *args)
 //         else
 //         {
 //             // if (opp_params->get<OPP_STRING>("fill") == "r")
-//                 particle_sort_cuda(set, true); // Does only hole filling
+//                 particle_sort_device(set, true); // Does only hole filling
 //             // else
 //             //     particle_hole_fill_cuda(set, true);
 //         }
@@ -219,7 +219,7 @@ void opp_init_particle_move(oppic_set set, int nargs, oppic_arg *args)
 //     // increase the particle count if required and unpack the communicated particle buffer 
 //     // in to separate particle dats
 //     opp_profiler->start("Mv_F_unpack");
-//     opp_part_unpack_cuda(set);    
+//     opp_part_unpack_device(set);    
 //     opp_profiler->end("Mv_F_unpack");
 
 //     OPP_iter_start = set->size - set->diff;
@@ -242,9 +242,9 @@ thrust::device_vector<double> temp_real_dv;
 // Cannot use multiple packs before sending them, if opp_part_pack() is called multiple times with PACK_SOA, 
 // the communication data may get currupted
 //*******************************************************************************
-void opp_part_pack_cuda(opp_set set)
+void opp_part_pack_device(opp_set set)
 {
-    if (OP_DEBUG) opp_printf("opp_part_pack_cuda", "start");
+    if (OP_DEBUG) opp_printf("opp_part_pack_device", "start");
 
 #ifdef USE_MPI
     opp_profiler->start("Mv_Pack");
@@ -274,7 +274,7 @@ void opp_part_pack_cuda(opp_set set)
     // std::string loggg = std::to_string(OPP_move_count_h) + " | ";
     // for (int k = 0; k < OPP_move_count_h; k++)
     //     loggg += std::to_string(OPP_thrust_move_indices_h[k]) + std::string(" ");
-    // opp_printf("opp_part_pack_cuda", "Part indices : %s", loggg.c_str());
+    // opp_printf("opp_part_pack_device", "Part indices : %s", loggg.c_str());
 
     // copy the cell indices of the particles to be sent
     // send_part_cell_idx_dv.reserve(OPP_move_count_h);
@@ -295,7 +295,7 @@ void opp_part_pack_cuda(opp_set set)
         auto it = set_part_com_data.find(map0idx);
         if (it == set_part_com_data.end())
         {
-            opp_printf("opp_part_pack_cuda", 
+            opp_printf("opp_part_pack_device", 
                 "Error: cell %d cannot be found in opp_part_comm_neighbour_data map [%d/%d]", 
                 map0idx, index, OPP_move_count_h);
             continue; // unlikely, need opp_abort() instead!
@@ -432,13 +432,13 @@ void opp_part_pack_cuda(opp_set set)
     opp_profiler->end("Mv_Pack");
 #endif
 
-    if (OP_DEBUG) opp_printf("opp_part_pack_cuda", "end");
+    if (OP_DEBUG) opp_printf("opp_part_pack_device", "end");
 }
 
 //*******************************************************************************
-void opp_part_unpack_cuda(oppic_set set)
+void opp_part_unpack_device(oppic_set set)
 {
-    if (OP_DEBUG) opp_printf("opp_part_unpack_cuda", "set [%s]", set->name);
+    if (OP_DEBUG) opp_printf("opp_part_unpack_device", "set [%s]", set->name);
 
 #ifdef USE_MPI
     opp_profiler->start("Mv_Unpack");
@@ -555,24 +555,11 @@ void opp_part_unpack_cuda(oppic_set set)
     opp_profiler->end("Mv_Unpack");
 #endif
 
-    if (OP_DEBUG) opp_printf("opp_part_unpack_cuda", "END");    
+    if (OP_DEBUG) opp_printf("opp_part_unpack_device", "END");    
 }
 
 //*******************************************************************************
 
-
-
-
-
-
-
-
-
-
-
-
-
-#define USE_MPI
 
 __global__ void copy_intX(const int* in_dat_d, int* out_dat_d, const int* indices,
                     const int in_stride, const int out_stride, const int dim, const int size) 
@@ -886,13 +873,13 @@ void opp_part_pack_and_exchange_cuda_direct(opp_set set)
     opp_profiler->end("Mv_PackExDir");
 #endif
 
-    if (OP_DEBUG) opp_printf("opp_part_pack_cuda_direct", "end");
+    if (OP_DEBUG) opp_printf("opp_part_pack_device_direct", "end");
 }
 
 
-void opp_part_unpack_cuda_direct(opp_set set)
+void opp_part_unpack_device_direct(opp_set set)
 {
-    if (OP_DEBUG) opp_printf("opp_part_unpack_cuda_direct", "set [%s] size %d", set->name, set->size);
+    if (OP_DEBUG) opp_printf("opp_part_unpack_device_direct", "set [%s] size %d", set->name, set->size);
 
 #ifdef USE_MPI
     opp_profiler->start("Mv_UnpackDir");
@@ -956,8 +943,8 @@ void opp_part_unpack_cuda_direct(opp_set set)
                 }
                 else
                 {
-                    opp_printf("", "Error: %s type unimplemented in opp_part_unpack_cuda_direct", dat->type);
-                    opp_abort("datatype not implemented in opp_part_unpack_cuda_direct");
+                    opp_printf("", "Error: %s type unimplemented in opp_part_unpack_device_direct", dat->type);
+                    opp_abort("datatype not implemented in opp_part_unpack_device_direct");
                 }
 
                 offset += dat_bytes;
@@ -970,7 +957,7 @@ void opp_part_unpack_cuda_direct(opp_set set)
     opp_profiler->end("Mv_UnpackDir");
 #endif
 
-    if (OP_DEBUG) opp_printf("opp_part_unpack_cuda_direct", "END");    
+    if (OP_DEBUG) opp_printf("opp_part_unpack_device_direct", "END");    
 }
 
 
@@ -1007,7 +994,7 @@ bool opp_finalize_particle_move(oppic_set set)
     {
         // download only the required particles to send and pack them in rank based mpi buffers
         opp_profiler->start("Mv_F_pack");
-        opp_part_pack_cuda(set);
+        opp_part_pack_device(set);
         opp_profiler->end("Mv_F_pack");
 
         // send the counts and send the particle data  
@@ -1033,9 +1020,9 @@ bool opp_finalize_particle_move(oppic_set set)
             if (OP_DEBUG) 
                 opp_printf("oppic_finalize_particle_move", "Hole filling set [%s]", set->name);
             // if (opp_params->get<OPP_STRING>("fill") == "r")
-                particle_sort_cuda(set, true); // Does only hole filling
+                particle_sort_device(set, true); // Does only hole filling
             // else
-            //     particle_hole_fill_cuda(set, true);
+            //     particle_hole_fill_device(set, true);
         }
     }
     opp_profiler->end("Mv_F_fill");
@@ -1069,13 +1056,13 @@ bool opp_finalize_particle_move(oppic_set set)
     if (OP_gpu_direct)
     {
         opp_profiler->start("Mv_F_UnpackDir");
-        opp_part_unpack_cuda_direct(set);    
+        opp_part_unpack_device_direct(set);    
         opp_profiler->end("Mv_F_UnpackDir");
     }
     else
     {
         opp_profiler->start("Mv_F_Unpack");
-        opp_part_unpack_cuda(set);    
+        opp_part_unpack_device(set);    
         opp_profiler->end("Mv_F_Unpack");
     }
 

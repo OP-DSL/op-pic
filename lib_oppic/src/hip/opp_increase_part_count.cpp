@@ -37,7 +37,7 @@ int* opp_saved_mesh_relation_d = nullptr;
 size_t opp_saved_mesh_relation_size = 0;
 
 //*************************************************************************************************
-__global__ void opp_hip_AssignMeshRelation(
+__global__ void opp_device_AssignMeshRelation(
     int *__restrict mesh_relation,
     const int *__restrict distribution,
     int start,
@@ -112,7 +112,7 @@ void opp_inc_part_count_with_distribution(opp_set particles_set,
                 int nthread = OPP_gpu_threads_per_block;
                 int nblocks = (end - start - 1) / nthread + 1;
 
-                opp_hip_AssignMeshRelation<<<nblocks, nthread>>>(
+                opp_device_AssignMeshRelation<<<nblocks, nthread>>>(
                     (int *) mesh_rel_dat->data_d,
                     (int *) iface_dist->data_d,
                     start, 
@@ -139,7 +139,7 @@ void opp_inc_part_count_with_distribution(opp_set particles_set,
                     int nthread = OPP_gpu_threads_per_block;
                     int nblocks = (end - start - 1) / nthread + 1;
 
-                    opp_hip_AssignMeshRelation<<<nblocks, nthread>>>(
+                    opp_device_AssignMeshRelation<<<nblocks, nthread>>>(
                         (int *) mesh_rel_dat->data_d,
                         (int *) iface_dist->data_d,
                         start, 

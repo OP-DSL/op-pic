@@ -75,26 +75,37 @@ void opp_init(int argc, char **argv)
     oppic_init_core(argc, argv);
     cutilDeviceInit(argc, argv);
 
+    // cutilSafeCall(hipDeviceSetCacheConfig(hipFuncCachePreferL1));
     cutilSafeCall(hipDeviceSetCacheConfig(hipFuncCachePreferShared));
     cutilSafeCall(hipDeviceSetSharedMemConfig(hipSharedMemBankSizeEightByte));
 
     OP_auto_soa = 1; // TODO : Make this configurable with args
-    //OP_auto_sort = 1;
 
-    int threads_per_block = opp_params->get<OPP_INT>("opp_threads_per_block");   
+    const int threads_per_block = opp_params->get<OPP_INT>("opp_threads_per_block");   
     if (threads_per_block > 0 && threads_per_block < INT_MAX)
         OPP_gpu_threads_per_block = threads_per_block;
 
+    const int gpu_direct = opp_params->get<OPP_INT>("opp_gpu_direct");   
+    if (gpu_direct > 0 && gpu_direct < INT_MAX)
+        OP_gpu_direct = gpu_direct;
+
     int deviceId = -1;
     hipGetDevice(&deviceId);
-    hipDeviceProp_t deviceProp;
-    cutilSafeCall(hipGetDeviceProperties(&deviceProp, deviceId));
+    hipDeviceProp_t prop;
+    cutilSafeCall(hipGetDeviceProperties(&prop, deviceId));
 
-    OPP_gpu_shared_mem_per_block = deviceProp.sharedMemPerBlock;
+    OPP_gpu_shared_mem_per_block = prop.sharedMemPerBlock;
+
+    char hostname[256];
+    if (gethostname(hostname, sizeof(hostname)) != 0) 
+    {
+        opp_printf("cutilDeviceInit", "Failed to get hostname of MPI rank %d", OPP_rank);
+        opp_abort();
+    }
 
     opp_printf("opp_init", 
-        "HIP device: %d %s OPP_gpu_threads_per_block=%d Shared memory per block=%lu bytes", 
-        deviceId, deviceProp.name, OPP_gpu_threads_per_block, deviceProp.sharedMemPerBlock);
+        "Device: %d [%s] on Host [%s] threads=%d Shared_Mem=%lubytes GPU_Direct=%d", deviceId, 
+        prop.name, hostname, OPP_gpu_threads_per_block, prop.sharedMemPerBlock, OP_gpu_direct);
 }
 
 //****************************************
@@ -165,8 +176,38 @@ void oppic_hip_exit()
     i_dv.clear();
     i_dv.shrink_to_fit();
 
-    OPP_thrust_move_indices_d.clear();
-    OPP_thrust_move_indices_d.shrink_to_fit();
+    send_part_cell_idx_dv.clear();
+    send_part_cell_idx_dv.shrink_to_fit();
+
+    temp_int_dv.clear();
+    temp_int_dv.shrink_to_fit();
+
+    temp_real_dv.clear();
+    temp_real_dv.shrink_to_fit();
+
+    OPP_thrust_move_particle_indices_d.clear();
+    OPP_thrust_move_particle_indices_d.shrink_to_fit();
+
+    OPP_thrust_move_cell_indices_d.clear();
+    OPP_thrust_move_cell_indices_d.shrink_to_fit();
+
+    for (auto it = particle_indices_hv.begin(); it != particle_indices_hv.end(); it++) it->second.clear();
+    for (auto it = cell_indices_hv.begin(); it != cell_indices_hv.end(); it++) it->second.clear();
+    for (auto it = particle_indices_dv.begin(); it != particle_indices_dv.end(); it++)
+    {
+        it->second.clear();
+        it->second.shrink_to_fit();
+    }
+    for (auto it = send_data.begin(); it != send_data.end(); it++)
+    {
+        it->second.clear();
+        it->second.shrink_to_fit();
+    }
+    for (auto it = recv_data.begin(); it != recv_data.end(); it++)
+    {
+        it->second.clear();
+        it->second.shrink_to_fit();
+    }
 
     if (OPP_need_remove_flags_d != nullptr)
     {
@@ -363,7 +404,7 @@ void oppic_increase_particle_count(oppic_set part_set, const int num_particles_t
         opp_profiler->start("opp_inc_part_count_UPL");
         for (oppic_dat& current_dat : *(part_set->particle_dats))
         {
-            if (OP_DEBUG) opp_printf("oppic_increase_particle_count", "hip resizing dat [%s] set_capacity [%d]", 
+            if (OP_DEBUG) opp_printf("oppic_increase_particle_count", "resizing dat [%s] set_capacity [%d]", 
                             current_dat->name, part_set->set_capacity);
 
             // TODO : We might be able to copy only the old data from device to device!
@@ -385,7 +426,7 @@ void oppic_increase_particle_count(oppic_set part_set, const int num_particles_t
 //****************************************
 void oppic_particle_sort(oppic_set set)
 { 
-    particle_sort_hip(set, false);
+    particle_sort_device(set, false);
 }
 
 //****************************************
@@ -447,8 +488,7 @@ void opp_reset_dat(oppic_dat dat, char* val, opp_reset reset)
     cutilSafeCall(hipDeviceSynchronize());
 
     dat->dirty_hd = Dirty::Host;
-    if (!dat->set->is_particle && (reset != OPP_Reset_All))
-        dat->dirtybit = 1;
+    dat->dirtybit = 1;
 }
 
 
@@ -621,7 +661,7 @@ void opp_upload_map(opp_map map, bool create_new)
     int *temp_map = (int *)opp_host_malloc(map->dim * set_size * sizeof(int));
 
     const int set_size_plus_exec = map->from->size + map->from->exec_size;
-
+    
     for (int i = 0; i < map->dim; i++) 
     {
         for (int j = 0; j < set_size; j++) 
@@ -771,9 +811,11 @@ void __hipSafeCall(hipError_t err, const char *file, const int line)
 {
     if (hipSuccess != err) 
     {
-        fprintf(stderr, "%s(%i) : cutilSafeCall() Runtime API error : %s.\n", file, line, 
-            hipGetErrorString(err));
-        opp_abort();
+        // fprintf(stderr, "%s(%i) : cutilSafeCall() Runtime API error : %s.\n", file, line, 
+        //     hipGetErrorString(err));
+        std::string log = std::string(file) + "(" + std::to_string(line);
+        log += std::string(") cutilSafeCall() Runtime API error : ") + hipGetErrorString(err);
+        opp_abort(log.c_str());
     }
 }
 
@@ -845,7 +887,7 @@ void oppic_create_device_arrays(oppic_dat dat, bool create_new)
     }
     else
     {
-        std::cerr << "oppic_create_device_arrays HIP not implemented for type: " << dat->type << " dat name: " << 
+        std::cerr << "oppic_create_device_arrays DEVICE not implemented for type: " << dat->type << " dat name: " << 
             dat->name << std::endl;
         opp_abort();
     }
@@ -864,14 +906,7 @@ void cutilDeviceInit(int argc, char **argv)
     cutilSafeCall(hipGetDeviceCount(&deviceCount));
     if (deviceCount == 0) 
     {
-        opp_printf("cutilDeviceInit", "cutil error: no devices supporting hip");
-        opp_abort();
-    }
-
-    char hostname[256];
-    if (gethostname(hostname, sizeof(hostname)) != 0) 
-    {
-        opp_printf("cutilDeviceInit", "Failed to get hostname of MPI rank %d", OPP_rank);
+        opp_printf("cutilDeviceInit", "cutil error: no devices supporting DEVICE");
         opp_abort();
     }
   
@@ -890,25 +925,14 @@ void cutilDeviceInit(int argc, char **argv)
             OP_hybrid_gpu = 0;
         }
         else {
-            hipFree(test);
+            cutilSafeCall(hipFree(test));
             OP_hybrid_gpu = 1;
         }
     }
 
-    if (OP_hybrid_gpu) 
+    if (OP_hybrid_gpu == 0) 
     {
-        // cutilSafeCall(hipDeviceSetCacheConfig(hipFuncCachePreferL1));
-
-        int deviceId = -1;
-        hipGetDevice(&deviceId);
-        hipDeviceProp_t deviceProp;
-        cutilSafeCall(hipGetDeviceProperties(&deviceProp, deviceId));
-        opp_printf("cutilDeviceInit", "Rank [%d] using hip device: %d %s on host %s", 
-            OPP_rank, deviceId, deviceProp.name, hostname);
-    } 
-    else 
-    {
-        opp_printf("cutilDeviceInit", "Error... Init hip Device Failed");
+        opp_printf("cutilDeviceInit", "Error... Init device Device Failed");
         opp_abort();
     }
 }
@@ -933,45 +957,19 @@ void opp_colour_cartesian_mesh(const int ndim, std::vector<int> cell_counts, opp
 //*******************************************************************************
 void* opp_host_malloc(size_t size)
 {
-    opp_profiler->start("opp_host_malloc");
-    void* pinnedHostMemory;
-
-    // hipError_t err = hipHostMalloc((void**)&pinnedHostMemory, size, hipHostMallocNumaUser);
-    // if (err != hipSuccess) {
-    //     opp_printf("Error", "opp_host_malloc failed to allocate size %zu", size);
-    //     std::cerr << "Error allocating pinned host memory: " << hipGetErrorString(err) << std::endl;
-    //     return nullptr;
-    // }
-
-    pinnedHostMemory = malloc(size);
-
-    opp_profiler->end("opp_host_malloc");
-    return pinnedHostMemory;
+    return malloc(size);
 }
 
 //*******************************************************************************
 void* opp_host_realloc(void* ptr, size_t new_size)
 {
-    opp_profiler->start("opp_host_realloc");
-    void* realloced_ptr = nullptr;
-    
-    // realloced_ptr = opp_host_malloc(new_size);
-    // memcpy(realloced_ptr, ptr, new_size);
-    // opp_host_free(ptr);
-
-    realloced_ptr = realloc(ptr, new_size);
-
-    opp_profiler->end("opp_host_realloc");
-    return realloced_ptr;
+    return realloc(ptr, new_size);
 }
 
 //*******************************************************************************
 void opp_host_free(void* ptr)
 {
-    opp_profiler->start("opp_host_free");
-    // hipHostFree(ptr);
     free(ptr);
-    opp_profiler->end("opp_host_free");
 }
 
 

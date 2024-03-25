@@ -404,7 +404,7 @@ void oppic_increase_particle_count(oppic_set part_set, const int num_particles_t
         opp_profiler->start("opp_inc_part_count_UPL");
         for (oppic_dat& current_dat : *(part_set->particle_dats))
         {
-            if (OP_DEBUG) opp_printf("oppic_increase_particle_count", "cuda resizing dat [%s] set_capacity [%d]", 
+            if (OP_DEBUG) opp_printf("oppic_increase_particle_count", "resizing dat [%s] set_capacity [%d]", 
                             current_dat->name, part_set->set_capacity);
 
             // TODO : We might be able to copy only the old data from device to device!
@@ -426,7 +426,7 @@ void oppic_increase_particle_count(oppic_set part_set, const int num_particles_t
 //****************************************
 void oppic_particle_sort(oppic_set set)
 { 
-    particle_sort_cuda(set, false);
+    particle_sort_device(set, false);
 }
 
 //****************************************
@@ -887,7 +887,7 @@ void oppic_create_device_arrays(oppic_dat dat, bool create_new)
     }
     else
     {
-        std::cerr << "oppic_create_device_arrays CUDA not implemented for type: " << dat->type << " dat name: " << 
+        std::cerr << "oppic_create_device_arrays DEVICE not implemented for type: " << dat->type << " dat name: " << 
             dat->name << std::endl;
         opp_abort();
     }
@@ -906,7 +906,7 @@ void cutilDeviceInit(int argc, char **argv)
     cutilSafeCall(cudaGetDeviceCount(&deviceCount));
     if (deviceCount == 0) 
     {
-        opp_printf("cutilDeviceInit", "cutil error: no devices supporting CUDA");
+        opp_printf("cutilDeviceInit", "cutil error: no devices supporting DEVICE");
         opp_abort();
     }
   
@@ -932,7 +932,7 @@ void cutilDeviceInit(int argc, char **argv)
 
     if (OP_hybrid_gpu == 0) 
     {
-        opp_printf("cutilDeviceInit", "Error... Init Cuda Device Failed");
+        opp_printf("cutilDeviceInit", "Error... Init device Device Failed");
         opp_abort();
     }
 }

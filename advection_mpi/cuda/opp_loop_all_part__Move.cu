@@ -124,7 +124,6 @@ __device__ bool opp_part_check_status_device(opp_move_var& m, int* map0idx, int 
         m.move_status = OPP_NEED_REMOVE; 
         atomicAdd(&remove_count, 1);
 
-        // printf("-------------Marking part %d with cid=%d to send\n", particle_index, *map0idx);
         return false;
     }
 

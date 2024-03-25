@@ -444,7 +444,7 @@ void __opp_mpi_device_halo_exchange(opp_arg *arg, int exec_flag)
 
     gather_data_to_buffer(*arg, exp_exec_list, exp_nonexec_list);
 // opp_printf("opp_mpi_halo_exchange_dev", "1");
-cutilSafeCall(cudaDeviceSynchronize());
+// cutilSafeCall(cudaDeviceSynchronize());
     char *outptr_exec = NULL;
     char *outptr_nonexec = NULL; // opp_printf("opp_mpi_halo_exchange_dev", "2");
     if (OP_gpu_direct) {

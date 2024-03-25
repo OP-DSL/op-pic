@@ -68,8 +68,8 @@ void gather_data_to_buffer(opp_arg arg, halo_list exp_exec_list,
                            halo_list exp_nonexec_list) 
 {
     const int threads = 192;
-    const int blocks = 1 + ((exp_exec_list->size - 1) / 192);
-    const int blocks2 = 1 + ((exp_nonexec_list->size - 1) / 192);
+    const int blocks = 1 + ((exp_exec_list->size - 1) / threads);
+    const int blocks2 = 1 + ((exp_nonexec_list->size - 1) / threads);
 
     if (strstr(arg.dat->type, ":soa") != NULL || (OP_auto_soa && arg.dat->dim > 1)) 
     {
@@ -86,6 +86,7 @@ void gather_data_to_buffer(opp_arg arg, halo_list exp_exec_list,
             exp_nonexec_list->size, arg.dat->size,
             arg.dat->buffer_d + exp_exec_list->size * arg.dat->size, set_size,
             arg.dat->dim);
+
     } 
     else 
     {
@@ -97,7 +98,10 @@ void gather_data_to_buffer(opp_arg arg, halo_list exp_exec_list,
             export_nonexec_list_d[arg.dat->set->index], arg.data_d,
             exp_nonexec_list->size, arg.dat->size,
             arg.dat->buffer_d + exp_exec_list->size * arg.dat->size);
+
     }
+
+    cutilSafeCall(hipDeviceSynchronize());
 }
 
 

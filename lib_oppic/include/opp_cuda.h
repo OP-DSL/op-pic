@@ -353,7 +353,7 @@ void copy_according_to_index(thrust::device_vector<T>* in_dat_dv, thrust::device
                         (out_dat_dv->begin() + out_offset + (3 * out_capacity)))));
             break;
         default:
-            std::cerr << "particle_sort_cuda not implemented for dim " << dimension << std::endl;
+            std::cerr << "copy_according_to_index not implemented for dim " << dimension << std::endl;
             exit(-1);
     }
 }

@@ -57,12 +57,12 @@ ifeq ($(PETSC), 1)
 	PETSC_INC  = -I$(PETSC_INSTALL_PATH)/include
 endif
 
-CUDA ?= 0
+CUDA ?= 1
 ifeq ($(CUDA), 1)
 	OPP_INC   = -I$(CUDA_INSTALL_PATH)/include
 endif
 
-HIP ?= 0
+HIP ?= 1
 ifeq ($(HIP), 1)
 	OPP_INC   += -I$(ROCM_INSTALL_DIR)/include -I$(ROCM_THRUST_DIR)/include -I$(ROCM_PRIM_DIR)/include
 endif

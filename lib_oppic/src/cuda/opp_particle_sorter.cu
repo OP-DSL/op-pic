@@ -94,7 +94,7 @@ thrust::device_vector<int> i_dv;
 
 //****************************************
 // This assumes all the device data to be valid
-void particle_sort_cuda(oppic_set set, bool hole_filling)
+void particle_sort_device(oppic_set set, bool hole_filling)
 { 
     int set_capacity = set->set_capacity;
     int set_size_plus_removed = set->size + set->particle_remove_count;
@@ -110,7 +110,7 @@ void particle_sort_cuda(oppic_set set, bool hole_filling)
     }
 
     if (OP_DEBUG) 
-        opp_printf("particle_sort_cuda", 
+        opp_printf("particle_sort_device", 
             "setSize[%d] setDiff[%d] setCap[%d] size+rem[%d] fill[%s] comIter[%d] startIdx[%d] sortSize[%d]", 
             set->size, set->diff, set_capacity, set_size_plus_removed, 
             (hole_filling ? "TRUE" : "FALSE"), OPP_comm_iteration, sort_start_index, sort_size);
@@ -170,7 +170,7 @@ void particle_sort_cuda(oppic_set set, bool hole_filling)
 
         if (!(strstr(dat->type, ":soa") != NULL || OP_auto_soa || (dat->dim > 1)))
         {
-            std::cerr << "particle_sort_cuda not implemented for non SOA data structures [dat " << 
+            std::cerr << "particle_sort_device not implemented for non SOA data structures [dat " << 
                 dat->name << "]" << std::endl;
         }
 
@@ -186,7 +186,7 @@ void particle_sort_cuda(oppic_set set, bool hole_filling)
         }
         else
         {
-            std::cerr << "particle_sort_cuda not implemented for type " << dat->type << " [dat " << 
+            std::cerr << "particle_sort_device not implemented for type " << dat->type << " [dat " << 
                 dat->name << "]" << std::endl;
         }
     }
@@ -202,20 +202,20 @@ void sort_dat_according_to_index_int(oppic_dat dat, const thrust::device_vector<
     // in to sorted_dat array and copy to the dat array 
     // else: arrange all and swap the array pointers of the dat
 
-    // NOTE: Both commented thrust routine and cuda_kernel function has approx same performance
-    copy_according_to_index<int>(dat->thrust_int, dat->thrust_int_sort, new_idx_dv, 
-            set_capacity, set_capacity, 0, out_start_idx, size, dat->dim);
-    // const int nblocks  = (size - 1) / 192 + 1;
-    // copy_int <<<nblocks, 192>>> (
-    //     (int*)thrust::raw_pointer_cast(dat->thrust_int->data()),
-    //     (int*)thrust::raw_pointer_cast(dat->thrust_int_sort->data()),
-    //     (int*)thrust::raw_pointer_cast(new_idx_dv.data()),
-    //     set_capacity,
-    //     set_capacity,
-    //     0,
-    //     out_start_idx,
-    //     dat->dim,
-    //     size);
+    // NOTE: Both commented thrust routine and device_kernel function has approx same performance
+    // copy_according_to_index<int>(dat->thrust_int, dat->thrust_int_sort, new_idx_dv, 
+    //         set_capacity, set_capacity, 0, out_start_idx, size, dat->dim);
+    const int nblocks  = (size - 1) / 192 + 1;
+    copy_int <<<nblocks, 192>>> (
+        (int*)thrust::raw_pointer_cast(dat->thrust_int->data()),
+        (int*)thrust::raw_pointer_cast(dat->thrust_int_sort->data()),
+        (int*)thrust::raw_pointer_cast(new_idx_dv.data()),
+        set_capacity,
+        set_capacity,
+        0,
+        out_start_idx,
+        dat->dim,
+        size);
 
     if (hole_filling && OPP_comm_iteration != 0) 
     {
@@ -245,20 +245,20 @@ void sort_dat_according_to_index_double(oppic_dat dat, const thrust::device_vect
     // in to sorted_dat array and copy to the dat array 
     // else: arrange all and swap the array pointers of the dat
     
-    // NOTE: Both commented thrust routine and cuda_kernel function has approx same performance
-    copy_according_to_index<double>(dat->thrust_real, dat->thrust_real_sort, new_idx_dv, 
-            set_capacity, set_capacity, 0, out_start_idx, size, dat->dim);
-    // const int nblocks  = (size - 1) / 192 + 1;
-    // copy_double <<<nblocks, 192>>> (
-    //     (double*)thrust::raw_pointer_cast(dat->thrust_real->data()),
-    //     (double*)thrust::raw_pointer_cast(dat->thrust_real_sort->data()),
-    //     (int*)thrust::raw_pointer_cast(new_idx_dv.data()),
-    //     set_capacity,
-    //     set_capacity,
-    //     0,
-    //     out_start_idx,
-    //     dat->dim,
-    //     size);
+    // NOTE: Both commented thrust routine and device_kernel function has approx same performance
+    // copy_according_to_index<double>(dat->thrust_real, dat->thrust_real_sort, new_idx_dv, 
+    //         set_capacity, set_capacity, 0, out_start_idx, size, dat->dim);
+    const int nblocks  = (size - 1) / 192 + 1;
+    copy_double <<<nblocks, 192>>> (
+        (double*)thrust::raw_pointer_cast(dat->thrust_real->data()),
+        (double*)thrust::raw_pointer_cast(dat->thrust_real_sort->data()),
+        (int*)thrust::raw_pointer_cast(new_idx_dv.data()),
+        set_capacity,
+        set_capacity,
+        0,
+        out_start_idx,
+        dat->dim,
+        size);
 
     if (hole_filling && OPP_comm_iteration != 0) 
     {
@@ -319,7 +319,7 @@ thrust::device_vector<int> to_indices_dv;
 
 //****************************************
 // This assumes all the device data to be valid
-void particle_hole_fill_cuda(oppic_set set, bool hole_filling)
+void particle_hole_fill_device(oppic_set set, bool hole_filling)
 { 
     int set_capacity = set->set_capacity;
     int set_size_plus_removed = set->size + set->particle_remove_count;
@@ -340,7 +340,7 @@ void particle_hole_fill_cuda(oppic_set set, bool hole_filling)
     opp_profiler->end("Z_CID");
 
     // if (OP_DEBUG) 
-        opp_printf("particle_hole_fill_cuda", 
+        opp_printf("particle_hole_fill_device", 
             "setSize[%d] setDiff[%d] setCap[%d] size+rem[%d] fill[%s] comIter[%d] startIdx[%d] sortSize[%d]", 
             set->size, set->diff, set_capacity, set_size_plus_removed, 
             (hole_filling ? "TRUE" : "FALSE"), OPP_comm_iteration, sort_start_index, sort_size);
@@ -387,7 +387,7 @@ void particle_hole_fill_cuda(oppic_set set, bool hole_filling)
                 (j >= (size_t)(set_size_plus_removed - removed_count - skip_count - 1))) 
             {
                 if (OP_DEBUG) 
-                    opp_printf("particle_hole_fill_cuda", 
+                    opp_printf("particle_hole_fill_device", 
                     "Current Iteration index [%d] and replacement index %d; hence breaking [%s]", 
                     j, (set_size_plus_removed - removed_count - skip_count - 1), set->name);
                 break;
@@ -403,7 +403,7 @@ void particle_hole_fill_cuda(oppic_set set, bool hole_filling)
     thrust::device_vector<int> from_indices_dv = from_indices_hv;
     const int nblocks  = ((int)(from_indices_hv.size()) - 1) / 192 + 1;
 
-// opp_printf("particle_hole_fill_cuda", "from_indices_hv size %zu", from_indices_hv.size());
+// opp_printf("particle_hole_fill_device", "from_indices_hv size %zu", from_indices_hv.size());
 
     opp_profiler->start("Z_DATS");
     // For all the dats, fill the holes using the swap_indices
@@ -411,7 +411,7 @@ void particle_hole_fill_cuda(oppic_set set, bool hole_filling)
     {
         if (!(strstr(dat->type, ":soa") != NULL || OP_auto_soa || (dat->dim > 1)))
         {
-            std::cerr << "particle_hole_fill_cuda not implemented for non SOA data structures [dat " << 
+            std::cerr << "particle_hole_fill_device not implemented for non SOA data structures [dat " << 
                 dat->name << "]" << std::endl;
         }
 
@@ -445,7 +445,7 @@ void particle_hole_fill_cuda(oppic_set set, bool hole_filling)
         }
         else
         {
-            std::cerr << "particle_hole_fill_cuda not implemented for type " << dat->type << " [dat " << 
+            std::cerr << "particle_hole_fill_device not implemented for type " << dat->type << " [dat " << 
                 dat->name << "]" << std::endl;
         }
     }
