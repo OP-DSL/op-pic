@@ -37,10 +37,10 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #define MPI_TAG_PART_EX 1
 
 //*******************************************************************************
-void opp_part_pack_device(oppic_set set);
-void opp_part_unpack_device(oppic_set set);
-void particle_sort_device(oppic_set set, bool hole_filling);
-void particle_hole_fill_device(oppic_set set, bool hole_filling);
+void opp_part_pack_device(opp_set set);
+void opp_part_unpack_device(opp_set set);
+void particle_sort_device(opp_set set, bool hole_filling);
+void particle_hole_fill_device(opp_set set);
 std::vector<char> OPP_need_remove_flags;
 char *OPP_need_remove_flags_d = nullptr;
 int OPP_need_remove_flags_size = 0;
@@ -51,6 +51,11 @@ int *OPP_move_particle_indices_d = nullptr;
 int *OPP_move_cell_indices_d = nullptr;
 int *OPP_move_count_d = nullptr;
 int OPP_move_count_h = 0;
+
+int *OPP_remove_particle_indices_d = nullptr;
+thrust::device_vector<int> OPP_thrust_remove_particle_indices_d;
+int *OPP_remove_count_d = nullptr;
+int OPP_remove_count_h = 0;
 
 // int OPP_move_indices_capacity = 0;
 
@@ -83,6 +88,12 @@ void opp_init_particle_move(oppic_set set, int nargs, oppic_arg *args)
 
         if (OPP_move_count_d == nullptr) {
             cutilSafeCall(cudaMalloc(&OPP_move_count_d, sizeof(int)));
+        }
+
+        OPP_thrust_remove_particle_indices_d.resize(set->size);
+        OPP_remove_particle_indices_d = (int*)thrust::raw_pointer_cast(OPP_thrust_remove_particle_indices_d.data());
+        if (OPP_remove_count_d == nullptr) {
+            cutilSafeCall(cudaMalloc(&OPP_remove_count_d, sizeof(int)));
         }
     }
 
@@ -1009,20 +1020,25 @@ bool opp_finalize_particle_move(oppic_set set)
     {
         set->size -= set->particle_remove_count;
 
-        if (OP_auto_sort == 1)
+        if (OPP_fill_type == OPP_HoleFill_All || 
+            (OPP_fill_type == OPP_Sort_Periodic || OPP_fill_type == OPP_Shuffle_Periodic) && (OPP_main_loop_iter % OPP_fill_period != 0))
         {
             if (OP_DEBUG) 
-                opp_printf("oppic_finalize_particle_move", "auto sorting set [%s]", set->name);
+                opp_printf("oppic_finalize_particle_move", "hole fill set [%s]", set->name);
+            particle_hole_fill_device(set);
+        }
+        else if (OPP_fill_type == OPP_Sort_All || OPP_fill_type == OPP_Sort_Periodic)
+        {
+            if (OP_DEBUG)
+                opp_printf("oppic_finalize_particle_move", "sort set [%s]", set->name);
             oppic_particle_sort(set);
         }
-        else
+        else if (OPP_fill_type == OPP_Shuffle_All || OPP_fill_type == OPP_Shuffle_Periodic)
         {
             if (OP_DEBUG) 
-                opp_printf("oppic_finalize_particle_move", "Hole filling set [%s]", set->name);
-            // if (opp_params->get<OPP_STRING>("fill") == "r")
-                particle_sort_device(set, true); // Does only hole filling
-            // else
-            //     particle_hole_fill_device(set, true);
+                opp_printf("oppic_finalize_particle_move", "shuffle set [%s]", set->name);
+            
+            particle_sort_device(set, true); // true will shuffle the particles
         }
     }
     opp_profiler->end("Mv_F_fill");

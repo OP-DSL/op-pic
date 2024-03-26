@@ -49,6 +49,8 @@ int OP_auto_soa                     = 0;
 int OP_gpu_direct                   = 0;
 double OP_part_alloc_mult           = 1;
 int OP_auto_sort                    = 1;
+int OPP_fill_period                 = 2;
+opp_fill_type OPP_fill_type         = OPP_HoleFill_All;
 int OPP_mpi_part_alloc_mult         = 1;
 int OPP_rank                        = 0;
 int OPP_comm_size                   = 1;
@@ -85,6 +87,25 @@ void oppic_init_core(int argc, char **argv)
     // these will be overidden by args
     OP_auto_sort = opp_params->get<OPP_BOOL>("opp_auto_sort");
     OP_part_alloc_mult = opp_params->get<OPP_REAL>("opp_allocation_multiple");
+
+    if (opp_params->get<OPP_STRING>("opp_fill") == "HoleFill_All")
+        OPP_fill_type = OPP_HoleFill_All;
+    else if (opp_params->get<OPP_STRING>("opp_fill") == "Sort_All")
+        OPP_fill_type = OPP_Sort_All;
+    else if (opp_params->get<OPP_STRING>("opp_fill") == "Shuffle_All")
+        OPP_fill_type = OPP_Shuffle_All;
+    else if (opp_params->get<OPP_STRING>("opp_fill") == "Sort_Periodic")
+    {
+        OPP_fill_type = OPP_Sort_Periodic;
+        if (opp_params->get<OPP_INT>("opp_fill_period") >= 0)
+            OPP_fill_period = opp_params->get<OPP_INT>("opp_fill_period");
+    }
+    else if (opp_params->get<OPP_STRING>("opp_fill") == "Shuffle_Periodic")
+    {
+        OPP_fill_type = OPP_Shuffle_Periodic;
+        if (opp_params->get<OPP_INT>("opp_fill_period") >= 0)
+            OPP_fill_period = opp_params->get<OPP_INT>("opp_fill_period");
+    }
 
     for (int n = 1; n < argc; n++) 
     {
@@ -553,6 +574,7 @@ bool oppic_increase_particle_count_core(oppic_set part_set, const int num_parts_
         if (dat->is_cell_index && (dat->data != nullptr))
         {
             int* mesh_rel_array = (int *)dat->data;
+            #pragma code_align 32
             for (size_t i = (size_t)part_set->size; i < new_part_set_capacity; i++)
                 mesh_rel_array[i] = MAX_CELL_INDEX;
         }
