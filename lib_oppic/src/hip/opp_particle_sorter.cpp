@@ -115,18 +115,18 @@ void particle_sort_device(oppic_set set, bool hole_filling)
             set->size, set->diff, set_capacity, set_size_plus_removed, 
             (hole_filling ? "TRUE" : "FALSE"), OPP_comm_iteration, sort_start_index, sort_size);
     
-    opp_profiler->start("XResize");
+    opp_profiler->start("ZS_Resize");
     cellIdx_dv.reserve(set->set_capacity);
     cellIdx_dv.resize(sort_size);
-    opp_profiler->end("XResize");
+    opp_profiler->end("ZS_Resize");
 
-    opp_profiler->start("XCopy");
+    opp_profiler->start("ZS_Copy");
     // copy the cell index to the thrust vector
     int* cellIdx_dp = (int*)set->mesh_relation_dat->data_d;
     thrust::copy(cellIdx_dp + sort_start_index, cellIdx_dp + set_size_plus_removed, cellIdx_dv.begin());
-    opp_profiler->end("XCopy");
+    opp_profiler->end("ZS_Copy");
 
-    opp_profiler->start("XHoleFill");
+    opp_profiler->start("ZS_HoleFill");
     if (hole_filling)
     {
         // in hole filling, randomize the cell indices to minimize shared memory issues
@@ -141,29 +141,29 @@ void particle_sort_device(oppic_set set, bool hole_filling)
         //     0                                            // New value to assign (zero in this case)
         // );
     }
-    opp_profiler->end("XHoleFill");
+    opp_profiler->end("ZS_HoleFill");
 
-    opp_profiler->start("XSequence");
+    opp_profiler->start("ZS_Sequence");
     i_dv.reserve(set->set_capacity);
     i_dv.resize(sort_size);
     thrust::sequence(i_dv.begin(), i_dv.end(), sort_start_index);
-    opp_profiler->end("XSequence");
+    opp_profiler->end("ZS_Sequence");
 
     // int dis = (int)thrust::distance(i_dv.begin(), i_dv.end());
     // int dis2 = (int)thrust::distance(cellIdx_dv.begin(), cellIdx_dv.end());
     // opp_printf("SORT", "set->size=%d set_size_plus_removed=%d | size %d capacity %d i_dv=%d cellIdx_dv=%d", set->size, set_size_plus_removed, sort_size, set->set_capacity, dis, dis2);
 
     // opp_profiler->start("XSortKey");
-    if (OPP_comm_iteration == 0) opp_profiler->start("XSortKey0");
-    else if (OPP_comm_iteration == 1) opp_profiler->start("XSortKey1");
-    else opp_profiler->start("XSortKey");
+    if (OPP_comm_iteration == 0) opp_profiler->start("ZS_SortKey0");
+    else if (OPP_comm_iteration == 1) opp_profiler->start("ZS_SortKey1");
+    else opp_profiler->start("ZS_SortKey");
     thrust::sort_by_key(cellIdx_dv.begin(), cellIdx_dv.end(), i_dv.begin());
     // opp_profiler->end("XSortKey");
-    if (OPP_comm_iteration == 0) opp_profiler->end("XSortKey0");
-    else if (OPP_comm_iteration == 1) opp_profiler->end("XSortKey1");
-    else opp_profiler->end("XSortKey");
+    if (OPP_comm_iteration == 0) opp_profiler->end("ZS_SortKey0");
+    else if (OPP_comm_iteration == 1) opp_profiler->end("ZS_SortKey1");
+    else opp_profiler->end("ZS_SortKey");
 
-    opp_profiler->start("XSortDats");
+    opp_profiler->start("ZS_Dats");
     for (int i = 0; i < (int)set->particle_dats->size(); i++)
     {    
         oppic_dat& dat = set->particle_dats->at(i);
@@ -190,7 +190,7 @@ void particle_sort_device(oppic_set set, bool hole_filling)
                 dat->name << "]" << std::endl;
         }
     }
-    opp_profiler->end("XSortDats");
+    opp_profiler->end("ZS_Dats");
 }
 
 //****************************************
@@ -312,100 +312,78 @@ __global__ void copy_doubleFromTo(const double* in_dat_d, double* out_dat_d, con
         }
     }
 }
+
+__global__ void matchToFrom(const int* cids, int* from_idx, int* from, const int size, const int max_remove_idx) 
+{
+    const int tid = blockIdx.x * blockDim.x + threadIdx.x;
+
+    if (tid < size) 
+    {
+        int tmp = 0;
+        while (cids[tmp] == MAX_CELL_INDEX && tmp > max_remove_idx) {
+            tmp = atomicAdd(from, -1);
+        }
+        from_idx[tid] = tmp;
+    }
+}
+
 //****************************************
 
 
-thrust::device_vector<int> to_indices_dv;
+thrust::device_vector<int> ps_to_indices_dv;
+thrust::device_vector<int> ps_from_indices_dv;
+thrust::device_vector<int> ps_sequence_dv;
 
 //****************************************
 // This assumes all the device data to be valid
-void particle_hole_fill_device(oppic_set set, bool hole_filling)
+void particle_hole_fill_device(opp_set set)
 { 
-    int set_capacity = set->set_capacity;
-    int set_size_plus_removed = set->size + set->particle_remove_count;
-    
+    const int set_capacity = set->set_capacity;
+    const int part_remove_count = set->particle_remove_count;
+    const int set_size_plus_removed = set->size + part_remove_count;
+    const int nblocks  = (part_remove_count - 1) / 192 + 1;
+
+    if (OP_DEBUG) opp_printf("particle_hole_fill_device", "remove_count=%d set_size+removed=%d set_capacity=%d", 
+        part_remove_count, set_size_plus_removed, set_capacity);
+
     int sort_start_index = 0;
     int sort_size = set_size_plus_removed;
 
-    // in the second iteration of Move, sort only the newly added particles
-    if (hole_filling && OPP_comm_iteration != 0) 
-    {
-        sort_start_index = set_size_plus_removed - set->diff;
-        sort_size = set->diff;
+    // TODO : Optimization... Adjust the sort size when OPP_comm_iteration != 0
+    // // in the second iteration of Move, sort only the newly added particles
+    // if (OPP_comm_iteration != 0) 
+    // {
+    //     sort_start_index = set_size_plus_removed - set->diff;
+    //     sort_size = set->diff;
+    // }
+
+    opp_profiler->start("ZF_SORT");
+    // sort OPP_thrust_remove_particle_indices_d since it can be shuffled
+    thrust::sort(thrust::device, OPP_thrust_remove_particle_indices_d.begin(), 
+                    OPP_thrust_remove_particle_indices_d.begin() + part_remove_count);
+    opp_profiler->end("ZF_SORT");
+
+    // resize ps_sequence_dv and ps_from_indices_dv if required
+    if (ps_sequence_dv.capacity() < sort_size) {
+        ps_sequence_dv.resize(set_capacity);
+        thrust::sequence(ps_sequence_dv.begin(), ps_sequence_dv.end(), 0);
+
+        ps_from_indices_dv.reserve(set_size_plus_removed);
     }
+    ps_from_indices_dv.resize(set_size_plus_removed);
 
-    // int *mesh_relation_data = (int *)set->mesh_relation_dat->data;
-    opp_profiler->start("Z_CID"); // This takes too much time
-    thrust::host_vector<int> mesh_relation_data = *(set->mesh_relation_dat->thrust_int);
-    opp_profiler->end("Z_CID");
+    // get the particle indices in reverse order whose cell index is not MAX_CELL_INDEX
+    opp_profiler->start("ZF_COPY_IF");
+    auto end_iter1 = thrust::copy_if(thrust::device, 
+        thrust::make_reverse_iterator(ps_sequence_dv.begin() + set_size_plus_removed), 
+        thrust::make_reverse_iterator(ps_sequence_dv.begin() + sort_start_index), 
+        thrust::make_reverse_iterator(set->mesh_relation_dat->thrust_int->begin() + set_size_plus_removed), 
+        ps_from_indices_dv.begin(),
+        [] __device__(int i) { return i != MAX_CELL_INDEX; });
+    ps_from_indices_dv.resize(part_remove_count);
+    opp_profiler->end("ZF_COPY_IF");
 
-    // if (OP_DEBUG) 
-        opp_printf("particle_hole_fill_device", 
-            "setSize[%d] setDiff[%d] setCap[%d] size+rem[%d] fill[%s] comIter[%d] startIdx[%d] sortSize[%d]", 
-            set->size, set->diff, set_capacity, set_size_plus_removed, 
-            (hole_filling ? "TRUE" : "FALSE"), OPP_comm_iteration, sort_start_index, sort_size);
-    
-    to_indices_dv.reserve(set_capacity);
-    to_indices_dv.resize(set_size_plus_removed);
-    
-    opp_profiler->start("Z_SEQ");
-    thrust::sequence(to_indices_dv.begin(), to_indices_dv.end());
-    opp_profiler->end("Z_SEQ");
-
-    opp_profiler->start("Z_CPYIF");
-    auto end_iter = thrust::copy_if(thrust::device, to_indices_dv.begin() + sort_start_index, to_indices_dv.end(), 
-        set->mesh_relation_dat->thrust_int->begin(), to_indices_dv.begin(), 
-        [] __device__(int i) { return i == MAX_CELL_INDEX; });
-    to_indices_dv.resize(thrust::distance(to_indices_dv.begin(), end_iter));
-    opp_profiler->end("Z_CPYIF");
-
-    opp_profiler->start("Z_SORT");
-    thrust::sort(to_indices_dv.begin(), to_indices_dv.end());
-    opp_profiler->end("Z_SORT");
-
-    thrust::host_vector<int> to_indices_hv = to_indices_dv;
-    thrust::host_vector<int> from_indices_hv;
-
-    // Idea: The last available element should be copied to the hole
-    // In the below scope we try to calculate the element to be swapped with the hole
-    {
-        int removed_count = 0;          // how many elements currently being removed
-        int skip_count = 0;             // how many elements from the back is skipped due to that element is also to be removed
-
-        opp_profiler->start("Z_ARRANGE"); // This takes too much time
-        for (size_t j = 0; j < to_indices_hv.size(); j++)
-        {
-            // handle if the element from the back is also to be removed
-            while ((set_size_plus_removed - removed_count - skip_count - 1 >= 0) && 
-                (mesh_relation_data[set_size_plus_removed - removed_count - skip_count - 1] == MAX_CELL_INDEX))
-            {
-                skip_count++;
-            }
-
-            // check whether the holes are at the back!
-            if ((set_size_plus_removed - removed_count - skip_count - 1 < 0) ||
-                (j >= (size_t)(set_size_plus_removed - removed_count - skip_count - 1))) 
-            {
-                if (OP_DEBUG) 
-                    opp_printf("particle_hole_fill_device", 
-                    "Current Iteration index [%d] and replacement index %d; hence breaking [%s]", 
-                    j, (set_size_plus_removed - removed_count - skip_count - 1), set->name);
-                break;
-            }
-
-            from_indices_hv.push_back(set_size_plus_removed - removed_count - skip_count - 1);
-
-            removed_count++;
-        }
-        opp_profiler->end("Z_ARRANGE");
-    }
-
-    thrust::device_vector<int> from_indices_dv = from_indices_hv;
-    const int nblocks  = ((int)(from_indices_hv.size()) - 1) / 192 + 1;
-
-// opp_printf("particle_hole_fill_device", "from_indices_hv size %zu", from_indices_hv.size());
-
-    opp_profiler->start("Z_DATS");
+    opp_profiler->start("ZF_Dats");
     // For all the dats, fill the holes using the swap_indices
     for (opp_dat& dat : *(set->particle_dats))
     {
@@ -420,28 +398,28 @@ void particle_hole_fill_device(oppic_set set, bool hole_filling)
             copy_intFromTo <<<nblocks, 192>>> (
                 (int*)thrust::raw_pointer_cast(dat->thrust_int->data()),
                 (int*)thrust::raw_pointer_cast(dat->thrust_int->data()),
-                (int*)thrust::raw_pointer_cast(from_indices_dv.data()),
-                (int*)thrust::raw_pointer_cast(to_indices_dv.data()),
+                (int*)thrust::raw_pointer_cast(ps_from_indices_dv.data()),
+                (int*)thrust::raw_pointer_cast(OPP_thrust_remove_particle_indices_d.data()),
                 set_capacity,
                 set_capacity,
                 0,
                 sort_start_index,
                 dat->dim,
-                (int)(from_indices_hv.size()));
+                part_remove_count);
         }
         else if (strcmp(dat->type, "double") == 0)
         {
             copy_doubleFromTo <<<nblocks, 192>>> (
                 (double*)thrust::raw_pointer_cast(dat->thrust_real->data()),
                 (double*)thrust::raw_pointer_cast(dat->thrust_real->data()),
-                (int*)thrust::raw_pointer_cast(from_indices_dv.data()),
-                (int*)thrust::raw_pointer_cast(to_indices_dv.data()),
+                (int*)thrust::raw_pointer_cast(ps_from_indices_dv.data()),
+                (int*)thrust::raw_pointer_cast(OPP_thrust_remove_particle_indices_d.data()),
                 set_capacity,
                 set_capacity,
                 0,
                 sort_start_index,
                 dat->dim,
-                (int)(from_indices_hv.size()));
+                part_remove_count);
         }
         else
         {
@@ -450,5 +428,5 @@ void particle_hole_fill_device(oppic_set set, bool hole_filling)
         }
     }
     cutilSafeCall(hipDeviceSynchronize());
-    opp_profiler->end("Z_DATS");
+    opp_profiler->end("ZF_Dats");
 }

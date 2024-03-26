@@ -191,6 +191,13 @@ void oppic_hip_exit()
     OPP_thrust_move_cell_indices_d.clear();
     OPP_thrust_move_cell_indices_d.shrink_to_fit();
 
+    OPP_thrust_remove_particle_indices_d.clear();
+    OPP_thrust_remove_particle_indices_d.shrink_to_fit();
+
+    ps_to_indices_dv.clear(); ps_to_indices_dv.shrink_to_fit(); 
+    ps_from_indices_dv.clear(); ps_from_indices_dv.shrink_to_fit(); 
+    ps_sequence_dv.clear(); ps_sequence_dv.shrink_to_fit(); 
+
     for (auto it = particle_indices_hv.begin(); it != particle_indices_hv.end(); it++) it->second.clear();
     for (auto it = cell_indices_hv.begin(); it != cell_indices_hv.end(); it++) it->second.clear();
     for (auto it = particle_indices_dv.begin(); it != particle_indices_dv.end(); it++)

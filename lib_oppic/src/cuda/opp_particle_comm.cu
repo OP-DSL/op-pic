@@ -1025,12 +1025,14 @@ bool opp_finalize_particle_move(oppic_set set)
         {
             if (OP_DEBUG) 
                 opp_printf("oppic_finalize_particle_move", "hole fill set [%s]", set->name);
+            
             particle_hole_fill_device(set);
         }
         else if (OPP_fill_type == OPP_Sort_All || OPP_fill_type == OPP_Sort_Periodic)
         {
             if (OP_DEBUG)
                 opp_printf("oppic_finalize_particle_move", "sort set [%s]", set->name);
+            
             oppic_particle_sort(set);
         }
         else if (OPP_fill_type == OPP_Shuffle_All || OPP_fill_type == OPP_Shuffle_Periodic)

@@ -100,7 +100,7 @@ __device__ void move_all_particles_to_cell__kernel(opp_move_var& m,
 //*******************************************************************************
 // Returns true only if another hop is required by the current rank
 __device__ bool opp_part_check_status_device(opp_move_var& m, int* map0idx, int particle_index, 
-        int& remove_count, int *move_particle_indices, int *move_cell_indices, int *move_count) 
+        int& remove_count, int *remove_particle_indices, int *move_particle_indices, int *move_cell_indices, int *move_count) 
 {
     m.iteration_one = false;
 
@@ -111,7 +111,8 @@ __device__ bool opp_part_check_status_device(opp_move_var& m, int* map0idx, int 
     else if (m.move_status == OPP_NEED_REMOVE)
     {
         *map0idx = MAX_CELL_INDEX;
-        atomicAdd(&remove_count, 1);
+        int removeArrayIndex = atomicAdd(&remove_count, 1);
+        remove_particle_indices[removeArrayIndex] = particle_index;
 
         return false;
     }
@@ -124,7 +125,8 @@ __device__ bool opp_part_check_status_device(opp_move_var& m, int* map0idx, int 
 
         // Needs to be removed from the current rank, bdw particle packing will be done just prior exchange and removal
         m.move_status = OPP_NEED_REMOVE; 
-        atomicAdd(&remove_count, 1);
+        int removeArrayIndex = atomicAdd(&remove_count, 1);
+        remove_particle_indices[removeArrayIndex] = particle_index;
 
         return false;
     }
@@ -142,6 +144,7 @@ __global__ void opp_device_all_Move(
     const OPP_REAL *__restrict ind_arg3,    // cell_pos_ll 
     const OPP_INT *__restrict ind_arg4,     // cell_cell_map
     int *__restrict particle_remove_count,
+    int *__restrict particle_remove_indices,
     int *__restrict move_particle_indices,
     int *__restrict move_cell_indices,
     int *__restrict move_count,
@@ -174,7 +177,7 @@ __global__ void opp_device_all_Move(
             );                
 
         } while (opp_part_check_status_device(m, cellIdx, n, 
-                *particle_remove_count, move_particle_indices, move_cell_indices, move_count));
+            *particle_remove_count, particle_remove_indices, move_particle_indices, move_cell_indices, move_count));
     }
 }
 
@@ -256,6 +259,7 @@ void opp_particle_mover__UpdatePosMove(
                     (const OPP_REAL*) args[3].data_d,         // cell_pos_ll 
                     (const OPP_INT*)  args[4].data_d,         // cell_cell_map
                     (int *)           set->particle_remove_count_d,
+                    (int *)           OPP_remove_particle_indices_d,
                     (int*)            OPP_move_particle_indices_d,
                     (int*)            OPP_move_cell_indices_d,
                     (int*)            OPP_move_count_d,
