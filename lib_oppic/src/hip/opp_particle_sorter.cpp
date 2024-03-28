@@ -115,24 +115,24 @@ void particle_sort_device(oppic_set set, bool hole_filling)
             set->size, set->diff, set_capacity, set_size_plus_removed, 
             (hole_filling ? "TRUE" : "FALSE"), OPP_comm_iteration, sort_start_index, sort_size);
     
-    opp_profiler->start("ZS_Resize");
+    opp_profiler->start("PSS_Resize");
     cellIdx_dv.reserve(set->set_capacity);
     cellIdx_dv.resize(sort_size);
-    opp_profiler->end("ZS_Resize");
+    opp_profiler->end("PSS_Resize");
 
-    opp_profiler->start("ZS_Copy");
+    opp_profiler->start("PSS_Copy");
     // copy the cell index to the thrust vector
     int* cellIdx_dp = (int*)set->mesh_relation_dat->data_d;
     thrust::copy(cellIdx_dp + sort_start_index, cellIdx_dp + set_size_plus_removed, cellIdx_dv.begin());
-    opp_profiler->end("ZS_Copy");
+    opp_profiler->end("PSS_Copy");
 
-    opp_profiler->start("ZS_HoleFill");
+    opp_profiler->start("PSS_HoleFill");
     if (hole_filling)
     {
         // in hole filling, randomize the cell indices to minimize shared memory issues
         // The below will create random numbers for each index, and MAX_CELL_INDEX for removed, 
         // ideally this should not be called cell_Idx_dv, better naming would be something like, random ordering
-        thrust::transform(cellIdx_dv.begin(), cellIdx_dv.end(), 
+        thrust::transform(thrust::device, cellIdx_dv.begin(), cellIdx_dv.end(), 
             cellIdx_dv.begin(), RandomFunctor(seed));
 
         // thrust::replace_if(
@@ -141,29 +141,25 @@ void particle_sort_device(oppic_set set, bool hole_filling)
         //     0                                            // New value to assign (zero in this case)
         // );
     }
-    opp_profiler->end("ZS_HoleFill");
+    opp_profiler->end("PSS_HoleFill");
 
-    opp_profiler->start("ZS_Sequence");
+    opp_profiler->start("PSS_Sequence");
     i_dv.reserve(set->set_capacity);
     i_dv.resize(sort_size);
-    thrust::sequence(i_dv.begin(), i_dv.end(), sort_start_index);
-    opp_profiler->end("ZS_Sequence");
+    thrust::sequence(thrust::device, i_dv.begin(), i_dv.end(), sort_start_index);
+    opp_profiler->end("PSS_Sequence");
 
     // int dis = (int)thrust::distance(i_dv.begin(), i_dv.end());
     // int dis2 = (int)thrust::distance(cellIdx_dv.begin(), cellIdx_dv.end());
     // opp_printf("SORT", "set->size=%d set_size_plus_removed=%d | size %d capacity %d i_dv=%d cellIdx_dv=%d", set->size, set_size_plus_removed, sort_size, set->set_capacity, dis, dis2);
 
-    // opp_profiler->start("XSortKey");
-    if (OPP_comm_iteration == 0) opp_profiler->start("ZS_SortKey0");
-    else if (OPP_comm_iteration == 1) opp_profiler->start("ZS_SortKey1");
-    else opp_profiler->start("ZS_SortKey");
-    thrust::sort_by_key(cellIdx_dv.begin(), cellIdx_dv.end(), i_dv.begin());
-    // opp_profiler->end("XSortKey");
-    if (OPP_comm_iteration == 0) opp_profiler->end("ZS_SortKey0");
-    else if (OPP_comm_iteration == 1) opp_profiler->end("ZS_SortKey1");
-    else opp_profiler->end("ZS_SortKey");
+    if (OPP_comm_iteration == 0) opp_profiler->start("PSS_SortKey0");
+    else opp_profiler->start("PSS_SortKey");
+    thrust::sort_by_key(thrust::device, cellIdx_dv.begin(), cellIdx_dv.end(), i_dv.begin());
+    if (OPP_comm_iteration == 0) opp_profiler->end("PSS_SortKey0");
+    else opp_profiler->end("PSS_SortKey");
 
-    opp_profiler->start("ZS_Dats");
+    opp_profiler->start("PSS_Dats");
     for (int i = 0; i < (int)set->particle_dats->size(); i++)
     {    
         oppic_dat& dat = set->particle_dats->at(i);
@@ -190,7 +186,7 @@ void particle_sort_device(oppic_set set, bool hole_filling)
                 dat->name << "]" << std::endl;
         }
     }
-    opp_profiler->end("ZS_Dats");
+    opp_profiler->end("PSS_Dats");
 }
 
 //****************************************
@@ -357,11 +353,11 @@ void particle_hole_fill_device(opp_set set)
     //     sort_size = set->diff;
     // }
 
-    opp_profiler->start("ZF_SORT");
+    opp_profiler->start("PHF_Sort");
     // sort OPP_thrust_remove_particle_indices_d since it can be shuffled
     thrust::sort(thrust::device, OPP_thrust_remove_particle_indices_d.begin(), 
                     OPP_thrust_remove_particle_indices_d.begin() + part_remove_count);
-    opp_profiler->end("ZF_SORT");
+    opp_profiler->end("PHF_Sort");
 
     // resize ps_sequence_dv and ps_from_indices_dv if required
     if (ps_sequence_dv.capacity() < sort_size) {
@@ -373,7 +369,7 @@ void particle_hole_fill_device(opp_set set)
     ps_from_indices_dv.resize(set_size_plus_removed);
 
     // get the particle indices in reverse order whose cell index is not MAX_CELL_INDEX
-    opp_profiler->start("ZF_COPY_IF");
+    opp_profiler->start("PHF_CopyIf");
     auto end_iter1 = thrust::copy_if(thrust::device, 
         thrust::make_reverse_iterator(ps_sequence_dv.begin() + set_size_plus_removed), 
         thrust::make_reverse_iterator(ps_sequence_dv.begin() + sort_start_index), 
@@ -381,9 +377,9 @@ void particle_hole_fill_device(opp_set set)
         ps_from_indices_dv.begin(),
         [] __device__(int i) { return i != MAX_CELL_INDEX; });
     ps_from_indices_dv.resize(part_remove_count);
-    opp_profiler->end("ZF_COPY_IF");
+    opp_profiler->end("PHF_CopyIf");
 
-    opp_profiler->start("ZF_Dats");
+    opp_profiler->start("PHF_Dats");
     // For all the dats, fill the holes using the swap_indices
     for (opp_dat& dat : *(set->particle_dats))
     {
@@ -427,6 +423,6 @@ void particle_hole_fill_device(opp_set set)
                 dat->name << "]" << std::endl;
         }
     }
-    cutilSafeCall(hipDeviceSynchronize());
-    opp_profiler->end("ZF_Dats");
+    // cutilSafeCall(hipDeviceSynchronize());
+    opp_profiler->end("PHF_Dats");
 }

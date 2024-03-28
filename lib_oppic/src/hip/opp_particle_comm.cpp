@@ -124,108 +124,6 @@ void opp_init_particle_move(oppic_set set, int nargs, oppic_arg *args)
     OPP_mesh_relation_data_d = ((int *)set->mesh_relation_dat->data_d); 
 }
 
-//*******************************************************************************
-// 1. keep track of whether atleast one need mpi comm [WRONG] I might not require to send to others, but some one might try to send to me 
-// 2. if yes, download dats from device and use opp_part_exchange (in this particle will get copied so we can override the space)
-// 3. do the below, oppic_particle_sort or particle_sort_device
-// 4. check whether all mpi ranks are done and if yes, return false
-// 5. if no, wait for all to complete and copy only the received particles to the device buffer 
-//        (may need to write another path and to expand device array sizes)
-// 6. set new start and ends and return true
-// bool opp_finalize_particle_move(oppic_set set)
-// { 
-//     opp_profiler->start("Mv_Finalize");
-
-//     cutilSafeCall(hipDeviceSynchronize());
-
-//     OPP_move_count_h = 0;
-//     cutilSafeCall(hipMemcpy(&OPP_move_count_h, OPP_move_count_d, sizeof(int), 
-//         hipMemcpyDeviceToHost));
-
-//     cutilSafeCall(hipMemcpy(&(set->particle_remove_count), set->particle_remove_count_d, 
-//                     sizeof(int), hipMemcpyDeviceToHost));
-
-//     if (OP_DEBUG) //  || OPP_comm_iteration != 0
-//         opp_printf("oppic_finalize_particle_move", "set [%s][%d] remove_count [%d] move count [%d]", 
-//             set->name, set->size, set->particle_remove_count, OPP_move_count_h);
-
-// #ifdef USE_MPI
-//     // At this stage, particles of device is clean
-
-//     // download only the required particles to send and pack them in rank based mpi buffers
-//     opp_profiler->start("Mv_F_pack");
-//     opp_part_pack_device(set);
-//     opp_profiler->end("Mv_F_pack");
-
-//     // send the counts and send the particles  
-//     opp_profiler->start("Mv_F_ex");   
-//     opp_part_exchange(set); 
-//     opp_profiler->end("Mv_F_ex");
-
-// #endif
-
-//     opp_profiler->start("Mv_F_fill");
-//     if (set->particle_remove_count > 0)
-//     {
-//         set->size -= set->particle_remove_count;
-
-//         if (OP_auto_sort == 1)
-//         {
-//             if (OP_DEBUG) 
-//                 opp_printf("oppic_finalize_particle_move", "auto sorting particle set [%s]", 
-//                 set->name);
-//             oppic_particle_sort(set);
-//         }
-//         else
-//         {
-//             particle_sort_device(set, true); // Does only hole filling
-//         }
-//     }
-//     opp_profiler->end("Mv_F_fill");
-
-// #ifdef USE_MPI
-//     opp_profiler->start("Mv_F_check");
-//     if (opp_part_check_all_done(set))
-//     {
-//         if (OPP_max_comm_iteration < OPP_comm_iteration)
-//             OPP_max_comm_iteration = OPP_comm_iteration;
-
-//         OPP_comm_iteration = 0; // reset for the next par loop
-        
-//         opp_profiler->end("Mv_Finalize");
-//         opp_profiler->end("Mv_F_check");
-//         return false; // all mpi ranks do not have anything to communicate to any rank
-//     }
-//     opp_profiler->end("Mv_F_check");
-
-//     opp_profiler->start("Mv_F_wait");
-//     opp_part_wait_all(set); // wait till all the particles are communicated
-//     opp_profiler->end("Mv_F_wait");
-
-//     if (OP_DEBUG)
-//         opp_printf("opp_finalize_particle_move", "set [%s] size prior unpack %d", set->name, set->size);
-    
-//     cutilSafeCall(hipDeviceSynchronize());
-
-//     // increase the particle count if required and unpack the communicated particle buffer 
-//     // in to separate particle dats
-//     opp_profiler->start("Mv_F_unpack");
-//     opp_part_unpack_device(set);    
-//     opp_profiler->end("Mv_F_unpack");
-
-//     OPP_iter_start = set->size - set->diff;
-//     OPP_iter_end   = set->size;  
-
-//     OPP_comm_iteration++;  
-
-//     opp_profiler->end("Mv_Finalize");
-
-//     return true;
-// #else
-//     return false;
-// #endif
-// }
-
 thrust::device_vector<int> send_part_cell_idx_dv;
 thrust::device_vector<int> temp_int_dv;
 thrust::device_vector<double> temp_real_dv;
@@ -240,22 +138,13 @@ void opp_part_pack_device(opp_set set)
 #ifdef USE_MPI
     opp_profiler->start("Mv_Pack");
 
-    // auto findIfPredicate = [](char value) { return value == 1; };
-    // auto findIfBegin = std::find_if(OPP_need_remove_flags.begin(), OPP_need_remove_flags.end(), findIfPredicate);
-    // auto findIfEnd = OPP_need_remove_flags.end();
-    // while (findIfBegin != findIfEnd) 
-    // {
-    //     send_indices_hv.push_back(std::distance(OPP_need_remove_flags.begin(), findIfBegin));
-    //     findIfBegin = std::find_if(std::next(findIfBegin), findIfEnd, findIfPredicate);
-    // }
-
     if (OPP_move_count_h <= 0) 
     {
         opp_profiler->end("Mv_Pack");
         return;
     }
 
-    // Since hip kernel threads are not synced, there could be a random order
+    // Since hip kernel threads are not synced, OPP_thrust_move_particle_indices_d can be in random order
     // thrust::sort(OPP_thrust_move_particle_indices_d.begin(), 
     //     OPP_thrust_move_particle_indices_d.begin() + OPP_move_count_h);
 
@@ -741,10 +630,10 @@ void opp_part_pack_and_exchange_hip_direct(opp_set set)
         const int nblocks = (particle_count - 1) / threads + 1;
         int64_t offset = 0;
 
-// thrust::host_vector<int> h_vec = particle_indices_dv[send_rank];
-// std::string log = "";
-// for (int i = 0; i < h_vec.size(); ++i) log += std::to_string(h_vec[i]) + " ";
-// opp_printf("TO_SEND", "%s", log.c_str());
+        // thrust::host_vector<int> h_vec = particle_indices_dv[send_rank];
+        // std::string log = "";
+        // for (int i = 0; i < h_vec.size(); ++i) log += std::to_string(h_vec[i]) + " ";
+        // opp_printf("TO_SEND", "%s", log.c_str());
 
         cutilSafeCall(hipStreamSynchronize(streams[send_rank]));
 
@@ -801,13 +690,13 @@ void opp_part_pack_and_exchange_hip_direct(opp_set set)
         const int64_t send_count = mpi_buffers->export_counts[send_rank];
 
         if (send_count <= 0) {
-            if (OP_DEBUG) opp_printf("opp_part_exchange", "nothing to send to rank %d", send_rank);
+            if (OP_DEBUG) opp_printf("opp_part_pack_and_exchange_hip_direct", "nothing to send to rank %d", send_rank);
             continue;
         }
         else {   
             char* send_buff = (char*)thrust::raw_pointer_cast(send_data[send_rank].data());
             if (OP_DEBUG) 
-                opp_printf("opp_part_exchange", "sending %lld particle/s (size: %lld) to rank %d | %p", 
+                opp_printf("opp_part_pack_and_exchange_hip_direct", "sending %lld particle/s (size: %lld) to rank %d | %p", 
                 send_count, (int64_t)(send_count*set->particle_size), send_rank, send_buff);
         }
 
@@ -836,7 +725,7 @@ void opp_part_pack_and_exchange_hip_direct(opp_set set)
         if (recv_bytes <= 0)
         {
             if (OP_DEBUG) 
-                opp_printf("opp_part_exchange", "nothing to receive from rank %d", recv_rank);
+                opp_printf("opp_part_pack_and_exchange_hip_direct", "nothing to receive from rank %d", recv_rank);
             continue;
         }
 
@@ -907,7 +796,8 @@ void opp_part_unpack_device_direct(opp_set set)
             const int nblocks = (recv_count - 1) / threads + 1;
             int64_t offset = 0;
 
-// opp_printf("UNPACK", "recv count %d || to dat starting from %lld", recv_count, particle_start[i]);
+            // opp_printf("opp_part_unpack_device_direct", "recv count %d || to dat starting from %lld", 
+            //     recv_count, particle_start[i]);
 
             for (auto& dat : *(set->particle_dats)) 
             {
@@ -974,34 +864,28 @@ bool opp_finalize_particle_move(oppic_set set)
 
 #ifdef USE_MPI
     // At this stage, particles of device is clean
-// opp_printf("oppic_finalize_particle_move", "GPU DIRECT IS FALSE FOR PARTICLE MOVE FOR DEBUGGING");
     if (OP_gpu_direct)
     {
-        opp_profiler->start("Mv_F_SendDir");
         opp_part_pack_and_exchange_hip_direct(set);
-        opp_profiler->end("Mv_F_SendDir");
     }
     else
     {
         // download only the required particles to send and pack them in rank based mpi buffers
-        opp_profiler->start("Mv_F_pack");
         opp_part_pack_device(set);
-        opp_profiler->end("Mv_F_pack");
 
         // send the counts and send the particle data  
-        opp_profiler->start("Mv_F_ex");    
         opp_part_exchange(set); 
-        opp_profiler->end("Mv_F_ex");
     }
 #endif
 
-    opp_profiler->start("Mv_F_fill");
+    opp_profiler->start("Mv_fill");
     if (set->particle_remove_count > 0)
     {
         set->size -= set->particle_remove_count;
 
         if (OPP_fill_type == OPP_HoleFill_All || 
-            (OPP_fill_type == OPP_Sort_Periodic || OPP_fill_type == OPP_Shuffle_Periodic) && (OPP_main_loop_iter % OPP_fill_period != 0))
+            (OPP_fill_type == OPP_Sort_Periodic || OPP_fill_type == OPP_Shuffle_Periodic) && 
+                (OPP_main_loop_iter % OPP_fill_period != 0 || OPP_comm_iteration != 0))
         {
             if (OP_DEBUG) 
                 opp_printf("oppic_finalize_particle_move", "hole fill set [%s]", set->name);
@@ -1023,10 +907,9 @@ bool opp_finalize_particle_move(oppic_set set)
             particle_sort_device(set, true); // true will shuffle the particles
         }
     }
-    opp_profiler->end("Mv_F_fill");
+    opp_profiler->end("Mv_fill");
 
 #ifdef USE_MPI
-    opp_profiler->start("Mv_F_check");
     if (opp_part_check_all_done(set))
     {
         if (OPP_max_comm_iteration < OPP_comm_iteration)
@@ -1036,14 +919,10 @@ bool opp_finalize_particle_move(oppic_set set)
         
         cutilSafeCall(hipDeviceSynchronize());
         opp_profiler->end("Mv_Finalize");
-        opp_profiler->end("Mv_F_check");
         return false; // all mpi ranks do not have anything to communicate to any rank
     }
-    opp_profiler->end("Mv_F_check");
 
-    opp_profiler->start("Mv_F_wait");
     opp_part_wait_all(set); // wait till all the particles are communicated
-    opp_profiler->end("Mv_F_wait");
 
     if (OP_DEBUG)
         opp_printf("opp_finalize_particle_move", "set [%s] size prior unpack %d", set->name, set->size);
@@ -1053,15 +932,11 @@ bool opp_finalize_particle_move(oppic_set set)
     // increase the particle count if required and unpack the communicated particles to separate dats
     if (OP_gpu_direct)
     {
-        opp_profiler->start("Mv_F_UnpackDir");
-        opp_part_unpack_device_direct(set);    
-        opp_profiler->end("Mv_F_UnpackDir");
+        opp_part_unpack_device_direct(set);  
     }
     else
     {
-        opp_profiler->start("Mv_F_Unpack");
         opp_part_unpack_device(set);    
-        opp_profiler->end("Mv_F_Unpack");
     }
 
     OPP_iter_start = set->size - set->diff;

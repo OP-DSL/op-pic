@@ -106,6 +106,28 @@ void opp_init(int argc, char **argv)
     opp_printf("opp_init", 
         "Device: %d [%s] on Host [%s] threads=%d Shared_Mem=%lubytes GPU_Direct=%d", deviceId, 
         prop.name, hostname, OPP_gpu_threads_per_block, prop.sharedMemPerBlock, OP_gpu_direct);
+
+    opp_profiler->reg("PSS_Resize");
+    opp_profiler->reg("PSS_Copy");
+    opp_profiler->reg("PSS_HoleFill");
+    opp_profiler->reg("PSS_Sequence");
+    opp_profiler->reg("PSS_SortKey0");
+    opp_profiler->reg("PSS_SortKey");
+    opp_profiler->reg("PSS_Dats");
+    opp_profiler->reg("PHF_Sort");
+    opp_profiler->reg("PHF_CopyIf");
+    opp_profiler->reg("PHF_Dats");
+
+    opp_profiler->reg("Inc_part_count");
+    opp_profiler->reg("Inc_part_count_DWN");
+    opp_profiler->reg("Inc_part_count_INC");
+    opp_profiler->reg("Inc_part_count_UPL");
+    opp_profiler->reg("Mv_Pack");
+    opp_profiler->reg("Mv_Unpack");
+    opp_profiler->reg("Mv_PackExDir");
+    opp_profiler->reg("Mv_UnpackDir");
+    opp_profiler->reg("Mv_Finalize"); 
+    opp_profiler->reg("Mv_fill");
 }
 
 //****************************************
@@ -382,7 +404,7 @@ oppic_dat oppic_decl_particle_dat_txt(oppic_set set, int dim, opp_data_type dtyp
 //****************************************
 void oppic_increase_particle_count(oppic_set part_set, const int num_particles_to_insert)
 { 
-    opp_profiler->start("opp_inc_part_count");
+    opp_profiler->start("Inc_part_count");
 
     bool need_resizing = (part_set->set_capacity < (part_set->size + num_particles_to_insert)) ? true : false;
 
@@ -393,22 +415,22 @@ void oppic_increase_particle_count(oppic_set part_set, const int num_particles_t
 
     if (need_resizing) 
     {
-        opp_profiler->start("opp_inc_part_count_DWN");
+        opp_profiler->start("Inc_part_count_DWN");
         opp_download_particle_set(part_set, true); 
-        opp_profiler->end("opp_inc_part_count_DWN");
+        opp_profiler->end("Inc_part_count_DWN");
     }
 
-    opp_profiler->start("opp_inc_part_count_INC");
+    opp_profiler->start("Inc_part_count_INC");
     if (!oppic_increase_particle_count_core(part_set, num_particles_to_insert))
     {
         opp_printf("oppic_increase_particle_count", "Error at oppic_increase_particle_count_core");
         opp_abort();
     }
-    opp_profiler->end("opp_inc_part_count_INC");
+    opp_profiler->end("Inc_part_count_INC");
 
     if (need_resizing)
     {
-        opp_profiler->start("opp_inc_part_count_UPL");
+        opp_profiler->start("Inc_part_count_UPL");
         for (oppic_dat& current_dat : *(part_set->particle_dats))
         {
             if (OP_DEBUG) opp_printf("oppic_increase_particle_count", "resizing dat [%s] set_capacity [%d]", 
@@ -422,10 +444,10 @@ void oppic_increase_particle_count(oppic_set part_set, const int num_particles_t
 
             current_dat->dirty_hd = Dirty::NotDirty;
         }   
-        opp_profiler->end("opp_inc_part_count_UPL");     
+        opp_profiler->end("Inc_part_count_UPL");     
     } 
 
-    opp_profiler->end("opp_inc_part_count");
+    opp_profiler->end("Inc_part_count");
 }
 
 // opp_inc_part_count_with_distribution() is in opp_increase_part_count.cu
