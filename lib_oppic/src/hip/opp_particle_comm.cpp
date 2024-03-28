@@ -313,8 +313,8 @@ void opp_part_pack_device(opp_set set)
                 copy_according_to_index(dat->thrust_real, &temp_real_dv, OPP_thrust_move_particle_indices_d, 
                     dat->set->set_capacity, OPP_move_count_h, OPP_move_count_h, dat->dim);
                 
-                hipMemcpy(move_dat_data.data(), thrust::raw_pointer_cast(&temp_real_dv[0]), 
-                    bytes_to_copy, hipMemcpyDeviceToHost);
+                cutilSafeCall(hipMemcpy(move_dat_data.data(), thrust::raw_pointer_cast(&temp_real_dv[0]), 
+                    bytes_to_copy, hipMemcpyDeviceToHost));
             }
             else if (strcmp(dat->type, "int") == 0)
             {
@@ -323,8 +323,8 @@ void opp_part_pack_device(opp_set set)
                 copy_according_to_index(dat->thrust_int, &temp_int_dv, OPP_thrust_move_particle_indices_d, 
                     dat->set->set_capacity, OPP_move_count_h, OPP_move_count_h, dat->dim);
                 
-                hipMemcpy(move_dat_data.data(), thrust::raw_pointer_cast(&temp_int_dv[0]), 
-                    bytes_to_copy, hipMemcpyDeviceToHost);
+                cutilSafeCall(hipMemcpy(move_dat_data.data(), thrust::raw_pointer_cast(&temp_int_dv[0]), 
+                    bytes_to_copy, hipMemcpyDeviceToHost));
             }
         }      
     }

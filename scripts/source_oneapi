@@ -54,6 +54,7 @@ elif [ "$(hostname)" == 'amos' ]; then
   export PATH=$ROCM_INSTALL_DIR/bin:$PATH
   export ROCM_THRUST_DIR=/ext-home/zl/lib_install/rocThrust_rel
   export ROCM_PRIM_DIR=/ext-home/zl/lib_install/rocPrim_rel
+  export HIP_COMPILER=hipcc
 elif [ "$(hostname)" == 'demos' ]; then
   echo AMD $(hostname)
   module purge

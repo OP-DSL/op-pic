@@ -8,11 +8,11 @@ BIN = bin
 CPP        = mpicxx
 MPICPP	   = mpicxx
 NVCC       = nvcc
-HIPCC      = hipcc
+HIPCC      = $(HIP_COMPILER)
 
 CPPFLAGS   = -std=c++17 -Wall -fPIC -march=native
 NVCCFLAGS  = -std=c++14 -m64 -Xptxas -dlcm=ca -Xptxas=-v $(NVCCFLAGS_ADD)
-HIPCCFLAGS = -std=c++17 -Wall -isystem -D__HIP_PLATFORM_AMD__ -munsafe-fp-atomics 
+HIPCCFLAGS = $(HIPCCFLAGS_ADD) -std=c++17 -Wall -isystem -D__HIP_PLATFORM_AMD__ -munsafe-fp-atomics 
 
 DEBUG ?= 0
 ifeq ($(DEBUG), 1)
@@ -112,18 +112,18 @@ cuda_mpi: mklib
 hip: mklib
 		 $(HIPCC) $(HIPCCFLAGS) -c hip/hipkernels.cpp -o $(OBJ)/hipkernels.o $(ALL_INC) $(HIP_INC)
 	     $(HIPCC) $(HIPCCFLAGS) -c cabana_op.cpp -o $(OBJ)/cabana_op_hip.o $(ALL_INC)
-	     $(HIPCC) $(HIPCCFLAGS) -o $(BIN)/hip \
+	     $(HIPCC) -o $(BIN)/hip \
 			$(OBJ)/cabana_op_hip.o \
 			$(OBJ)/hipkernels.o \
-			$(ALL_INC) $(HIP_INC) $(ALL_LIBS) $(HIP_LIB) -lopp_hip
+			$(ALL_LIBS) $(HIP_LIB) -lopp_hip
 
 hip_mpi: mklib
 		 $(HIPCC) $(HIPCCFLAGS) -DUSE_MPI -c hip/hipkernels.cpp -o $(OBJ)/hipkernels_mpi.o $(ALL_INC) $(HIP_INC)
 	     $(HIPCC) $(HIPCCFLAGS) -DUSE_MPI -c cabana_op.cpp -o $(OBJ)/cabana_op_hip_mpi.o $(ALL_INC)
-	     $(HIPCC) $(HIPCCFLAGS) -DUSE_MPI -o $(BIN)/hip_mpi \
+	     $(HIPCC) -DUSE_MPI -o $(BIN)/hip_mpi \
 			$(OBJ)/cabana_op_hip_mpi.o \
 			$(OBJ)/hipkernels_mpi.o \
-			$(ALL_INC) $(HIP_INC) $(ALL_LIBS) $(HIP_LIB) -lopp_hip_mpi -lmpi
+			$(ALL_LIBS) $(HIP_LIB) -lopp_hip_mpi -lmpi
 
 clean: 
 	     rm -f *.o *.d *.a

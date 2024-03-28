@@ -17,11 +17,11 @@ OBJ = obj
 CPP        = mpicxx
 MPICPP	   = mpicxx
 NVCC       = nvcc
-HIPCC      = hipcc
+HIPCC      = $(HIP_COMPILER)
 # -qopt-zmm-usage=high
 CPPFLAGS   = -std=c++14 -Wall -fPIC -march=native 
 NVCCFLAGS  = -std=c++14 --extended-lambda -m64 -Xptxas -dlcm=ca -Xptxas=-v $(NVCCFLAGS_ADD)
-HIPCCFLAGS = -std=c++17 -isystem -D__HIP_PLATFORM_AMD__ $(NVCCFLAGS_ADD)
+HIPCCFLAGS = $(HIPCCFLAGS_ADD) -std=c++17 -isystem -D__HIP_PLATFORM_AMD__ -munsafe-fp-atomics
 
 DEBUG ?= 0
 ifeq ($(DEBUG), 1)

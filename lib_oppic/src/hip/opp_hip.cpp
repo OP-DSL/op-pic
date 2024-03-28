@@ -90,7 +90,7 @@ void opp_init(int argc, char **argv)
         OP_gpu_direct = gpu_direct;
 
     int deviceId = -1;
-    hipGetDevice(&deviceId);
+    cutilSafeCall(hipGetDevice(&deviceId));
     hipDeviceProp_t prop;
     cutilSafeCall(hipGetDeviceProperties(&prop, deviceId));
 
