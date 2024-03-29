@@ -229,7 +229,7 @@ hip_mpi_hdf5: mklib
 		 $(HIPCC) $(HIPCCFLAGS) -DUSE_MPI -c fempic_op_hdf5.cpp -o $(OBJ)/fempic_op_hdf5.o $(ALL_INC) $(HIP_INC)
 		 $(HIPCC) $(HIPCCFLAGS) -DUSE_MPI -c opp_mpi_hdf5.cpp -o $(OBJ)/opp_mpi_hdf5.o $(ALL_INC) $(HIP_INC)
 		 $(HIPCC) $(HIPCCFLAGS) -DUSE_MPI -c hip/hipkernels.cpp -o $(OBJ)/hipkernels_mpi.o $(ALL_INC) $(HIP_INC)
-	     $(HIPCC) $(HIPCCFLAGS) -DUSE_MPI -o $(BIN)/hip_mpi_hdf5 \
+	     $(HIPCC) -DUSE_MPI -o $(BIN)/hip_mpi_hdf5 \
 		 	$(OBJ)/fempic_op_hdf5.o \
 			$(OBJ)/opp_mpi_hdf5.o \
 			$(OBJ)/meshes_hip_mpi.o \
@@ -237,7 +237,7 @@ hip_mpi_hdf5: mklib
 			$(OBJ)/maths_hip_mpi.o \
 			$(OBJ)/hipkernels_mpi.o \
 			$(OBJ)/FESolver_hip.o \
-			$(ALL_INC) $(HIP_INC) $(ALL_LIBS) -lopp_hip_mpi -lmpi -lhdf5
+			$(ALL_LIBS) -lopp_hip_mpi -lmpi -lhdf5
 
 mpi_hdf5_conv: mklib
 		 $(MPICPP) $(CPPFLAGS) -DUSE_MPI -c fempic_convert_hdf5.cpp -o $(OBJ)/fempic_convert_hdf5.o $(ALL_INC)

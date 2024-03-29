@@ -1165,7 +1165,7 @@ void opp_fetch_data_hdf5(opp_dat data, char const *file_name, char const *path_n
             printf("File %s does not exist .... creating file\n", file_name);
         }
         MPI_Barrier(OP_MPI_HDF5_WORLD);
-        if ((OPP_rank == OPP_ROOT)) {
+        if (OPP_rank == OPP_ROOT) {
             FILE *fp;
             fp = fopen(file_name, "w");
             fclose(fp);

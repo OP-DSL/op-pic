@@ -71,12 +71,12 @@ inline int InitializeInjectDistributions(oppic_dat if_dist_dat, oppic_dat if_are
             max_inject_count_per_face = num_mp;
     }
 
-    // increase dummy random particle set size, to load the random numbers for particle injections
-    oppic_increase_particle_count(dummy_random->set, (total_inject_count + INJ_EXCESS));
-
     if (OP_DEBUG)
         opp_printf("InitializeInjectDistributions", "RAND_FILE inj_count %d max_inj_count_per_face %d", 
-            total_inject_count, max_inject_count_per_face);    
+            total_inject_count, max_inject_count_per_face);  
+            
+    // increase dummy random particle set size, to load the random numbers for particle injections
+    oppic_increase_particle_count(dummy_random->set, (total_inject_count + INJ_EXCESS));  
 
     int total_size = -1, fsize = -1, fdim = -1;
     FILE *fp = NULL;
