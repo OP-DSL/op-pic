@@ -282,7 +282,7 @@ int main(int argc, char **argv)
             // opp_printf("XXX", "particle_set->size=%d", particle_set->size); 
             
             total_part_iter += particle_set->size;  
-            
+
             if (OPP_rank == OPP_ROOT)
                 opp_printf("Main", "ts: %d %s ****", OPP_main_loop_iter, log.c_str());
         }
@@ -290,10 +290,18 @@ int main(int argc, char **argv)
 
         // if (OP_DEBUG)
         //     print_per_cell_particle_counts(cell_colors, part_mesh_rel); // cell_colors will reset
-        
-        if (OPP_rank == OPP_ROOT) opp_printf("Main", "Main loop completed after %d iterations ****", max_iter);
 
         opp_printf("Main","total particles= %" PRId64, total_part_iter); 
+
+        int64_t gbl_total_part_iter = 0;
+#ifdef USE_MPI
+        MPI_Reduce(&total_part_iter, &gbl_total_part_iter, 1, MPI_INT64_T, MPI_SUM, OPP_ROOT, MPI_COMM_WORLD);
+#else
+        gbl_total_part_iter = total_part_iter;
+#endif
+        if (OPP_rank == OPP_ROOT) 
+            opp_printf("Main", "Main loop completed after %d iterations with %" PRId64 " particle iterations ****", 
+                max_iter, gbl_total_part_iter);  
     }
 
     opp_exit();
