@@ -854,6 +854,11 @@ void opp_particle_mover__Move(
         
         opp_profiler->start("GblMv_AllMv");
 
+        // need to change the arg data since particle resize in globalMover::finalize could change the pointer in realloc dat->data 
+        for (int i = 0; i < nargs; i++)
+            if (args[i].argtype == OP_ARG_DAT && args[i].dat->set->is_particle)
+                args[i].data = args[i].dat->data;
+
         // check whether the new particle is within cell, and if not move between cells within the MPI rank, 
         // mark for neighbour comm. Do only for the globally moved particles 
         for (int i = (set->size - set->diff); i < set->size; i++) { 

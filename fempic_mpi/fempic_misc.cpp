@@ -146,7 +146,7 @@ inline int InitializeInjectDistributions(oppic_dat if_dist_dat, oppic_dat if_are
         // This trouble is only because we need mpi results to match with seq and others
         for (int i = 0; i < dummy_random->set->size; i++)
         {
-            if (i >= distribution[iface_index])
+            if (iface_index < if_dist_dat->set->size && i >= distribution[iface_index])
             {
                 iface_index++; // check whether it is j or j-1
                 part_in_face_index = 0; 
@@ -328,6 +328,8 @@ inline void get_all_start_ends_mpi(const std::vector<int>& cell_counts, std::vec
     //     }
     //     opp_printf("get_all_start_ends_mpi", "%s", log.c_str());
     // }
+
+    MPI_Comm_free(&comm_cart);
 }
 
 inline std::vector<int> fempicMPIDist(const std::map<std::string, std::map<std::string, int>>& grid, 

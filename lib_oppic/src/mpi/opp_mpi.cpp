@@ -297,6 +297,7 @@ void opp_init_particle_move(oppic_set set, int nargs, oppic_arg *args)
     oppic_init_particle_move_core(set);
 
     opp_move_part_indices.clear();
+    opp_move_part_indices.reserve(20000);
 
     if (OPP_comm_iteration == 0)
     {

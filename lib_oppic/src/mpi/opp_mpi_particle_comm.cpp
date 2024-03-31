@@ -371,8 +371,10 @@ void opp_process_marked_particles(opp_set set)
         auto it = set_part_com_data.find(map0idx);
         if (it == set_part_com_data.end())
         {
-            opp_printf("opp_part_check_status", "Error: cell %d cannot be found in opp_part_comm_neighbour_data map", map0idx);
-            return; // unlikely, need exit(-1) to abort instead!
+            opp_printf("opp_part_check_status", 
+                "Error: cell %d cannot be found in opp_part_comm_neighbour_data map particle_index=%d", 
+                    map0idx, particle_index);
+            opp_abort("opp_part_check_status Error: cell cannot be found in opp_part_comm_neighbour_data map");
         }
 
         opp_particle_comm_data& comm_data = it->second;
@@ -1130,17 +1132,18 @@ GlobalParticleMover::~GlobalParticleMover() {
 //*******************************************************************************
 inline void GlobalParticleMover::markParticleToMove(oppic_set set, int partIndex, int rankToBeMoved, int finalGlobalCellIndex) {
     
-    if (finalGlobalCellIndex == MAX_CELL_INDEX) {
-        opp_printf("GlobalParticleMover", "Error markParticleToMove particle %d will be moved to rank %d but global index is invalid",
-            partIndex, rankToBeMoved);
-        return;
-    }
+    // These validations should be already done
+    // if (finalGlobalCellIndex == MAX_CELL_INDEX) {
+    //     opp_printf("GlobalParticleMover", "Error markParticleToMove particle %d will be moved to rank %d but global index is invalid",
+    //         partIndex, rankToBeMoved);
+    //     return;
+    // }
 
-    if (rankToBeMoved == MAX_CELL_INDEX) {
-        opp_printf("GlobalParticleMover", "Error markParticleToMove particle %d will be moved to finalGlobalCellIndex %d but rank is invalid",
-            partIndex, rankToBeMoved);
-        return;
-    }
+    // if (rankToBeMoved == MAX_CELL_INDEX) {
+    //     opp_printf("GlobalParticleMover", "Error markParticleToMove particle %d will be moved to finalGlobalCellIndex %d but rank is invalid",
+    //         partIndex, rankToBeMoved);
+    //     return;
+    // }
 
     auto& globalPartMoveDataOfSet = this->globalPartMoveData[set->index];
     std::vector<opp_particle_move_info>& vec = globalPartMoveDataOfSet[rankToBeMoved];
