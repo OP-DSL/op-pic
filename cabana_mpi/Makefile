@@ -12,7 +12,7 @@ HIPCC      = $(HIP_COMPILER)
 
 CPPFLAGS   = -std=c++17 -Wall -fPIC -march=native
 NVCCFLAGS  = -std=c++14 -m64 -Xptxas -dlcm=ca -Xptxas=-v $(NVCCFLAGS_ADD)
-HIPCCFLAGS = $(HIPCCFLAGS_ADD) -std=c++17 -Wall -isystem -D__HIP_PLATFORM_AMD__ -munsafe-fp-atomics 
+HIPCCFLAGS = $(HIPCCFLAGS_ADD) -std=c++17 -Wall -isystem -D__HIP_PLATFORM_AMD__ -munsafe-fp-atomics -march=native
 
 DEBUG ?= 0
 ifeq ($(DEBUG), 1)

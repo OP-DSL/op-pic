@@ -15,7 +15,7 @@ HIPCC      = $(HIP_COMPILER)
 
 CPPFLAGS   = -std=c++14 -Wall -fPIC -march=native 
 NVCCFLAGS  = --extended-lambda -m64 -Xptxas -dlcm=ca -Xptxas=-v $(NVCCFLAGS_ADD) -DUSE_THRUST 
-HIPCCFLAGS = $(HIPCCFLAGS_ADD) -std=c++17 -isystem -D__HIP_PLATFORM_AMD__ -munsafe-fp-atomics -DUSE_THRUST
+HIPCCFLAGS = $(HIPCCFLAGS_ADD) -std=c++17 -isystem -D__HIP_PLATFORM_AMD__ -munsafe-fp-atomics -DUSE_THRUST -march=native
 
 DEBUG ?= 0
 ifeq ($(DEBUG), 1)
