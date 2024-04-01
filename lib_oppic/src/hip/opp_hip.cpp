@@ -43,7 +43,7 @@ char *OP_reduct_d = nullptr;
 void opp_init(int argc, char **argv)
 {
 #ifdef USE_PETSC
-    PetscInitialize(&argc, &argv, PETSC_NULL, "opp::PetscHIP");
+    PetscInitialize(&argc, &argv, PETSC_NULLPTR, "opp::PetscHIP");
 #else
     #ifdef USE_MPI
         MPI_Init(&argc, &argv);

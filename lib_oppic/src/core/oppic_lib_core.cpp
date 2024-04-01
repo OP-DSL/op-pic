@@ -574,7 +574,7 @@ bool oppic_increase_particle_count_core(oppic_set part_set, const int num_parts_
         if (dat->is_cell_index && (dat->data != nullptr))
         {
             int* mesh_rel_array = (int *)dat->data;
-            #pragma code_align 32
+            // #pragma code_align 32
             for (size_t i = (size_t)part_set->size; i < new_part_set_capacity; i++)
                 mesh_rel_array[i] = MAX_CELL_INDEX;
         }

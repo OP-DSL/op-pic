@@ -39,7 +39,7 @@ void opp_init(int argc, char **argv)
 {
 
 #ifdef USE_PETSC
-    PetscInitialize(&argc, &argv, PETSC_NULL, "opp::PetscSEQ");
+    PetscInitialize(&argc, &argv, PETSC_NULLPTR, "opp::PetscSEQ");
 #endif
 
     std::string log = "Running on SEQ";

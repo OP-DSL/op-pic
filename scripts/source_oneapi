@@ -76,6 +76,9 @@ echo "petsc lib linked is - " $PETSC_INSTALL_PATH
 
 export OPPIC_PATH=/ext-home/zl/phd/neso_test/OP-PIC/lib_oppic
 
+export CC_COMPILER=mpicxx
+export MPI_COMPILER=mpicxx
+
 #Intel MPI and Compilers
 if [ "$(hostname)" != 'demos' ]; then
 echo "Source intel compilers"

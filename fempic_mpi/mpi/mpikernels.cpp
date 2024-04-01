@@ -917,14 +917,17 @@ void opp_loop_all__GetFinalMaxValues(
     int set_size = opp_mpi_halo_exchanges(set, nargs, args);
     opp_mpi_halo_wait_all(nargs, args);  
 
-    for (int n = 0; n < set->size; n++)
+    if (set_size > 0)
     {
-        get_final_max_values_kernel(
-            &((double*) args[0].data)[n * args[0].dim],     // n_charge_den  
-            (double*) args[1].data,
-            &((double*) args[2].data)[n * args[2].dim],     // n_pot  
-            (double*) args[3].data
-        );
+        for (int n = 0; n < set->size; n++)
+        {
+            get_final_max_values_kernel(
+                &((double*) args[0].data)[n * args[0].dim],     // n_charge_den  
+                (double*) args[1].data,
+                &((double*) args[2].data)[n * args[2].dim],     // n_pot  
+                (double*) args[3].data
+            );
+        }
     }
 
     opp_mpi_reduce_double(&args[1], (double*)args[1].data);

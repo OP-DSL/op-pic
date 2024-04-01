@@ -42,7 +42,7 @@ void opp_init(int argc, char **argv)
 {
 
 #ifdef USE_PETSC
-    PetscInitialize(&argc, &argv, PETSC_NULL, "opp::PetscMPI");
+    PetscInitialize(&argc, &argv, PETSC_NULLPTR, "opp::PetscMPI");
 #else
     MPI_Init(&argc, &argv);
 #endif

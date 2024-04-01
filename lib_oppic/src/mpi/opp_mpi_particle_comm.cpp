@@ -889,7 +889,7 @@ bool opp_part_checkForGlobalMove(opp_set set, const opp_point& point, const int 
         return true;
     }
 
-    int structCellRank = cellMapper->findClosestCellRank(structCellIdx);
+    const int structCellRank = cellMapper->findClosestCellRank(structCellIdx);
 
     // Check whether the paticles need global moving, if yes start global moving process, 
     // if no, move to the closest local cell
@@ -906,7 +906,7 @@ bool opp_part_checkForGlobalMove(opp_set set, const opp_point& point, const int 
         }
 
         // Due to renumbering local cell indices will be different to global, hence do global comm with global indices
-        size_t globalCellIndex = cellMapper->findClosestCellIndex(structCellIdx);
+        const size_t globalCellIndex = cellMapper->findClosestCellIndex(structCellIdx);
 
         if (globalCellIndex == MAX_CELL_INDEX) {
             if (OP_DEBUG)
@@ -930,6 +930,13 @@ bool opp_part_checkForGlobalMove(opp_set set, const opp_point& point, const int 
         
         // Due to renumbering local cell indices will be different to global, hence do global comm with global indices
         cellIdx = cellMapper->findClosestCellIndex(structCellIdx);
+
+        if (OP_DEBUG && (cellIdx < 0 || cellIdx >= set->cells_set->size)) {
+            opp_printf("opp_part_checkForGlobalMove", 
+                "Error... Particle %d assigned to current rank but invalid cell index %d [strCellIdx:%zu]", 
+                    partIndex, cellIdx, structCellIdx);
+            opp_abort("opp_part_checkForGlobalMove Error... Particle assigned to current rank but invalid cell index");
+        }
     }
                 
     return false;

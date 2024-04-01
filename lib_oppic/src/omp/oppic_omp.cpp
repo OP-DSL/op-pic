@@ -44,7 +44,7 @@ void opp_part_unpack(oppic_set set);
 void opp_init(int argc, char **argv)
 {
 #ifdef USE_PETSC
-    PetscInitialize(&argc, &argv, PETSC_NULL, "opp::PetscOMP");
+    PetscInitialize(&argc, &argv, PETSC_NULLPTR, "opp::PetscOMP");
 #else
     #ifdef USE_MPI
         MPI_Init(&argc, &argv);

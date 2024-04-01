@@ -7,8 +7,8 @@ LIB = lib
 OBJ = obj
 BIN = bin
 # scorep-mpiicpc  -qopt-report=2 -qopt-report-phase=vec -xHOST          --generate-line-info  -fsanitize=address -lasan
-CPP        = mpicxx
-MPICPP	   = mpicxx
+CPP        = $(CC_COMPILER)
+MPICPP	   = $(MPI_COMPILER)
 NVCC       = nvcc
 HIPCC      = $(HIP_COMPILER)
 # -qopt-zmm-usage=high
