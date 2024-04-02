@@ -57,8 +57,8 @@ ifeq ($(PARMETIS), 1)
 	ALL_INC  += -DHAVE_PARMETIS
 endif
 
-ALL_INC    += -I$(OPPIC_PATH)/include
-ALL_LIBS   += -L$(OPPIC_PATH)/lib
+ALL_INC    += -I$(OPPIC_PATH)/include -I$(HDF5_INSTALL_PATH)/include 
+ALL_LIBS   += -L$(OPPIC_PATH)/lib -L$(HDF5_INSTALL_PATH)/lib
 
 .PHONY: clean mklib
 
@@ -92,6 +92,24 @@ mpi: mklib
 		 	$(OBJ)/cabana_op.o \
 			$(OBJ)/mpikernels.o \
 			$(ALL_INC) $(ALL_LIBS) -loppic_mpi
+
+mpi_hdf5: mklib
+		 $(MPICPP) $(CPPFLAGS) -DUSE_MPI -c cabana_op_hdf5.cpp -o $(OBJ)/cabana_op_hdf5.o $(ALL_INC)
+		 $(MPICPP) $(CPPFLAGS) -DUSE_MPI -c mpi/mpikernels.cpp -o $(OBJ)/mpikernels.o $(ALL_INC)
+		 $(MPICPP) $(CPPFLAGS) -DUSE_MPI -c opp_mpi_hdf5.cpp -o $(OBJ)/opp_mpi_hdf5.o $(ALL_INC)
+	     $(MPICPP) $(CPPFLAGS) -DUSE_MPI -o $(BIN)/mpi_hdf5 \
+		 	$(OBJ)/cabana_op_hdf5.o \
+			$(OBJ)/opp_mpi_hdf5.o \
+			$(OBJ)/mpikernels.o \
+			-loppic_mpi $(ALL_INC) $(ALL_LIBS) -lhdf5
+
+mpi_hdf5_conv: mklib
+		 $(MPICPP) $(CPPFLAGS) -DUSE_MPI -c cabana_convert_hdf5.cpp -o $(OBJ)/cabana_convert_hdf5.o $(ALL_INC)
+		 $(MPICPP) $(CPPFLAGS) -DUSE_MPI -c opp_mpi_hdf5.cpp -o $(OBJ)/opp_mpi_hdf5.o $(ALL_INC)
+	     $(MPICPP) $(CPPFLAGS) -DUSE_MPI -o $(BIN)/mpi_hdf5_conv \
+		 	$(OBJ)/cabana_convert_hdf5.o \
+			$(OBJ)/opp_mpi_hdf5.o \
+			-loppic_mpi $(ALL_INC) $(ALL_LIBS) -lhdf5
 
 cuda: mklib
 		 $(NVCC) $(NVCCFLAGS) -c cuda/cudakernels.cu -o $(OBJ)/cudakernels.o $(ALL_INC) $(CUDA_INC)

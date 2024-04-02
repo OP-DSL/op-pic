@@ -1,7 +1,7 @@
 # Simulation parameters
 INT num_steps = 100
 REAL init_vel = 0.0866025403784439
-INT num_part_per_cell = 100
+INT num_part_per_cell = 1500
 INT nx = 50
 INT ny = 40
 INT nz = 30
@@ -13,7 +13,7 @@ REAL eps = 1.0
 STRING part_enrich = two_stream
 BOOL print_energy = true
 # block pencil cart
-STRING cluster = pencil
+STRING cluster = block
 
 # System parameters
 BOOL opp_auto_sort          = false
@@ -26,3 +26,5 @@ INT opp_gpu_direct = 0
 # HoleFill_All Sort_All Shuffle_All Sort_Periodic Shuffle_Periodic
 STRING opp_fill = Shuffle_Periodic
 INT opp_fill_period = 4
+
+STRING hdf_filename = /ext-home/zl/phd/neso_test/OP-PIC_Configs/cabana/mesh_files/cab_96000.hdf5
