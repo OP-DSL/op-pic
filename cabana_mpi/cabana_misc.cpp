@@ -129,16 +129,10 @@ class DataPointers
             c2cugb5_map  = nullptr;
         }
 
-        inline void CreateMeshArrays() {
+        inline void CreateMeshCommArrays() {
 
             this->c_index      = new OPP_INT[this->n_cells * ONE];
-            this->c_e          = new OPP_REAL[this->n_cells * DIM];  
-            this->c_b          = new OPP_REAL[this->n_cells * DIM];        
-            this->c_j          = new OPP_REAL[this->n_cells * DIM];
-            this->c_acc        = new OPP_REAL[this->n_cells * ACC_LEN]; 
-            this->c_interp     = new OPP_REAL[this->n_cells * INTERP_LEN]; 
             this->c_pos_ll     = new OPP_REAL[this->n_cells * DIM];
-            this->c_colours    = new OPP_INT[this->n_cells];
             this->c_ghost      = new OPP_INT[this->n_cells * ONE];
             this->c_mask_right = new OPP_INT[this->n_cells * ONE];
             this->c_mask_ug    = new OPP_INT[this->n_cells * 6];
@@ -162,6 +156,16 @@ class DataPointers
             this->c2cugb3_map  = new OPP_INT[this->n_cells];
             this->c2cugb4_map  = new OPP_INT[this->n_cells];
             this->c2cugb5_map  = new OPP_INT[this->n_cells];
+        }
+
+        inline void CreateMeshNonCommArrays() {
+
+            this->c_e          = new OPP_REAL[this->n_cells * DIM];  
+            this->c_b          = new OPP_REAL[this->n_cells * DIM];        
+            this->c_j          = new OPP_REAL[this->n_cells * DIM];
+            this->c_acc        = new OPP_REAL[this->n_cells * ACC_LEN]; 
+            this->c_interp     = new OPP_REAL[this->n_cells * INTERP_LEN]; 
+            this->c_colours    = new OPP_INT[this->n_cells];
         }
 
         int n_cells     = 0;
@@ -236,21 +240,9 @@ void init_mesh(const Deck& deck, std::shared_ptr<DataPointers> m) {
 
     opp_printf("Setup", "init_mesh global n_cells=%d nx=%d ny=%d nz=%d", m->n_cells, nx, ny, nz);
 
-    m->CreateMeshArrays();
+    m->CreateMeshCommArrays();
 
     for (int n = 0; n < m->n_cells; n++) {
-
-        for (int d = 0; d < DIM; d++) {
-            m->c_e[n * DIM + d] = 0.0;
-            m->c_b[n * DIM + d] = 0.0;
-            m->c_j[n * DIM + d] = 0.0;
-
-            for (int i = 0; i < ACCUMULATOR_ARRAY_LENGTH; i++)
-                m->c_acc[(n * DIM + d) * ACCUMULATOR_ARRAY_LENGTH + i] = 0.0;
-        }
-
-        for (int i = 0; i < INTERP_LEN; i++)
-            m->c_interp[n * INTERP_LEN + i] = 0.0;
         
         for (int i = 0; i < 6; i++)
             m->c_mask_ugb[n * 6 + i] = 0;
@@ -287,7 +279,6 @@ void init_mesh(const Deck& deck, std::shared_ptr<DataPointers> m) {
         m->c_index[n]      = n;
 		m->c_ghost[n]      = 1;
 		m->c_mask_right[n] = 1;
-        m->c_colours[n]    = 10000;
     }
 
 	for (int x = 0; x < nx+2*NG; x++) {
@@ -521,16 +512,10 @@ inline void distribute_data_over_ranks(std::shared_ptr<DataPointers>& g_m, std::
     m = std::make_shared<DataPointers>();
 
     m->n_cells     = opp_get_uniform_local_size(g_m->n_cells);
-    m->CreateMeshArrays();
+    m->CreateMeshCommArrays();
 
     opp_uniform_scatter_array(g_m->c_index , m->c_index , g_m->n_cells, m->n_cells, ONE);
-    opp_uniform_scatter_array(g_m->c_e     , m->c_e     , g_m->n_cells, m->n_cells, DIM); 
-    opp_uniform_scatter_array(g_m->c_b     , m->c_b     , g_m->n_cells, m->n_cells, DIM); 
-    opp_uniform_scatter_array(g_m->c_j     , m->c_j     , g_m->n_cells, m->n_cells, DIM); 
-    opp_uniform_scatter_array(g_m->c_acc   , m->c_acc   , g_m->n_cells, m->n_cells, DIM * ACCUMULATOR_ARRAY_LENGTH); 
-    opp_uniform_scatter_array(g_m->c_interp, m->c_interp, g_m->n_cells, m->n_cells, INTERP_LEN); 
     opp_uniform_scatter_array(g_m->c_pos_ll, m->c_pos_ll, g_m->n_cells, m->n_cells, DIM);
-    opp_uniform_scatter_array(g_m->c_colours, m->c_colours, g_m->n_cells, m->n_cells, ONE);
     opp_uniform_scatter_array(g_m->c_ghost , m->c_ghost , g_m->n_cells, m->n_cells, ONE);
     opp_uniform_scatter_array(g_m->c_mask_right, m->c_mask_right , g_m->n_cells, m->n_cells, ONE);
     opp_uniform_scatter_array(g_m->c_mask_ug, m->c_mask_ug , g_m->n_cells, m->n_cells, 6);
@@ -560,6 +545,25 @@ inline void distribute_data_over_ranks(std::shared_ptr<DataPointers>& g_m, std::
 #else
     m = g_m;
 #endif
+
+    m->CreateMeshNonCommArrays();
+
+    for (int n = 0; n < m->n_cells; n++) {
+
+        for (int d = 0; d < DIM; d++) {
+            m->c_e[n * DIM + d] = 0.0;
+            m->c_b[n * DIM + d] = 0.0;
+            m->c_j[n * DIM + d] = 0.0;
+
+            for (int i = 0; i < ACCUMULATOR_ARRAY_LENGTH; i++)
+                m->c_acc[(n * DIM + d) * ACCUMULATOR_ARRAY_LENGTH + i] = 0.0;
+        }
+
+        for (int i = 0; i < INTERP_LEN; i++)
+            m->c_interp[n * INTERP_LEN + i] = 0.0;
+        
+        m->c_colours[n]    = 10000;
+    }
 }
 
 //*************************************************************************************************
