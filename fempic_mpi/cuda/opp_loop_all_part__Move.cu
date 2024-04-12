@@ -158,7 +158,7 @@ __device__ void move_all_particles_to_cell__kernel(
 //*******************************************************************************
 // Returns true only if another hop is required by the current rank
 __device__ bool opp_part_check_status_cuda(opp_move_var& m, int* map0idx, int particle_index, 
-                    int& remove_count, int *move_indices, int *move_count) 
+        int& remove_count, int *remove_particle_indices, int *move_particle_indices, int *move_cell_indices, int *move_count) 
 {
     m.iteration_one = false;
 
@@ -169,7 +169,8 @@ __device__ bool opp_part_check_status_cuda(opp_move_var& m, int* map0idx, int pa
     else if (m.move_status == OPP_NEED_REMOVE)
     {
         *map0idx = MAX_CELL_INDEX;
-        atomicAdd(&remove_count, 1);
+        int removeArrayIndex = atomicAdd(&remove_count, 1);
+        remove_particle_indices[removeArrayIndex] = particle_index;
 
         return false;
     }
@@ -177,11 +178,13 @@ __device__ bool opp_part_check_status_cuda(opp_move_var& m, int* map0idx, int pa
     {
         // map0idx cell is not owned by the current mpi rank (it is in the import exec halo region), need to communicate
         int moveArrayIndex = atomicAdd(move_count, 1);
-        move_indices[moveArrayIndex] = particle_index;
+        move_particle_indices[moveArrayIndex] = particle_index;
+        move_cell_indices[moveArrayIndex] = *map0idx;
 
         // Needs to be removed from the current rank, bdw particle packing will be done just prior exchange and removal
         m.move_status = OPP_NEED_REMOVE; 
-        atomicAdd(&remove_count, 1);
+        int removeArrayIndex = atomicAdd(&remove_count, 1);
+        remove_particle_indices[removeArrayIndex] = particle_index;
 
         return false;
     }
@@ -201,7 +204,9 @@ __global__ void opp_cuda_all_MoveToCells(
     const double *__restrict ind_arg4,      // cell_det,
     const int *__restrict ind_arg5,         // cell_connectivity,
     int *__restrict particle_remove_count,
-    int *__restrict move_indices,
+    int *__restrict particle_remove_indices,
+    int *__restrict move_particle_indices,
+    int *__restrict move_cell_indices,
     int *__restrict move_count,
     int start,
     int end) 
@@ -234,7 +239,7 @@ __global__ void opp_cuda_all_MoveToCells(
             );                
 
         } while (opp_part_check_status_cuda(m, map0idx, n, 
-                        *particle_remove_count, move_indices, move_count));
+            *particle_remove_count, particle_remove_indices, move_particle_indices, move_cell_indices, move_count));
     }
 }
 
@@ -265,10 +270,10 @@ void opp_particle_mover__Move(
     args[4]  = std::move(arg4);
     args[5]  = std::move(arg5);
 
-    opp_profiler->start("FMv_halo_exchanges");    
+    opp_profiler->start("Mv_halo_exchanges");    
     int set_size = opp_mpi_halo_exchanges_grouped(set, nargs, args, Device_GPU); 
     opp_mpi_halo_wait_all(nargs, args);
-    opp_profiler->end("FMv_halo_exchanges");
+    opp_profiler->end("Mv_halo_exchanges");
 
     if (set_size > 0) 
     {
@@ -287,9 +292,9 @@ void opp_particle_mover__Move(
             cudaMemcpyToSymbol(move_stride_OPP_CUDA_5, &move_stride_OPP_HOST_5, sizeof(int));
             cudaMemcpyToSymbol(OPP_comm_iteration_d, &OPP_comm_iteration, sizeof(int));
 
-            opp_profiler->start("FMv_init_part");
+            opp_profiler->start("Mv_init_part");
             opp_init_particle_move(set, nargs, args);
-            opp_profiler->end("FMv_init_part");
+            opp_profiler->end("Mv_init_part");
 
             if (OPP_iter_end - OPP_iter_start > 0) 
             {
@@ -301,7 +306,7 @@ void opp_particle_mover__Move(
                 int nblocks = (OPP_iter_end - OPP_iter_start - 1) / nthread + 1;
 
                 cutilSafeCall(cudaDeviceSynchronize());
-                opp_profiler->start("FMv_OnlyMoveKernel");
+                opp_profiler->start("Mv_OnlyMoveKernel");
                 
                 opp_cuda_all_MoveToCells<<<nblocks, nthread>>>(
                     (int *)           set->mesh_relation_dat->data_d,
@@ -312,13 +317,15 @@ void opp_particle_mover__Move(
                     (const double *)  args[4].data_d,                   // cell_det,        
                     (const int *)     args[5].data_d,                   // cell_v_cell_map
                     (int *)           set->particle_remove_count_d,
-                    (int*)            OPP_move_indices_d,
+                    (int *)           OPP_remove_particle_indices_d,
+                    (int*)            OPP_move_particle_indices_d,
+                    (int*)            OPP_move_cell_indices_d,
                     (int*)            OPP_move_count_d,
                     OPP_iter_start, 
                     OPP_iter_end);
 
                 cutilSafeCall(cudaDeviceSynchronize());
-                opp_profiler->end("FMv_OnlyMoveKernel");
+                opp_profiler->end("Mv_OnlyMoveKernel");
 
             }
 

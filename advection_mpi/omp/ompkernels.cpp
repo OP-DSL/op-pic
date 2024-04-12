@@ -158,11 +158,11 @@ void opp_loop_all__Verify(
 
     OPP_mesh_relation_data = ((int *)set->mesh_relation_dat->data); 
 
-    OPP_REAL arg3_l[nthreads*1];
+    OPP_INT arg3_l[nthreads*1];
     for (int thr = 0; thr < nthreads; thr++)
     {
         for (int d = 0; d < 1; d++) // can have multiple dimension defined for global_arg
-            arg3_l[1 * thr + d] = ZERO_double;
+            arg3_l[1 * thr + d] = ZERO_int;
     }  
 
     #pragma omp parallel for
@@ -179,7 +179,7 @@ void opp_loop_all__Verify(
                 &((OPP_INT*)  arg0.data)[n * arg0.dim],       // part_mesh_rel,      
                 &((OPP_REAL*) arg1.data)[n * arg1.dim],       // part_pos,           
                 &((OPP_INT*)  arg2.data)[map0idx * arg2.dim], // cell_global_index,  
-                (int*) arg3.data                              // incorrect_part_count
+                (OPP_INT*)    &(arg3_l[1 * thr])              // incorrect_part_count
             );
         }
     }
@@ -187,7 +187,7 @@ void opp_loop_all__Verify(
     for (int thr = 0; thr < nthreads; thr++) 
     {
         for (int d = 0; d < 1; d++) // can have multiple dimension defined for global_arg
-            ((double*)args[3].data)[d] += arg3_l[1 * thr + d];
+            ((OPP_INT*)args[3].data)[d] += arg3_l[1 * thr + d];
     }
 
     opp_profiler->end("Verify");

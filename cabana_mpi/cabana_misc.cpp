@@ -45,160 +45,8 @@ int m3 = 3;
 int m4 = 4;
 int m5 = 5;
 
-class DataPointers;
 void init_mesh(const Deck& deck, std::shared_ptr<DataPointers> m);
 void distribute_data_over_ranks(std::shared_ptr<DataPointers>& g_m, std::shared_ptr<DataPointers>& m);
-
-//*************************************************************************************************
-/**
- * @brief Utility class to temporarily hold the mesh data until it is loaded by OP-PIC
- */
-class DataPointers
-{
-    public:
-        DataPointers() {}
-        virtual ~DataPointers()
-        {
-            DeleteValues();   
-        }
-
-        inline void DeleteValues() {
-
-            if (c_index) delete[] c_index;
-            if (c_e) delete[] c_e;
-            if (c_b) delete[] c_b;
-            if (c_j) delete[] c_j;
-            if (c_acc) delete[] c_acc;
-            if (c_interp) delete[] c_interp;
-            if (c_pos_ll) delete[] c_pos_ll;
-            if (c_colours) delete[] c_colours;
-            if (c_ghost) delete[] c_ghost;
-            if (c_mask_right) delete[] c_mask_right; 
-            if (c_mask_ug) delete[] c_mask_ug; 
-            if (c_mask_ugb) delete[] c_mask_ugb; 
-
-            if (c2ngc_map) delete[] c2ngc_map;
-            if (c2c_map) delete[] c2c_map;
-            if (c2cug_map) delete[] c2cug_map;
-            if (c2cugb_map) delete[] c2cugb_map;
-
-            if (c2cug0_map) delete[] c2cug0_map;
-            if (c2cug1_map) delete[] c2cug1_map;
-            if (c2cug2_map) delete[] c2cug2_map;
-            if (c2cug3_map) delete[] c2cug3_map;
-            if (c2cug4_map) delete[] c2cug4_map;
-            if (c2cug5_map) delete[] c2cug5_map;
-
-            if (c2cugb0_map) delete[] c2cugb0_map;
-            if (c2cugb1_map) delete[] c2cugb1_map;
-            if (c2cugb2_map) delete[] c2cugb2_map;
-            if (c2cugb3_map) delete[] c2cugb3_map;
-            if (c2cugb4_map) delete[] c2cugb4_map;
-            if (c2cugb5_map) delete[] c2cugb5_map;
-
-            c_index = nullptr;
-            c_e = nullptr;
-            c_b = nullptr;
-            c_j = nullptr;
-            c_acc = nullptr;
-            c_interp = nullptr;
-            c_pos_ll = nullptr;
-            c_colours = nullptr;
-            c_ghost      = nullptr;
-            c_mask_right = nullptr;
-            c_mask_ug    = nullptr;
-            c_mask_ugb   = nullptr;
-
-            c2ngc_map = nullptr;
-            c2c_map   = nullptr;
-            c2cug_map   = nullptr;
-            c2cugb_map  = nullptr;
-
-            c2cug0_map  = nullptr;
-            c2cug1_map  = nullptr;
-            c2cug2_map  = nullptr;
-            c2cug3_map  = nullptr;
-            c2cug4_map  = nullptr;
-            c2cug5_map  = nullptr;
-
-            c2cugb0_map  = nullptr;
-            c2cugb1_map  = nullptr;
-            c2cugb2_map  = nullptr;
-            c2cugb3_map  = nullptr;
-            c2cugb4_map  = nullptr;
-            c2cugb5_map  = nullptr;
-        }
-
-        inline void CreateMeshArrays() {
-
-            this->c_index      = new OPP_INT[this->n_cells * ONE];
-            this->c_e          = new OPP_REAL[this->n_cells * DIM];  
-            this->c_b          = new OPP_REAL[this->n_cells * DIM];        
-            this->c_j          = new OPP_REAL[this->n_cells * DIM];
-            this->c_acc        = new OPP_REAL[this->n_cells * ACC_LEN]; 
-            this->c_interp     = new OPP_REAL[this->n_cells * INTERP_LEN]; 
-            this->c_pos_ll     = new OPP_REAL[this->n_cells * DIM];
-            this->c_colours    = new OPP_INT[this->n_cells];
-            this->c_ghost      = new OPP_INT[this->n_cells * ONE];
-            this->c_mask_right = new OPP_INT[this->n_cells * ONE];
-            this->c_mask_ug    = new OPP_INT[this->n_cells * 6];
-            this->c_mask_ugb   = new OPP_INT[this->n_cells * 6];
-
-            this->c2c_map     = new OPP_INT[this->n_cells * NEIGHBOURS];
-            this->c2ngc_map   = new OPP_INT[this->n_cells * FACES];
-            this->c2cug_map   = new OPP_INT[this->n_cells * 6];
-            this->c2cugb_map  = new OPP_INT[this->n_cells * 6];
-
-            this->c2cug0_map  = new OPP_INT[this->n_cells];
-            this->c2cug1_map  = new OPP_INT[this->n_cells];
-            this->c2cug2_map  = new OPP_INT[this->n_cells];
-            this->c2cug3_map  = new OPP_INT[this->n_cells];
-            this->c2cug4_map  = new OPP_INT[this->n_cells];
-            this->c2cug5_map  = new OPP_INT[this->n_cells];
-
-            this->c2cugb0_map  = new OPP_INT[this->n_cells];
-            this->c2cugb1_map  = new OPP_INT[this->n_cells];
-            this->c2cugb2_map  = new OPP_INT[this->n_cells];
-            this->c2cugb3_map  = new OPP_INT[this->n_cells];
-            this->c2cugb4_map  = new OPP_INT[this->n_cells];
-            this->c2cugb5_map  = new OPP_INT[this->n_cells];
-        }
-
-        int n_cells     = 0;
-        int n_particles = 0;
-
-        OPP_INT* c_index   = nullptr;
-        OPP_REAL* c_e      = nullptr;
-        OPP_REAL* c_b      = nullptr;
-        OPP_REAL* c_j      = nullptr;
-        OPP_REAL* c_acc    = nullptr;
-        OPP_REAL* c_interp = nullptr;
-        OPP_REAL* c_pos_ll = nullptr;
-        OPP_INT* c_colours = nullptr;
-        OPP_INT* c_ghost         = nullptr;
-        OPP_INT* c_mask_right    = nullptr;
-        OPP_INT* c_mask_ug       = nullptr;
-        OPP_INT* c_mask_ugb      = nullptr;
-
-        OPP_INT* c2ngc_map   = nullptr;
-        OPP_INT* c2c_map     = nullptr;
-        OPP_INT* c2cug_map   = nullptr;
-        OPP_INT* c2cugb_map  = nullptr;
-        
-        OPP_INT* c2cug0_map  = nullptr;
-        OPP_INT* c2cug1_map  = nullptr;
-        OPP_INT* c2cug2_map  = nullptr;
-        OPP_INT* c2cug3_map  = nullptr;
-        OPP_INT* c2cug4_map  = nullptr;
-        OPP_INT* c2cug5_map  = nullptr;
-
-        OPP_INT* c2cugb0_map  = nullptr;
-        OPP_INT* c2cugb1_map  = nullptr;
-        OPP_INT* c2cugb2_map  = nullptr;
-        OPP_INT* c2cugb3_map  = nullptr;
-        OPP_INT* c2cugb4_map  = nullptr;
-        OPP_INT* c2cugb5_map  = nullptr;
-};
 
 //*************************************************************************************************
 /**
@@ -236,21 +84,9 @@ void init_mesh(const Deck& deck, std::shared_ptr<DataPointers> m) {
 
     opp_printf("Setup", "init_mesh global n_cells=%d nx=%d ny=%d nz=%d", m->n_cells, nx, ny, nz);
 
-    m->CreateMeshArrays();
+    m->CreateMeshCommArrays();
 
     for (int n = 0; n < m->n_cells; n++) {
-
-        for (int d = 0; d < DIM; d++) {
-            m->c_e[n * DIM + d] = 0.0;
-            m->c_b[n * DIM + d] = 0.0;
-            m->c_j[n * DIM + d] = 0.0;
-
-            for (int i = 0; i < ACCUMULATOR_ARRAY_LENGTH; i++)
-                m->c_acc[(n * DIM + d) * ACCUMULATOR_ARRAY_LENGTH + i] = 0.0;
-        }
-
-        for (int i = 0; i < INTERP_LEN; i++)
-            m->c_interp[n * INTERP_LEN + i] = 0.0;
         
         for (int i = 0; i < 6; i++)
             m->c_mask_ugb[n * 6 + i] = 0;
@@ -287,7 +123,6 @@ void init_mesh(const Deck& deck, std::shared_ptr<DataPointers> m) {
         m->c_index[n]      = n;
 		m->c_ghost[n]      = 1;
 		m->c_mask_right[n] = 1;
-        m->c_colours[n]    = 10000;
     }
 
 	for (int x = 0; x < nx+2*NG; x++) {
@@ -480,21 +315,21 @@ void init_particles(const Deck& deck, opp_dat part_index, opp_dat part_pos, opp_
         opp_printf("Setup", "%d parts to add in rank %d [part_start=%d]", rank_npart, OPP_rank, rank_part_start);
 
     // Host/Device space to store the particles.
-    oppic_increase_particle_count(part_index->set, rank_npart);
+    oppic_increase_particle_count(part_pos->set, rank_npart);
 
     if (opp_params->get<OPP_STRING>("part_enrich") == "two_stream")
         enrich_particles_two_stream(deck, all_cell_count, (OPP_REAL*)part_pos->data, (OPP_REAL*)part_vel->data, 
-            (OPP_REAL*)part_streak_mid->data, (OPP_INT*)part_mesh_rel->data, (OPP_INT*)part_index->data, 
+            (OPP_REAL*)part_streak_mid->data, (OPP_INT*)part_mesh_rel->data, nullptr, // (OPP_INT*)part_index->data, 
             (OPP_REAL*)part_weight->data, (OPP_INT*)cell_cgid->data, (OPP_INT*)cell_ghost->data);
     else
         enrich_particles_random(deck, all_cell_count, (OPP_REAL*)part_pos->data, (OPP_REAL*)part_vel->data, 
-            (OPP_REAL*)part_streak_mid->data, (OPP_INT*)part_mesh_rel->data, (OPP_INT*)part_index->data, 
+            (OPP_REAL*)part_streak_mid->data, (OPP_INT*)part_mesh_rel->data, nullptr, // (OPP_INT*)part_index->data, 
             (OPP_REAL*)part_weight->data, (OPP_REAL*)cell_pos_ll->data, rank_part_start, (OPP_INT*)cell_ghost->data);
 
     if (OPP_rank == OPP_ROOT)
         opp_printf("Setup", "Init particles Uploading Start");
 
-    opp_upload_particle_set(part_index->set);
+    opp_upload_particle_set(part_pos->set);
 
 #ifdef USE_MPI
     MPI_Barrier(MPI_COMM_WORLD);
@@ -521,16 +356,10 @@ inline void distribute_data_over_ranks(std::shared_ptr<DataPointers>& g_m, std::
     m = std::make_shared<DataPointers>();
 
     m->n_cells     = opp_get_uniform_local_size(g_m->n_cells);
-    m->CreateMeshArrays();
+    m->CreateMeshCommArrays();
 
     opp_uniform_scatter_array(g_m->c_index , m->c_index , g_m->n_cells, m->n_cells, ONE);
-    opp_uniform_scatter_array(g_m->c_e     , m->c_e     , g_m->n_cells, m->n_cells, DIM); 
-    opp_uniform_scatter_array(g_m->c_b     , m->c_b     , g_m->n_cells, m->n_cells, DIM); 
-    opp_uniform_scatter_array(g_m->c_j     , m->c_j     , g_m->n_cells, m->n_cells, DIM); 
-    opp_uniform_scatter_array(g_m->c_acc   , m->c_acc   , g_m->n_cells, m->n_cells, DIM * ACCUMULATOR_ARRAY_LENGTH); 
-    opp_uniform_scatter_array(g_m->c_interp, m->c_interp, g_m->n_cells, m->n_cells, INTERP_LEN); 
     opp_uniform_scatter_array(g_m->c_pos_ll, m->c_pos_ll, g_m->n_cells, m->n_cells, DIM);
-    opp_uniform_scatter_array(g_m->c_colours, m->c_colours, g_m->n_cells, m->n_cells, ONE);
     opp_uniform_scatter_array(g_m->c_ghost , m->c_ghost , g_m->n_cells, m->n_cells, ONE);
     opp_uniform_scatter_array(g_m->c_mask_right, m->c_mask_right , g_m->n_cells, m->n_cells, ONE);
     opp_uniform_scatter_array(g_m->c_mask_ug, m->c_mask_ug , g_m->n_cells, m->n_cells, 6);
@@ -560,6 +389,174 @@ inline void distribute_data_over_ranks(std::shared_ptr<DataPointers>& g_m, std::
 #else
     m = g_m;
 #endif
+
+    m->CreateMeshNonCommArrays();
 }
 
+//*************************************************************************************************
+/**
+ * @brief This uses MPI routines to colour the cell dats like a bundle of pencils along the direction of X
+ *        this directional partitioning minimize the particle MPI communications
+ * @param deck - 
+ * @param cell_index - cell index dat of the current rank, this includes the global cell indices
+ * @param cell_index - cell colours to be enriched for partitioning
+ * @return (void)
+ */
+void cabana_color_pencil_x(const Deck& deck, opp_dat cell_index, const opp_dat cell_colors) 
+{
+#ifdef USE_MPI
+    if (OPP_rank == OPP_ROOT) opp_printf("Setup", "x=%d y=%d z=%d", deck.nx, deck.ny, deck.nz);
 
+    MPI_Comm comm_cart;
+    int mpi_dims[3] = {0, 0, 0};
+    int periods[3] = {1, 1, 1};
+    int coords[3] = {0, 0, 0};
+    int cell_starts[3] = {0, 0, 0}; // Holds the first cell this rank owns in each dimension.
+    int cell_ends[3] = {1, 1, 1}; // Holds the last cell+1 this ranks owns in each dimension.
+    
+    const OPP_INT ndim = 2;
+    std::vector<int> cell_counts = { deck.ny, deck.nz }; // x is the dir of velocity
+
+    MPI_Dims_create(OPP_comm_size, ndim, mpi_dims);
+
+    std::vector<int> cell_count_ordering = reverse_argsort(cell_counts); // direction with most cells first to match mpi_dims order
+
+    std::vector<int> mpi_dims_reordered(ndim);
+    for (int dimx = 0; dimx < ndim; dimx++)  // reorder the mpi_dims to match the actual domain
+        mpi_dims_reordered[cell_count_ordering[dimx]] = mpi_dims[dimx];
+
+    MPI_Cart_create(MPI_COMM_WORLD, ndim, mpi_dims_reordered.data(), periods, 1, &comm_cart);
+    MPI_Cart_get(comm_cart, ndim, mpi_dims, periods, coords);
+
+    for (int dimx = 0; dimx < ndim; dimx++) 
+        get_decomp_1d(mpi_dims[dimx], cell_counts[dimx], coords[dimx], &cell_starts[dimx], &cell_ends[dimx]);
+
+    for (int dimx = 0; dimx < ndim; dimx++) {
+        cell_starts[dimx] += NG;
+        cell_ends[dimx] += NG;
+    }
+
+    std::vector<int> all_cell_starts(OPP_comm_size * ndim);
+    std::vector<int> all_cell_ends(OPP_comm_size * ndim);
+
+    MPI_Allgather(cell_starts, ndim, MPI_INT, all_cell_starts.data(), ndim, MPI_INT, MPI_COMM_WORLD);
+    MPI_Allgather(cell_ends, ndim, MPI_INT, all_cell_ends.data(), ndim, MPI_INT, MPI_COMM_WORLD);
+
+    if (OPP_rank == OPP_ROOT)
+    {
+        std::string log = "";
+        for (int r = 0; r < OPP_comm_size; r++) {
+            log += std::string("\nrank ") + std::to_string(r) + " start (";
+            for (int d = 0; d < ndim; d++)
+                log += std::to_string(all_cell_starts[r*ndim+d]) + ",";
+            log += ") end (";
+            for (int d = 0; d < ndim; d++)
+                log += std::to_string(all_cell_ends[r*ndim+d]) + ",";
+            log += ")";
+        }
+        opp_printf("cabana_color_pencil_x", "%s", log.c_str());
+    }
+
+#define CART_RANK_TO_INDEX(gcidx,ix,iy,iz,_x,_y) \
+    int _ix, _iy, _iz;                                                    \
+    _ix  = (gcidx);                        /* ix = ix+gpx*( iy+gpy*iz ) */ \
+    _iy  = _ix/int(_x);                   /* iy = iy+gpy*iz */            \
+    _ix -= _iy*int(_x);                   /* ix = ix */                   \
+    _iz  = _iy/int(_y);                   /* iz = iz */                   \
+    _iy -= _iz*int(_y);                   /* iy = iy */                   \
+    (ix) = _ix;                                                           \
+    (iy) = _iy;                                                           \
+    (iz) = _iz;                                                           \
+
+    // used global id of cell and assign the color to the correct MPI rank
+    const OPP_INT* gcid = ((OPP_INT*)cell_index->data);
+    for (OPP_INT i = 0; i < cell_index->set->size; i++)
+    {
+        int coord[3] = {-1, -1 -1};
+        CART_RANK_TO_INDEX(gcid[i], coord[0], coord[1], coord[2], deck.nx+2*NG, deck.ny+2*NG);
+
+        if (coord[0] < NG) coord[0] = NG;
+        else if (coord[0] >= (deck.nx + NG)) coord[0] = (deck.nx + NG - 1);
+        if (coord[1] < NG) coord[1] = NG;
+        else if (coord[1] >= (deck.ny + NG)) coord[1] = (deck.ny + NG - 1);
+        if (coord[2] < NG) coord[2] = NG;
+        else if (coord[2] >= (deck.nz + NG)) coord[2] = (deck.nz + NG - 1);
+
+        for (int rank = 0; rank < OPP_comm_size; rank++) 
+        {
+            bool is_rank_suitable = true;
+
+            if ((all_cell_starts[ndim*rank+0] > coord[1]) || (all_cell_ends[ndim*rank+0] <= coord[1]) || 
+                (all_cell_starts[ndim*rank+1] > coord[2]) || (all_cell_ends[ndim*rank+1] <= coord[2]))
+            {
+                is_rank_suitable = false;
+            }
+
+            if (is_rank_suitable)
+            {
+                ((OPP_INT*)cell_colors->data)[i] = rank;
+                break;
+            }
+        }    
+    }
+
+#undef CART_RANK_TO_INDEX
+#endif
+}
+
+//*************************************************************************************************
+/**
+ * @brief This uses block colouring in YZ plane to colour the cell dats along the direction of X
+ *        this directional partitioning minimize the particle MPI communications
+ * @param deck - 
+ * @param cell_index - cell index dat of the current rank, this includes the global cell indices
+ * @param cell_index - cell colours to be enriched for partitioning
+ * @return (void)
+ */
+void cabana_color_block_x(const Deck& deck, opp_dat cell_index, const opp_dat cell_colors) 
+{
+#ifdef USE_MPI
+
+    const OPP_INT numClusters = deck.ny * deck.nz;
+    std::vector<int> assignments;
+    std::vector<int> clusterSizes(numClusters, 0);
+
+    for (int r = 0; r < OPP_comm_size; r++) {
+        int countForRank = opp_get_uniform_local_size(numClusters, r);
+        for (int i = 0; i < countForRank; i++) {
+            assignments.emplace_back(r);
+            clusterSizes[r]++;
+        }
+    }
+
+#define CART_RANK_TO_INDEX(gcidx,ix,iy,iz,_x,_y) \
+    int _ix, _iy, _iz;                                                    \
+    _ix  = (gcidx);                        /* ix = ix+gpx*( iy+gpy*iz ) */ \
+    _iy  = _ix/int(_x);                   /* iy = iy+gpy*iz */            \
+    _ix -= _iy*int(_x);                   /* ix = ix */                   \
+    _iz  = _iy/int(_y);                   /* iz = iz */                   \
+    _iy -= _iz*int(_y);                   /* iy = iy */                   \
+    (ix) = _ix;                                                           \
+    (iy) = _iy;                                                           \
+    (iz) = _iz;                                                           \
+
+    // used global id of cell and assign the color to the correct MPI rank
+    const OPP_INT* gcid = ((OPP_INT*)cell_index->data);
+    for (OPP_INT i = 0; i < cell_index->set->size; i++)
+    {
+        int coord[3] = {-1, -1 -1};
+        CART_RANK_TO_INDEX(gcid[i], coord[0], coord[1], coord[2], deck.nx+2*NG, deck.ny+2*NG);    
+        
+        if (coord[1] >= (deck.ny + NG)) coord[1] -= 2*NG;
+        else if (coord[1] >= NG) coord[1] -= NG;
+        if (coord[2] >= (deck.nz + NG)) coord[2] -= 2*NG;
+        else if (coord[2] >= NG) coord[2] -= NG;
+
+        const int idx = (coord[1] + deck.ny * coord[2]);
+        ((OPP_INT*)cell_colors->data)[i] = assignments[idx]; 
+    }
+
+#undef CART_RANK_TO_INDEX
+
+#endif
+}

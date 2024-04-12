@@ -47,8 +47,10 @@ int OP_hybrid_gpu                   = 0;
 int OP_maps_base_index              = 0;
 int OP_auto_soa                     = 0;
 int OP_gpu_direct                   = 0;
-int OP_part_alloc_mult              = 1;
+double OP_part_alloc_mult           = 1;
 int OP_auto_sort                    = 1;
+int OPP_fill_period                 = 2;
+opp_fill_type OPP_fill_type         = OPP_HoleFill_All;
 int OPP_mpi_part_alloc_mult         = 1;
 int OPP_rank                        = 0;
 int OPP_comm_size                   = 1;
@@ -58,7 +60,7 @@ int OPP_iter_start                  = 0;
 int OPP_iter_end                    = 0;
 int OPP_main_loop_iter              = 0;
 int OPP_gpu_threads_per_block       = OPP_DEFAULT_GPU_THREADS_PER_BLOCK;
-size_t OPP_gpu_shared_mem_per_block = -1;
+size_t OPP_gpu_shared_mem_per_block = 0;
 int *OPP_mesh_relation_data         = nullptr;
 int *OPP_mesh_relation_data_d       = nullptr;
 int OPP_part_cells_set_size         = 0;
@@ -84,7 +86,26 @@ void oppic_init_core(int argc, char **argv)
 
     // these will be overidden by args
     OP_auto_sort = opp_params->get<OPP_BOOL>("opp_auto_sort");
-    OP_part_alloc_mult = opp_params->get<OPP_INT>("opp_allocation_multiple");
+    OP_part_alloc_mult = opp_params->get<OPP_REAL>("opp_allocation_multiple");
+
+    if (opp_params->get<OPP_STRING>("opp_fill") == "HoleFill_All")
+        OPP_fill_type = OPP_HoleFill_All;
+    else if (opp_params->get<OPP_STRING>("opp_fill") == "Sort_All")
+        OPP_fill_type = OPP_Sort_All;
+    else if (opp_params->get<OPP_STRING>("opp_fill") == "Shuffle_All")
+        OPP_fill_type = OPP_Shuffle_All;
+    else if (opp_params->get<OPP_STRING>("opp_fill") == "Sort_Periodic")
+    {
+        OPP_fill_type = OPP_Sort_Periodic;
+        if (opp_params->get<OPP_INT>("opp_fill_period") >= 0)
+            OPP_fill_period = opp_params->get<OPP_INT>("opp_fill_period");
+    }
+    else if (opp_params->get<OPP_STRING>("opp_fill") == "Shuffle_Periodic")
+    {
+        OPP_fill_type = OPP_Shuffle_Periodic;
+        if (opp_params->get<OPP_INT>("opp_fill_period") >= 0)
+            OPP_fill_period = opp_params->get<OPP_INT>("opp_fill_period");
+    }
 
     for (int n = 1; n < argc; n++) 
     {
@@ -142,9 +163,9 @@ void oppic_set_args_core(char *argv)
     if (pch != NULL) 
     {
         strncpy(temp, pch, 20);
-        OP_part_alloc_mult = atoi(temp + 15);
+        OP_part_alloc_mult = atof(temp + 15);
         
-        printf("\toppic_set_args_core OP_part_alloc_mult = %d\n", OP_part_alloc_mult);
+        printf("\toppic_set_args_core OP_part_alloc_mult = %lf\n", OP_part_alloc_mult);
     }
 
     pch = strstr(argv, "OPP_AUTO_SORT=");
@@ -313,8 +334,7 @@ oppic_arg oppic_arg_dat_core(oppic_dat dat, int idx, oppic_map map, oppic_access
     if (dat == nullptr) 
     { 
         std::cerr << "dat is NULL at oppic_arg_dat" << std::endl; 
-        oppic_arg arg; 
-        return arg; 
+        return oppic_arg(); 
     }
     
     return oppic_arg_dat_core(dat, idx, map, dat->dim, dat->type, acc, mapping);
@@ -325,8 +345,7 @@ oppic_arg oppic_arg_dat_core(oppic_dat dat, oppic_access acc, opp_mapping mappin
     if (dat == nullptr) 
     { 
         std::cerr << "dat is NULL at oppic_arg_dat" << std::endl; 
-        oppic_arg arg; 
-        return arg; 
+        return oppic_arg(); 
     }
     
     return oppic_arg_dat_core(dat, -1, NULL, dat->dim, dat->type, acc, mapping);
@@ -499,7 +518,7 @@ bool oppic_increase_particle_count_core(oppic_set part_set, const int num_parts_
         opp_printf("oppic_increase_particle_count_core", "set [%s] with size [%d]", 
             part_set->name, num_parts_to_insert);
 
-    int new_part_set_size = part_set->size + num_parts_to_insert;
+    const int new_part_set_size = part_set->size + num_parts_to_insert;
 
     // if the new particle set size is less or equal to set capacity, then just set new sizes instead of resizing
     if (part_set->set_capacity >= new_part_set_size)
@@ -514,7 +533,7 @@ bool oppic_increase_particle_count_core(oppic_set part_set, const int num_parts_
     }
 
     // if the set needs resizing, then use alloc multiple to increase set capacity to reduce regular resizing of the set
-    size_t new_part_set_capacity = part_set->size + num_parts_to_insert * OP_part_alloc_mult;
+    const size_t new_part_set_capacity = part_set->size + (int)(num_parts_to_insert * OP_part_alloc_mult);
     bool return_flag = true;
 
     if (OP_DEBUG) //  || part_set->size != 0
@@ -555,6 +574,7 @@ bool oppic_increase_particle_count_core(oppic_set part_set, const int num_parts_
         if (dat->is_cell_index && (dat->data != nullptr))
         {
             int* mesh_rel_array = (int *)dat->data;
+            // #pragma code_align 32
             for (size_t i = (size_t)part_set->size; i < new_part_set_capacity; i++)
                 mesh_rel_array[i] = MAX_CELL_INDEX;
         }
@@ -702,8 +722,8 @@ void oppic_finalize_particle_move_core(oppic_set set)
 void oppic_finalize_particle_move_core(oppic_set set)
 {
     if (OP_DEBUG) 
-        opp_printf("oppic_finalize_particle_move_core", "set [%s] size[%d] with particle_remove_count [%d]", 
-        set->name, set->size, set->particle_remove_count);
+        opp_printf("oppic_finalize_particle_move_core", "set [%s] size[%d] with particle_remove_count [%d] diff [%d]", 
+        set->name, set->size, set->particle_remove_count, set->diff);
 
     // return if there are no particles to be removed
     if (set->particle_remove_count <= 0) 
@@ -1041,7 +1061,7 @@ void oppic_print_map_to_txtfile_core(oppic_map map, const char *file_name_prefix
         exit(2);
     }
 
-    for (int i = 0; i < map->from->size + map->from->exec_size + map->from->nonexec_size; i++) 
+    for (int i = 0; i < map->from->size + map->from->exec_size; i++) 
     {
         // fprintf(fp, "%d", i);
 

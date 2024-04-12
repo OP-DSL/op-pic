@@ -159,6 +159,14 @@ struct part_index {
     int end;
 };
 
+enum opp_fill_type {
+    OPP_HoleFill_All = 0,
+    OPP_Sort_All,
+    OPP_Shuffle_All,
+    OPP_Sort_Periodic,
+    OPP_Shuffle_Periodic,
+};
+
 //*************************************************************************************************
 struct oppic_set_core;
 typedef struct oppic_set_core *oppic_set;
@@ -346,8 +354,10 @@ extern double OP_hybrid_balance;
 extern int OP_maps_base_index;
 extern int OP_auto_soa;
 extern int OP_gpu_direct;
-extern int OP_part_alloc_mult;
+extern double OP_part_alloc_mult;
 extern int OP_auto_sort;
+extern int OPP_fill_period;
+extern opp_fill_type OPP_fill_type;
 extern int OPP_mpi_part_alloc_mult;
 extern int OPP_rank;
 extern int OPP_comm_size;

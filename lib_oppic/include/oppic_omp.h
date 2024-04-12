@@ -73,6 +73,7 @@ void opp_create_thread_level_data(oppic_arg arg, T init_value)
         return;
     }
 
+    #pragma omp parallel for
     for (int thr = 1; thr < nthreads; thr++)
     {
         std::fill_n((T*)(dat->thread_data->at(thr)), (dat->dim * dat->set->size), init_value);

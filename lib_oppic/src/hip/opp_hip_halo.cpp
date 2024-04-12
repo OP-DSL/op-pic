@@ -60,7 +60,7 @@ void opp_device_malloc(void **ptr, size_t size)
 //*******************************************************************************
 void opp_device_free(void* ptr)
 {
-    hipFree(ptr);
+    cutilSafeCall(hipFree(ptr));
 }
 
 /*******************************************************************************
@@ -404,7 +404,7 @@ void opp_mpi_halo_wait_all(int nargs, oppic_arg *args)
 
 void __opp_mpi_device_halo_exchange(opp_arg *arg, int exec_flag) 
 {
-#ifdef USE_MPI    
+#ifdef USE_MPI
     opp_dat dat = arg->dat;
 
     if (arg->sent == 1) 

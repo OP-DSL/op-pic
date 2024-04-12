@@ -40,7 +40,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
     #include <opp_mpi_core.h>
 #endif
 
-// #define FUSE_KERNELS
+#define FUSE_KERNELS
 
 #define ONE                       1
 #define TWO                       2

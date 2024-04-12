@@ -359,31 +359,71 @@ inline std::vector<int> get_local_cell_count_array(const int num_cells, const in
     return local_counts;
 }
 
-//*******************************************************************************
+// //*******************************************************************************
+// template <typename T> 
+// inline void opp_uniform_scatter_array(T *g_array, T *l_array, int g_size, int l_size, int elem_size) 
+// {
+//     int64_t *sendcnts = (int64_t *)opp_host_malloc(OPP_comm_size * sizeof(int64_t));
+//     int64_t *displs = (int64_t *)opp_host_malloc(OPP_comm_size * sizeof(int64_t));
+//     int64_t disp = 0;
+
+//     for (int i = 0; i < OPP_comm_size; i++) 
+//     {
+//         sendcnts[i] = (int64_t)elem_size * opp_get_uniform_local_size(g_size, i) * sizeof(T);
+//         //printf("RANK %d %d\t| sendcount %d | %d\n", OPP_rank, g_size, sendcnts[i], opp_get_uniform_local_size(g_size, i));
+//     }
+//     for (int i = 0; i < OPP_comm_size; i++) 
+//     {
+//         displs[i] = disp;
+//         disp = disp + sendcnts[i];
+//         //printf("RANK %d %d\t| displs %d\n", OPP_rank, g_size, displs[i]);
+//     }
+
+//     MPI_Scatterv((char*)g_array, sendcnts, displs, MPI_CHAR, 
+//         (char*)l_array, (int64_t)(l_size * elem_size * sizeof(T)), MPI_CHAR, OPP_ROOT, MPI_COMM_WORLD);
+
+//     opp_host_free(sendcnts);
+//     opp_host_free(displs);
+// }
+
 template <typename T> 
 inline void opp_uniform_scatter_array(T *g_array, T *l_array, int g_size, int l_size, int elem_size) 
 {
-    int *sendcnts = (int *)opp_host_malloc(OPP_comm_size * sizeof(int));
-    int *displs = (int *)opp_host_malloc(OPP_comm_size * sizeof(int));
-    int disp = 0;
+    int64_t *sendcnts = new int64_t[OPP_comm_size];
+    int64_t *displs = new int64_t[OPP_comm_size];
+    int64_t disp = 0;
 
     for (int i = 0; i < OPP_comm_size; i++) 
     {
-        sendcnts[i] = elem_size * opp_get_uniform_local_size(g_size, i) * sizeof(T);
-        //printf("RANK %d %d\t| sendcount %d | %d\n", OPP_rank, g_size, sendcnts[i], opp_get_uniform_local_size(g_size, i));
+        sendcnts[i] = static_cast<int64_t>(elem_size) * opp_get_uniform_local_size(g_size, i) * sizeof(T);
     }
     for (int i = 0; i < OPP_comm_size; i++) 
     {
         displs[i] = disp;
-        disp = disp + sendcnts[i];
-        //printf("RANK %d %d\t| displs %d\n", OPP_rank, g_size, displs[i]);
+        disp += sendcnts[i];
     }
 
-    MPI_Scatterv((char*)g_array, sendcnts, displs, MPI_CHAR, 
-        (char*)l_array, (l_size * elem_size * sizeof(T)), MPI_CHAR, OPP_ROOT, MPI_COMM_WORLD);
+    std::vector<MPI_Request> send_req(OPP_comm_size);  // Include all processes
+    std::vector<MPI_Request> recv_req(1);  // Only one receive request for the local process
 
-    opp_host_free(sendcnts);
-    opp_host_free(displs);
+    if (OPP_rank == OPP_ROOT) 
+    {
+        for (int send_rank = 0; send_rank < OPP_comm_size; send_rank++) 
+        {
+            MPI_Isend((char*)g_array + displs[send_rank], sendcnts[send_rank], MPI_CHAR, send_rank, 
+                        11010, MPI_COMM_WORLD, &send_req[send_rank]);
+        }
+        MPI_Waitall(send_req.size(), send_req.data(), MPI_STATUSES_IGNORE);
+    }
+
+    MPI_Irecv((char*)l_array, static_cast<int64_t>(l_size * elem_size * sizeof(T)), 
+                    MPI_CHAR, OPP_ROOT, 11010, MPI_COMM_WORLD, &recv_req[0]);
+    MPI_Waitall(recv_req.size(), recv_req.data(), MPI_STATUSES_IGNORE);
+
+    MPI_Barrier(MPI_COMM_WORLD);
+
+    delete[] sendcnts;
+    delete[] displs;
 }
 
 //*******************************************************************************

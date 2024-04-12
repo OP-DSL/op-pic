@@ -36,6 +36,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "../cabana_defs.h"
 #include "opp_hip.h"
+#include "hip/hip_runtime.h"
 
 __constant__ int OPP_cells_set_size_d;
 int OPP_cells_set_size;
@@ -98,3 +99,12 @@ __constant__ OPP_REAL CONST_DEV_two_fifteenths = (2.0 / 15.0);
 
 //*************************************************************************************************
 #include "opp_loop_all__GetFinalMaxValues.cpp"
+
+//*************************************************************************************************
+#include "opp_loop_all__compute_energy.cpp"
+
+//*************************************************************************************************
+#include "opp_loop_all__update_ghosts_B.cpp"
+
+//*************************************************************************************************
+#include "opp_loop_all__update_ghosts.cpp"

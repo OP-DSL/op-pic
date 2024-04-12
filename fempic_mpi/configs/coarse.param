@@ -24,16 +24,21 @@ STRING rand_file    = /home/dcs/csrcnj/phd/box_mesh_gen/random_100k.dat
 BOOL invert_normals = false
 
 BOOL opp_auto_sort          = false
-INT opp_allocation_multiple = 11
+REAL opp_allocation_multiple = 11
 INT opp_threads_per_block   = 512
 
 BOOL opp_profile_all        = false
+INT opp_gpu_direct = 0
 
 REAL grid_spacing  = 25e-6
 BOOL print_final   = true
 
 BOOL opp_global_move = false
 
-# block k-means
+# block k-means mpi-block
 STRING cluster = block
+BOOL use_reg_red = false
 
+# HoleFill_All Sort_All Shuffle_All Sort_Periodic Shuffle_Periodic
+STRING opp_fill = Shuffle_Periodic
+INT opp_fill_period = 4

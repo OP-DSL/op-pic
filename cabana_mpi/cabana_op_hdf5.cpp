@@ -34,6 +34,8 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //*********************************************
 
 #include "cabana_defs.h"
+#include "opp_hdf5.h"
+#include "cabana_misc.cpp"
 
 void opp_loop_all__interpolate_mesh_fields(opp_set,opp_arg,opp_arg,opp_arg,opp_arg,opp_arg,opp_arg,opp_arg,opp_arg,opp_arg,opp_arg,opp_arg,opp_arg,opp_arg);
 void opp_particle_mover__Move(opp_set,opp_arg,opp_arg,opp_arg,opp_arg,opp_arg,opp_arg,opp_arg,opp_arg);
@@ -44,10 +46,6 @@ void opp_loop_all__GetFinalMaxValues(opp_set,opp_arg,opp_arg,opp_arg,opp_arg,opp
 void opp_loop_all__compute_energy(opp_set,opp_arg,opp_arg,opp_arg);
 void opp_loop_all__update_ghosts_B(opp_set,opp_arg,opp_arg,opp_arg,opp_arg);
 void opp_loop_all__update_ghosts(opp_set,opp_arg,opp_arg,opp_arg,opp_arg,opp_arg);
-
-using namespace opp;
-
-#include "cabana_misc.cpp"
 
 //*********************************************MAIN****************************************************
 int main(int argc, char **argv) 
@@ -65,37 +63,41 @@ int main(int argc, char **argv)
 
         Deck deck(*opp_params);
         if (OPP_rank == OPP_ROOT) deck.print();
+        
+        std::string file = opp_params->get<OPP_STRING>("hdf_filename");
 
-        std::shared_ptr<DataPointers> m = load_mesh(deck);
+        opp_set c_set = opp_decl_mesh_set_hdf5(file.c_str(), "mesh_cells");
+        
+        std::shared_ptr<DataPointers> m(new DataPointers());
+        m->CreateMeshNonCommArrays(c_set->size);
 
-        opp_set c_set       = opp_decl_mesh_set(m->n_cells, "mesh_cells");
-        opp_map c2c_map     = opp_decl_mesh_map(c_set, c_set, NEIGHBOURS, m->c2c_map,     "c2c_map");
-        opp_map c2ngc_map   = opp_decl_mesh_map(c_set, c_set, FACES,      m->c2ngc_map,   "c2c_non_ghost_map");
-        opp_map c2cug0_map  = opp_decl_mesh_map(c_set, c_set, 1,          m->c2cug0_map,  "c2c_ug_0_map");
-        opp_map c2cug1_map  = opp_decl_mesh_map(c_set, c_set, 1,          m->c2cug1_map,  "c2c_ug_1_map");
-        opp_map c2cug2_map  = opp_decl_mesh_map(c_set, c_set, 1,          m->c2cug2_map,  "c2c_ug_2_map");
-        opp_map c2cug3_map  = opp_decl_mesh_map(c_set, c_set, 1,          m->c2cug3_map,  "c2c_ug_3_map");
-        opp_map c2cug4_map  = opp_decl_mesh_map(c_set, c_set, 1,          m->c2cug4_map,  "c2c_ug_4_map");
-        opp_map c2cug5_map  = opp_decl_mesh_map(c_set, c_set, 1,          m->c2cug5_map,  "c2c_ug_5_map");
-        opp_map c2cugb0_map = opp_decl_mesh_map(c_set, c_set, 1,          m->c2cugb0_map, "c2c_ugb_0_map");
-        opp_map c2cugb1_map = opp_decl_mesh_map(c_set, c_set, 1,          m->c2cugb1_map, "c2c_ugb_1_map");
-        opp_map c2cugb2_map = opp_decl_mesh_map(c_set, c_set, 1,          m->c2cugb2_map, "c2c_ugb_2_map");
-        opp_map c2cugb3_map = opp_decl_mesh_map(c_set, c_set, 1,          m->c2cugb3_map, "c2c_ugb_3_map");
-        opp_map c2cugb4_map = opp_decl_mesh_map(c_set, c_set, 1,          m->c2cugb4_map, "c2c_ugb_4_map");
-        opp_map c2cugb5_map = opp_decl_mesh_map(c_set, c_set, 1,          m->c2cugb5_map, "c2c_ugb_5_map");
+        opp_map c2c_map     = opp_decl_mesh_map_hdf5(c_set, c_set, NEIGHBOURS, file.c_str(), "c2c_map");
+        opp_map c2ngc_map   = opp_decl_mesh_map_hdf5(c_set, c_set, FACES,      file.c_str(), "c2c_non_ghost_map");
+        opp_map c2cug0_map  = opp_decl_mesh_map_hdf5(c_set, c_set, 1,          file.c_str(), "c2c_ug_0_map");
+        opp_map c2cug1_map  = opp_decl_mesh_map_hdf5(c_set, c_set, 1,          file.c_str(), "c2c_ug_1_map");
+        opp_map c2cug2_map  = opp_decl_mesh_map_hdf5(c_set, c_set, 1,          file.c_str(), "c2c_ug_2_map");
+        opp_map c2cug3_map  = opp_decl_mesh_map_hdf5(c_set, c_set, 1,          file.c_str(), "c2c_ug_3_map");
+        opp_map c2cug4_map  = opp_decl_mesh_map_hdf5(c_set, c_set, 1,          file.c_str(), "c2c_ug_4_map");
+        opp_map c2cug5_map  = opp_decl_mesh_map_hdf5(c_set, c_set, 1,          file.c_str(), "c2c_ug_5_map");
+        opp_map c2cugb0_map = opp_decl_mesh_map_hdf5(c_set, c_set, 1,          file.c_str(), "c2c_ugb_0_map");
+        opp_map c2cugb1_map = opp_decl_mesh_map_hdf5(c_set, c_set, 1,          file.c_str(), "c2c_ugb_1_map");
+        opp_map c2cugb2_map = opp_decl_mesh_map_hdf5(c_set, c_set, 1,          file.c_str(), "c2c_ugb_2_map");
+        opp_map c2cugb3_map = opp_decl_mesh_map_hdf5(c_set, c_set, 1,          file.c_str(), "c2c_ugb_3_map");
+        opp_map c2cugb4_map = opp_decl_mesh_map_hdf5(c_set, c_set, 1,          file.c_str(), "c2c_ugb_4_map");
+        opp_map c2cugb5_map = opp_decl_mesh_map_hdf5(c_set, c_set, 1,          file.c_str(), "c2c_ugb_5_map");
 
-        opp_dat c_index      = opp_decl_mesh_dat(c_set, ONE,        DT_INT,  m->c_index,      "c_index");
-        opp_dat c_e          = opp_decl_mesh_dat(c_set, DIM,        DT_REAL, m->c_e,          "c_e");  
-        opp_dat c_b          = opp_decl_mesh_dat(c_set, DIM,        DT_REAL, m->c_b,          "c_b");        
-        opp_dat c_j          = opp_decl_mesh_dat(c_set, DIM,        DT_REAL, m->c_j,          "c_j");
-        opp_dat c_acc        = opp_decl_mesh_dat(c_set, ACC_LEN,    DT_REAL, m->c_acc,        "c_acc"); 
-        opp_dat c_interp     = opp_decl_mesh_dat(c_set, INTERP_LEN, DT_REAL, m->c_interp,     "c_interp"); 
-        opp_dat c_pos_ll     = opp_decl_mesh_dat(c_set, DIM,        DT_REAL, m->c_pos_ll,     "c_pos_ll");       
-        opp_dat c_colors     = opp_decl_mesh_dat(c_set, ONE,        DT_INT,  m->c_colours,    "c_colors"); // init dummy
-        opp_dat c_mask_ghost = opp_decl_mesh_dat(c_set, ONE,        DT_INT,  m->c_ghost,      "c_mask_ghost");
-        opp_dat c_mask_right = opp_decl_mesh_dat(c_set, ONE,        DT_INT,  m->c_mask_right, "c_mask_right");
-        opp_dat c_mask_ug    = opp_decl_mesh_dat(c_set, 6,          DT_INT,  m->c_mask_ug,    "c_mask_ug");
-        opp_dat c_mask_ugb   = opp_decl_mesh_dat(c_set, 6,          DT_INT,  m->c_mask_ugb,   "c_mask_ugb");
+        opp_dat c_index      = opp_decl_mesh_dat_hdf5(c_set,   ONE, DT_INT,  file.c_str(), "c_index");
+        opp_dat c_e          = opp_decl_mesh_dat(c_set,        DIM, DT_REAL, m->c_e,       "c_e");  
+        opp_dat c_b          = opp_decl_mesh_dat(c_set,        DIM, DT_REAL, m->c_b,       "c_b");        
+        opp_dat c_j          = opp_decl_mesh_dat(c_set,        DIM, DT_REAL, m->c_j,       "c_j");
+        opp_dat c_acc        = opp_decl_mesh_dat(c_set,    ACC_LEN, DT_REAL, m->c_acc,     "c_acc"); 
+        opp_dat c_interp     = opp_decl_mesh_dat(c_set, INTERP_LEN, DT_REAL, m->c_interp,  "c_interp"); 
+        opp_dat c_pos_ll     = opp_decl_mesh_dat_hdf5(c_set,   DIM, DT_REAL, file.c_str(), "c_pos_ll");       
+        opp_dat c_colors     = opp_decl_mesh_dat(c_set,        ONE, DT_INT,  m->c_colours, "c_colors"); // init dummy
+        opp_dat c_mask_ghost = opp_decl_mesh_dat_hdf5(c_set,   ONE, DT_INT,  file.c_str(), "c_mask_ghost");
+        opp_dat c_mask_right = opp_decl_mesh_dat_hdf5(c_set,   ONE, DT_INT,  file.c_str(), "c_mask_right");
+        opp_dat c_mask_ug    = opp_decl_mesh_dat_hdf5(c_set,     6, DT_INT,  file.c_str(), "c_mask_ug");
+        opp_dat c_mask_ugb   = opp_decl_mesh_dat_hdf5(c_set,     6, DT_INT,  file.c_str(), "c_mask_ugb");
 
         opp_set p_set        = opp_decl_part_set("particles", c_set);  // Zero particles, inject after partitioning
         opp_dat p_index      = nullptr; // opp_decl_part_dat(p_set, ONE, DT_INT,  nullptr, "p_index"); // Unused
@@ -337,118 +339,3 @@ int main(int argc, char **argv)
 
     return 0;
 }
-
-
-
-
-
-
-//*************************************************************************************************
-// std::string f = std::string("F_") + std::to_string(ts + 1);
-// opp_print_map_to_txtfile(c_v_nodes_map  , f.c_str(), "c_v_nodes_map.dat");
-// opp_print_dat_to_txtfile(node_charge_den, f.c_str(), "node_charge_den.dat");
-// opp_mpi_print_dat_to_txtfile(c_shape_deriv, "c_shape_deriv.dat");
-//             if (false)
-//             { 
-//                 std::string midString = "A_ACC_";  
-// #ifdef USE_MPI  
-//                 std::string f1 = midString + std::to_string(OPP_main_loop_iter) + "_c_e.dat";
-//                 std::string f2 = midString + std::to_string(OPP_main_loop_iter) + "_c_b.dat";
-//                 std::string f3 = midString + std::to_string(OPP_main_loop_iter) + "_c_j.dat";
-//                 std::string f4 = midString + std::to_string(OPP_main_loop_iter) + "_c_interp.dat";
-//                 std::string f5 = midString + std::to_string(OPP_main_loop_iter) + "_c_acc.dat";
-
-//                 opp_mpi_print_dat_to_txtfile(c_e, f1.c_str());
-//                 opp_mpi_print_dat_to_txtfile(c_b, f2.c_str());
-//                 opp_mpi_print_dat_to_txtfile(c_j, f3.c_str());
-//                 opp_mpi_print_dat_to_txtfile(c_interp, f4.c_str());
-//                 opp_mpi_print_dat_to_txtfile(c_acc, f5.c_str());
-// #else           
-//                 std::string f = std::string("F_") + midString + std::to_string(OPP_main_loop_iter);
-                
-//                 opp_print_dat_to_txtfile(c_e, f.c_str(), "c_e.dat");
-//                 opp_print_dat_to_txtfile(c_b, f.c_str(), "c_b.dat");
-//                 opp_print_dat_to_txtfile(c_j, f.c_str(), "c_j.dat");
-//                 opp_print_dat_to_txtfile(c_interp, f.c_str(), "c_interp.dat");
-//                 opp_print_dat_to_txtfile(c_acc, f.c_str(), "c_acc.dat");
-// #endif
-//             }
-
-// opp_print_dat_to_txtfile(p_mesh_rel, "INIT", "p_mesh_rel.dat");
-// opp_print_dat_to_txtfile(p_pos, "INIT", "p_pos.dat");
-// opp_print_dat_to_txtfile(p_vel, "INIT", "p_vel.dat");
-// opp_print_dat_to_txtfile(p_weight, "INIT", "p_weight.dat");
-
-// std::string f = std::string("F_") + std::to_string(OPP_main_loop_iter);     
-// opp_print_dat_to_txtfile(p_mesh_rel, f.c_str(), "p_mesh_rel.dat");
-// opp_print_dat_to_txtfile(p_pos, f.c_str(), "p_pos.dat");
-// opp_print_dat_to_txtfile(p_vel, f.c_str(), "p_vel.dat");
-// opp_print_dat_to_txtfile(p_weight, f.c_str(), "p_weight.dat");
-
-// opp_print_dat_to_txtfile(c_e, f.c_str(), "c_e.dat");
-// opp_print_dat_to_txtfile(c_b, f.c_str(), "c_b.dat");
-// opp_print_dat_to_txtfile(c_j, f.c_str(), "c_j.dat");
-// opp_print_dat_to_txtfile(c_interp, f.c_str(), "c_interp.dat");
-// opp_print_dat_to_txtfile(c_acc, f.c_str(), "c_acc.dat");
-       
-// std::string f1 = std::string("INIT_M") + std::to_string(OPP_rank);  
-// opp_print_map_to_txtfile(c2cug0_map  , f1.c_str(), "c2cug0_map.dat");
-// opp_print_map_to_txtfile(c2cug1_map  , f1.c_str(), "c2cug1_map.dat");
-// opp_print_map_to_txtfile(c2cug2_map  , f1.c_str(), "c2cug2_map.dat");
-// opp_print_map_to_txtfile(c2cug3_map  , f1.c_str(), "c2cug3_map.dat");
-// opp_print_map_to_txtfile(c2cug4_map  , f1.c_str(), "c2cug4_map.dat");
-// opp_print_map_to_txtfile(c2cug5_map  , f1.c_str(), "c2cug5_map.dat");
-
-// opp_print_dat_to_txtfile(p_mesh_rel, "INIT", "p_mesh_rel.dat");
-// opp_print_dat_to_txtfile(p_pos, "INIT", "p_pos.dat");
-// opp_print_dat_to_txtfile(p_vel, "INIT", "p_vel.dat");
-// opp_print_dat_to_txtfile(p_weight, "INIT", "p_weight.dat");
-
-// opp_print_dat_to_txtfile(c_e, "INIT", "c_e.dat");
-// opp_print_dat_to_txtfile(c_b, "INIT", "c_b.dat");
-// opp_print_dat_to_txtfile(c_j, "INIT", "c_j.dat");
-// opp_print_dat_to_txtfile(c_interp, "INIT", "c_interp.dat");
-// opp_print_dat_to_txtfile(c_acc, "INIT", "c_acc.dat");
-
-// {
-// std::string f = std::string("F_") + std::to_string(OPP_main_loop_iter);     
-// opp_print_dat_to_txtfile(c_j, f.c_str(), "c_j_aft_ughost.dat");
-// }
-
-// {
-//     std::string log = ""; // TODO : print some unseful information to verify
-//             if (opp_params->get<OPP_BOOL>("print_energy"))
-//             {
-//                 OPP_REAL e_energy = 0.0, b_energy = 0.0;
-//                 opp_loop_all__compute_energy(c_set,
-//                     opp_get_arg(c_mask_ghost, OP_READ),
-//                     opp_get_arg(c_e,          OP_READ),
-//                     opp_get_arg_gbl(&e_energy, 1, "double", OP_INC)
-//                 );
-//                 opp_loop_all__compute_energy(c_set,
-//                     opp_get_arg(c_mask_ghost, OP_READ),
-//                     opp_get_arg(c_b,          OP_READ),
-//                     opp_get_arg_gbl(&b_energy, 1, "double", OP_INC)
-//                 );
-//                 log += str(e_energy*0.5, " e_energy: \t%.15f");
-//                 log += str(b_energy*0.5, " b_energy: \t%.15f");
-//             }
-//             if (opp_params->get<OPP_BOOL>("print_final"))
-//             {
-//                 OPP_REAL max_j = 0.0, max_e = 0.0, max_b = 0.0;
-
-//                 opp_loop_all__GetFinalMaxValues(c_set, // plan is to get only the x values reduced here
-//                     opp_get_arg(c_j, OP_READ),
-//                     opp_get_arg_gbl(&max_j, 1, "double", OP_MAX),
-//                     opp_get_arg(c_e, OP_READ),
-//                     opp_get_arg_gbl(&max_e, 1, "double", OP_MAX),
-//                     opp_get_arg(c_b, OP_READ),
-//                     opp_get_arg_gbl(&max_b, 1, "double", OP_MAX)
-//                 );
-
-//                 log += str(max_j, " max_jx: %.10f"); // %2.15lE");
-//                 log += str(max_e, " max_ex: %.10f"); // %2.15lE");
-//                 log += str(max_b, " max_bx: %.20f"); // %2.15lE");
-//             }
-//      opp_printf("INTEL", "ts: %d %s ****", OPP_main_loop_iter, log.c_str());
-// }

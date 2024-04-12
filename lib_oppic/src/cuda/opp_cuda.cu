@@ -43,7 +43,7 @@ char *OP_reduct_d = nullptr;
 void opp_init(int argc, char **argv)
 {
 #ifdef USE_PETSC
-    PetscInitialize(&argc, &argv, PETSC_NULL, "opp::PetscCUDA");
+    PetscInitialize(&argc, &argv, PETSC_NULLPTR, "opp::PetscCUDA");
 #else
     #ifdef USE_MPI
         MPI_Init(&argc, &argv);
@@ -58,33 +58,54 @@ void opp_init(int argc, char **argv)
     MPI_Comm_size(OP_MPI_WORLD, &OPP_comm_size);
 #endif
 
+    if (OPP_rank == OPP_ROOT)
+    {
+        std::string log = "Running on CUDA";
+#ifdef USE_MPI
+        log += "+MPI with " + std::to_string(OPP_comm_size) + " ranks";
+#endif        
+        opp_printf("OP-PIC", "%s", log.c_str());
+        opp_printf("OP-PIC", "---------------------------------------------");
+    }
+
+#ifdef USE_MPI
+    MPI_Barrier(MPI_COMM_WORLD);
+#endif  
+
     oppic_init_core(argc, argv);
     cutilDeviceInit(argc, argv);
 
+    // cutilSafeCall(cudaDeviceSetCacheConfig(cudaFuncCachePreferL1));
     cutilSafeCall(cudaDeviceSetCacheConfig(cudaFuncCachePreferShared));
     cutilSafeCall(cudaDeviceSetSharedMemConfig(cudaSharedMemBankSizeEightByte));
 
     OP_auto_soa = 1; // TODO : Make this configurable with args
-    //OP_auto_sort = 1;
 
-    int threads_per_block = opp_params->get<OPP_INT>("opp_threads_per_block");   
+    const int threads_per_block = opp_params->get<OPP_INT>("opp_threads_per_block");   
     if (threads_per_block > 0 && threads_per_block < INT_MAX)
         OPP_gpu_threads_per_block = threads_per_block;
 
-    int gpu_direct = opp_params->get<OPP_INT>("opp_gpu_direct");   
+    const int gpu_direct = opp_params->get<OPP_INT>("opp_gpu_direct");   
     if (gpu_direct > 0 && gpu_direct < INT_MAX)
         OP_gpu_direct = gpu_direct;
 
     int deviceId = -1;
     cudaGetDevice(&deviceId);
-    cudaDeviceProp deviceProp;
-    cutilSafeCall(cudaGetDeviceProperties(&deviceProp, deviceId));
+    cudaDeviceProp prop;
+    cutilSafeCall(cudaGetDeviceProperties(&prop, deviceId));
 
-    OPP_gpu_shared_mem_per_block = deviceProp.sharedMemPerBlock;
+    OPP_gpu_shared_mem_per_block = prop.sharedMemPerBlock;
+
+    char hostname[256];
+    if (gethostname(hostname, sizeof(hostname)) != 0) 
+    {
+        opp_printf("cutilDeviceInit", "Failed to get hostname of MPI rank %d", OPP_rank);
+        opp_abort();
+    }
 
     opp_printf("opp_init", 
-        "CUDA device: %d %s OPP_gpu_threads_per_block=%d Shared memory per block=%lu bytes gpu_direct=%d", 
-        deviceId, deviceProp.name, OPP_gpu_threads_per_block, deviceProp.sharedMemPerBlock, OP_gpu_direct);
+        "Device: %d [%s] on Host [%s] threads=%d Shared_Mem=%lubytes GPU_Direct=%d", deviceId, 
+        prop.name, hostname, OPP_gpu_threads_per_block, prop.sharedMemPerBlock, OP_gpu_direct);
 }
 
 //****************************************
@@ -155,8 +176,45 @@ void oppic_cuda_exit()
     i_dv.clear();
     i_dv.shrink_to_fit();
 
-    OPP_thrust_move_indices_d.clear();
-    OPP_thrust_move_indices_d.shrink_to_fit();
+    send_part_cell_idx_dv.clear();
+    send_part_cell_idx_dv.shrink_to_fit();
+
+    temp_int_dv.clear();
+    temp_int_dv.shrink_to_fit();
+
+    temp_real_dv.clear();
+    temp_real_dv.shrink_to_fit();
+
+    OPP_thrust_move_particle_indices_d.clear();
+    OPP_thrust_move_particle_indices_d.shrink_to_fit();
+
+    OPP_thrust_move_cell_indices_d.clear();
+    OPP_thrust_move_cell_indices_d.shrink_to_fit();
+
+    OPP_thrust_remove_particle_indices_d.clear();
+    OPP_thrust_remove_particle_indices_d.shrink_to_fit();
+
+    ps_to_indices_dv.clear(); ps_to_indices_dv.shrink_to_fit(); 
+    ps_from_indices_dv.clear(); ps_from_indices_dv.shrink_to_fit(); 
+    ps_sequence_dv.clear(); ps_sequence_dv.shrink_to_fit(); 
+
+    for (auto it = particle_indices_hv.begin(); it != particle_indices_hv.end(); it++) it->second.clear();
+    for (auto it = cell_indices_hv.begin(); it != cell_indices_hv.end(); it++) it->second.clear();
+    for (auto it = particle_indices_dv.begin(); it != particle_indices_dv.end(); it++)
+    {
+        it->second.clear();
+        it->second.shrink_to_fit();
+    }
+    for (auto it = send_data.begin(); it != send_data.end(); it++)
+    {
+        it->second.clear();
+        it->second.shrink_to_fit();
+    }
+    for (auto it = recv_data.begin(); it != recv_data.end(); it++)
+    {
+        it->second.clear();
+        it->second.shrink_to_fit();
+    }
 
     if (OPP_need_remove_flags_d != nullptr)
     {
@@ -353,7 +411,7 @@ void oppic_increase_particle_count(oppic_set part_set, const int num_particles_t
         opp_profiler->start("opp_inc_part_count_UPL");
         for (oppic_dat& current_dat : *(part_set->particle_dats))
         {
-            if (OP_DEBUG) opp_printf("oppic_increase_particle_count", "cuda resizing dat [%s] set_capacity [%d]", 
+            if (OP_DEBUG) opp_printf("oppic_increase_particle_count", "resizing dat [%s] set_capacity [%d]", 
                             current_dat->name, part_set->set_capacity);
 
             // TODO : We might be able to copy only the old data from device to device!
@@ -375,7 +433,7 @@ void oppic_increase_particle_count(oppic_set part_set, const int num_particles_t
 //****************************************
 void oppic_particle_sort(oppic_set set)
 { 
-    particle_sort_cuda(set, false);
+    particle_sort_device(set, false);
 }
 
 //****************************************
@@ -606,14 +664,19 @@ void opp_upload_dat(oppic_dat dat)
 void opp_upload_map(opp_map map, bool create_new) 
 {
     if (OP_DEBUG) opp_printf("opp_upload_map", "CPU->GPU | %s %s", map->name, create_new ? "NEW" : "COPY");
-    int set_size = map->from->size + map->from->exec_size;
+    int set_size = map->from->size + map->from->exec_size + map->from->nonexec_size;
     int *temp_map = (int *)opp_host_malloc(map->dim * set_size * sizeof(int));
 
+    const int set_size_plus_exec = map->from->size + map->from->exec_size;
+    
     for (int i = 0; i < map->dim; i++) 
     {
         for (int j = 0; j < set_size; j++) 
         {
-            temp_map[i * set_size + j] = map->map[map->dim * j + i];
+            if (j >= set_size_plus_exec)
+                temp_map[i * set_size + j] = -10;
+            else
+                temp_map[i * set_size + j] = map->map[map->dim * j + i];
         }
     }
 
@@ -755,9 +818,11 @@ void __cudaSafeCall(cudaError_t err, const char *file, const int line)
 {
     if (cudaSuccess != err) 
     {
-        fprintf(stderr, "%s(%i) : cutilSafeCall() Runtime API error : %s.\n", file, line, 
-            cudaGetErrorString(err));
-        opp_abort();
+        // fprintf(stderr, "%s(%i) : cutilSafeCall() Runtime API error : %s.\n", file, line, 
+        //     cudaGetErrorString(err));
+        std::string log = std::string(file) + "(" + std::to_string(line);
+        log += std::string(") cutilSafeCall() Runtime API error : ") + cudaGetErrorString(err);
+        opp_abort(log.c_str());
     }
 }
 
@@ -829,7 +894,7 @@ void oppic_create_device_arrays(oppic_dat dat, bool create_new)
     }
     else
     {
-        std::cerr << "oppic_create_device_arrays CUDA not implemented for type: " << dat->type << " dat name: " << 
+        std::cerr << "oppic_create_device_arrays DEVICE not implemented for type: " << dat->type << " dat name: " << 
             dat->name << std::endl;
         opp_abort();
     }
@@ -848,14 +913,7 @@ void cutilDeviceInit(int argc, char **argv)
     cutilSafeCall(cudaGetDeviceCount(&deviceCount));
     if (deviceCount == 0) 
     {
-        opp_printf("cutilDeviceInit", "cutil error: no devices supporting CUDA");
-        opp_abort();
-    }
-
-    char hostname[256];
-    if (gethostname(hostname, sizeof(hostname)) != 0) 
-    {
-        opp_printf("cutilDeviceInit", "Failed to get hostname of MPI rank %d", OPP_rank);
+        opp_printf("cutilDeviceInit", "cutil error: no devices supporting DEVICE");
         opp_abort();
     }
   
@@ -879,20 +937,9 @@ void cutilDeviceInit(int argc, char **argv)
         }
     }
 
-    if (OP_hybrid_gpu) 
+    if (OP_hybrid_gpu == 0) 
     {
-        // cutilSafeCall(cudaDeviceSetCacheConfig(cudaFuncCachePreferL1));
-
-        int deviceId = -1;
-        cudaGetDevice(&deviceId);
-        cudaDeviceProp deviceProp;
-        cutilSafeCall(cudaGetDeviceProperties(&deviceProp, deviceId));
-        opp_printf("cutilDeviceInit", "Rank [%d] using CUDA device: %d %s on host %s", 
-            OPP_rank, deviceId, deviceProp.name, hostname);
-    } 
-    else 
-    {
-        opp_printf("cutilDeviceInit", "Error... Init Cuda Device Failed");
+        opp_printf("cutilDeviceInit", "Error... Init device Device Failed");
         opp_abort();
     }
 }

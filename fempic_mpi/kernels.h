@@ -190,7 +190,7 @@ inline void move_all_particles_to_cell__kernel(
 {
     if (m.iteration_one)
     {
-        double coefficient1 = CONST_charge / CONST_mass * (CONST_dt);
+        const double coefficient1 = CONST_charge / CONST_mass * (CONST_dt);
         for (int i = 0; i < KERNEL_DIM; i++)
             part_vel[i] += (coefficient1 * cell_ef[i]);                  
         
@@ -199,7 +199,7 @@ inline void move_all_particles_to_cell__kernel(
     }
 
     bool inside = true;
-    double coefficient2 = KERNEL_ONE_OVER_SIX / (*current_cell_volume);
+    const double coefficient2 = KERNEL_ONE_OVER_SIX / (*current_cell_volume);
     for (int i=0; i<KERNEL_N_PER_C; i++) /*loop over vertices*/
     {
         part_lc[i] = coefficient2 * (
@@ -310,13 +310,13 @@ inline void compute_electric_field__kernel(
 
 //*************************************************************************************************
 
-#define OPP_LOOP_UNROLL
+// #define OPP_LOOP_UNROLL
 //*******************************************************************************
 inline void isPointInCellKernel(bool& inside, const double *point_pos, double* point_lc, 
                                 const double *cell_volume, const double *cell_det) { 
 
     inside = true;  
-    double coefficient2 = KERNEL_ONE_OVER_SIX / (*cell_volume);
+    const double coefficient2 = KERNEL_ONE_OVER_SIX / (*cell_volume);
 
 #ifdef OPP_LOOP_UNROLL
 
@@ -365,10 +365,22 @@ inline void isPointInCellKernel(bool& inside, const double *point_pos, double* p
             cell_det[i * KERNEL_DET_FIELDS + 2] * point_pos[1] - 
             cell_det[i * KERNEL_DET_FIELDS + 3] * point_pos[2]);
         
-        if (point_lc[i] < 0.0 || 
-            point_lc[i] > 1.0)  
-                inside = false;
-    }    
+        // if (point_lc[i] < 0.0 || 
+        //     point_lc[i] > 1.0)  
+        //         inside = false;
+    }  
+
+    if (point_lc[0] < 0.0 || 
+        point_lc[0] > 1.0 ||
+        point_lc[1] < 0.0 || 
+        point_lc[1] > 1.0 ||
+        point_lc[2] < 0.0 || 
+        point_lc[2] > 1.0 ||
+        point_lc[3] < 0.0 || 
+        point_lc[3] > 1.0) { 
+            
+            inside = false;
+    }  
 #endif
 }
 

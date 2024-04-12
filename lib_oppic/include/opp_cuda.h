@@ -65,9 +65,25 @@ extern thrust::device_vector<int> cellIdx_dv;
 extern thrust::device_vector<int> i_dv;
 extern char *OPP_need_remove_flags_d;
 
-extern int *OPP_move_indices_d;
+extern int *OPP_move_particle_indices_d;
+extern int *OPP_move_cell_indices_d;
 extern int *OPP_move_count_d;
-extern thrust::device_vector<int> OPP_thrust_move_indices_d;
+extern thrust::device_vector<int> OPP_thrust_move_particle_indices_d;
+extern thrust::device_vector<int> OPP_thrust_move_cell_indices_d;
+
+extern int *OPP_remove_particle_indices_d;
+extern int *OPP_remove_count_d;
+extern thrust::device_vector<int> OPP_thrust_remove_particle_indices_d;
+
+extern thrust::device_vector<int> ps_to_indices_dv;
+extern thrust::device_vector<int> ps_from_indices_dv;
+extern thrust::device_vector<int> ps_sequence_dv;
+
+extern std::map<int, thrust::host_vector<OPP_INT>> cell_indices_hv;     // cellid in the foreign rank, arrange according to rank
+extern std::map<int, thrust::host_vector<OPP_INT>> particle_indices_hv; // particle ids to send, arrange according to rank
+extern std::map<int, thrust::device_vector<OPP_INT>> particle_indices_dv;
+extern std::map<int, thrust::device_vector<char>> send_data;
+extern std::map<int, thrust::device_vector<char>> recv_data;
 
 // arrays for global constants and reductions
 extern char *OP_reduct_h, *OP_reduct_d;
@@ -345,7 +361,7 @@ void copy_according_to_index(thrust::device_vector<T>* in_dat_dv, thrust::device
                         (out_dat_dv->begin() + out_offset + (3 * out_capacity)))));
             break;
         default:
-            std::cerr << "particle_sort_cuda not implemented for dim " << dimension << std::endl;
+            std::cerr << "copy_according_to_index not implemented for dim " << dimension << std::endl;
             exit(-1);
     }
 }

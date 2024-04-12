@@ -440,10 +440,11 @@ void __opp_mpi_device_halo_exchange(opp_arg *arg, int exec_flag)
     }
 
 // printf("arg->dat->buffer_d %p\n\n", arg->dat->buffer_d);
+// opp_printf("opp_mpi_halo_exchange_dev", "WAIT SEND %d RECV %d", ((op_mpi_buffer)(dat->mpi_buffer))->s_num_req, ((op_mpi_buffer)(dat->mpi_buffer))->r_num_req);
 
     gather_data_to_buffer(*arg, exp_exec_list, exp_nonexec_list);
 // opp_printf("opp_mpi_halo_exchange_dev", "1");
-cutilSafeCall(cudaDeviceSynchronize());
+// cutilSafeCall(cudaDeviceSynchronize());
     char *outptr_exec = NULL;
     char *outptr_nonexec = NULL; // opp_printf("opp_mpi_halo_exchange_dev", "2");
     if (OP_gpu_direct) {
@@ -473,7 +474,10 @@ cutilSafeCall(cudaDeviceSynchronize());
                     dat->size * exp_exec_list->sizes[i], MPI_CHAR,
                     exp_exec_list->ranks[i], dat->index, OP_MPI_WORLD,
                     &((op_mpi_buffer)(dat->mpi_buffer))
-                        ->s_req[((op_mpi_buffer)(dat->mpi_buffer))->s_num_req++]); // opp_printf("opp_mpi_halo_exchange_dev", "8");
+                        ->s_req[((op_mpi_buffer)(dat->mpi_buffer))->s_num_req++]); 
+                        
+        // opp_printf("opp_mpi_halo_exchange_dev", "Sending EXEC to rank %d COUNT %d == %d", exp_exec_list->ranks[i], exp_exec_list->sizes[i],
+        //                 ((op_mpi_buffer)(dat->mpi_buffer))->s_num_req);
     }
 // opp_printf("opp_mpi_halo_exchange_dev", "9");
     int init = dat->set->size * dat->size;
@@ -489,6 +493,8 @@ cutilSafeCall(cudaDeviceSynchronize());
                     imp_exec_list->ranks[i], dat->index, OP_MPI_WORLD,
                     &((op_mpi_buffer)(dat->mpi_buffer))
                         ->r_req[((op_mpi_buffer)(dat->mpi_buffer))->r_num_req++]); // opp_printf("opp_mpi_halo_exchange_dev", "12");
+        // opp_printf("opp_mpi_halo_exchange_dev", "Receiving EXEC to rank %d COUNT %d == %d", imp_exec_list->ranks[i], imp_exec_list->sizes[i],
+        //                 ((op_mpi_buffer)(dat->mpi_buffer))->r_num_req);
     }
 // opp_printf("opp_mpi_halo_exchange_dev", "13");
     //-----second exchange nonexec elements related to this data array------
@@ -510,6 +516,8 @@ cutilSafeCall(cudaDeviceSynchronize());
                     exp_nonexec_list->ranks[i], dat->index, OP_MPI_WORLD,
                     &((op_mpi_buffer)(dat->mpi_buffer))
                         ->s_req[((op_mpi_buffer)(dat->mpi_buffer))->s_num_req++]);
+        // opp_printf("opp_mpi_halo_exchange_dev", "Sending NON-EXEC to rank %d COUNT %d == %d", exp_nonexec_list->ranks[i], exp_nonexec_list->sizes[i],
+        //                 ((op_mpi_buffer)(dat->mpi_buffer))->s_num_req);
     }
 // opp_printf("opp_mpi_halo_exchange_dev", "15");
     int nonexec_init = (dat->set->size + imp_exec_list->size) * dat->size;
@@ -527,6 +535,9 @@ cutilSafeCall(cudaDeviceSynchronize());
                     imp_nonexec_list->ranks[i], dat->index, OP_MPI_WORLD,
                     &((op_mpi_buffer)(dat->mpi_buffer))
                         ->r_req[((op_mpi_buffer)(dat->mpi_buffer))->r_num_req++]); // opp_printf("opp_mpi_halo_exchange_dev", "17");
+
+        // opp_printf("opp_mpi_halo_exchange_dev", "Receiving NON-EXEC to rank %d COUNT %d == %d", imp_nonexec_list->ranks[i], imp_nonexec_list->sizes[i],
+        //                 ((op_mpi_buffer)(dat->mpi_buffer))->r_num_req);
     }
 // opp_printf("opp_mpi_halo_exchange_dev", "18");
     // clear dirty bit
@@ -542,6 +553,8 @@ void __opp_mpi_device_halo_wait_all(opp_arg *arg)
 #ifdef USE_MPI
     opp_dat dat = arg->dat;
 
+    // opp_printf("__opp_mpi_device_halo_wait_all", "WAIT SEND %d RECV %d", ((op_mpi_buffer)(dat->mpi_buffer))->s_num_req, ((op_mpi_buffer)(dat->mpi_buffer))->r_num_req);
+
     MPI_Waitall(((op_mpi_buffer)(dat->mpi_buffer))->s_num_req,
                 ((op_mpi_buffer)(dat->mpi_buffer))->s_req, MPI_STATUSES_IGNORE);
     MPI_Waitall(((op_mpi_buffer)(dat->mpi_buffer))->r_num_req,
@@ -550,9 +563,13 @@ void __opp_mpi_device_halo_wait_all(opp_arg *arg)
     ((op_mpi_buffer)(dat->mpi_buffer))->s_num_req = 0;
     ((op_mpi_buffer)(dat->mpi_buffer))->r_num_req = 0;
 
+    // opp_printf("__opp_mpi_device_halo_wait_all", "Running pass Wait All");
+    // MPI_Barrier(MPI_COMM_WORLD);
+    // opp_printf("__opp_mpi_device_halo_wait_all", "Passing Barrier");
+
     if (OP_gpu_direct == 0) 
     {
-
+// opp_printf("__opp_mpi_device_halo_wait_all", "Passing Barrier OP_gpu_direct == 0");
         if (strstr(arg->dat->type, ":soa") != NULL || (OP_auto_soa && arg->dat->dim > 1)) 
         {
             int init = dat->set->size * dat->size;
@@ -573,6 +590,7 @@ void __opp_mpi_device_halo_wait_all(opp_arg *arg)
     } 
     else if (strstr(arg->dat->type, ":soa") != NULL || (OP_auto_soa && arg->dat->dim > 1))
     {
+// opp_printf("__opp_mpi_device_halo_wait_all", "Passing Barrier scatter_data_from_buffer");
         scatter_data_from_buffer(*arg);
     }
 

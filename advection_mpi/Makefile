@@ -6,14 +6,14 @@ LIB = lib
 OBJ = obj
 BIN = bin
 
-CPP        = mpicxx
-MPICPP	   = mpicxx
+CPP        = $(CC_COMPILER)
+MPICPP	   = $(MPI_COMPILER)
 NVCC       = nvcc
-HIPCC      = hipcc
+HIPCC      = $(HIP_COMPILER)
 
 CPPFLAGS   = -std=c++14 -Wall -fPIC 
 NVCCFLAGS  = -m64 -Xptxas -dlcm=ca -Xptxas=-v $(NVCCFLAGS_ADD)
-HIPCCFLAGS = -std=c++17 -Wall -isystem -D__HIP_PLATFORM_AMD__
+HIPCCFLAGS = $(HIPCCFLAGS_ADD) -std=c++17 -Wall -isystem -D__HIP_PLATFORM_AMD__
 
 DEBUG ?= 0
 ifeq ($(DEBUG), 1)

@@ -854,6 +854,11 @@ void opp_particle_mover__Move(
         
         opp_profiler->start("GblMv_AllMv");
 
+        // need to change the arg data since particle resize in globalMover::finalize could change the pointer in realloc dat->data 
+        for (int i = 0; i < nargs; i++)
+            if (args[i].argtype == OP_ARG_DAT && args[i].dat->set->is_particle)
+                args[i].data = args[i].dat->data;
+
         // check whether the new particle is within cell, and if not move between cells within the MPI rank, 
         // mark for neighbour comm. Do only for the globally moved particles 
         for (int i = (set->size - set->diff); i < set->size; i++) { 
@@ -912,14 +917,17 @@ void opp_loop_all__GetFinalMaxValues(
     int set_size = opp_mpi_halo_exchanges(set, nargs, args);
     opp_mpi_halo_wait_all(nargs, args);  
 
-    for (int n = 0; n < set->size; n++)
+    if (set_size > 0)
     {
-        get_final_max_values_kernel(
-            &((double*) args[0].data)[n * args[0].dim],     // n_charge_den  
-            (double*) args[1].data,
-            &((double*) args[2].data)[n * args[2].dim],     // n_pot  
-            (double*) args[3].data
-        );
+        for (int n = 0; n < set->size; n++)
+        {
+            get_final_max_values_kernel(
+                &((double*) args[0].data)[n * args[0].dim],     // n_charge_den  
+                (double*) args[1].data,
+                &((double*) args[2].data)[n * args[2].dim],     // n_pot  
+                (double*) args[3].data
+            );
+        }
     }
 
     opp_mpi_reduce_double(&args[1], (double*)args[1].data);

@@ -33,120 +33,86 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 // AUTO GENERATED CODE
 //*********************************************
 
-int verify_stride_OPP_HOST_1 = -1;
-__constant__ int verify_stride_OPP_DEVICE_1;
+int ce_OPP_HOST_1 = -1;
+__constant__ int ce_OPP_DEVICE_1;
 
 //user function
 //*************************************************************************************************
-__device__ void verify__kernel_gpu(
-        const OPP_INT* part_cid, 
-        const OPP_REAL* part_pos,
-        const OPP_INT* cell_global_idx,
-        OPP_INT* incorrect_part_count
-)
+__device__ void compute_energy__kernel_gpu(
+    const OPP_INT* cell0_ghost, 
+    const OPP_REAL* cell_field, 
+    OPP_REAL* energy)
 {
-    // get the cell boundaries for the current cell_index - using global cell index 
-    int ix = -1, iy = -1;
-    RANK_TO_INDEX((*cell_global_idx), ix, iy, CONST_DEVICE_ndimcells[Dim::x]); 
-    
-    if (ix < 0 || iy < 0)
+    if (cell0_ghost[0] == 0) 
     {
-        // opp_printf("VERIFY", "Incorrect ix[%d] iy[%d] for global cell[%d] nx[%d]",
-        //     ix, iy, (*cell_global_idx), CONST_ndimcells[Dim::x]);
-        (*incorrect_part_count)++;
-        return;
-    }
-    
-    // get the boundaries of that cell
-    const OPP_REAL boundary_ll[DIM] = { (ix * CONST_DEVICE_cell_width), (iy * CONST_DEVICE_cell_width) };
- 
-    // check whether the current particle is within those boundaries or not!
-    const OPP_REAL part_pos_x = part_pos[Dim::x * verify_stride_OPP_DEVICE_1];
-    if (part_pos_x < boundary_ll[Dim::x] ||
-            part_pos_x > (boundary_ll[Dim::x] + CONST_DEVICE_cell_width)) {
+        // energy ptr is thread local, hence no need of atomics here
         
-        (*incorrect_part_count)++;
-        return;
-    }
-
-    const OPP_REAL part_pos_y = part_pos[Dim::y * verify_stride_OPP_DEVICE_1];
-    if (part_pos_y < boundary_ll[Dim::y] ||
-            part_pos_y > (boundary_ll[Dim::y] + CONST_DEVICE_cell_width)) {
-        
-        (*incorrect_part_count)++;
-        return;
+        energy[0] += cell_field[Dim::x * ce_OPP_DEVICE_1] * cell_field[Dim::x * ce_OPP_DEVICE_1] +
+                    cell_field[Dim::y * ce_OPP_DEVICE_1] * cell_field[Dim::y * ce_OPP_DEVICE_1] +
+                    cell_field[Dim::z * ce_OPP_DEVICE_1] * cell_field[Dim::z * ce_OPP_DEVICE_1];
     }
 }
 
-// HIP kernel function
+// DEVICE kernel function
 //*************************************************************************************************
-__global__ void opp_device_Verify(
+__global__ void opp_dev_compute_energy(
     const OPP_INT *__restrict dir_arg0,
     const OPP_REAL *__restrict dir_arg1,
-    const OPP_INT *__restrict ind_arg2,
-    OPP_INT *__restrict dir_arg3,
+    OPP_REAL *__restrict dir_arg2,
     const int start,
     const int end
 ) 
 {
-    OPP_INT arg3_l[1];
+    double arg2_l[1];
     for ( int d=0; d<1; d++ )
     {
-        arg3_l[d] = 0;
+        arg2_l[d] = ZERO_double;
     }
 
     //process set elements
     for (int n = threadIdx.x+blockIdx.x*blockDim.x; n < (end-start); n+= blockDim.x*gridDim.x)
     {
-        const int map0idx = dir_arg0[n];
-
         //user-supplied kernel call
-        verify__kernel_gpu(
-            (dir_arg0 + n),             // part_mesh_rel,      
-            (dir_arg1 + n),             // part_pos,           
-            (ind_arg2 + map0idx),       // cell_global_index,  
-            arg3_l                      // incorrect_part_count
+        compute_energy__kernel_gpu(
+            (dir_arg0 + n),
+            (dir_arg1 + n),
+            arg2_l
         );
     }
 
     for (int d = 0; d < 1; d++)
     {
-        opp_reduction<OP_INC>(&dir_arg3[d + blockIdx.x * 1], arg3_l[d]);
+        opp_reduction<OP_INC>(&dir_arg2[d + blockIdx.x * 1], arg2_l[d]);
     }
 }
 
 //*************************************************************************************************
-void opp_loop_all__Verify(
-    opp_set set,     // particles_set
-    opp_arg arg0,    // part_mesh_rel,        OP_RW
-    opp_arg arg1,    // part_pos,             OP_READ
-    opp_arg arg2,    // cell_global_index,    OP_READ
-    opp_arg arg3     // incorrect_part_count, OP_INC
+void opp_loop_all__compute_energy(
+    opp_set set,     // cells set
+    opp_arg arg0,    // cell0_ghost, OP_READ
+    opp_arg arg1,    // cell_field,  OP_READ
+    opp_arg arg2     // energy,      OP_INC
 )
-{ 
-    
-    if (OP_DEBUG) 
-        opp_printf("ADVEC", "opp_loop_all__Verify set_size %d diff %d", set->size, set->diff);
+{
+    if (OP_DEBUG) opp_printf("CABANA", "opp_loop_all__compute_energy set_size %d", set->size);
 
-    opp_profiler->start("Verify");
+    opp_profiler->start("Energy");
 
-    const int nargs = 4;
+    const int nargs = 3;
     opp_arg args[nargs];
 
     args[0] = arg0;
     args[1] = arg1;
     args[2] = arg2;
-    args[3] = arg3;
 
-    OPP_INT* arg3h = (OPP_INT *)args[3].data;
+    OPP_REAL* arg2h = (OPP_REAL *)args[2].data;
 
     int set_size = opp_mpi_halo_exchanges_grouped(set, nargs, args, Device_GPU);
     opp_mpi_halo_wait_all(nargs, args);
     if (set_size > 0) 
     {
-        verify_stride_OPP_HOST_1 = args[1].dat->set->set_capacity;
-        cutilSafeCall(hipMemcpyToSymbol(HIP_SYMBOL(verify_stride_OPP_DEVICE_1), 
-                                                    &verify_stride_OPP_HOST_1, sizeof(int)));
+        ce_OPP_HOST_1 = args[1].dat->set->set_capacity; 
+        cutilSafeCall(hipMemcpyToSymbol(HIP_SYMBOL(ce_OPP_DEVICE_1), &ce_OPP_HOST_1, sizeof(int)));
 
         //set DEVICE execution parameters
         #ifdef OP_BLOCK_SIZE_4
@@ -162,22 +128,22 @@ void opp_loop_all__Verify(
         int reduct_bytes = 0;
         int reduct_size  = 0;
         
-        reduct_bytes += ROUND_UP(maxblocks*1*sizeof(OPP_INT)); // for global arg 3
-        reduct_size   = MAX(reduct_size,sizeof(OPP_INT));
+        reduct_bytes += ROUND_UP(maxblocks*1*sizeof(OPP_REAL)); // for global arg 2
+        reduct_size   = MAX(reduct_size,sizeof(OPP_REAL));
         
         opp_reallocReductArrays(reduct_bytes);
         
         reduct_bytes = 0;
-        args[3].data   = OP_reduct_h + reduct_bytes;
-        args[3].data_d = OP_reduct_d + reduct_bytes;
+        args[2].data   = OP_reduct_h + reduct_bytes;
+        args[2].data_d = OP_reduct_d + reduct_bytes;
         for (int b = 0; b < maxblocks; b++)
         {
             for (int d = 0; d < 1; d++)
             {
-                ((OPP_INT *)args[3].data)[d+b*1] = 0;
+                ((OPP_REAL *)args[2].data)[d+b*1] = ZERO_double;
             }
         }
-        reduct_bytes += ROUND_UP(maxblocks*1*sizeof(OPP_INT));
+        reduct_bytes += ROUND_UP(maxblocks*1*sizeof(OPP_REAL));
 
         opp_mvReductArraysToDevice(reduct_bytes);
 
@@ -186,11 +152,10 @@ void opp_loop_all__Verify(
         const int start = 0;
         const int end   = set->size;
 
-        opp_device_Verify <<<nblocks,nthread,nshared>>> (
-            (OPP_INT *) args[0].data_d,                 // part_mesh_rel,      
-            (OPP_REAL*) args[1].data_d,                 // part_pos,           
-            (OPP_INT *) args[2].data_d,                 // cell_global_index,  
-            (OPP_INT *) args[3].data_d,                 // incorrect_part_count
+        opp_dev_compute_energy<<<nblocks,nthread,nshared>>> (
+            (OPP_INT *)  args[0].data_d,
+            (OPP_REAL *) args[1].data_d,
+            (OPP_REAL *) args[2].data_d,
             start, 
             end
         );
@@ -201,16 +166,15 @@ void opp_loop_all__Verify(
         {
             for (int d = 0; d < 1; d++)
             {
-                arg3h[d] += ((OPP_INT *)args[3].data)[d+b*1];
+                arg2h[d] += ((OPP_REAL *)args[2].data)[d+b*1];
             }
         }
-        args[3].data = (char *)arg3h;
-
-        opp_mpi_reduce(&args[3],arg3h);
+        args[2].data = (char *)arg2h;
+        opp_mpi_reduce(&args[2],arg2h);
 
         opp_set_dirtybit_grouped(nargs, args, Device_GPU);
         cutilSafeCall(hipDeviceSynchronize());       
     }
 
-    opp_profiler->end("Verify");
+    opp_profiler->end("Energy");
 }

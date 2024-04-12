@@ -42,7 +42,7 @@ void opp_init(int argc, char **argv)
 {
 
 #ifdef USE_PETSC
-    PetscInitialize(&argc, &argv, PETSC_NULL, "opp::PetscMPI");
+    PetscInitialize(&argc, &argv, PETSC_NULLPTR, "opp::PetscMPI");
 #else
     MPI_Init(&argc, &argv);
 #endif
@@ -53,8 +53,14 @@ void opp_init(int argc, char **argv)
     MPI_Comm_rank(OP_MPI_WORLD, &OPP_rank);
     MPI_Comm_size(OP_MPI_WORLD, &OPP_comm_size);
 
-    if (OPP_rank == OPP_ROOT) 
-        opp_printf("oppic_init", "initialized with %d MPI ranks", OPP_comm_size);
+    if (OPP_rank == OPP_ROOT)
+    {
+        std::string log = "Running on MPI with " + std::to_string(OPP_comm_size) + " ranks";
+        opp_printf("OP-PIC", "%s", log.c_str());
+        opp_printf("OP-PIC", "---------------------------------------------");
+    }
+
+    MPI_Barrier(MPI_COMM_WORLD);
     
     oppic_init_core(argc, argv);
 
@@ -291,6 +297,7 @@ void opp_init_particle_move(oppic_set set, int nargs, oppic_arg *args)
     oppic_init_particle_move_core(set);
 
     opp_move_part_indices.clear();
+    opp_move_part_indices.reserve(20000);
 
     if (OPP_comm_iteration == 0)
     {

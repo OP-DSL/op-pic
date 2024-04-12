@@ -143,3 +143,178 @@ enum Face {
     yu = 4,
     zu = 5,
 };
+
+//*************************************************************************************************
+/**
+ * @brief Utility class to temporarily hold the mesh data until it is loaded by OP-PIC
+ */
+class DataPointers
+{
+    public:
+        DataPointers() {}
+        virtual ~DataPointers()
+        {
+            DeleteValues();   
+        }
+
+        inline void DeleteValues() {
+
+            if (c_index != nullptr) delete[] c_index;
+            if (c_e != nullptr) delete[] c_e;
+            if (c_b != nullptr) delete[] c_b;
+            if (c_j != nullptr) delete[] c_j;
+            if (c_acc != nullptr) delete[] c_acc;
+            if (c_interp != nullptr) delete[] c_interp;
+            if (c_pos_ll != nullptr) delete[] c_pos_ll;
+            if (c_colours != nullptr) delete[] c_colours;
+            if (c_ghost != nullptr) delete[] c_ghost;
+            if (c_mask_right != nullptr) delete[] c_mask_right; 
+            if (c_mask_ug != nullptr) delete[] c_mask_ug; 
+            if (c_mask_ugb != nullptr) delete[] c_mask_ugb; 
+
+            if (c2ngc_map != nullptr) delete[] c2ngc_map;
+            if (c2c_map != nullptr) delete[] c2c_map;
+            if (c2cug_map != nullptr) delete[] c2cug_map;
+            if (c2cugb_map != nullptr) delete[] c2cugb_map;
+
+            if (c2cug0_map != nullptr) delete[] c2cug0_map;
+            if (c2cug1_map != nullptr) delete[] c2cug1_map;
+            if (c2cug2_map != nullptr) delete[] c2cug2_map;
+            if (c2cug3_map != nullptr) delete[] c2cug3_map;
+            if (c2cug4_map != nullptr) delete[] c2cug4_map;
+            if (c2cug5_map != nullptr) delete[] c2cug5_map;
+
+            if (c2cugb0_map != nullptr) delete[] c2cugb0_map;
+            if (c2cugb1_map != nullptr) delete[] c2cugb1_map;
+            if (c2cugb2_map != nullptr) delete[] c2cugb2_map;
+            if (c2cugb3_map != nullptr) delete[] c2cugb3_map;
+            if (c2cugb4_map != nullptr) delete[] c2cugb4_map;
+            if (c2cugb5_map != nullptr) delete[] c2cugb5_map;
+
+            c_index = nullptr;
+            c_e = nullptr;
+            c_b = nullptr;
+            c_j = nullptr;
+            c_acc = nullptr;
+            c_interp = nullptr;
+            c_pos_ll = nullptr;
+            c_colours = nullptr;
+            c_ghost      = nullptr;
+            c_mask_right = nullptr;
+            c_mask_ug    = nullptr;
+            c_mask_ugb   = nullptr;
+
+            c2ngc_map = nullptr;
+            c2c_map   = nullptr;
+            c2cug_map   = nullptr;
+            c2cugb_map  = nullptr;
+
+            c2cug0_map  = nullptr;
+            c2cug1_map  = nullptr;
+            c2cug2_map  = nullptr;
+            c2cug3_map  = nullptr;
+            c2cug4_map  = nullptr;
+            c2cug5_map  = nullptr;
+
+            c2cugb0_map  = nullptr;
+            c2cugb1_map  = nullptr;
+            c2cugb2_map  = nullptr;
+            c2cugb3_map  = nullptr;
+            c2cugb4_map  = nullptr;
+            c2cugb5_map  = nullptr;
+        }
+
+        inline void CreateMeshCommArrays() {
+
+            this->c_index      = new OPP_INT[this->n_cells * ONE];
+            this->c_pos_ll     = new OPP_REAL[this->n_cells * DIM];
+            this->c_ghost      = new OPP_INT[this->n_cells * ONE];
+            this->c_mask_right = new OPP_INT[this->n_cells * ONE];
+            this->c_mask_ug    = new OPP_INT[this->n_cells * 6];
+            this->c_mask_ugb   = new OPP_INT[this->n_cells * 6];
+
+            this->c2c_map     = new OPP_INT[this->n_cells * NEIGHBOURS];
+            this->c2ngc_map   = new OPP_INT[this->n_cells * FACES];
+            this->c2cug_map   = new OPP_INT[this->n_cells * 6];
+            this->c2cugb_map  = new OPP_INT[this->n_cells * 6];
+
+            this->c2cug0_map  = new OPP_INT[this->n_cells];
+            this->c2cug1_map  = new OPP_INT[this->n_cells];
+            this->c2cug2_map  = new OPP_INT[this->n_cells];
+            this->c2cug3_map  = new OPP_INT[this->n_cells];
+            this->c2cug4_map  = new OPP_INT[this->n_cells];
+            this->c2cug5_map  = new OPP_INT[this->n_cells];
+
+            this->c2cugb0_map  = new OPP_INT[this->n_cells];
+            this->c2cugb1_map  = new OPP_INT[this->n_cells];
+            this->c2cugb2_map  = new OPP_INT[this->n_cells];
+            this->c2cugb3_map  = new OPP_INT[this->n_cells];
+            this->c2cugb4_map  = new OPP_INT[this->n_cells];
+            this->c2cugb5_map  = new OPP_INT[this->n_cells];
+        }
+
+        inline void CreateMeshNonCommArrays(int cell_count) {
+
+            this->c_e          = new OPP_REAL[cell_count * DIM];  
+            this->c_b          = new OPP_REAL[cell_count * DIM];        
+            this->c_j          = new OPP_REAL[cell_count * DIM];
+            this->c_acc        = new OPP_REAL[cell_count * ACC_LEN]; 
+            this->c_interp     = new OPP_REAL[cell_count * INTERP_LEN]; 
+            this->c_colours    = new OPP_INT[cell_count];
+
+            for (int n = 0; n < cell_count; n++) {
+
+                for (int d = 0; d < DIM; d++) {
+                    this->c_e[n * DIM + d] = 0.0;
+                    this->c_b[n * DIM + d] = 0.0;
+                    this->c_j[n * DIM + d] = 0.0;
+
+                    for (int i = 0; i < ACCUMULATOR_ARRAY_LENGTH; i++)
+                        this->c_acc[(n * DIM + d) * ACCUMULATOR_ARRAY_LENGTH + i] = 0.0;
+                }
+
+                for (int i = 0; i < INTERP_LEN; i++)
+                    this->c_interp[n * INTERP_LEN + i] = 0.0;
+                
+                this->c_colours[n]    = 10000;
+            }
+        }
+
+        inline void CreateMeshNonCommArrays() {
+            CreateMeshNonCommArrays(this->n_cells);
+        }
+        int n_cells     = 0;
+        int n_particles = 0;
+
+        OPP_INT* c_index   = nullptr;
+        OPP_REAL* c_e      = nullptr;
+        OPP_REAL* c_b      = nullptr;
+        OPP_REAL* c_j      = nullptr;
+        OPP_REAL* c_acc    = nullptr;
+        OPP_REAL* c_interp = nullptr;
+        OPP_REAL* c_pos_ll = nullptr;
+        OPP_INT* c_colours = nullptr;
+        OPP_INT* c_ghost         = nullptr;
+        OPP_INT* c_mask_right    = nullptr;
+        OPP_INT* c_mask_ug       = nullptr;
+        OPP_INT* c_mask_ugb      = nullptr;
+
+        OPP_INT* c2ngc_map   = nullptr;
+        OPP_INT* c2c_map     = nullptr;
+        OPP_INT* c2cug_map   = nullptr;
+        OPP_INT* c2cugb_map  = nullptr;
+        
+        OPP_INT* c2cug0_map  = nullptr;
+        OPP_INT* c2cug1_map  = nullptr;
+        OPP_INT* c2cug2_map  = nullptr;
+        OPP_INT* c2cug3_map  = nullptr;
+        OPP_INT* c2cug4_map  = nullptr;
+        OPP_INT* c2cug5_map  = nullptr;
+
+        OPP_INT* c2cugb0_map  = nullptr;
+        OPP_INT* c2cugb1_map  = nullptr;
+        OPP_INT* c2cugb2_map  = nullptr;
+        OPP_INT* c2cugb3_map  = nullptr;
+        OPP_INT* c2cugb4_map  = nullptr;
+        OPP_INT* c2cugb5_map  = nullptr;
+};

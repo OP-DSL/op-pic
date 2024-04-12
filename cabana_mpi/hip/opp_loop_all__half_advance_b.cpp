@@ -34,8 +34,6 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 // AUTO GENERATED CODE
 //*********************************************
 
-#include "hip/hip_runtime.h"
-
 __constant__ int hab_OPP_DEVICE_0;
 __constant__ int hab_OPP_DEVICE_4;
 __constant__ int hab_OPP_DEVICE_0_MAP;
@@ -51,22 +49,28 @@ __device__ void dev_half_advance_b__kernel (
     const OPP_REAL* cell_y_e, 
     const OPP_REAL* cell_z_e, 
     const OPP_REAL* cell0_e, 
-    OPP_REAL* cell0_b)
+    OPP_REAL* cell0_b,
+    const OPP_INT* cell0_ghost)
 {
-    cell0_b[hab_OPP_DEVICE_4 * Dim::x] -= ( 0.5 * CONST_DEV_p[Dim::y] * 
+    if (cell0_ghost[0] == 0) 
+    {
+        // No need of atomics here, since we are directly incrementing core elements 
+        
+        cell0_b[hab_OPP_DEVICE_4 * Dim::x] -= ( 0.5 * CONST_DEV_p[Dim::y] * 
                         ( cell_y_e[hab_OPP_DEVICE_0 * Dim::z] - cell0_e[hab_OPP_DEVICE_0 * Dim::z] ) 
                             - 0.5 * CONST_DEV_p[Dim::z] * 
                         ( cell_z_e[hab_OPP_DEVICE_0 * Dim::y] - cell0_e[hab_OPP_DEVICE_0 * Dim::y] ) );
 
-    cell0_b[hab_OPP_DEVICE_4 * Dim::y] -= ( 0.5 * CONST_DEV_p[Dim::z] * 
+        cell0_b[hab_OPP_DEVICE_4 * Dim::y] -= ( 0.5 * CONST_DEV_p[Dim::z] * 
                         ( cell_z_e[hab_OPP_DEVICE_0 * Dim::x] - cell0_e[hab_OPP_DEVICE_0 * Dim::x] ) 
                             - 0.5 * CONST_DEV_p[Dim::x] * 
                         ( cell_x_e[hab_OPP_DEVICE_0 * Dim::z] - cell0_e[hab_OPP_DEVICE_0 * Dim::z] ) );
 
-    cell0_b[hab_OPP_DEVICE_4 * Dim::z] -= ( 0.5 * CONST_DEV_p[Dim::x] * 
+        cell0_b[hab_OPP_DEVICE_4 * Dim::z] -= ( 0.5 * CONST_DEV_p[Dim::x] * 
                         ( cell_x_e[hab_OPP_DEVICE_0 * Dim::y] - cell0_e[hab_OPP_DEVICE_0 * Dim::y] ) 
                             - 0.5 * CONST_DEV_p[Dim::y] * 
                         ( cell_y_e[hab_OPP_DEVICE_0 * Dim::x] - cell0_e[hab_OPP_DEVICE_0 * Dim::x] ) );
+    }
 }
 
 // DEVICE kernel function
@@ -78,6 +82,7 @@ __global__ void dev_half_advance_b(
     const OPP_REAL *__restrict arg2_ind,
     const OPP_REAL *__restrict arg3_dir,
     OPP_REAL *__restrict arg4_dir,
+    const OPP_INT *__restrict arg5_dir,
     int start,
     int end) 
 {
@@ -97,7 +102,8 @@ __global__ void dev_half_advance_b(
             (arg1_ind + map1idx),
             (arg2_ind + map2idx),
             (arg3_dir + n),
-            (arg4_dir + n)
+            (arg4_dir + n),
+            (arg5_dir + n)
         );
     }
 }
@@ -109,15 +115,16 @@ void opp_loop_all__half_advance_b(
     opp_arg arg1,    // cell_y_e        // OPP_READ
     opp_arg arg2,    // cell_z_e        // OPP_READ
     opp_arg arg3,    // cell0_e         // OPP_READ
-    opp_arg arg4     // cell0_b         // OPP_INC
+    opp_arg arg4,    // cell0_b         // OPP_INC
+    opp_arg arg5     // cell0_ghost     // OPP_READ
 )
 {
 
-    if (FP_DEBUG) opp_printf("CABANA", "opp_loop_all__half_advance_b set_size %d", set->size);
+    if (OP_DEBUG) opp_printf("CABANA", "opp_loop_all__half_advance_b set_size %d", set->size);
 
     opp_profiler->start("HalfAdv_B");
 
-    const int nargs = 5;
+    const int nargs = 6;
     opp_arg args[nargs];
 
     args[0] = std::move(arg0);
@@ -125,13 +132,12 @@ void opp_loop_all__half_advance_b(
     args[2] = std::move(arg2);
     args[3] = std::move(arg3);
     args[4] = std::move(arg4);
+    args[5] = std::move(arg5);
 
-    opp_profiler->start("HAdv_B_HaloSend");
+    opp_profiler->start("HAdv_B_Halo");
     int set_size = opp_mpi_halo_exchanges_grouped(set, nargs, args, Device_GPU);
-    opp_profiler->end("HAdv_B_HaloSend");
-    opp_profiler->start("HAdv_B_HaloWait");
     opp_mpi_halo_wait_all(nargs, args);
-    opp_profiler->end("HAdv_B_HaloWait");
+    opp_profiler->end("HAdv_B_Halo");
     
     if (set_size > 0) 
     {
@@ -161,6 +167,7 @@ void opp_loop_all__half_advance_b(
                 (OPP_REAL*) args[2].data_d,         // cell_z_e        // OPP_READ
                 (OPP_REAL*) args[3].data_d,         // cell0_e         // OPP_READ
                 (OPP_REAL*) args[4].data_d,         // cell0_b         // OPP_INC
+                (OPP_INT*)  args[5].data_d,         // cell0_ghost     // OPP_READ
                 start, 
                 end);
         }

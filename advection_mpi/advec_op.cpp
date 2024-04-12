@@ -73,10 +73,10 @@ int main(int argc, char **argv)
         opp_dat cell_colors   = opp_decl_mesh_dat(cell_set, ONE, DT_INT,  m->c_colors, "c_colors"); // used only with MPI
 
         opp_set part_set      = opp_decl_part_set("particles", cell_set); // Zero particles, inject after partitioning
-        opp_dat part_index    = opp_decl_part_dat(part_set, ONE, DT_INT,  nullptr, "p_index"); // Unused in the simulation
         opp_dat part_pos      = opp_decl_part_dat(part_set, DIM, DT_REAL, nullptr, "p_pos");
         opp_dat part_vel      = opp_decl_part_dat(part_set, DIM, DT_REAL, nullptr, "p_vel");    
         opp_dat part_mesh_rel = opp_decl_part_dat(part_set, ONE, DT_INT,  nullptr, "p_mesh_rel", true);
+        opp_dat part_index    = opp_decl_part_dat(part_set, ONE, DT_INT,  nullptr, "p_index"); // Unused in the simulation
 
         opp_decl_const<OPP_REAL>(TWO, extents,     "CONST_extents");
         opp_decl_const<OPP_REAL>(ONE, &dt,         "CONST_dt");
@@ -93,11 +93,13 @@ int main(int argc, char **argv)
         opp_partition(std::string("EXTERNAL"), cell_set, nullptr, cell_colors);
 #endif
         
-        init_particles(part_index, part_pos, part_vel, part_mesh_rel, cell_pos_ll);
+        init_particles(part_index, part_pos, part_vel, part_mesh_rel, cell_pos_ll, cell_index);
 
+#ifndef FUSE_KERNELS 
         initialize_particle_mover(grid_spacing, DIM, cell_pos_ll, cell_index, cell_cell_map);
+#endif
 
-        opp_printf("Setup", "Cells[%d] Particles[%d]", cell_set->size, part_set->size);
+        opp_printf("Setup", "Cells[%d] Particles[%d] max_iter[%d]", cell_set->size, part_set->size, max_iter);
 
         opp_profiler->end("Setup");
 
@@ -149,9 +151,10 @@ int main(int argc, char **argv)
         } // End Main loop
         opp_profiler->end("MainLoop");
         
-        int64_t total_glb_particles = 0, local_particles = (int64_t)(part_set->size);
+        int64_t total_glb_particles = (int64_t)(part_set->size), local_particles = (int64_t)(part_set->size);
+#ifdef USE_MPI
         MPI_Reduce(&local_particles, &total_glb_particles, 1, MPI_INT64_T, MPI_SUM, OPP_ROOT, MPI_COMM_WORLD);
-
+#endif
         if (OPP_rank == OPP_ROOT) 
             opp_printf("Main", "Main loop completed after %d iterations {particles=%d} ****", 
                 max_iter, total_glb_particles);

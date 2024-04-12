@@ -5,14 +5,14 @@ LIB = lib
 OBJ = obj
 BIN = bin
 
-CPP        = mpicxx
-MPICPP	   = mpicxx
+CPP        = $(CC_COMPILER)
+MPICPP	   = $(MPI_COMPILER)
 NVCC       = nvcc
-HIPCC      = hipcc
+HIPCC      = $(HIP_COMPILER)
 
 CPPFLAGS   = -std=c++17 -Wall -fPIC -march=native
-NVCCFLAGS  = -m64 -Xptxas -dlcm=ca -Xptxas=-v $(NVCCFLAGS_ADD)
-HIPCCFLAGS = -std=c++17 -Wall -isystem -D__HIP_PLATFORM_AMD__ -munsafe-fp-atomics 
+NVCCFLAGS  = -std=c++14 -m64 -Xptxas -dlcm=ca -Xptxas=-v $(NVCCFLAGS_ADD)
+HIPCCFLAGS = $(HIPCCFLAGS_ADD) -std=c++17 -Wall -isystem -D__HIP_PLATFORM_AMD__ -munsafe-fp-atomics -march=native
 
 DEBUG ?= 0
 ifeq ($(DEBUG), 1)
@@ -22,7 +22,7 @@ ifeq ($(DEBUG), 1)
 	DEBUG_LOG   = 1
 else
 	CPPFLAGS   += -O3 -g
-	NVCCFLAGS  += -O3 -g
+	NVCCFLAGS  += -O3 -g -lineinfo
 	HIPCCFLAGS += -O3 -g
 endif
 
@@ -57,8 +57,8 @@ ifeq ($(PARMETIS), 1)
 	ALL_INC  += -DHAVE_PARMETIS
 endif
 
-ALL_INC    += -I$(OPPIC_PATH)/include
-ALL_LIBS   += -L$(OPPIC_PATH)/lib
+ALL_INC    += -I$(OPPIC_PATH)/include -I$(HDF5_INSTALL_PATH)/include 
+ALL_LIBS   += -L$(OPPIC_PATH)/lib -L$(HDF5_INSTALL_PATH)/lib
 
 .PHONY: clean mklib
 
@@ -93,6 +93,24 @@ mpi: mklib
 			$(OBJ)/mpikernels.o \
 			$(ALL_INC) $(ALL_LIBS) -loppic_mpi
 
+mpi_hdf5: mklib
+		 $(MPICPP) $(CPPFLAGS) -DUSE_MPI -c cabana_op_hdf5.cpp -o $(OBJ)/cabana_op_hdf5.o $(ALL_INC)
+		 $(MPICPP) $(CPPFLAGS) -DUSE_MPI -c mpi/mpikernels.cpp -o $(OBJ)/mpikernels.o $(ALL_INC)
+		 $(MPICPP) $(CPPFLAGS) -DUSE_MPI -c opp_mpi_hdf5.cpp -o $(OBJ)/opp_mpi_hdf5.o $(ALL_INC)
+	     $(MPICPP) $(CPPFLAGS) -DUSE_MPI -o $(BIN)/mpi_hdf5 \
+		 	$(OBJ)/cabana_op_hdf5.o \
+			$(OBJ)/opp_mpi_hdf5.o \
+			$(OBJ)/mpikernels.o \
+			-loppic_mpi $(ALL_INC) $(ALL_LIBS) -lhdf5
+
+mpi_hdf5_conv: mklib
+		 $(MPICPP) $(CPPFLAGS) -DUSE_MPI -c cabana_convert_hdf5.cpp -o $(OBJ)/cabana_convert_hdf5.o $(ALL_INC)
+		 $(MPICPP) $(CPPFLAGS) -DUSE_MPI -c opp_mpi_hdf5.cpp -o $(OBJ)/opp_mpi_hdf5.o $(ALL_INC)
+	     $(MPICPP) $(CPPFLAGS) -DUSE_MPI -o $(BIN)/mpi_hdf5_conv \
+		 	$(OBJ)/cabana_convert_hdf5.o \
+			$(OBJ)/opp_mpi_hdf5.o \
+			-loppic_mpi $(ALL_INC) $(ALL_LIBS) -lhdf5
+
 cuda: mklib
 		 $(NVCC) $(NVCCFLAGS) -c cuda/cudakernels.cu -o $(OBJ)/cudakernels.o $(ALL_INC) $(CUDA_INC)
 	     $(CPP) $(CPPFLAGS) -c cabana_op.cpp -o $(OBJ)/cabana_op_cuda.o $(ALL_INC)
@@ -112,18 +130,18 @@ cuda_mpi: mklib
 hip: mklib
 		 $(HIPCC) $(HIPCCFLAGS) -c hip/hipkernels.cpp -o $(OBJ)/hipkernels.o $(ALL_INC) $(HIP_INC)
 	     $(HIPCC) $(HIPCCFLAGS) -c cabana_op.cpp -o $(OBJ)/cabana_op_hip.o $(ALL_INC)
-	     $(HIPCC) $(HIPCCFLAGS) -o $(BIN)/hip \
+	     $(HIPCC) -o $(BIN)/hip \
 			$(OBJ)/cabana_op_hip.o \
 			$(OBJ)/hipkernels.o \
-			$(ALL_INC) $(HIP_INC) $(ALL_LIBS) $(HIP_LIB) -lopp_hip
+			$(ALL_LIBS) $(HIP_LIB) -lopp_hip
 
 hip_mpi: mklib
 		 $(HIPCC) $(HIPCCFLAGS) -DUSE_MPI -c hip/hipkernels.cpp -o $(OBJ)/hipkernels_mpi.o $(ALL_INC) $(HIP_INC)
 	     $(HIPCC) $(HIPCCFLAGS) -DUSE_MPI -c cabana_op.cpp -o $(OBJ)/cabana_op_hip_mpi.o $(ALL_INC)
-	     $(HIPCC) $(HIPCCFLAGS) -DUSE_MPI -o $(BIN)/hip_mpi \
+	     $(HIPCC) -DUSE_MPI -o $(BIN)/hip_mpi \
 			$(OBJ)/cabana_op_hip_mpi.o \
 			$(OBJ)/hipkernels_mpi.o \
-			$(ALL_INC) $(HIP_INC) $(ALL_LIBS) $(HIP_LIB) -lopp_hip_mpi -lmpi
+			$(ALL_LIBS) $(HIP_LIB) -lopp_hip_mpi -lmpi
 
 clean: 
 	     rm -f *.o *.d *.a

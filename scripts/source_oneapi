@@ -22,11 +22,10 @@ LIBRARY_PATH=$LD_LIBRARY_PATH
 # export CPLUS_INCLUDE_PATH=/ext-home/zl/lib/include:/ext-home/zl/lib_install/petsc-3.18.3-oneapi-2021.3-mpi_telos/include:$CPLUS_INCLUDE_PATH
 # export CPLUS_INCLUDE_PATH=/ext-home/zl/lib_setup/spack/opt/spack/linux-debian10-skylake_avx512/gcc-8.3.0/intel-mpi-2019.10.317-2u5n4emcs34ui2yhmp4vemnv4iqar7jt/impi/2019.10.317/intel64/include:$CPLUS_INCLUDE_PATH
 
-#NVIDIA CUDA
-module load cuda/toolkit-10.2.89
-export CUDA_INSTALL_PATH=/opt/cuda/10.2.89/toolkit
-
 if [ "$(hostname)" == 'telos' ]; then
+  #NVIDIA CUDA
+  module load cuda/toolkit-10.2.89
+  export CUDA_INSTALL_PATH=/opt/cuda/10.2.89/toolkit
   export NV_ARCH=Volta
   export CUDA_VISIBLE_DEVICES=0
   echo $NV_ARCH $(hostname)
@@ -37,11 +36,14 @@ if [ "$(hostname)" == 'telos' ]; then
 
   export NVCCFLAGS_ADD='-gencode arch=compute_70,code=sm_70'
 elif [ "$(hostname)" == 'kos' ]; then
+  #NVIDIA CUDA
+  module load cuda/toolkit-10.2.89
+  export CUDA_INSTALL_PATH=/opt/cuda/10.2.89/toolkit
   export NV_ARCH=Pascal
   export CUDA_VISIBLE_DEVICES=0,1
   echo $NV_ARCH $(hostname)
-  # export PETSC_INSTALL_PATH=/ext-home/zl/lib_install/petsc-3.18.3-oneapi-2021.3-mpi_kos
-  export PETSC_INSTALL_PATH=/ext-home/zl/lib_install/petsc-3.18.3-oneapi-2021.3-cuda-kos
+  export PETSC_INSTALL_PATH=/ext-home/zl/lib_install/petsc-3.18.3-oneapi-2021.3-mpi_kos
+  # export PETSC_INSTALL_PATH=/ext-home/zl/lib_install/petsc-3.18.3-oneapi-2021.3-cuda-kos
   export LD_LIBRARY_PATH=$PETSC_INSTALL_PATH/lib:$LD_LIBRARY_PATH
   export NVCCFLAGS_ADD='-gencode arch=compute_60,code=sm_60'
 elif [ "$(hostname)" == 'amos' ]; then
@@ -52,26 +54,48 @@ elif [ "$(hostname)" == 'amos' ]; then
   export PATH=$ROCM_INSTALL_DIR/bin:$PATH
   export ROCM_THRUST_DIR=/ext-home/zl/lib_install/rocThrust_rel
   export ROCM_PRIM_DIR=/ext-home/zl/lib_install/rocPrim_rel
+  export HIP_COMPILER=hipcc
+elif [ "$(hostname)" == 'demos' ]; then
+  echo AMD $(hostname)
+  module purge
+  module load nvhpc/23.7
+  export CUDA_INSTALL_PATH=$(realpath $(dirname $(which nvfortran))/../../cuda)
+  export NVHPC_CUDA_HOME=$(realpath $(dirname $(which nvfortran))/../../cuda)
+  export NV_ARCH=Hopper
+  export CUDA_VISIBLE_DEVICES=0
+  echo $NV_ARCH $(hostname)
+  export PETSC_INSTALL_PATH=/ext-home/zl/lib_install/petsc-3.20.5-nvhpc23.7-mpi_demos
+  export LD_LIBRARY_PATH=$PETSC_INSTALL_PATH/lib:$LD_LIBRARY_PATH
+  export NVCCFLAGS_ADD='-gencode arch=compute_90,code=sm_90'
+  unset CUDA_HOME
 else
   echo The machine not configured, PETSC_INSTALL_PATH and some other variables may be missing!
 fi
 
 echo "petsc lib linked is - " $PETSC_INSTALL_PATH
 
-export OPPIC_PATH=/ext-home/zl/phd/OP-PIC/lib_oppic
+export OPPIC_PATH=/ext-home/zl/phd/neso_test/OP-PIC/lib_oppic
+
+export CC_COMPILER=mpicxx
+export MPI_COMPILER=mpicxx
 
 #Intel MPI and Compilers
+if [ "$(hostname)" != 'demos' ]; then
+echo "Source intel compilers"
 source /opt/intel/oneapi/2021.3/setvars.sh
-
-# module load gnu-6.3.0/ompi-1.10.6
-
-#source /opt/intel/parallelstudio/2018/update2/parallel_studio_xe_2018.2.046/psxevars.sh
-
+# source /opt/intel/oneapi/2024.0/oneapi-vars.sh
 export MPI_INSTALL_PATH=/opt/intel/oneapi/2021.3/mpi/latest
 
 export MPICH_CXX=/opt/intel/oneapi/2021.3/compiler/latest/linux/bin/intel64/icpc
 export MPICH_CC=/opt/intel/oneapi/2021.3/compiler/latest/linux/bin/intel64/icc
 export MPICH_F90=/opt/intel/oneapi/2021.3/compiler/latest/linux/bin/intel64/ifort
+fi
+
+# module load gnu-6.3.0/ompi-1.10.6
+
+#source /opt/intel/parallelstudio/2018/update2/parallel_studio_xe_2018.2.046/psxevars.sh
+
+
 
 #volna
 export SLOPE_INSTALL_PATH=/ext-home/zl/slope/SLOPE/

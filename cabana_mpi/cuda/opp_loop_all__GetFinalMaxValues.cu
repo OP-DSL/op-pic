@@ -120,7 +120,7 @@ void opp_loop_all__GetFinalMaxValues(
 )
 { 
     
-    if (FP_DEBUG) opp_printf("CABANA", "opp_loop_all__get_max set_size %d", set->size);
+    if (OP_DEBUG) opp_printf("CABANA", "opp_loop_all__get_max set_size %d", set->size);
 
     opp_profiler->start("GetMax");
 
