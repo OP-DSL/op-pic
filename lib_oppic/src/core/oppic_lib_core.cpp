@@ -518,7 +518,7 @@ bool oppic_increase_particle_count_core(oppic_set part_set, const int num_parts_
         opp_printf("oppic_increase_particle_count_core", "set [%s] with size [%d]", 
             part_set->name, num_parts_to_insert);
 
-    int new_part_set_size = part_set->size + num_parts_to_insert;
+    const int new_part_set_size = part_set->size + num_parts_to_insert;
 
     // if the new particle set size is less or equal to set capacity, then just set new sizes instead of resizing
     if (part_set->set_capacity >= new_part_set_size)
@@ -533,7 +533,7 @@ bool oppic_increase_particle_count_core(oppic_set part_set, const int num_parts_
     }
 
     // if the set needs resizing, then use alloc multiple to increase set capacity to reduce regular resizing of the set
-    size_t new_part_set_capacity = part_set->size + (int)(num_parts_to_insert * OP_part_alloc_mult);
+    const size_t new_part_set_capacity = part_set->size + (int)(num_parts_to_insert * OP_part_alloc_mult);
     bool return_flag = true;
 
     if (OP_DEBUG) //  || part_set->size != 0

@@ -5,8 +5,8 @@ LIB = lib
 OBJ = obj
 BIN = bin
 
-CPP        = mpicxx
-MPICPP	   = mpicxx
+CPP        = $(CC_COMPILER)
+MPICPP	   = $(MPI_COMPILER)
 NVCC       = nvcc
 HIPCC      = $(HIP_COMPILER)
 

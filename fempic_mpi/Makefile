@@ -55,7 +55,7 @@ ifeq ($(PETSC), 1)
 	NVCCFLAGS += -DUSE_PETSC
 	HIPCCFLAGS += -DUSE_PETSC
  	PETSC_INC  = -I$(PETSC_INSTALL_PATH)/include
- 	PETSC_LIB  = -L$(PETSC_INSTALL_PATH)/lib -lpetsc
+ 	PETSC_LIB  = -Wl,-rpath,$(PETSC_INSTALL_PATH)/lib -L$(PETSC_INSTALL_PATH)/lib -lpetsc
 	# PETSC_LIB  = -lpetsc
 endif
 
@@ -82,7 +82,7 @@ ifeq ($(REDUCE_BY_KEY), 1)
 endif
 
 ALL_INC    += -I$(OPPIC_PATH)/include $(PETSC_INC) -I$(HDF5_INSTALL_PATH)/include 
-ALL_LIBS   += -L$(OPPIC_PATH)/lib $(PETSC_LIB) -L$(HDF5_INSTALL_PATH)/lib 
+ALL_LIBS   += -L$(OPPIC_PATH)/lib $(PETSC_LIB) -L$(HDF5_INSTALL_PATH)/lib
 
 .PHONY: clean mklib
 
@@ -113,6 +113,24 @@ omp: mklib
 		 $(CPP) $(CPPFLAGS) -fopenmp -DUSE_OMP -c FESolver.cpp -o $(OBJ)/FESolver.o $(ALL_INC)
 		 $(CPP) $(CPPFLAGS) -fopenmp -DUSE_OMP -c omp/ompkernels.cpp -o $(OBJ)/ompkernels.o $(ALL_INC)
 	     $(CPP) $(CPPFLAGS) -fopenmp -o $(BIN)/omp $(OBJ)/fempic_op.o $(OBJ)/meshes.o $(OBJ)/particles.o $(OBJ)/maths.o $(OBJ)/ompkernels.o $(OBJ)/FESolver.o $(ALL_INC) $(ALL_LIBS) -loppic_omp
+
+omp_mpi_hdf5: mklib
+	     $(MPICPP) $(CPPFLAGS) -fopenmp -DUSE_OMP -DUSE_MPI -c fempic_op_hdf5.cpp -o $(OBJ)/fempic_op_omp_mpi_hdf5.o $(ALL_INC)
+	     $(MPICPP) $(CPPFLAGS) -fopenmp -DUSE_OMP -DUSE_MPI -c fempic_ori/meshes.cpp -o $(OBJ)/meshes.o $(ALL_INC)
+	     $(MPICPP) $(CPPFLAGS) -fopenmp -DUSE_OMP -DUSE_MPI -c fempic_ori/particles.cpp -o $(OBJ)/particles.o $(ALL_INC)
+		 $(MPICPP) $(CPPFLAGS) -fopenmp -DUSE_OMP -DUSE_MPI -c fempic_ori/maths.cpp -o $(OBJ)/maths.o $(ALL_INC)
+		 $(MPICPP) $(CPPFLAGS) -fopenmp -DUSE_OMP -DUSE_MPI -c FESolver.cpp -o $(OBJ)/FESolver.o $(ALL_INC)
+		 $(MPICPP) $(CPPFLAGS) -fopenmp -DUSE_OMP -DUSE_MPI -c omp/ompkernels.cpp -o $(OBJ)/ompkernels.o $(ALL_INC)
+		 $(MPICPP) $(CPPFLAGS) -fopenmp -DUSE_OMP -DUSE_MPI -c opp_mpi_hdf5.cpp -o $(OBJ)/opp_mpi_hdf5.o $(ALL_INC)
+	     $(MPICPP) $(CPPFLAGS) -fopenmp -o $(BIN)/omp_mpi_hdf5 \
+		 	$(OBJ)/fempic_op_omp_mpi_hdf5.o \
+			$(OBJ)/opp_mpi_hdf5.o \
+			$(OBJ)/meshes.o \
+			$(OBJ)/particles.o \
+			$(OBJ)/maths.o \
+			$(OBJ)/ompkernels.o \
+			$(OBJ)/FESolver.o \
+			$(ALL_INC) $(ALL_LIBS) -lopp_omp_mpi -lhdf5
 
 mpi_common: mklib   
 		 $(MPICPP) $(CPPFLAGS) -DUSE_MPI -c fempic_ori/meshes.cpp -o $(OBJ)/meshes.o $(ALL_INC)

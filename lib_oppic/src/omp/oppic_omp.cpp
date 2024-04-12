@@ -831,3 +831,16 @@ void opp_host_free(void* ptr)
 {
     free(ptr);
 }
+
+#ifdef USE_MPI
+//*******************************************************************************
+opp_dat opp_fetch_data(opp_dat dat) {
+    if (dat->set->is_particle) {
+        opp_printf("opp_fetch_data", "Error Cannot rearrange particle dats");
+        opp_abort();
+    }
+
+    // rearrange data backe to original order in mpi
+    return opp_mpi_get_data(dat);
+}
+#endif
