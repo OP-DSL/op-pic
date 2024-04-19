@@ -203,6 +203,8 @@ void opp_loop_all__DepositChargeOnNodes(
 
             if (!opp_params->get<OPP_BOOL>("use_reg_red")) // Do atomics ----------
             {
+                cutilSafeCall(cudaDeviceSynchronize());
+                opp_profiler->start("Dep_kernel");
                 opp_dev_all_DepNodeCharge <<<nblocks, nthread>>> (
                     (int *)     set->mesh_relation_dat->data_d,
                     (double *)  args[0].data_d,
@@ -213,6 +215,9 @@ void opp_loop_all__DepositChargeOnNodes(
                     (double *)  args[4].data_d,
                     start, 
                     end);
+                
+                cutilSafeCall(cudaDeviceSynchronize());
+                opp_profiler->end("Dep_kernel");
             }
             else // Do segmented reductions ----------
             {

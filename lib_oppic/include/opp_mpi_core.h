@@ -412,13 +412,13 @@ inline void opp_uniform_scatter_array(T *g_array, T *l_array, int g_size, int l_
         {
             MPI_Isend((char*)g_array + displs[send_rank], sendcnts[send_rank], MPI_CHAR, send_rank, 
                         11010, MPI_COMM_WORLD, &send_req[send_rank]);
-        }
-        MPI_Waitall(send_req.size(), send_req.data(), MPI_STATUSES_IGNORE);
+        }  
     }
 
     MPI_Irecv((char*)l_array, static_cast<int64_t>(l_size * elem_size * sizeof(T)), 
                     MPI_CHAR, OPP_ROOT, 11010, MPI_COMM_WORLD, &recv_req[0]);
     MPI_Waitall(recv_req.size(), recv_req.data(), MPI_STATUSES_IGNORE);
+    if (OPP_rank == OPP_ROOT) MPI_Waitall(send_req.size(), send_req.data(), MPI_STATUSES_IGNORE);
 
     MPI_Barrier(MPI_COMM_WORLD);
 

@@ -58,24 +58,8 @@ void opp_decl_const_impl(int dim, int size, char* data, const char* name)
     else if (!strcmp(name,"CONST_dt_eps0"))  std::memcpy(&CONST_dt_eps0, data, (size*dim));
     else if (!strcmp(name,"CONST_acc_coef")) std::memcpy(&CONST_acc_coef, data, (size*dim));
     else std::cerr << "error: unknown const name" << std::endl;
-
-    // if (!strcmp(name,"CONST_c_per_dim")) 
-    //     opp_printf("CONST", "%s %d %d %d", name, CONST_c_per_dim[0], CONST_c_per_dim[1], CONST_c_per_dim[2]);
-    // if (!strcmp(name,"CONST_dt"))
-    //     opp_printf("CONST", "%s %2.25lE", name, CONST_dt);
-    // if (!strcmp(name,"CONST_qsp"))
-    //     opp_printf("CONST", "%s %2.25lE", name, CONST_qsp);
-    // if (!strcmp(name,"CONST_qdt_2mc"))
-    //     opp_printf("CONST", "%s %2.25lE", name, CONST_qdt_2mc);
-    // if (!strcmp(name,"CONST_dt_eps0"))
-    //     opp_printf("CONST", "%s %2.25lE", name, CONST_dt_eps0);
-    // if (!strcmp(name,"CONST_cdt_d")) 
-    //     opp_printf("CONST", "%s %2.25lE %2.25lE %2.25lE", name, CONST_cdt_d[0], CONST_cdt_d[1], CONST_cdt_d[2]);   
-    // if (!strcmp(name,"CONST_p")) 
-    //     opp_printf("CONST", "%s %2.25lE %2.25lE %2.25lE", name, CONST_p[0], CONST_p[1], CONST_p[2]);      
-    // if (!strcmp(name,"CONST_acc_coef")) 
-    //     opp_printf("CONST", "%s %2.25lE %2.25lE %2.25lE", name, CONST_acc_coef[0], CONST_acc_coef[1], CONST_acc_coef[2]);   
 }
+
 //****************************************
 int int_hops = 0;
 int max_int_hops = 0;
@@ -104,32 +88,33 @@ void opp_loop_all__interpolate_mesh_fields(
 
     opp_profiler->start("Interpolate");
 
-    for (int n = 0; n < set->size; n++)
+    const int set_size = set->size;
+    for (int n = 0; n < set_size; n++)
     {
-        const int map_2idx  = arg2.map_data[n * arg2.map->dim + CellMap::xu_y_z];
-        const int map_3idx  = arg3.map_data[n * arg3.map->dim + CellMap::x_yu_z];
-        const int map_4idx  = arg4.map_data[n * arg4.map->dim + CellMap::x_y_zu];
-        const int map_5idx  = arg5.map_data[n * arg5.map->dim + CellMap::xu_yu_z];
-        const int map_6idx  = arg6.map_data[n * arg6.map->dim + CellMap::x_yu_zu];
-        const int map_7idx  = arg7.map_data[n * arg7.map->dim + CellMap::xu_y_zu];
-        const int map_8idx  = arg8.map_data[n * arg8.map->dim + CellMap::xu_y_z];
-        const int map_9idx  = arg9.map_data[n * arg9.map->dim + CellMap::x_yu_z];
-        const int map_10idx = arg10.map_data[n * arg10.map->dim + CellMap::x_y_zu];
+        const OPP_INT map_2idx  = arg2.map_data[n * arg2.map->dim + CellMap::xu_y_z];
+        const OPP_INT map_3idx  = arg3.map_data[n * arg3.map->dim + CellMap::x_yu_z];
+        const OPP_INT map_4idx  = arg4.map_data[n * arg4.map->dim + CellMap::x_y_zu];
+        const OPP_INT map_5idx  = arg5.map_data[n * arg5.map->dim + CellMap::xu_yu_z];
+        const OPP_INT map_6idx  = arg6.map_data[n * arg6.map->dim + CellMap::x_yu_zu];
+        const OPP_INT map_7idx  = arg7.map_data[n * arg7.map->dim + CellMap::xu_y_zu];
+        const OPP_INT map_8idx  = arg8.map_data[n * arg8.map->dim + CellMap::xu_y_z];
+        const OPP_INT map_9idx  = arg9.map_data[n * arg9.map->dim + CellMap::x_yu_z];
+        const OPP_INT map_10idx = arg10.map_data[n * arg10.map->dim + CellMap::x_y_zu];
 
         interpolate_mesh_fields_kernel(
-            &((double*) arg0.data)[n * arg0.dim],            // cell0_e,        // OPP_READ
-            &((double*) arg1.data)[n * arg1.dim],            // cell0_b,        // OPP_READ
-            &((double*) arg2.data)[map_2idx * arg2.dim],     // cell_x_e,       // OPP_READ
-            &((double*) arg3.data)[map_3idx * arg3.dim],     // cell_y_e,       // OPP_READ
-            &((double*) arg4.data)[map_4idx * arg4.dim],     // cell_z_e,       // OPP_READ
-            &((double*) arg5.data)[map_5idx * arg5.dim],     // cell_yz_e,      // OPP_READ
-            &((double*) arg6.data)[map_6idx * arg6.dim],     // cell_xz_e,      // OPP_READ
-            &((double*) arg7.data)[map_7idx * arg7.dim],     // cell_xy_e,      // OPP_READ
-            &((double*) arg8.data)[map_8idx * arg8.dim],     // cell_x_b,       // OPP_READ
-            &((double*) arg9.data)[map_9idx * arg9.dim],     // cell_y_b,       // OPP_READ
-            &((double*) arg10.data)[map_10idx * arg10.dim],  // cell_z_b        // OPP_READ
-            &((double*) arg11.data)[n * arg11.dim],          // cell0_interp    // OPP_WRITE
-            &((int*)    arg12.data)[n * arg12.dim]           // cell0_ghost,    // OPP_READ
+            &((const OPP_REAL*) arg0.data)[n * arg0.dim],            // cell0_e,        // OPP_READ
+            &((const OPP_REAL*) arg1.data)[n * arg1.dim],            // cell0_b,        // OPP_READ
+            &((const OPP_REAL*) arg2.data)[map_2idx * arg2.dim],     // cell_x_e,       // OPP_READ
+            &((const OPP_REAL*) arg3.data)[map_3idx * arg3.dim],     // cell_y_e,       // OPP_READ
+            &((const OPP_REAL*) arg4.data)[map_4idx * arg4.dim],     // cell_z_e,       // OPP_READ
+            &((const OPP_REAL*) arg5.data)[map_5idx * arg5.dim],     // cell_yz_e,      // OPP_READ
+            &((const OPP_REAL*) arg6.data)[map_6idx * arg6.dim],     // cell_xz_e,      // OPP_READ
+            &((const OPP_REAL*) arg7.data)[map_7idx * arg7.dim],     // cell_xy_e,      // OPP_READ
+            &((const OPP_REAL*) arg8.data)[map_8idx * arg8.dim],     // cell_x_b,       // OPP_READ
+            &((const OPP_REAL*) arg9.data)[map_9idx * arg9.dim],     // cell_y_b,       // OPP_READ
+            &((const OPP_REAL*) arg10.data)[map_10idx * arg10.dim],  // cell_z_b        // OPP_READ
+            &((OPP_REAL*)       arg11.data)[n * arg11.dim],          // cell0_interp    // OPP_WRITE
+            &((const OPP_INT*)  arg12.data)[n * arg12.dim]           // cell0_ghost,    // OPP_READ
         );
     }
 
@@ -158,31 +143,32 @@ void opp_particle_mover__Move(
 
     opp_init_particle_move(set, 0, nullptr);
 
-    int* cellIdx = nullptr;
+    OPP_INT* cellIdx = nullptr;
     max_int_hops = 0;
 
-    for (int n = 0; n < set->size; n++)
+    const int set_size = set->size;
+    for (int n = 0; n < set_size; n++)
     {
-        opp_move_var m; // = opp_get_move_var();
         int_hops = -1;
-
+        OPP_MOVE_RESET_FLAGS;
+        
         do
         {
             cellIdx = &(OPP_mesh_relation_data[n]);
             int_hops++;
 
-            push_particles_kernel(m, 
-                &((int*)    arg0.data)[n * arg0.dim],        // part_cid 
-                &((double*) arg1.data)[n * arg1.dim],        // part_vel 
-                &((double*) arg2.data)[n * arg2.dim],        // part_pos 
-                &((double*) arg3.data)[n * arg3.dim],        // part_streak_mid 
-                &((double*) arg4.data)[n * arg4.dim],        // part_weight 
-                &((double*) arg5.data)[*cellIdx * arg5.dim], // cell_interp 
-                &((double*) arg6.data)[*cellIdx * arg6.dim], // cell_acc
-                &((int*)    arg7.data)[*cellIdx * arg7.dim]  // cell_cell_map
+            push_particles_kernel(
+                &((OPP_INT*)        arg0.data)[n * arg0.dim],        // part_cid 
+                &((OPP_REAL*)       arg1.data)[n * arg1.dim],        // part_vel 
+                &((OPP_REAL*)       arg2.data)[n * arg2.dim],        // part_pos 
+                &((OPP_REAL*)       arg3.data)[n * arg3.dim],        // part_streak_mid 
+                &((const OPP_REAL*) arg4.data)[n * arg4.dim],        // part_weight 
+                &((const OPP_REAL*) arg5.data)[*cellIdx * arg5.dim], // cell_interp 
+                &((OPP_REAL*)       arg6.data)[*cellIdx * arg6.dim], // cell_acc
+                &((const OPP_INT*)  arg7.data)[*cellIdx * arg7.dim]  // cell_cell_map
             );
 
-        } while (opp_part_check_status(m, *cellIdx, set, n, set->particle_remove_count)); 
+        } while (opp_check_part_move_status(*cellIdx, n, set->particle_remove_count)); 
     
         max_int_hops = (max_int_hops > int_hops ? max_int_hops : int_hops );  
     }
@@ -213,25 +199,26 @@ void opp_loop_all__accumulate_current_to_cells(
 
     opp_profiler->start("Acc_Current");
 
-    for (int n = 0; n < set->size; n++)
+    const int set_size = set->size;
+    for (int n = 0; n < set_size; n++)
     {
-        const int map_2idx  = arg2.map_data[n * arg2.map->dim + CellMap::xd_y_z];
-        const int map_3idx  = arg3.map_data[n * arg3.map->dim + CellMap::x_yd_z];
-        const int map_4idx  = arg4.map_data[n * arg4.map->dim + CellMap::x_y_zd];
-        const int map_5idx  = arg5.map_data[n * arg5.map->dim + CellMap::xd_yd_z];
-        const int map_6idx  = arg6.map_data[n * arg6.map->dim + CellMap::x_yd_zd];
-        const int map_7idx  = arg7.map_data[n * arg7.map->dim + CellMap::xd_y_zd];
+        const OPP_INT map_2idx  = arg2.map_data[n * arg2.map->dim + CellMap::xd_y_z];
+        const OPP_INT map_3idx  = arg3.map_data[n * arg3.map->dim + CellMap::x_yd_z];
+        const OPP_INT map_4idx  = arg4.map_data[n * arg4.map->dim + CellMap::x_y_zd];
+        const OPP_INT map_5idx  = arg5.map_data[n * arg5.map->dim + CellMap::xd_yd_z];
+        const OPP_INT map_6idx  = arg6.map_data[n * arg6.map->dim + CellMap::x_yd_zd];
+        const OPP_INT map_7idx  = arg7.map_data[n * arg7.map->dim + CellMap::xd_y_zd];
 
         accumulate_current_to_cells_kernel(   
-            &((double*) arg0.data)[n * arg0.dim],            // cell0_j     
-            &((double*) arg1.data)[n * arg1.dim],            // cell0_acc   
-            &((double*) arg2.data)[map_2idx * arg2.dim],     // cell_xd_acc 
-            &((double*) arg3.data)[map_3idx * arg3.dim],     // cell_yd_acc 
-            &((double*) arg4.data)[map_4idx * arg4.dim],     // cell_zd_acc
-            &((double*) arg5.data)[map_5idx * arg5.dim],     // cell_xyd_acc 
-            &((double*) arg6.data)[map_6idx * arg6.dim],     // cell_yzd_acc 
-            &((double*) arg7.data)[map_7idx * arg7.dim],     // cell_xzd_acc
-            &((int*)    arg8.data)[n * arg8.dim]             // iter_acc 
+            &((OPP_REAL*)       arg0.data)[n * arg0.dim],            // cell0_j     
+            &((const OPP_REAL*) arg1.data)[n * arg1.dim],            // cell0_acc   
+            &((const OPP_REAL*) arg2.data)[map_2idx * arg2.dim],     // cell_xd_acc 
+            &((const OPP_REAL*) arg3.data)[map_3idx * arg3.dim],     // cell_yd_acc 
+            &((const OPP_REAL*) arg4.data)[map_4idx * arg4.dim],     // cell_zd_acc
+            &((const OPP_REAL*) arg5.data)[map_5idx * arg5.dim],     // cell_xyd_acc 
+            &((const OPP_REAL*) arg6.data)[map_6idx * arg6.dim],     // cell_yzd_acc 
+            &((const OPP_REAL*) arg7.data)[map_7idx * arg7.dim],     // cell_xzd_acc
+            &((const OPP_INT*)  arg8.data)[n * arg8.dim]             // iter_acc 
         );
     }
 
@@ -254,19 +241,20 @@ void opp_loop_all__half_advance_b(
 
     opp_profiler->start("HalfAdv_B");
 
-    for (int n = 0; n < set->size; n++)
+    const int set_size = set->size;
+    for (int n = 0; n < set_size; n++)
     {
-        const int map_0idx  = arg0.map_data[n * arg0.map->dim + CellMap::xu_y_z];
-        const int map_1idx  = arg1.map_data[n * arg1.map->dim + CellMap::x_yu_z];
-        const int map_2idx  = arg2.map_data[n * arg2.map->dim + CellMap::x_y_zu];
+        const OPP_INT map_0idx  = arg0.map_data[n * arg0.map->dim + CellMap::xu_y_z];
+        const OPP_INT map_1idx  = arg1.map_data[n * arg1.map->dim + CellMap::x_yu_z];
+        const OPP_INT map_2idx  = arg2.map_data[n * arg2.map->dim + CellMap::x_y_zu];
 
         half_advance_b_kernel (
-            &((double*) arg0.data)[map_0idx * arg0.dim],     // cell_x_e, 
-            &((double*) arg1.data)[map_1idx * arg1.dim],     // cell_y_e, 
-            &((double*) arg2.data)[map_2idx * arg2.dim],     // cell_z_e, 
-            &((double*) arg3.data)[n * arg3.dim],            // cell0_e, 
-            &((double*) arg4.data)[n * arg4.dim],            // cell0_b
-            &((int*)    arg5.data)[n * arg5.dim]             // cell0_ghost
+            &((const OPP_REAL*) arg0.data)[map_0idx * arg0.dim],     // cell_x_e, 
+            &((const OPP_REAL*) arg1.data)[map_1idx * arg1.dim],     // cell_y_e, 
+            &((const OPP_REAL*) arg2.data)[map_2idx * arg2.dim],     // cell_z_e, 
+            &((const OPP_REAL*) arg3.data)[n * arg3.dim],            // cell0_e, 
+            &((OPP_REAL*)       arg4.data)[n * arg4.dim],            // cell0_b
+            &((const OPP_INT*)  arg5.data)[n * arg5.dim]             // cell0_ghost
         );
     }
 
@@ -290,20 +278,21 @@ void opp_loop_all__advance_e(
 
     opp_profiler->start("Adv_E");
 
-    for (int n = 0; n < set->size; n++)
+    const int set_size = set->size;
+    for (int n = 0; n < set_size; n++)
     {
-        const int map_0idx  = arg0.map_data[n * arg0.map->dim + CellMap::xd_y_z];
-        const int map_1idx  = arg1.map_data[n * arg1.map->dim + CellMap::x_yd_z];
-        const int map_2idx  = arg2.map_data[n * arg2.map->dim + CellMap::x_y_zd];
+        const OPP_INT map_0idx  = arg0.map_data[n * arg0.map->dim + CellMap::xd_y_z];
+        const OPP_INT map_1idx  = arg1.map_data[n * arg1.map->dim + CellMap::x_yd_z];
+        const OPP_INT map_2idx  = arg2.map_data[n * arg2.map->dim + CellMap::x_y_zd];
 
         advance_e_kernel (
-            &((double*) arg0.data)[map_0idx * arg0.dim],     // cell_x_b  
-            &((double*) arg1.data)[map_1idx * arg1.dim],     // cell_y_b  
-            &((double*) arg2.data)[map_2idx * arg2.dim],     // cell_z_b  
-            &((double*) arg3.data)[n * arg3.dim],            // cell0_b   
-            &((double*) arg4.data)[n * arg4.dim],            // cell0_j   
-            &((double*) arg5.data)[n * arg5.dim],            // cell0_e
-            &((int*)    arg6.data)[n * arg6.dim]             // iter_adv_e   
+            &((const OPP_REAL*) arg0.data)[map_0idx * arg0.dim],     // cell_x_b  
+            &((const OPP_REAL*) arg1.data)[map_1idx * arg1.dim],     // cell_y_b  
+            &((const OPP_REAL*) arg2.data)[map_2idx * arg2.dim],     // cell_z_b  
+            &((const OPP_REAL*) arg3.data)[n * arg3.dim],            // cell0_b   
+            &((const OPP_REAL*) arg4.data)[n * arg4.dim],            // cell0_j   
+            &((OPP_REAL*)       arg5.data)[n * arg5.dim],            // cell0_e
+            &((const OPP_INT*)  arg6.data)[n * arg6.dim]             // iter_adv_e   
         );
     }
 
@@ -335,15 +324,16 @@ void opp_loop_all__GetFinalMaxValues(
     args[4] = arg4;
     args[5] = arg5;
 
-    for (int n = 0; n < set->size; n++)
+    const int set_size = set->size;
+    for (int n = 0; n < set_size; n++)
     {
         get_final_max_values_kernel(
-            &((double*) args[0].data)[n * args[0].dim],     // cell_j  
-            (double*) args[1].data,
-            &((double*) args[2].data)[n * args[2].dim],     // cell_e  
-            (double*) args[3].data,
-            &((double*) args[4].data)[n * args[4].dim],     // cell_b  
-            (double*) args[5].data
+            &((const OPP_REAL*) args[0].data)[n * args[0].dim],     // cell_j  
+            (OPP_REAL*)         args[1].data,
+            &((const OPP_REAL*) args[2].data)[n * args[2].dim],     // cell_e  
+            (OPP_REAL*)         args[3].data,
+            &((const OPP_REAL*) args[4].data)[n * args[4].dim],     // cell_b  
+            (OPP_REAL*)         args[5].data
         );
     }
 
@@ -371,15 +361,16 @@ void opp_loop_all__update_ghosts_B(
     args[2] = arg2;
     args[3] = arg3;
 
-    for (int n = 0; n < set->size; n++)
+    const int set_size = set->size;
+    for (int n = 0; n < set_size; n++)
     {
-        const int map_0idx  = args[2].map_data[n * args[2].map->dim + 0];
+        const OPP_INT map_0idx  = args[2].map_data[n * args[2].map->dim + 0];
 
         update_ghosts_B_kernel(
-            &((OPP_INT*) args[0].data)[n * args[0].dim],        
-            &((OPP_REAL*) args[1].data)[n * args[1].dim],       
-            &((OPP_REAL*) args[2].data)[map_0idx * args[2].dim],
-            (OPP_INT*) args[3].data
+            &((const OPP_INT*)  args[0].data)[n * args[0].dim],        
+            &((const OPP_REAL*) args[1].data)[n * args[1].dim],       
+            &((OPP_REAL*)       args[2].data)[map_0idx * args[2].dim],
+            (const OPP_INT*)    args[3].data
         );
     }
 
@@ -409,16 +400,17 @@ void opp_loop_all__update_ghosts(
     args[3] = arg3;
     args[4] = arg4;
 
-    for (int n = 0; n < set->size; n++)
+    const int set_size = set->size;
+    for (int n = 0; n < set_size; n++)
     {
-        const int map_0idx  = args[2].map_data[n * args[2].map->dim + 0];
+        const OPP_INT map_0idx  = args[2].map_data[n * args[2].map->dim + 0];
 
         update_ghosts_kernel(
-            &((OPP_INT*) args[0].data)[n * args[0].dim],        
-            &((OPP_REAL*) args[1].data)[n * args[1].dim],       
-            &((OPP_REAL*) args[2].data)[map_0idx * args[2].dim],
-            (OPP_INT*) args[3].data,
-            (OPP_INT*) args[4].data
+            &((const OPP_INT*)  args[0].data)[n * args[0].dim],        
+            &((const OPP_REAL*) args[1].data)[n * args[1].dim],       
+            &((OPP_REAL*)       args[2].data)[map_0idx * args[2].dim],
+            (const OPP_INT*)    args[3].data,
+            (const OPP_INT*)    args[4].data
         );
     }
 
@@ -433,7 +425,8 @@ void opp_loop_all__compute_energy(
     opp_arg arg2     // energy,      OP_INC
 )
 {
-    if (OP_DEBUG) opp_printf("CABANA", "opp_loop_all__compute_energy set_size %d", set->size);
+    if (OP_DEBUG) 
+        opp_printf("CABANA", "opp_loop_all__compute_energy set_size %d", set->size);
 
     opp_profiler->start("Energy");
 
@@ -444,12 +437,13 @@ void opp_loop_all__compute_energy(
     args[1] = arg1;
     args[2] = arg2;
 
-    for (int n = 0; n < set->size; n++)
+    const int set_size = set->size;
+    for (int n = 0; n < set_size; n++)
     {
         field_energy(
-            &((OPP_INT*) args[0].data)[n * args[0].dim],        
-            &((OPP_REAL*) args[1].data)[n * args[1].dim],       
-            (OPP_REAL*) args[2].data
+            &((const OPP_INT*)  args[0].data)[n * args[0].dim],        
+            &((const OPP_REAL*) args[1].data)[n * args[1].dim],       
+            (OPP_REAL*)         args[2].data
         );
     }
 

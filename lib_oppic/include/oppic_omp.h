@@ -147,3 +147,70 @@ inline void opp_mpi_reduce(opp_arg *args, int *data)
     (void)args;
     (void)data;
 }
+
+enum oppx_move_status : char
+{
+    OPPX_MOVE_DONE = 0,
+    OPPX_NEED_MOVE,
+    OPPX_NEED_REMOVE,
+};
+
+#define OPP_PARTICLE_MOVE_DONE {  }
+#define OPP_PARTICLE_NEED_MOVE {  }
+#define OPP_PARTICLE_NEED_REMOVE {  }
+#define OPP_DO_ONCE ( true )
+#define OPP_MOVE_RESET_FLAGS {  }
+
+//****************************************
+inline bool opp_check_part_move_status(const char move_flag, bool& iter_one_flag, const int map0idx,
+    const int particle_index, int thread)
+{
+    iter_one_flag = false;
+
+    if (move_flag == OPP_MOVE_DONE)
+    {
+        return false;
+    }
+    else if (move_flag == OPP_NEED_REMOVE)
+    {
+        part_remove_count_per_thr[thread] += 1;
+        OPP_mesh_relation_data[particle_index] = MAX_CELL_INDEX;
+
+        return false;
+    }
+#ifdef USE_MPI
+    else if (map0idx >= OPP_part_cells_set_size)
+    {
+        // map0idx cell is not owned by the current mpi rank (it is in the import exec halo region), need to communicate
+        move_part_indices_per_thr[thread].push_back(particle_index);
+        return false;
+    }
+#endif
+
+    return true;
+}
+
+//*******************************************************************************
+// returns true, if the current particle needs to be removed from the rank
+inline bool opp_part_checkForGlobalMove(opp_set set, const opp_point& point, const int partIndex, int& cellIdx) {
+
+    // Since SEQ use global indices, we can simply use findClosestGlobalCellIndex
+    const size_t structCellIdx = cellMapper->findStructuredCellIndex(point);
+    
+    if (structCellIdx == MAX_CELL_INDEX) { // This happens when point is out of the unstructured mesh
+        if (OP_DEBUG)
+            opp_printf("move", 
+            "Remove %d [Struct cell index invalid - strCellIdx:%zu] [%2.16lE, %2.16lE, %2.16lE]", 
+                partIndex, structCellIdx, point.x, point.y, point.z);
+
+        cellIdx = MAX_CELL_INDEX;
+        return true;
+    }
+
+    cellIdx = cellMapper->findClosestCellIndex(structCellIdx);           
+    if (cellIdx == MAX_CELL_INDEX) { // Particle is outside the mesh, need to remove
+        return true;
+    }
+
+    return false;
+}

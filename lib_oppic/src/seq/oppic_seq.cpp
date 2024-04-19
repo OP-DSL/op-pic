@@ -34,6 +34,9 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 opp_move_var move_var;
 
+char opp_move_status_flag = OPPX_MOVE_DONE;
+bool opp_move_hop_iter_one_flag = true;
+
 //****************************************
 void opp_init(int argc, char **argv)
 {

@@ -126,7 +126,7 @@ int main(int argc, char **argv)
             cabana_color_block_x(deck, c_index, c_colors);
         else if (opp_params->get<OPP_STRING>("cluster") == "pencil")
             cabana_color_pencil_x(deck, c_index, c_colors);
-        else if (opp_params->get<OPP_STRING>("cluster") == "cart")      
+        else if (opp_params->get<OPP_STRING>("cluster") == "cart")
             opp_colour_cartesian_mesh(DIM, std::vector<OPP_INT>(cells_per_dim, cells_per_dim + DIM), 
                                         c_index, c_colors, 1);
         else
@@ -148,6 +148,10 @@ int main(int argc, char **argv)
         opp_printf("Setup", "Cells[%d][ghosts:%d] Particles[%d]", c_set->size, ghosts, p_set->size);
         
         opp_profiler->end("Setup");
+
+#ifdef USE_MPI
+        MPI_Barrier(MPI_COMM_WORLD);
+#endif
 
         opp_profiler->start("MainLoop");
 

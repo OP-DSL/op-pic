@@ -70,11 +70,13 @@ void opp_loop_all__InitBndPotential(
     
     opp_profiler->start("InitBndPot");
 
-    for (int i = 0; i < set->size; i++)
+    const int set_size = set->size;
+
+    for (int i = 0; i < set_size; i++)
     {    
         init_boundary_potential(
-            &((int*) arg0.data)[i * arg0.dim],     // node_type,
-            &((double*) arg1.data)[i * arg1.dim]   // node_bnd_pot,
+            &((OPP_INT*) arg0.data)[i * arg0.dim],     // node_type,
+            &((OPP_REAL*) arg1.data)[i * arg1.dim]   // node_bnd_pot,
         );
     }
 
@@ -106,38 +108,40 @@ void opp_loop_inject__InjectIons(
     const int nargs = 11;
     opp_arg args[nargs];
 
-    args[0] = std::move(arg0);
-    args[1] = std::move(arg1);
-    args[2] = std::move(arg2);
-    args[3] = std::move(arg3);
-    args[4] = std::move(arg4);
-    args[5] = std::move(arg5);
-    args[6] = std::move(arg6);
-    args[7] = std::move(arg7);
-    args[8] = std::move(arg8);
-    args[9] = std::move(arg9);
-    args[10] = std::move(arg10);
+    args[0] = arg0;
+    args[1] = arg1;
+    args[2] = arg2;
+    args[3] = arg3;
+    args[4] = arg4;
+    args[5] = arg5;
+    args[6] = arg6;
+    args[7] = arg7;
+    args[8] = arg8;
+    args[9] = arg9;
+    args[10] = arg10;
 
     const int inj_start = (set->size - set->diff);
-    int map0idx = -1, map1idx = 0;
+    OPP_INT map0idx = -1, map1idx = 0;
+    OPP_mesh_relation_data = ((OPP_INT *)set->mesh_relation_dat->data); 
+    const int iter_size = set->diff;
 
-    for (int i = 0; i < set->diff; i++)
+    for (int i = 0; i < iter_size; i++)
     {    
-        map0idx = ((int *)set->mesh_relation_dat->data)[inj_start + i]; // iface index
+        map0idx = OPP_mesh_relation_data[inj_start + i]; // iface index
         map1idx = args[5].map_data[map0idx]; // cell index
 
         inject_ions__kernel(
-            &((double*) args[0].data)[(inj_start + i) * args[0].dim],     // part_position,
-            &((double*) args[1].data)[(inj_start + i) * args[1].dim],     // part_velocity,
-            &((int*)    args[2].data)[(inj_start + i) * args[2].dim],     // part_cell_connectivity,
-            &((int*)    args[3].data)[(inj_start + i) * args[3].dim],     // part_id
-            &((int*)    args[4].data)[map0idx * args[4].dim],             // iface to cell map
-            &((double*) args[5].data)[map1idx * args[5].dim],             // cell_ef,
-            &((double*) args[6].data)[map0idx * args[6].dim],             // iface_u,
-            &((double*) args[7].data)[map0idx * args[7].dim],             // iface_v,
-            &((double*) args[8].data)[map0idx * args[8].dim],             // iface_normal,
-            &((double*) args[9].data)[map0idx * args[9].dim],             // iface_node_pos
-            &((double*) args[10].data)[i * args[10].dim]                    // dummy_part_random
+            &((OPP_REAL*)       args[0].data)[(inj_start + i) * args[0].dim],     // part_position,
+            &((OPP_REAL*)       args[1].data)[(inj_start + i) * args[1].dim],     // part_velocity,
+            &((OPP_INT*)        args[2].data)[(inj_start + i) * args[2].dim],     // part_cell_connectivity,
+            &((OPP_INT*)        args[3].data)[(inj_start + i) * args[3].dim],     // part_id
+            &((const OPP_INT*)  args[4].data)[map0idx * args[4].dim],             // iface to cell map
+            &((const OPP_REAL*) args[5].data)[map1idx * args[5].dim],             // cell_ef,
+            &((const OPP_REAL*) args[6].data)[map0idx * args[6].dim],             // iface_u,
+            &((const OPP_REAL*) args[7].data)[map0idx * args[7].dim],             // iface_v,
+            &((const OPP_REAL*) args[8].data)[map0idx * args[8].dim],             // iface_normal,
+            &((const OPP_REAL*) args[9].data)[map0idx * args[9].dim],             // iface_node_pos
+            &((const OPP_REAL*) args[10].data)[i * args[10].dim]                  // dummy_part_random
         );
     }
 
@@ -156,16 +160,17 @@ void opp_loop_all__CalculateNewPartPosVel(
 
     opp_profiler->start("CalcPosVel");  
 
-    OPP_mesh_relation_data = ((int *)set->mesh_relation_dat->data); 
+    OPP_mesh_relation_data = ((OPP_INT *)set->mesh_relation_dat->data); 
+    const int iter_size = set->size;
 
-    for (int i = 0; i < set->size; i++)
+    for (int i = 0; i < iter_size; i++)
     { 
         const int map0idx = OPP_mesh_relation_data[i];
 
         calculate_new_pos_vel__kernel(
-            &((double*) arg0.data)[map0idx * arg0.dim],  // cell_ef,
-            &((double*) arg1.data)[i * arg1.dim],        // part_pos,
-            &((double*) arg2.data)[i * arg2.dim]         // part_vel,
+            &((const OPP_REAL*) arg0.data)[map0idx * arg0.dim],  // cell_ef,
+            &((OPP_REAL*)       arg1.data)[i * arg1.dim],        // part_pos,
+            &((OPP_REAL*)       arg2.data)[i * arg2.dim]         // part_vel,
         );
     }
 
@@ -188,96 +193,97 @@ void opp_loop_all__DepositChargeOnNodes(
     opp_profiler->start("DepCharge");  
 
     OPP_mesh_relation_data = ((int *)set->mesh_relation_dat->data); 
+    const int iter_size = set->size;
 
-    for (int i = 0; i < set->size; i++)
+    for (int i = 0; i < iter_size; i++)
     { 
-        const int map0idx = OPP_mesh_relation_data[i];
+        const OPP_INT map0idx = OPP_mesh_relation_data[i];
 
-        const int map1idx = arg1.map_data[map0idx * arg1.map->dim + 0];
-        const int map2idx = arg1.map_data[map0idx * arg1.map->dim + 1];
-        const int map3idx = arg1.map_data[map0idx * arg1.map->dim + 2];
-        const int map4idx = arg1.map_data[map0idx * arg1.map->dim + 3];
+        const OPP_INT map1idx = arg1.map_data[map0idx * arg1.map->dim + 0];
+        const OPP_INT map2idx = arg1.map_data[map0idx * arg1.map->dim + 1];
+        const OPP_INT map3idx = arg1.map_data[map0idx * arg1.map->dim + 2];
+        const OPP_INT map4idx = arg1.map_data[map0idx * arg1.map->dim + 3];
 
         deposit_charge_on_nodes__kernel(
-            &((const double*) arg0.data)[i * arg0.dim],      // part_lc,
-            &((double*) arg1.data)[map1idx],                 // node_charge_den0,
-            &((double*) arg1.data)[map2idx],                 // node_charge_den1,
-            &((double*) arg1.data)[map3idx],                 // node_charge_den2,
-            &((double*) arg1.data)[map4idx]                  // node_charge_den3,
+            &((const OPP_REAL*) arg0.data)[i * arg0.dim],      // part_lc,
+            &((OPP_REAL*)       arg1.data)[map1idx],           // node_charge_den0,
+            &((OPP_REAL*)       arg1.data)[map2idx],           // node_charge_den1,
+            &((OPP_REAL*)       arg1.data)[map3idx],           // node_charge_den2,
+            &((OPP_REAL*)       arg1.data)[map4idx]            // node_charge_den3,
         );
     }
 
     opp_profiler->end("DepCharge");   
 }
 
-//*************************************************************************************************
-void opp_loop_all_part_move__MoveToCells(
-    opp_set set,      // particles_set
-    opp_arg arg0,     // cell_ef,
-    opp_arg arg1,     // part_pos,
-    opp_arg arg2,     // part_vel,
-    opp_arg arg3,     // part_lc,
-    opp_arg arg4,     // current_cell_index,
-    opp_arg arg5,     // current_cell_volume,
-    opp_arg arg6,     // current_cell_det,
-    opp_arg arg7,     // cell_connectivity,
-    opp_arg arg8,     // node_charge_den0,
-    opp_arg arg9,     // node_charge_den1,
-    opp_arg arg10,    // node_charge_den2,
-    opp_arg arg11     // node_charge_den3,
-)
-{
+// //*************************************************************************************************
+// void opp_loop_all_part_move__MoveToCells(
+//     opp_set set,      // particles_set
+//     opp_arg arg0,     // cell_ef,
+//     opp_arg arg1,     // part_pos,
+//     opp_arg arg2,     // part_vel,
+//     opp_arg arg3,     // part_lc,
+//     opp_arg arg4,     // current_cell_index,
+//     opp_arg arg5,     // current_cell_volume,
+//     opp_arg arg6,     // current_cell_det,
+//     opp_arg arg7,     // cell_connectivity,
+//     opp_arg arg8,     // node_charge_den0,
+//     opp_arg arg9,     // node_charge_den1,
+//     opp_arg arg10,    // node_charge_den2,
+//     opp_arg arg11     // node_charge_den3,
+// )
+// {
 
-    if (FP_DEBUG) opp_printf("FEMPIC", "opp_loop_all_part_move__MoveToCells set_size %d diff %d", 
-        set->size, set->diff);
+//     if (FP_DEBUG) opp_printf("FEMPIC", "opp_loop_all_part_move__MoveToCells set_size %d diff %d", 
+//         set->size, set->diff);
 
-    opp_profiler->start("MoveToCells");
+//     opp_profiler->start("MoveToCells");
 
-    int *map0idx = nullptr;
-int over_one = 0;
-    opp_init_particle_move(set, 0, nullptr);
-int map1idx, map2idx, map3idx, map4idx;
+//     int *map0idx = nullptr;
+// int over_one = 0;
+//     opp_init_particle_move(set, 0, nullptr);
+// int map1idx, map2idx, map3idx, map4idx;
 
-    for (int i = OPP_iter_start; i < OPP_iter_end; i++)
-    {        
-        opp_move_var m = opp_get_move_var();
-int in_count = 0;
-        do
-        { 
-            map0idx = &(OPP_mesh_relation_data[i]);
+//     for (int i = OPP_iter_start; i < OPP_iter_end; i++)
+//     {        
+//         opp_move_var m = opp_get_move_var();
+// int in_count = 0;
+//         do
+//         { 
+//             map0idx = &(OPP_mesh_relation_data[i]);
 
-            map1idx = arg8.map_data[*map0idx * arg8.map->dim + 0];
-            map2idx = arg8.map_data[*map0idx * arg8.map->dim + 1];
-            map3idx = arg8.map_data[*map0idx * arg8.map->dim + 2];
-            map4idx = arg8.map_data[*map0idx * arg8.map->dim + 3];
+//             map1idx = arg8.map_data[*map0idx * arg8.map->dim + 0];
+//             map2idx = arg8.map_data[*map0idx * arg8.map->dim + 1];
+//             map3idx = arg8.map_data[*map0idx * arg8.map->dim + 2];
+//             map4idx = arg8.map_data[*map0idx * arg8.map->dim + 3];
 
-            move_all_particles_to_cell__kernel(
-                (m),
-                &((double*) arg0.data)[*map0idx * arg0.dim],  // cell_ef,
-                &((double*) arg1.data)[i * arg1.dim],         // part_pos,
-                &((double*) arg2.data)[i * arg2.dim],         // part_vel,
-                &((double*) arg3.data)[i * arg3.dim],         // part_lc,
-                &((int *)   arg4.data)[i * arg4.dim],         // current_cell_index,
-                &((double*) arg5.data)[*map0idx * arg5.dim],  // current_cell_volume,
-                &((double*) arg6.data)[*map0idx * arg6.dim],  // current_cell_det,
-                &((int*)    arg7.data)[*map0idx * arg7.dim],  // cell_connectivity,
-                &((double*) arg8.data)[map1idx],                 // node_charge_den0,
-                &((double*) arg8.data)[map2idx],                 // node_charge_den1,
-                &((double*) arg8.data)[map3idx],                 // node_charge_den2,
-                &((double*) arg8.data)[map4idx]                  // node_charge_den3,
-            );         
-in_count++;
-        } while (opp_part_check_status(m, *map0idx, set, i, set->particle_remove_count));  
-if (in_count > 1) {
-    over_one++;
-}
-    }
-// opp_printf("FEMPIC", "opp_loop_all_part_move__MoveToCells Iterated=%d, parts with inner over one iter=%d", 
-//         (OPP_iter_end - OPP_iter_start), over_one);
-    opp_finalize_particle_move(set);
+//             move_all_particles_to_cell__kernel(
+//                 (m),
+//                 &((double*) arg0.data)[*map0idx * arg0.dim],  // cell_ef,
+//                 &((double*) arg1.data)[i * arg1.dim],         // part_pos,
+//                 &((double*) arg2.data)[i * arg2.dim],         // part_vel,
+//                 &((double*) arg3.data)[i * arg3.dim],         // part_lc,
+//                 &((int *)   arg4.data)[i * arg4.dim],         // current_cell_index,
+//                 &((double*) arg5.data)[*map0idx * arg5.dim],  // current_cell_volume,
+//                 &((double*) arg6.data)[*map0idx * arg6.dim],  // current_cell_det,
+//                 &((int*)    arg7.data)[*map0idx * arg7.dim],  // cell_connectivity,
+//                 &((double*) arg8.data)[map1idx],                 // node_charge_den0,
+//                 &((double*) arg8.data)[map2idx],                 // node_charge_den1,
+//                 &((double*) arg8.data)[map3idx],                 // node_charge_den2,
+//                 &((double*) arg8.data)[map4idx]                  // node_charge_den3,
+//             );         
+// in_count++;
+//         } while (opp_part_check_status(m, *map0idx, set, i, set->particle_remove_count));  
+// if (in_count > 1) {
+//     over_one++;
+// }
+//     }
+// // opp_printf("FEMPIC", "opp_loop_all_part_move__MoveToCells Iterated=%d, parts with inner over one iter=%d", 
+// //         (OPP_iter_end - OPP_iter_start), over_one);
+//     opp_finalize_particle_move(set);
 
-    opp_profiler->end("MoveToCells");
-}
+//     opp_profiler->end("MoveToCells");
+// }
 
 //*************************************************************************************************
 void opp_loop_all__ComputeNodeChargeDensity(
@@ -291,11 +297,13 @@ void opp_loop_all__ComputeNodeChargeDensity(
 
     opp_profiler->start("ComputeNodeChargeDensity");
 
-    for (int i=0; i<set->size; i++) 
+    const int iter_size = set->size;
+
+    for (int i = 0; i < iter_size; i++) 
     {
         compute_node_charge_density__kernel(
-            &((double*)arg0.data)[i * arg0.dim],
-            &((double*)arg1.data)[i * arg1.dim]
+            &((OPP_REAL*)       arg0.data)[i * arg0.dim],
+            &((const OPP_REAL*) arg1.data)[i * arg1.dim]
         );
     }
 
@@ -318,20 +326,22 @@ void opp_loop_all__ComputeElectricField(
 
     opp_profiler->start("ComputeElectricField");
 
-    for (int i = 0; i < set->size; i++)
+    const int iter_size = set->size;
+
+    for (int i = 0; i < iter_size; i++)
     {
-        const int map1idx = arg2.map_data[i * arg2.map->dim + 0];
-        const int map2idx = arg2.map_data[i * arg2.map->dim + 1];
-        const int map3idx = arg2.map_data[i * arg2.map->dim + 2];
-        const int map4idx = arg2.map_data[i * arg2.map->dim + 3];
+        const OPP_INT map1idx = arg2.map_data[i * arg2.map->dim + 0];
+        const OPP_INT map2idx = arg2.map_data[i * arg2.map->dim + 1];
+        const OPP_INT map3idx = arg2.map_data[i * arg2.map->dim + 2];
+        const OPP_INT map4idx = arg2.map_data[i * arg2.map->dim + 3];
 
         compute_electric_field__kernel(
-            &((double*)arg0.data)[i * arg0.dim],    // cell_electric_field
-            &((double*)arg1.data)[i * arg1.dim],    // cell_shape_deriv
-            &((double*)arg2.data)[map1idx],         // node_potential0
-            &((double*)arg2.data)[map2idx],         // node_potential1
-            &((double*)arg2.data)[map3idx],         // node_potential2
-            &((double*)arg2.data)[map4idx]          // node_potential3
+            &((OPP_REAL*)arg0.data)[i * arg0.dim],          // cell_electric_field
+            &((const OPP_REAL*)arg1.data)[i * arg1.dim],    // cell_shape_deriv
+            &((const OPP_REAL*)arg2.data)[map1idx],         // node_potential0
+            &((const OPP_REAL*)arg2.data)[map2idx],         // node_potential1
+            &((const OPP_REAL*)arg2.data)[map3idx],         // node_potential2
+            &((const OPP_REAL*)arg2.data)[map4idx]          // node_potential3
         );
     }
 
@@ -363,8 +373,8 @@ inline void generateStructMeshToGlobalCellMappings(opp_set cells_set, const opp_
     const opp_point& minGlbCoordinate = boundingBox->getGlobalMin();
     const opp_point& maxCoordinate = boundingBox->getLocalMax(); // required for GET_VERT
 
-int p = 0, err = 0;
-    auto all_cell_checker = [&](const opp_point& point, int& cellIndex) {  p++;
+    // int p = 0, err = 0;
+    auto all_cell_checker = [&](const opp_point& point, int& cellIndex) { 
         bool isInside;
         int ci = 0;
         for (ci = 0; ci < cells_set->size; ci++) {
@@ -379,7 +389,7 @@ int p = 0, err = 0;
                 break;
             }
         }
-
+        // p++;
         // if (ci >= cells_set->size) {
         //     err++;
         //     opp_printf("FUNC", "Error... %d point %d", err, p);
@@ -546,60 +556,79 @@ void opp_particle_mover__Move(
     const int nargs = 6;
     opp_arg args[nargs];
 
-    args[0] = std::move(arg0);
-    args[1] = std::move(arg1);
-    args[2] = std::move(arg2);
-    args[3] = std::move(arg3);
-    args[4] = std::move(arg4);
-    args[5] = std::move(arg5);
+    args[0] = arg0;
+    args[1] = arg1;
+    args[2] = arg2;
+    args[3] = arg3;
+    args[4] = arg4;
+    args[5] = arg5;
 
-    int size = set->size;
-    int cellIdx = MAX_CELL_INDEX;
+    const int args0_dim = args[0].dim;
+    const int args2_dim = args[2].dim;
+    const int args4_dim = args[4].dim;
+    const int args5_dim = args[5].dim;
 
+    // lambda function for multi hop particle movement
+    auto multihop_mover = [&](const int i) {
+
+        OPP_INT& cellIdx = ((OPP_INT*)args[1].data)[i];
+
+        if (cellIdx == MAX_CELL_INDEX) {
+            return;
+        }
+
+        OPP_MOVE_RESET_FLAGS;
+
+        do {
+            getCellIndexKernel(
+                &((const OPP_REAL*) args[0].data)[i * args0_dim], 
+                &((OPP_INT*)        args[1].data)[i],
+                &((OPP_REAL*)       args[2].data)[i * args2_dim],
+                &((const OPP_REAL*) args[3].data)[cellIdx], 
+                &((const OPP_REAL*) args[4].data)[cellIdx * args4_dim],   // 16 -> cellDet_dat->dim
+                &((const OPP_INT*)  args[5].data)[cellIdx * args5_dim]);   // 4 -> cellConnectivity_map->dim
+
+        } while (opp_check_part_move_status(cellIdx, i, set->particle_remove_count));
+    };
+
+    // ----------------------------------------------------------------------------
     opp_init_particle_move(set, 0, nullptr);
 
-    for (int i = 0; i < size; i++) {   
-        
-        if (useGlobalMove) {
+    if (useGlobalMove) {
 
-            const opp_point* point = (const opp_point*)&(((double*)args[0].data)[i * args[0].dim]);
+        opp_profiler->start("GblMv_Move");
+
+        // check whether particles needs to be moved over global move routine
+        const int start = OPP_iter_start;
+        const int end = OPP_iter_end;
+        for (int i = start; i < end; i++) {   
             
-            // Since SEQ use global indices, we can simply use findClosestGlobalCellIndex
-            size_t structCellIdx = cellMapper->findStructuredCellIndex(*point);
-            if (structCellIdx == MAX_CELL_INDEX) { // This happens when point is out of the unstructured mesh
-                if (OP_DEBUG)
-                    opp_printf("move", 
-                    "Remove %d [Struct cell index invalid - strCellIdx:%zu] [%2.16lE, %2.16lE, %2.16lE]", 
-                        i, structCellIdx, point->x, point->y, point->z);
+            OPP_INT* cellIdx = &((OPP_INT*)args[1].data)[i];
+            const opp_point* point = (const opp_point*)&(((OPP_REAL*)args[0].data)[i * args[0].dim]);
 
-                ((int*)args[1].data)[i] = MAX_CELL_INDEX;
+            // check for global move, and if satisfy global move criteria, then remove the particle from current rank
+            if (opp_part_checkForGlobalMove(set, *point, i, *cellIdx)) {
+                
                 set->particle_remove_count++;
-                continue;
-            }
-
-            ((int*)args[1].data)[i] = cellMapper->findClosestCellIndex(structCellIdx);           
-            if (((int*)args[1].data)[i] == MAX_CELL_INDEX) { // Particle is outside the mesh, need to remove
-
-                set->particle_remove_count++;
-                continue;
             }
         }
 
-        opp_move_var m;
-
-        do {
-            cellIdx = ((int*)args[1].data)[i];
-
-            m.move_status = getCellIndexKernel(
-                &((const double*) args[0].data)[i * args[0].dim], 
-                &((int*)          args[1].data)[i],
-                &((double*)       args[2].data)[i * args[2].dim],
-                &((double*)       args[3].data)[cellIdx], 
-                &((double*)       args[4].data)[cellIdx * args[4].dim], 
-                &((int*)          args[5].data)[cellIdx * args[5].dim]);
-
-        } while (opp_part_check_status(m, cellIdx, set, i, set->particle_remove_count));
+        opp_profiler->end("GblMv_Move");
     }
+
+    // ----------------------------------------------------------------------------
+    // check whether all particles not marked for global comm is within cell, 
+    // and if not mark to move between cells within the MPI rank, mark for neighbour comm
+    opp_profiler->start("Mv_AllMv0");
+
+    const int start1 = OPP_iter_start;
+    const int end1 = OPP_iter_end;
+    for (int i = start1; i < end1; i++) { 
+        
+        multihop_mover(i);
+    }
+
+    opp_profiler->end("Mv_AllMv0");
 
     opp_finalize_particle_move(set);
 
@@ -627,13 +656,15 @@ void opp_loop_all__GetFinalMaxValues(
     args[2] = arg2;
     args[3] = arg3;
 
-    for (int n = 0; n < set->size; n++)
+    const int iter_size = set->size;
+
+    for (int n = 0; n < iter_size; n++)
     {
         get_final_max_values_kernel(
-            &((double*) args[0].data)[n * args[0].dim],     // n_charge_den  
-            (double*) args[1].data,
-            &((double*) args[2].data)[n * args[2].dim],     // n_pot  
-            (double*) args[3].data
+            &((const OPP_REAL*) args[0].data)[n * args[0].dim],     // n_charge_den  
+            (OPP_REAL*) args[1].data,
+            &((const OPP_REAL*) args[2].data)[n * args[2].dim],     // n_pot  
+            (OPP_REAL*) args[3].data
         );
     }
 

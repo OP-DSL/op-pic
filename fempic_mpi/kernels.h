@@ -102,12 +102,12 @@ inline void inject_ions__kernel(
     double *part_vel,
     int *part_cell_connectivity,
     int *part_id,
-    int *cell_id, 
-    double *cell_ef,
-    double *iface_u,
-    double *iface_v,
-    double *iface_normal,
-    double *node_pos,
+    const int *cell_id, 
+    const double *cell_ef,
+    const double *iface_u,
+    const double *iface_v,
+    const double *iface_normal,
+    const double *node_pos,
     const double* dummy_part_random
 )
 {
@@ -173,7 +173,6 @@ inline void deposit_charge_on_nodes__kernel(
 
 //*************************************************************************************************
 inline void move_all_particles_to_cell__kernel(
-    opp_move_var& m,
     const double *cell_ef,
     double *part_pos,
     double *part_vel,
@@ -188,7 +187,7 @@ inline void move_all_particles_to_cell__kernel(
     double *node_charge_den3
 )
 {
-    if (m.iteration_one)
+    if (OPP_DO_ONCE)
     {
         const double coefficient1 = CONST_charge / CONST_mass * (CONST_dt);
         for (int i = 0; i < KERNEL_DIM; i++)
@@ -217,7 +216,7 @@ inline void move_all_particles_to_cell__kernel(
     // if (m.inside_cell)
     if (inside)
     {
-        m.move_status = OPP_MOVE_DONE;
+        OPP_PARTICLE_MOVE_DONE;
 
         (*node_charge_den0) += part_lc[0];
         (*node_charge_den1) += part_lc[1];
@@ -244,11 +243,11 @@ inline void move_all_particles_to_cell__kernel(
     if (cell_connectivity[min_i] >= 0) // is there a neighbor in this direction?
     {
         (*current_cell_index) = cell_connectivity[min_i];
-        m.move_status = OPP_NEED_MOVE;
+        OPP_PARTICLE_NEED_MOVE;
     }
     else
     {
-        m.move_status = OPP_NEED_REMOVE;
+        OPP_PARTICLE_NEED_REMOVE;
     }
 }
 
@@ -298,10 +297,10 @@ inline void compute_electric_field__kernel(
 #else
     for (int dim = 0; dim < KERNEL_DIM; dim++)
     { 
-        double c1 = (cell_shape_deriv[0 * KERNEL_DIM + dim] * (*node_potential0));
-        double c2 = (cell_shape_deriv[1 * KERNEL_DIM + dim] * (*node_potential1));
-        double c3 = (cell_shape_deriv[2 * KERNEL_DIM + dim] * (*node_potential2));
-        double c4 = (cell_shape_deriv[3 * KERNEL_DIM + dim] * (*node_potential3));
+        const double c1 = (cell_shape_deriv[0 * KERNEL_DIM + dim] * (*node_potential0));
+        const double c2 = (cell_shape_deriv[1 * KERNEL_DIM + dim] * (*node_potential1));
+        const double c3 = (cell_shape_deriv[2 * KERNEL_DIM + dim] * (*node_potential2));
+        const double c4 = (cell_shape_deriv[3 * KERNEL_DIM + dim] * (*node_potential3));
 
         cell_electric_field[dim] -= (c1 + c2 + c3 + c4);
     }    
@@ -385,21 +384,47 @@ inline void isPointInCellKernel(bool& inside, const double *point_pos, double* p
 }
 
 //*******************************************************************************
-inline opp_move_status getCellIndexKernel(const double *point_pos, int* current_cell_index,
+inline void getCellIndexKernel(const double *point_pos, int* current_cell_index,
     double* point_lc, const double *cell_volume, const double *cell_det, const int *cell_connectivity) { 
     
-    bool inside;
+    
+    const double coefficient2 = KERNEL_ONE_OVER_SIX / (*cell_volume);
 
-    isPointInCellKernel(
-        inside, 
-        point_pos, 
-        point_lc, 
-        cell_volume, 
-        cell_det);
+    for (int i=0; i<KERNEL_N_PER_C; i++) { /*loop over vertices*/
+    
+        point_lc[i] = coefficient2 * (
+            cell_det[i * KERNEL_DET_FIELDS + 0] - 
+            cell_det[i * KERNEL_DET_FIELDS + 1] * point_pos[0] + 
+            cell_det[i * KERNEL_DET_FIELDS + 2] * point_pos[1] - 
+            cell_det[i * KERNEL_DET_FIELDS + 3] * point_pos[2]);
+    }  
 
-    if (inside) {
-        return OPP_MOVE_DONE;
-    }
+    if (!(point_lc[0] < 0.0 || 
+        point_lc[0] > 1.0 ||
+        point_lc[1] < 0.0 || 
+        point_lc[1] > 1.0 ||
+        point_lc[2] < 0.0 || 
+        point_lc[2] > 1.0 ||
+        point_lc[3] < 0.0 || 
+        point_lc[3] > 1.0)) { 
+            
+        OPP_PARTICLE_MOVE_DONE;
+        return;
+    } 
+
+    // bool inside;
+
+    // isPointInCellKernel(
+    //     inside, 
+    //     point_pos, 
+    //     point_lc, 
+    //     cell_volume, 
+    //     cell_det);
+
+    // if (inside) {
+    //     OPP_PARTICLE_MOVE_DONE;
+    //     return;
+    // }
 
     // outside the last known cell, find most negative weight and 
     // use that cell_index to reduce computations
@@ -415,11 +440,11 @@ inline opp_move_status getCellIndexKernel(const double *point_pos, int* current_
 
     if (cell_connectivity[min_i] >= 0) { // is there a neighbor in this direction?
         (*current_cell_index) = cell_connectivity[min_i];
-        return OPP_NEED_MOVE;
+        OPP_PARTICLE_NEED_MOVE;
     }
     else {
         (*current_cell_index) = MAX_CELL_INDEX;
-        return OPP_NEED_REMOVE;
+        OPP_PARTICLE_NEED_REMOVE;
     }
 }
 

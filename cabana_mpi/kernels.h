@@ -139,7 +139,7 @@ inline void weight_current_to_accumulator_kernel(
 }
 
 //*************************************************************************************************
-inline void push_particles_kernel(opp_move_var& m, 
+inline void push_particles_kernel(
     OPP_INT* part_cid, 
     OPP_REAL* part_vel, 
     OPP_REAL* part_pos, 
@@ -149,7 +149,7 @@ inline void push_particles_kernel(opp_move_var& m,
     OPP_REAL* cell_acc,
     const OPP_INT* cell_cell_map)
 {
-    if (m.iteration_one)
+    if (OPP_DO_ONCE)
     {
         const OPP_REAL& ex       = cell_interp[CellInterp::ex];
         const OPP_REAL& dexdy    = cell_interp[CellInterp::dexdy];
@@ -245,7 +245,7 @@ inline void push_particles_kernel(opp_move_var& m,
                 ux, uy, uz,
                 v0, v1, v2);
 
-            m.move_status = OPP_MOVE_DONE;
+            OPP_PARTICLE_MOVE_DONE;
             return;
         }
         else
@@ -349,11 +349,11 @@ inline void push_particles_kernel(opp_move_var& m,
         if (axis == 1) { part_pos[Dim::y] = -v0; /* printf("1\n"); */ }
         if (axis == 2) { part_pos[Dim::z] = -v0; /* printf("2\n"); */ }
 
-        m.move_status = OPP_NEED_MOVE;
+        OPP_PARTICLE_NEED_MOVE;
     }
     else
     {
-        m.move_status = OPP_MOVE_DONE;
+        OPP_PARTICLE_MOVE_DONE;
     }
 }
 

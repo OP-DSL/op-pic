@@ -34,7 +34,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //*********************************************
 
 
-#include "oppic_seq.h"
+#include "opp_mpi.h"
 #include "../cabana_defs.h"
 
 OPP_INT CONST_c_per_dim[DIM];
@@ -89,64 +89,65 @@ void opp_loop_all__interpolate_mesh_fields(
     const int nargs = 13;
     opp_arg args[nargs];
 
-    args[0] = std::move(arg0);
-    args[1] = std::move(arg1);
-    args[2] = std::move(arg2);
-    args[3] = std::move(arg3);
-    args[4] = std::move(arg4);
-    args[5] = std::move(arg5);
-    args[6] = std::move(arg6);
-    args[7] = std::move(arg7);
-    args[8] = std::move(arg8);
-    args[9] = std::move(arg9);
-    args[10] = std::move(arg10);
-    args[11] = std::move(arg11);
-    args[12] = std::move(arg12);
+    args[0] = arg0;
+    args[1] = arg1;
+    args[2] = arg2;
+    args[3] = arg3;
+    args[4] = arg4;
+    args[5] = arg5;
+    args[6] = arg6;
+    args[7] = arg7;
+    args[8] = arg8;
+    args[9] = arg9;
+    args[10] = arg10;
+    args[11] = arg11;
+    args[12] = arg12;
 
-    int set_size = opp_mpi_halo_exchanges(set, nargs, args);
+    const int set_size = opp_mpi_halo_exchanges(set, nargs, args);
+    opp_mpi_halo_wait_all(nargs, args);
 
-    for (int n = 0; n < set->size; n++)
+    // #pragma omp simd
+    for (int n = 0; n < set_size; n++)
     {
-        if (n == set->core_size) {
-            opp_mpi_halo_wait_all(nargs, args);
-        }
+        // if (n == set->core_size) {
+        //     opp_mpi_halo_wait_all(nargs, args);
+        // }
 
-        const int map_2idx  = args[2].map_data[n * args[2].map->dim + CellMap::xu_y_z];
-        const int map_3idx  = args[3].map_data[n * args[3].map->dim + CellMap::x_yu_z];
-        const int map_4idx  = args[4].map_data[n * args[4].map->dim + CellMap::x_y_zu];
-        const int map_5idx  = args[5].map_data[n * args[5].map->dim + CellMap::xu_yu_z];
-        const int map_6idx  = args[6].map_data[n * args[6].map->dim + CellMap::x_yu_zu];
-        const int map_7idx  = args[7].map_data[n * args[7].map->dim + CellMap::xu_y_zu];
-        const int map_8idx  = args[8].map_data[n * args[8].map->dim + CellMap::xu_y_z];
-        const int map_9idx  = args[9].map_data[n * args[9].map->dim + CellMap::x_yu_z];
-        const int map_10idx = args[10].map_data[n * args[10].map->dim + CellMap::x_y_zu];
+        const OPP_INT map_2idx  = args[2].map_data[n * args[2].map->dim + CellMap::xu_y_z];
+        const OPP_INT map_3idx  = args[3].map_data[n * args[3].map->dim + CellMap::x_yu_z];
+        const OPP_INT map_4idx  = args[4].map_data[n * args[4].map->dim + CellMap::x_y_zu];
+        const OPP_INT map_5idx  = args[5].map_data[n * args[5].map->dim + CellMap::xu_yu_z];
+        const OPP_INT map_6idx  = args[6].map_data[n * args[6].map->dim + CellMap::x_yu_zu];
+        const OPP_INT map_7idx  = args[7].map_data[n * args[7].map->dim + CellMap::xu_y_zu];
+        const OPP_INT map_8idx  = args[8].map_data[n * args[8].map->dim + CellMap::xu_y_z];
+        const OPP_INT map_9idx  = args[9].map_data[n * args[9].map->dim + CellMap::x_yu_z];
+        const OPP_INT map_10idx = args[10].map_data[n * args[10].map->dim + CellMap::x_y_zu];
 
         interpolate_mesh_fields_kernel(
-            &((double*) args[0].data)[n * args[0].dim],            // cell0_e,        // OPP_READ
-            &((double*) args[1].data)[n * args[1].dim],            // cell0_b,        // OPP_READ
-            &((double*) args[2].data)[map_2idx * args[2].dim],     // cell_x_e,       // OPP_READ
-            &((double*) args[3].data)[map_3idx * args[3].dim],     // cell_y_e,       // OPP_READ
-            &((double*) args[4].data)[map_4idx * args[4].dim],     // cell_z_e,       // OPP_READ
-            &((double*) args[5].data)[map_5idx * args[5].dim],     // cell_yz_e,      // OPP_READ
-            &((double*) args[6].data)[map_6idx * args[6].dim],     // cell_xz_e,      // OPP_READ
-            &((double*) args[7].data)[map_7idx * args[7].dim],     // cell_xy_e,      // OPP_READ
-            &((double*) args[8].data)[map_8idx * args[8].dim],     // cell_x_b,       // OPP_READ
-            &((double*) args[9].data)[map_9idx * args[9].dim],     // cell_y_b,       // OPP_READ
-            &((double*) args[10].data)[map_10idx * args[10].dim],  // cell_z_b        // OPP_READ
-            &((double*) args[11].data)[n * args[11].dim],          // cell0_interp    // OPP_WRITE
-            &((int*)    args[12].data)[n * args[12].dim]           // cell0_ghost,    // OPP_READ
+            &((const OPP_REAL*) args[0].data)[n * args[0].dim],            // cell0_e,        // OPP_READ
+            &((const OPP_REAL*) args[1].data)[n * args[1].dim],            // cell0_b,        // OPP_READ
+            &((const OPP_REAL*) args[2].data)[map_2idx * args[2].dim],     // cell_x_e,       // OPP_READ
+            &((const OPP_REAL*) args[3].data)[map_3idx * args[3].dim],     // cell_y_e,       // OPP_READ
+            &((const OPP_REAL*) args[4].data)[map_4idx * args[4].dim],     // cell_z_e,       // OPP_READ
+            &((const OPP_REAL*) args[5].data)[map_5idx * args[5].dim],     // cell_yz_e,      // OPP_READ
+            &((const OPP_REAL*) args[6].data)[map_6idx * args[6].dim],     // cell_xz_e,      // OPP_READ
+            &((const OPP_REAL*) args[7].data)[map_7idx * args[7].dim],     // cell_xy_e,      // OPP_READ
+            &((const OPP_REAL*) args[8].data)[map_8idx * args[8].dim],     // cell_x_b,       // OPP_READ
+            &((const OPP_REAL*) args[9].data)[map_9idx * args[9].dim],     // cell_y_b,       // OPP_READ
+            &((const OPP_REAL*) args[10].data)[map_10idx * args[10].dim],  // cell_z_b        // OPP_READ
+            &((OPP_REAL*)       args[11].data)[n * args[11].dim],          // cell0_interp    // OPP_WRITE
+            &((const OPP_INT*)  args[12].data)[n * args[12].dim]           // cell0_ghost,    // OPP_READ
         );
     }
 
-    if (set->size == 0 || set->size == set->core_size) {
-        opp_mpi_halo_wait_all(nargs, args);
-    }
+    // if (set->size == 0 || set->size == set->core_size) {
+    //     opp_mpi_halo_wait_all(nargs, args);
+    // }
 
     opp_set_dirtybit(nargs, args);
 
     opp_profiler->end("Interpolate");
 }
-
 
 //*************************************************************************************************
 void opp_particle_mover__Move(
@@ -167,20 +168,19 @@ void opp_particle_mover__Move(
 
     opp_profiler->start("Move");
 
-    int nargs = 8;
+    const int nargs = 8;
     opp_arg args[nargs];
 
-    args[0]  = std::move(arg0);
-    args[1]  = std::move(arg1);
-    args[2]  = std::move(arg2);
-    args[3]  = std::move(arg3);
-    args[4]  = std::move(arg4);
-    args[5]  = std::move(arg5);
-    args[6]  = std::move(arg6);
-    args[7]  = std::move(arg7);
+    args[0]  = arg0;
+    args[1]  = arg1;
+    args[2]  = arg2;
+    args[3]  = arg3;
+    args[4]  = arg4;
+    args[5]  = arg5;
+    args[6]  = arg6;
+    args[7]  = arg7;
 
     opp_mpi_halo_exchanges(set, nargs, args);
-
     // unable to overlap much of computation and communication
     opp_mpi_halo_wait_all(nargs, args); 
 
@@ -190,32 +190,34 @@ void opp_particle_mover__Move(
         
         if (OP_DEBUG || OPP_comm_iteration > 3)
             opp_printf("MOVE", "iter %d start %d end %d - COUNT=%d", OPP_comm_iteration, 
-                                    OPP_iter_start, OPP_iter_end, (OPP_iter_end - OPP_iter_start));
+                        OPP_iter_start, OPP_iter_end, (OPP_iter_end - OPP_iter_start));
 
         int* cellIdx = nullptr;
 
-        for (int n = OPP_iter_start; n < OPP_iter_end; n++)
+        const int start = OPP_iter_start;
+        const int end = OPP_iter_end;
+        for (int n = start; n < end; n++)
         {
-            opp_move_var m = opp_get_move_var();
+            OPP_MOVE_RESET_FLAGS;
 
             do
             {
                 cellIdx = &(OPP_mesh_relation_data[n]);
 
-                push_particles_kernel(m, 
-                    &((int*)    args[0].data)[n * args[0].dim],         // part_cid 
-                    &((double*) args[1].data)[n * args[1].dim],         // part_vel 
-                    &((double*) args[2].data)[n * args[2].dim],         // part_pos 
-                    &((double*) args[3].data)[n * args[3].dim],         // part_streak_mid 
-                    &((double*) args[4].data)[n * args[4].dim],         // part_weight 
-                    &((double*) args[5].data)[*cellIdx * args[5].dim],  // cell_interp 
-                    &((double*) args[6].data)[*cellIdx * args[6].dim],  // cell_acc
-                    &((int*)    args[7].data)[*cellIdx * args[7].dim]   // cell_cell_map
+                push_particles_kernel(
+                    &((OPP_INT*)        args[0].data)[n * args[0].dim],         // part_cid 
+                    &((OPP_REAL*)       args[1].data)[n * args[1].dim],         // part_vel 
+                    &((OPP_REAL*)       args[2].data)[n * args[2].dim],         // part_pos 
+                    &((OPP_REAL*)       args[3].data)[n * args[3].dim],         // part_streak_mid 
+                    &((const OPP_REAL*) args[4].data)[n * args[4].dim],         // part_weight 
+                    &((const OPP_REAL*) args[5].data)[*cellIdx * args[5].dim],  // cell_interp 
+                    &((OPP_REAL*)       args[6].data)[*cellIdx * args[6].dim],  // cell_acc
+                    &((const OPP_INT*)  args[7].data)[*cellIdx * args[7].dim]   // cell_cell_map
                 );
 
-            } while (opp_part_check_status(m, *cellIdx, set, n, set->particle_remove_count)); 
+            } while (opp_check_part_move_status(*cellIdx, n, set->particle_remove_count)); 
         }
-
+        
     } while (opp_finalize_particle_move(set)); // iterate until all mpi ranks say, I am done
 
     opp_set_dirtybit(nargs, args);
@@ -245,23 +247,24 @@ void opp_loop_all__accumulate_current_to_cells(
     const int nargs = 9;
     opp_arg args[nargs];
 
-    args[0] = std::move(arg0);
-    args[1] = std::move(arg1);
-    args[2] = std::move(arg2);
-    args[3] = std::move(arg3);
-    args[4] = std::move(arg4);
-    args[5] = std::move(arg5);
-    args[6] = std::move(arg6);
-    args[7] = std::move(arg7);
-    args[8] = std::move(arg8);
+    args[0] = arg0;
+    args[1] = arg1;
+    args[2] = arg2;
+    args[3] = arg3;
+    args[4] = arg4;
+    args[5] = arg5;
+    args[6] = arg6;
+    args[7] = arg7;
+    args[8] = arg8;
 
-    int set_size = opp_mpi_halo_exchanges(set, nargs, args);
+    const int set_size = opp_mpi_halo_exchanges(set, nargs, args);
+    opp_mpi_halo_wait_all(nargs, args);
 
-    for (int n = 0; n < set->size; n++)
+    for (int n = 0; n < set_size; n++)
     {
-        if (n == set->core_size) {
-            opp_mpi_halo_wait_all(nargs, args);
-        }
+        // if (n == set->core_size) {
+        //     opp_mpi_halo_wait_all(nargs, args);
+        // }
 
         const OPP_INT map_2idx  = args[2].map_data[n * args[2].map->dim + CellMap::xd_y_z];
         const OPP_INT map_3idx  = args[3].map_data[n * args[3].map->dim + CellMap::x_yd_z];
@@ -271,21 +274,21 @@ void opp_loop_all__accumulate_current_to_cells(
         const OPP_INT map_7idx  = args[7].map_data[n * args[7].map->dim + CellMap::xd_y_zd];
 
         accumulate_current_to_cells_kernel(   
-            &((double*) args[0].data)[n * args[0].dim],            // cell0_j     
-            &((double*) args[1].data)[n * args[1].dim],            // cell0_acc   
-            &((double*) args[2].data)[map_2idx * args[2].dim],     // cell_xd_acc 
-            &((double*) args[3].data)[map_3idx * args[3].dim],     // cell_yd_acc 
-            &((double*) args[4].data)[map_4idx * args[4].dim],     // cell_zd_acc
-            &((double*) args[5].data)[map_5idx * args[5].dim],     // cell_xyd_acc 
-            &((double*) args[6].data)[map_6idx * args[6].dim],     // cell_yzd_acc 
-            &((double*) args[7].data)[map_7idx * args[7].dim],     // cell_xzd_acc
-            &((int*)    args[8].data)[n * args[8].dim]             // iter_acc 
+            &((OPP_REAL*)       args[0].data)[n * args[0].dim],            // cell0_j     
+            &((const OPP_REAL*) args[1].data)[n * args[1].dim],            // cell0_acc   
+            &((const OPP_REAL*) args[2].data)[map_2idx * args[2].dim],     // cell_xd_acc 
+            &((const OPP_REAL*) args[3].data)[map_3idx * args[3].dim],     // cell_yd_acc 
+            &((const OPP_REAL*) args[4].data)[map_4idx * args[4].dim],     // cell_zd_acc
+            &((const OPP_REAL*) args[5].data)[map_5idx * args[5].dim],     // cell_xyd_acc 
+            &((const OPP_REAL*) args[6].data)[map_6idx * args[6].dim],     // cell_yzd_acc 
+            &((const OPP_REAL*) args[7].data)[map_7idx * args[7].dim],     // cell_xzd_acc
+            &((const OPP_INT*)  args[8].data)[n * args[8].dim]             // iter_acc 
         );
     }
 
-    if (set->size == 0 || set->size == set->core_size) {
-        opp_mpi_halo_wait_all(nargs, args);
-    }
+    // if (set->size == 0 || set->size == set->core_size) {
+    //     opp_mpi_halo_wait_all(nargs, args);
+    // }
 
     opp_set_dirtybit(nargs, args);
 
@@ -311,38 +314,38 @@ void opp_loop_all__half_advance_b(
     const int nargs = 6;
     opp_arg args[nargs];
 
-    args[0] = std::move(arg0);
-    args[1] = std::move(arg1);
-    args[2] = std::move(arg2);
-    args[3] = std::move(arg3);
-    args[4] = std::move(arg4);
-    args[5] = std::move(arg5);
+    args[0] = arg0;
+    args[1] = arg1;
+    args[2] = arg2;
+    args[3] = arg3;
+    args[4] = arg4;
+    args[5] = arg5;
 
-    int set_size = opp_mpi_halo_exchanges(set, nargs, args);
-
-    for (int n = 0; n < set->size; n++)
+    const int set_size = opp_mpi_halo_exchanges(set, nargs, args);
+    opp_mpi_halo_wait_all(nargs, args);
+    for (int n = 0; n < set_size; n++)
     {
-        if (n == set->core_size) {
-            opp_mpi_halo_wait_all(nargs, args);
-        }
+        // if (n == set->core_size) {
+        //     opp_mpi_halo_wait_all(nargs, args);
+        // }
 
-        const int map_0idx  = args[0].map_data[n * args[0].map->dim + CellMap::xu_y_z];
-        const int map_1idx  = args[1].map_data[n * args[1].map->dim + CellMap::x_yu_z];
-        const int map_2idx  = args[2].map_data[n * args[2].map->dim + CellMap::x_y_zu];
+        const OPP_INT map_0idx  = args[0].map_data[n * args[0].map->dim + CellMap::xu_y_z];
+        const OPP_INT map_1idx  = args[1].map_data[n * args[1].map->dim + CellMap::x_yu_z];
+        const OPP_INT map_2idx  = args[2].map_data[n * args[2].map->dim + CellMap::x_y_zu];
 
         half_advance_b_kernel (
-            &((double*) args[0].data)[map_0idx * args[0].dim],     // cell_x_e, 
-            &((double*) args[1].data)[map_1idx * args[1].dim],     // cell_y_e, 
-            &((double*) args[2].data)[map_2idx * args[2].dim],     // cell_z_e, 
-            &((double*) args[3].data)[n * args[3].dim],            // cell0_e, 
-            &((double*) args[4].data)[n * args[4].dim],            // cell0_b
-            &((int*)    args[5].data)[n * args[5].dim]             // cell0_ghost
+            &((const OPP_REAL*) args[0].data)[map_0idx * args[0].dim],     // cell_x_e, 
+            &((const OPP_REAL*) args[1].data)[map_1idx * args[1].dim],     // cell_y_e, 
+            &((const OPP_REAL*) args[2].data)[map_2idx * args[2].dim],     // cell_z_e, 
+            &((const OPP_REAL*) args[3].data)[n * args[3].dim],            // cell0_e, 
+            &((OPP_REAL*)       args[4].data)[n * args[4].dim],            // cell0_b
+            &((const OPP_INT*)  args[5].data)[n * args[5].dim]             // cell0_ghost
         );
     }
 
-    if (set->size == 0 || set->size == set->core_size) {
-        opp_mpi_halo_wait_all(nargs, args);
-    }
+    // if (set->size == 0 || set->size == set->core_size) {
+    //     opp_mpi_halo_wait_all(nargs, args);
+    // }
 
     opp_set_dirtybit(nargs, args);
 
@@ -369,40 +372,41 @@ void opp_loop_all__advance_e(
     const int nargs = 7;
     opp_arg args[nargs];
 
-    args[0] = std::move(arg0);
-    args[1] = std::move(arg1);
-    args[2] = std::move(arg2);
-    args[3] = std::move(arg3);
-    args[4] = std::move(arg4);
-    args[5] = std::move(arg5);
-    args[6] = std::move(arg6);
+    args[0] = arg0;
+    args[1] = arg1;
+    args[2] = arg2;
+    args[3] = arg3;
+    args[4] = arg4;
+    args[5] = arg5;
+    args[6] = arg6;
 
-    int set_size = opp_mpi_halo_exchanges(set, nargs, args);
-
-    for (int n = 0; n < set->size; n++)
+    const int set_size = opp_mpi_halo_exchanges(set, nargs, args);
+    opp_mpi_halo_wait_all(nargs, args);
+    
+    for (int n = 0; n < set_size; n++)
     {
-        if (n == set->core_size) {
-            opp_mpi_halo_wait_all(nargs, args);
-        }
+        // if (n == set->core_size) {
+        //     opp_mpi_halo_wait_all(nargs, args);
+        // }
                 
-        const int map_0idx  = args[0].map_data[n * args[0].map->dim + CellMap::xd_y_z];
-        const int map_1idx  = args[1].map_data[n * args[1].map->dim + CellMap::x_yd_z];
-        const int map_2idx  = args[2].map_data[n * args[2].map->dim + CellMap::x_y_zd];
+        const OPP_INT map_0idx  = args[0].map_data[n * args[0].map->dim + CellMap::xd_y_z];
+        const OPP_INT map_1idx  = args[1].map_data[n * args[1].map->dim + CellMap::x_yd_z];
+        const OPP_INT map_2idx  = args[2].map_data[n * args[2].map->dim + CellMap::x_y_zd];
 
         advance_e_kernel (
-            &((double*) args[0].data)[map_0idx * args[0].dim],     // cell_x_b  
-            &((double*) args[1].data)[map_1idx * args[1].dim],     // cell_y_b  
-            &((double*) args[2].data)[map_2idx * args[2].dim],     // cell_z_b  
-            &((double*) args[3].data)[n * args[3].dim],            // cell0_b   
-            &((double*) args[4].data)[n * args[4].dim],            // cell0_j   
-            &((double*) args[5].data)[n * args[5].dim],            // cell0_e
-            &((int*)    args[6].data)[n * args[6].dim]             // iter_adv_e 
+            &((const OPP_REAL*) args[0].data)[map_0idx * args[0].dim],     // cell_x_b  
+            &((const OPP_REAL*) args[1].data)[map_1idx * args[1].dim],     // cell_y_b  
+            &((const OPP_REAL*) args[2].data)[map_2idx * args[2].dim],     // cell_z_b  
+            &((const OPP_REAL*) args[3].data)[n * args[3].dim],            // cell0_b   
+            &((const OPP_REAL*) args[4].data)[n * args[4].dim],            // cell0_j   
+            &((OPP_REAL*)       args[5].data)[n * args[5].dim],            // cell0_e
+            &((const OPP_INT*)  args[6].data)[n * args[6].dim]             // iter_adv_e 
         );
     }
 
-    if (set->size == 0 || set->size == set->core_size) {
-        opp_mpi_halo_wait_all(nargs, args);
-    }
+    // if (set->size == 0 || set->size == set->core_size) {
+    //     opp_mpi_halo_wait_all(nargs, args);
+    // }
 
     opp_set_dirtybit(nargs, args);
 
@@ -434,27 +438,28 @@ void opp_loop_all__GetFinalMaxValues(
     args[4] = arg4;
     args[5] = arg5;
 
-    int set_size = opp_mpi_halo_exchanges(set, nargs, args);
+    const int set_size = opp_mpi_halo_exchanges(set, nargs, args);
+    opp_mpi_halo_wait_all(nargs, args);
 
-    for (int n = 0; n < set->size; n++)
+    for (int n = 0; n < set_size; n++)
     {
-        if (n == set->core_size) {
-            opp_mpi_halo_wait_all(nargs, args);
-        }
+        // if (n == set->core_size) {
+        //     opp_mpi_halo_wait_all(nargs, args);
+        // }
 
         get_final_max_values_kernel(
-            &((double*) args[0].data)[n * args[0].dim],     // cell_j  
-            (double*) args[1].data,
-            &((double*) args[2].data)[n * args[2].dim],     // cell_e  
-            (double*) args[3].data,
-            &((double*) args[4].data)[n * args[4].dim],     // cell_b  
-            (double*) args[5].data
+            &((const OPP_REAL*) args[0].data)[n * args[0].dim],     // cell_j  
+            (OPP_REAL*)         args[1].data,
+            &((const OPP_REAL*) args[2].data)[n * args[2].dim],     // cell_e  
+            (OPP_REAL*)         args[3].data,
+            &((const OPP_REAL*) args[4].data)[n * args[4].dim],     // cell_b  
+            (OPP_REAL*)         args[5].data
         );
     }
 
-    if (set->size == 0 || set->size == set->core_size) {
-        opp_mpi_halo_wait_all(nargs, args);
-    }
+    // if (set->size == 0 || set->size == set->core_size) {
+    //     opp_mpi_halo_wait_all(nargs, args);
+    // }
 
     opp_mpi_reduce_double(&args[1], (double*)args[1].data);
     opp_mpi_reduce_double(&args[3], (double*)args[3].data);
@@ -486,27 +491,28 @@ void opp_loop_all__update_ghosts_B(
     args[2] = arg2;
     args[3] = arg3;
 
-    int set_size = opp_mpi_halo_exchanges(set, nargs, args);
+    const int set_size = opp_mpi_halo_exchanges(set, nargs, args);
+    opp_mpi_halo_wait_all(nargs, args);
 
     for (int n = 0; n < set_size; n++)
     {
-        if (n == set->core_size) {
-            opp_mpi_halo_wait_all(nargs, args);
-        }
+        // if (n == set->core_size) {
+        //     opp_mpi_halo_wait_all(nargs, args);
+        // }
 
-        const int map_0idx  = args[2].map_data[n * args[2].map->dim + 0];
+        const OPP_INT map_0idx  = args[2].map_data[n * args[2].map->dim + 0];
 
         update_ghosts_B_kernel(
-            &((OPP_INT*) args[0].data)[n * args[0].dim],        
-            &((OPP_REAL*) args[1].data)[n * args[1].dim],       
-            &((OPP_REAL*) args[2].data)[map_0idx * args[2].dim],
-            (OPP_INT*) args[3].data
+            &((const OPP_INT*)  args[0].data)[n * args[0].dim],        
+            &((const OPP_REAL*) args[1].data)[n * args[1].dim],       
+            &((OPP_REAL*)       args[2].data)[map_0idx * args[2].dim],
+            (const OPP_INT*)    args[3].data
         );
     }
 
-    if (set->size == 0 || set->size == set->core_size) {
-        opp_mpi_halo_wait_all(nargs, args);
-    }
+    // if (set->size == 0 || set->size == set->core_size) {
+    //     opp_mpi_halo_wait_all(nargs, args);
+    // }
 
     opp_set_dirtybit(nargs, args);
 
@@ -536,28 +542,29 @@ void opp_loop_all__update_ghosts(
     args[3] = arg3;
     args[4] = arg4;
 
-    int set_size = opp_mpi_halo_exchanges(set, nargs, args);
-
+    const int set_size = opp_mpi_halo_exchanges(set, nargs, args);
+    opp_mpi_halo_wait_all(nargs, args);
+    
     for (int n = 0; n < set_size; n++)
     {
-        if (n == set->core_size) {
-            opp_mpi_halo_wait_all(nargs, args);
-        }
+        // if (n == set->core_size) {
+        //     opp_mpi_halo_wait_all(nargs, args);
+        // }
 
         const int map_0idx  = args[2].map_data[n * args[2].map->dim + 0];
 
         update_ghosts_kernel(
-            &((OPP_INT*) args[0].data)[n * args[0].dim],        
-            &((OPP_REAL*) args[1].data)[n * args[1].dim],       
-            &((OPP_REAL*) args[2].data)[map_0idx * args[2].dim],
-            (OPP_INT*) args[3].data,
-            (OPP_INT*) args[4].data
+            &((const OPP_INT*)  args[0].data)[n * args[0].dim],        
+            &((const OPP_REAL*) args[1].data)[n * args[1].dim],       
+            &((OPP_REAL*)       args[2].data)[map_0idx * args[2].dim],
+            (const OPP_INT*)    args[3].data,
+            (const OPP_INT*)    args[4].data
         );
     }
 
-    if (set->size == 0 || set->size == set->core_size) {
-        opp_mpi_halo_wait_all(nargs, args);
-    }
+    // if (set->size == 0 || set->size == set->core_size) {
+    //     opp_mpi_halo_wait_all(nargs, args);
+    // }
 
     opp_set_dirtybit(nargs, args);
 
@@ -583,26 +590,23 @@ void opp_loop_all__compute_energy(
     args[1] = arg1;
     args[2] = arg2;
 
-    int set_size = opp_mpi_halo_exchanges(set, nargs, args);
-
-    for (int n = 0; n < set->size; n++)
+    const int set_size = opp_mpi_halo_exchanges(set, nargs, args);
+    opp_mpi_halo_wait_all(nargs, args);
+    
+    for (int n = 0; n < set_size; n++)
     {
-        if (n == set->core_size) {
-            opp_mpi_halo_wait_all(nargs, args);
-        }
-
         field_energy(
-            &((OPP_INT*) args[0].data)[n * args[0].dim],        
-            &((OPP_REAL*) args[1].data)[n * args[1].dim],       
-            (OPP_REAL*) args[2].data
+            &((const OPP_INT*)  args[0].data)[n * args[0].dim],        
+            &((const OPP_REAL*) args[1].data)[n * args[1].dim],       
+            (OPP_REAL*)         args[2].data
         );
     }
 
-    if (set->size == 0 || set->size == set->core_size) {
-        opp_mpi_halo_wait_all(nargs, args);
-    }
+    // if (set->size == 0 || set->size == set->core_size) {
+    //     opp_mpi_halo_wait_all(nargs, args);
+    // }
 
-    opp_mpi_reduce_double(&args[2], (double*)args[2].data);
+    opp_mpi_reduce_double(&args[2], (OPP_REAL*)args[2].data);
 
     opp_set_dirtybit(nargs, args);
 

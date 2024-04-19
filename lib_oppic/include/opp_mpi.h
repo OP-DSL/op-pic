@@ -58,3 +58,115 @@ inline void opp_mpi_reduce(opp_arg *args, int *data)
 {
     opp_mpi_reduce_int(args, data);
 }
+
+
+enum oppx_move_status : char
+{
+    OPPX_MOVE_DONE = 0,
+    OPPX_NEED_MOVE,
+    OPPX_NEED_REMOVE,
+};
+
+extern char opp_move_status_flag;
+extern bool opp_move_hop_iter_one_flag;
+
+#define OPP_PARTICLE_MOVE_DONE { opp_move_status_flag = OPPX_MOVE_DONE; }
+#define OPP_PARTICLE_NEED_MOVE { opp_move_status_flag = OPPX_NEED_MOVE; }
+#define OPP_PARTICLE_NEED_REMOVE { opp_move_status_flag = OPPX_NEED_REMOVE; }
+#define OPP_DO_ONCE (opp_move_hop_iter_one_flag)
+#define OPP_MOVE_RESET_FLAGS { opp_move_status_flag = OPPX_MOVE_DONE; opp_move_hop_iter_one_flag = true; }
+
+//*************************************************************************************************
+inline bool opp_check_part_move_status(const OPP_INT map0idx, const OPP_INT particle_index, int& remove_count) 
+{
+    opp_move_hop_iter_one_flag = false;
+
+    if (opp_move_status_flag == OPPX_MOVE_DONE)
+    {
+        return false;
+    }
+    else if (opp_move_status_flag == OPPX_NEED_REMOVE)
+    {
+        remove_count += 1;
+        OPP_mesh_relation_data[particle_index] = MAX_CELL_INDEX;
+
+        return false;
+    }
+    else if (map0idx >= OPP_part_cells_set_size)
+    {
+        // map0idx cell is not owned by the current mpi rank (it is in the import exec halo region), need to communicate
+        opp_move_part_indices.push_back(particle_index);
+        return false;
+    }
+
+    // map0idx is an own cell and opp_move_status_flag == OPPX_NEED_MOVE
+    return true;
+}
+
+//*******************************************************************************
+// returns true, if the current particle needs to be removed from the rank
+inline bool opp_part_checkForGlobalMove(opp_set set, const opp_point& point, const int partIndex, int& cellIdx) {
+          
+    const size_t structCellIdx = cellMapper->findStructuredCellIndex(point);
+
+    if (structCellIdx == MAX_CELL_INDEX) { // This happens when point is out of the unstructured mesh
+        if (OP_DEBUG)
+            opp_printf("opp_part_checkForGlobalMove", 
+            "Remove %d [Struct cell index invalid - strCellIdx:%zu] [%2.16lE, %2.16lE, %2.16lE]", 
+                partIndex, structCellIdx, point.x, point.y, point.z);
+        cellIdx = MAX_CELL_INDEX;
+        return true;
+    }
+
+    const int structCellRank = cellMapper->findClosestCellRank(structCellIdx);
+
+    // Check whether the paticles need global moving, if yes start global moving process, 
+    // if no, move to the closest local cell
+    if (structCellRank != OPP_rank) {
+
+        if (structCellRank == MAX_CELL_INDEX) {
+            if (OP_DEBUG)
+                opp_printf("opp_part_checkForGlobalMove", 
+                "Remove %d [Rank invalid - strCellRank:%d loclCellIdx:%zu strCellIdx:%zu] [%2.16lE, %2.16lE, %2.16lE]", 
+                    partIndex, structCellRank, cellMapper->findClosestCellIndex(structCellIdx), structCellIdx, 
+                    point.x, point.y, point.z);
+            cellIdx = MAX_CELL_INDEX;
+            return true;
+        }
+
+        // Due to renumbering local cell indices will be different to global, hence do global comm with global indices
+        const size_t globalCellIndex = cellMapper->findClosestCellIndex(structCellIdx);
+
+        if (globalCellIndex == MAX_CELL_INDEX) {
+            if (OP_DEBUG)
+                opp_printf("opp_part_checkForGlobalMove", 
+                "Remove %d [CellIdx invalid - strCellRank:%d loclCellIdx:%zu strCellIdx:%zu] [%2.16lE, %2.16lE, %2.16lE]", 
+                    partIndex, structCellRank, globalCellIndex, structCellIdx, point.x, point.y, point.z);
+            cellIdx = MAX_CELL_INDEX;
+            return true;
+        }
+
+        // if the new rank is not the current rank, mark the particle to be sent via global comm
+        globalMover->markParticleToMove(set, partIndex, structCellRank, globalCellIndex);
+
+        // if (OP_DEBUG)
+        //     opp_printf("opp_part_checkForGlobalMove", "Mark part %d [Move to rank %d gblCellIdx %d]", 
+        //         partIndex, structCellRank, globalCellIndex);
+        cellIdx = MAX_CELL_INDEX;
+        return true;
+    }
+    else {
+        
+        // Due to renumbering local cell indices will be different to global, hence do global comm with global indices
+        cellIdx = cellMapper->findClosestCellIndex(structCellIdx);
+
+        if (OP_DEBUG && (cellIdx < 0 || cellIdx >= set->cells_set->size)) {
+            opp_printf("opp_part_checkForGlobalMove", 
+                "Error... Particle %d assigned to current rank but invalid cell index %d [strCellIdx:%zu]", 
+                    partIndex, cellIdx, structCellIdx);
+            opp_abort("opp_part_checkForGlobalMove Error... Particle assigned to current rank but invalid cell index");
+        }
+    }
+                
+    return false;
+}

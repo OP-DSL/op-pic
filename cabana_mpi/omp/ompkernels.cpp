@@ -119,6 +119,7 @@ void opp_loop_all__interpolate_mesh_fields(
     opp_profiler->end("Interpolate");
 }
 
+#include "ompkernelgen.h"
 
 //*************************************************************************************************
 void opp_particle_mover__Move(
@@ -148,21 +149,24 @@ void opp_particle_mover__Move(
     #pragma omp parallel for
     for (int thr = 0; thr < nthreads; thr++)
     {
-        size_t start  = ((size_t)set->size * thr) / nthreads;
-        size_t finish = ((size_t)set->size * (thr+1)) / nthreads;
+        const size_t start  = ((size_t)set->size * thr) / nthreads;
+        const size_t finish = ((size_t)set->size * (thr+1)) / nthreads;
 
         char* arg6_dat_thread_data = (*(arg6.dat->thread_data))[thr]; // checked, all values are zero
         int* cellIdx = nullptr;
+        char move_flag = OPPX_MOVE_DONE;
+        bool iter_one_flag = true;
 
         for (size_t n = start; n < finish; n++)
         { 
-            opp_move_var m; // = opp_get_move_var(thr);
+            iter_one_flag = true;
 
             do
             {
+                move_flag = OPPX_MOVE_DONE;
                 cellIdx = &(OPP_mesh_relation_data[n]);
 
-                push_particles_kernel(m, 
+                push_particles_kernel_omp(move_flag, iter_one_flag,
                     &((int*)arg0.data)[n * arg0.dim],                       // part_cid 
                     &((double*)arg1.data)[n * arg1.dim],                    // part_vel 
                     &((double*)arg2.data)[n * arg2.dim],                    // part_pos 
@@ -173,7 +177,7 @@ void opp_particle_mover__Move(
                     &((int*)   arg7.data)[*cellIdx * arg7.dim]              // cell_cell_map
                 );
 
-            } while (opp_part_check_status_omp(m, *cellIdx, set, n, thr, thr)); 
+            } while (opp_check_part_move_status(move_flag, iter_one_flag, *cellIdx, n, thr)); 
         }
     }
 

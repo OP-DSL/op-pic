@@ -36,6 +36,8 @@ opp_move_var move_var;
 void opp_part_pack(oppic_set set);
 void opp_part_unpack(oppic_set set);
 
+char opp_move_status_flag = OPPX_MOVE_DONE;
+bool opp_move_hop_iter_one_flag = true;
 
 //*******************************************************************************
 void opp_init(int argc, char **argv) 

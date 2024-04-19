@@ -875,74 +875,6 @@ void opp_part_comm_destroy()
 }
 
 //*******************************************************************************
-// returns true, if the current particle needs to be removed from the rank
-bool opp_part_checkForGlobalMove(opp_set set, const opp_point& point, const int partIndex, int& cellIdx) {
-          
-    size_t structCellIdx = cellMapper->findStructuredCellIndex(point);
-
-    if (structCellIdx == MAX_CELL_INDEX) { // This happens when point is out of the unstructured mesh
-        if (OP_DEBUG)
-            opp_printf("opp_part_checkForGlobalMove", 
-            "Remove %d [Struct cell index invalid - strCellIdx:%zu] [%2.16lE, %2.16lE, %2.16lE]", 
-                partIndex, structCellIdx, point.x, point.y, point.z);
-        cellIdx = MAX_CELL_INDEX;
-        return true;
-    }
-
-    const int structCellRank = cellMapper->findClosestCellRank(structCellIdx);
-
-    // Check whether the paticles need global moving, if yes start global moving process, 
-    // if no, move to the closest local cell
-    if (structCellRank != OPP_rank) {
-
-        if (structCellRank == MAX_CELL_INDEX) {
-            if (OP_DEBUG)
-                opp_printf("opp_part_checkForGlobalMove", 
-                "Remove %d [Rank invalid - strCellRank:%d loclCellIdx:%zu strCellIdx:%zu] [%2.16lE, %2.16lE, %2.16lE]", 
-                    partIndex, structCellRank, cellMapper->findClosestCellIndex(structCellIdx), structCellIdx, 
-                    point.x, point.y, point.z);
-            cellIdx = MAX_CELL_INDEX;
-            return true;
-        }
-
-        // Due to renumbering local cell indices will be different to global, hence do global comm with global indices
-        const size_t globalCellIndex = cellMapper->findClosestCellIndex(structCellIdx);
-
-        if (globalCellIndex == MAX_CELL_INDEX) {
-            if (OP_DEBUG)
-                opp_printf("opp_part_checkForGlobalMove", 
-                "Remove %d [CellIdx invalid - strCellRank:%d loclCellIdx:%zu strCellIdx:%zu] [%2.16lE, %2.16lE, %2.16lE]", 
-                    partIndex, structCellRank, globalCellIndex, structCellIdx, point.x, point.y, point.z);
-            cellIdx = MAX_CELL_INDEX;
-            return true;
-        }
-
-        // if the new rank is not the current rank, mark the particle to be sent via global comm
-        globalMover->markParticleToMove(set, partIndex, structCellRank, globalCellIndex);
-
-        // if (OP_DEBUG)
-        //     opp_printf("opp_part_checkForGlobalMove", "Mark part %d [Move to rank %d gblCellIdx %d]", 
-        //         partIndex, structCellRank, globalCellIndex);
-        cellIdx = MAX_CELL_INDEX;
-        return true;
-    }
-    else {
-        
-        // Due to renumbering local cell indices will be different to global, hence do global comm with global indices
-        cellIdx = cellMapper->findClosestCellIndex(structCellIdx);
-
-        if (OP_DEBUG && (cellIdx < 0 || cellIdx >= set->cells_set->size)) {
-            opp_printf("opp_part_checkForGlobalMove", 
-                "Error... Particle %d assigned to current rank but invalid cell index %d [strCellIdx:%zu]", 
-                    partIndex, cellIdx, structCellIdx);
-            opp_abort("opp_part_checkForGlobalMove Error... Particle assigned to current rank but invalid cell index");
-        }
-    }
-                
-    return false;
-}
-
-//*******************************************************************************
 //*******************************************************************************
 using namespace opp;
 
@@ -1137,7 +1069,7 @@ GlobalParticleMover::~GlobalParticleMover() {
 }
 
 //*******************************************************************************
-inline void GlobalParticleMover::markParticleToMove(oppic_set set, int partIndex, int rankToBeMoved, int finalGlobalCellIndex) {
+void GlobalParticleMover::markParticleToMove(oppic_set set, int partIndex, int rankToBeMoved, int finalGlobalCellIndex) {
     
     // These validations should be already done
     // if (finalGlobalCellIndex == MAX_CELL_INDEX) {
