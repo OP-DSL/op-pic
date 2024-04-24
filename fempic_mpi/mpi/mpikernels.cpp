@@ -138,8 +138,9 @@ void opp_loop_inject__InjectIons(
 
     if (set_size > 0) 
     {
+        opp_profiler->start("InjectIons_Kernel");
         OPP_INT map0idx = -1, map1idx = 0;
-        const int iter_size = set->diff;
+        const int iter_size = set->diff;   
         for (int i = 0; i < iter_size; i++)
         {    
             map0idx = ((OPP_INT *)set->mesh_relation_dat->data)[inj_start + i]; // iface index
@@ -159,6 +160,7 @@ void opp_loop_inject__InjectIons(
                 &((const OPP_REAL*) args[10].data)[i * args[10].dim]                  // dummy_part_random
             );
         }
+        opp_profiler->end("InjectIons_Kernel");
     }
 
     opp_set_dirtybit(nargs, args);
@@ -193,6 +195,7 @@ void opp_loop_all__CalculateNewPartPosVel(
 
     OPP_mesh_relation_data = ((int *)set->mesh_relation_dat->data); 
 
+    opp_profiler->start("CalcPosVel_Kernel");
     const int iter_size = set->size;
     for (int i = 0; i < iter_size; i++)
     { 
@@ -204,6 +207,7 @@ void opp_loop_all__CalculateNewPartPosVel(
             &((OPP_REAL*)       arg2.data)[i * arg2.dim]         // part_vel,
         );
     }
+    opp_profiler->end("CalcPosVel_Kernel");
 
     opp_set_dirtybit(nargs, args);
 
@@ -244,6 +248,7 @@ void opp_loop_all__DepositChargeOnNodes(
 
     OPP_mesh_relation_data = ((int *)set->mesh_relation_dat->data); 
 
+    opp_profiler->start("DepCharge_Kernel");
     const int iter_size = set->size;
     for (int i = 0; i < iter_size; i++)
     { 
@@ -262,6 +267,7 @@ void opp_loop_all__DepositChargeOnNodes(
             &((OPP_REAL*)       arg1.data)[map4idx]            // node_charge_den3,
         );
     }
+    opp_profiler->end("DepCharge_Kernel");
 
     opp_exchange_double_indirect_reductions(nargs, args);
 
@@ -453,6 +459,7 @@ void opp_loop_all__ComputeNodeChargeDensity(
     
     if (set_size > 0) 
     {
+        opp_profiler->start("ComputeNChargeDen_Kernel");
         for (int i=0; i < set_size; i++) 
         {
             // if (i == set->core_size) 
@@ -465,6 +472,7 @@ void opp_loop_all__ComputeNodeChargeDensity(
                 &((const OPP_REAL*) args[1].data)[i * args[1].dim]
             );
         }
+        opp_profiler->end("ComputeNChargeDen_Kernel");
     }  
 
     opp_set_dirtybit(nargs, args);
@@ -505,6 +513,7 @@ void opp_loop_all__ComputeElectricField(
     
     if (set_size > 0) 
     {
+        opp_profiler->start("ComputeEF_Kernel");
         for (int i = 0; i < set_size; i++)
         {
             // if (i == set->core_size) 
@@ -526,6 +535,7 @@ void opp_loop_all__ComputeElectricField(
                 &((const OPP_REAL*)args[2].data)[map4idx * args[2].dim]    // node_potential3
             );
         } 
+        opp_profiler->end("ComputeEF_Kernel");
     }  
 
     opp_set_dirtybit(nargs, args);
@@ -843,12 +853,14 @@ void opp_particle_mover__Move(
     // ----------------------------------------------------------------------------
     // check whether all particles not marked for global comm is within cell, 
     // and if not mark to move between cells within the MPI rank, mark for neighbour comm
+    opp_profiler->start("Move_Kernel");
     const int start1 = OPP_iter_start;
     const int end1 = OPP_iter_end;
     for (int i = start1; i < end1; i++) { 
         
         multihop_mover(i);
     }
+    opp_profiler->end("Move_Kernel");
 
     opp_profiler->end("Mv_AllMv0");
 
@@ -865,12 +877,14 @@ void opp_particle_mover__Move(
 
         // check whether the new particle is within cell, and if not move between cells within the MPI rank, 
         // mark for neighbour comm. Do only for the globally moved particles 
+        opp_profiler->start("Move_Kernel");
         const int start2 = (set->size - set->diff);
         const int end2 = set->size;
         for (int i = start2; i < end2; i++) { 
                 
             multihop_mover(i);                 
         }
+        opp_profiler->end("Move_Kernel");
 
         opp_profiler->end("GblMv_AllMv");
     }
@@ -886,12 +900,14 @@ void opp_particle_mover__Move(
         opp_init_particle_move(set, 0, nullptr);
 
         // check whether particle is within cell, and if not move between cells within the MPI rank, mark for neighbour comm
+        opp_profiler->start("Move_Kernel");
         const int start3 = OPP_iter_start;
         const int end3 = OPP_iter_end;
         for (int i = start3; i < end3; i++) {      
 
             multihop_mover(i);
         }
+        opp_profiler->end("Move_Kernel");
 
         opp_profiler->end(profName);
     }
@@ -927,6 +943,7 @@ void opp_loop_all__GetFinalMaxValues(
 
     if (set_size > 0)
     {
+        opp_profiler->start("GetMax__Kernel");
         for (int n = 0; n < set_size; n++)
         {
             get_final_max_values_kernel(
@@ -936,6 +953,7 @@ void opp_loop_all__GetFinalMaxValues(
                 (OPP_REAL*)         args[3].data
             );
         }
+        opp_profiler->end("GetMax__Kernel");
     }
 
     opp_mpi_reduce_double(&args[1], (OPP_REAL*)args[1].data);
