@@ -106,6 +106,7 @@ void opp_loop_all__interpolate_mesh_fields(
     const int set_size = opp_mpi_halo_exchanges(set, nargs, args);
     opp_mpi_halo_wait_all(nargs, args);
 
+    opp_profiler->start("Interpolate_Kernel");
     // #pragma omp simd
     for (int n = 0; n < set_size; n++)
     {
@@ -139,6 +140,7 @@ void opp_loop_all__interpolate_mesh_fields(
             &((const OPP_INT*)  args[12].data)[n * args[12].dim]           // cell0_ghost,    // OPP_READ
         );
     }
+    opp_profiler->end("Interpolate_Kernel");
 
     // if (set->size == 0 || set->size == set->core_size) {
     //     opp_mpi_halo_wait_all(nargs, args);
@@ -194,6 +196,7 @@ void opp_particle_mover__Move(
 
         int* cellIdx = nullptr;
 
+        opp_profiler->start("MoveDeposit_Kernel");
         const int start = OPP_iter_start;
         const int end = OPP_iter_end;
         for (int n = start; n < end; n++)
@@ -217,7 +220,8 @@ void opp_particle_mover__Move(
 
             } while (opp_check_part_move_status(*cellIdx, n, set->particle_remove_count)); 
         }
-        
+        opp_profiler->end("MoveDeposit_Kernel");
+
     } while (opp_finalize_particle_move(set)); // iterate until all mpi ranks say, I am done
 
     opp_set_dirtybit(nargs, args);
@@ -260,6 +264,7 @@ void opp_loop_all__accumulate_current_to_cells(
     const int set_size = opp_mpi_halo_exchanges(set, nargs, args);
     opp_mpi_halo_wait_all(nargs, args);
 
+    opp_profiler->start("Acc_Current_Kernel");
     for (int n = 0; n < set_size; n++)
     {
         // if (n == set->core_size) {
@@ -285,6 +290,7 @@ void opp_loop_all__accumulate_current_to_cells(
             &((const OPP_INT*)  args[8].data)[n * args[8].dim]             // iter_acc 
         );
     }
+    opp_profiler->end("Acc_Current_Kernel");
 
     // if (set->size == 0 || set->size == set->core_size) {
     //     opp_mpi_halo_wait_all(nargs, args);
@@ -323,6 +329,8 @@ void opp_loop_all__half_advance_b(
 
     const int set_size = opp_mpi_halo_exchanges(set, nargs, args);
     opp_mpi_halo_wait_all(nargs, args);
+
+    opp_profiler->start("HalfAdv_B_Kernel");
     for (int n = 0; n < set_size; n++)
     {
         // if (n == set->core_size) {
@@ -342,6 +350,7 @@ void opp_loop_all__half_advance_b(
             &((const OPP_INT*)  args[5].data)[n * args[5].dim]             // cell0_ghost
         );
     }
+    opp_profiler->end("HalfAdv_B_Kernel");
 
     // if (set->size == 0 || set->size == set->core_size) {
     //     opp_mpi_halo_wait_all(nargs, args);
@@ -383,6 +392,7 @@ void opp_loop_all__advance_e(
     const int set_size = opp_mpi_halo_exchanges(set, nargs, args);
     opp_mpi_halo_wait_all(nargs, args);
     
+    opp_profiler->start("Adv_E_Kernel");
     for (int n = 0; n < set_size; n++)
     {
         // if (n == set->core_size) {
@@ -403,6 +413,7 @@ void opp_loop_all__advance_e(
             &((const OPP_INT*)  args[6].data)[n * args[6].dim]             // iter_adv_e 
         );
     }
+    opp_profiler->end("Adv_E_Kernel");
 
     // if (set->size == 0 || set->size == set->core_size) {
     //     opp_mpi_halo_wait_all(nargs, args);
@@ -441,6 +452,7 @@ void opp_loop_all__GetFinalMaxValues(
     const int set_size = opp_mpi_halo_exchanges(set, nargs, args);
     opp_mpi_halo_wait_all(nargs, args);
 
+    opp_profiler->start("GetMax_Kernel");
     for (int n = 0; n < set_size; n++)
     {
         // if (n == set->core_size) {
@@ -456,6 +468,7 @@ void opp_loop_all__GetFinalMaxValues(
             (OPP_REAL*)         args[5].data
         );
     }
+    opp_profiler->end("GetMax_Kernel");
 
     // if (set->size == 0 || set->size == set->core_size) {
     //     opp_mpi_halo_wait_all(nargs, args);
@@ -494,6 +507,7 @@ void opp_loop_all__update_ghosts_B(
     const int set_size = opp_mpi_halo_exchanges(set, nargs, args);
     opp_mpi_halo_wait_all(nargs, args);
 
+    opp_profiler->start("UpGhostB_Kernel");
     for (int n = 0; n < set_size; n++)
     {
         // if (n == set->core_size) {
@@ -509,6 +523,7 @@ void opp_loop_all__update_ghosts_B(
             (const OPP_INT*)    args[3].data
         );
     }
+    opp_profiler->end("UpGhostB_Kernel");
 
     // if (set->size == 0 || set->size == set->core_size) {
     //     opp_mpi_halo_wait_all(nargs, args);
@@ -545,6 +560,7 @@ void opp_loop_all__update_ghosts(
     const int set_size = opp_mpi_halo_exchanges(set, nargs, args);
     opp_mpi_halo_wait_all(nargs, args);
     
+    opp_profiler->start("UpGhost_Kernel");
     for (int n = 0; n < set_size; n++)
     {
         // if (n == set->core_size) {
@@ -561,6 +577,7 @@ void opp_loop_all__update_ghosts(
             (const OPP_INT*)    args[4].data
         );
     }
+    opp_profiler->end("UpGhost_Kernel");
 
     // if (set->size == 0 || set->size == set->core_size) {
     //     opp_mpi_halo_wait_all(nargs, args);
@@ -593,6 +610,7 @@ void opp_loop_all__compute_energy(
     const int set_size = opp_mpi_halo_exchanges(set, nargs, args);
     opp_mpi_halo_wait_all(nargs, args);
     
+    opp_profiler->start("Energy_Kernel");
     for (int n = 0; n < set_size; n++)
     {
         field_energy(
@@ -601,6 +619,7 @@ void opp_loop_all__compute_energy(
             (OPP_REAL*)         args[2].data
         );
     }
+    opp_profiler->end("Energy_Kernel");
 
     // if (set->size == 0 || set->size == set->core_size) {
     //     opp_mpi_halo_wait_all(nargs, args);
