@@ -1,0 +1,27 @@
+#!/bin/bash
+
+module purge
+
+module load intel/2022a
+module load HDF5/1.13.1
+unset I_MPI_PMI_LIBRARY
+
+export OPP_COMPILER=intel
+export OPP_INSTALL_PATH=/home/dcs/csrcnj/phd/OP-PIC/opp
+
+export OPP_PATH=/home/dcs/csrcnj/phd/OP-PIC/opp_lib
+
+export MPI_INSTALL_PATH=/scrtp/avon/eb/software/impi/2021.6.0-intel-compilers-2022.1.0/mpi/2021.6.0
+export MPICH_CXX=/scrtp/avon/eb/software/intel-compilers/2022.1.0/compiler/2022.1.0/linux/bin/intel64/icpc
+export MPICH_CC=/scrtp/avon/eb/software/intel-compilers/2022.1.0/compiler/2022.1.0/linux/bin/intel64/icc
+
+export PETSC_INSTALL_PATH=/home/dcs/csrcnj/lib_install/petsc-3.21.0_intel2022a
+export LD_LIBRARY_PATH=$PETSC_INSTALL_PATH/lib:$LD_LIBRARY_PATH
+
+export CC_COMPILER=mpicxx
+export MPI_COMPILER=mpicxx
+
+module load CUDA/12.0.0
+export NVCCFLAGS_ADD='-gencode arch=compute_75,code=sm_75'
+
+# module load Advisor/2023.2.0
