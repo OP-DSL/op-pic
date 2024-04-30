@@ -111,7 +111,7 @@ void opp_init_particle_move(opp_set set, int nargs, opp_arg *args)
         // need to change the arg data since particle communication could change the pointer in realloc dat->data
         for (int i = 0; i < nargs; i++)
         {
-            if (args[i].argtype == OP_ARG_DAT && args[i].dat->set->is_particle)
+            if (args[i].argtype == OPP_ARG_DAT && args[i].dat->set->is_particle)
             {
                 args[i].data = args[i].dat->data;
                 args[i].data_d = args[i].dat->data_d;
@@ -218,15 +218,15 @@ void opp_part_pack_device(opp_set set)
         }      
     }
 
-    opp_all_mpi_part_buffers* send_buffers = (opp_all_mpi_part_buffers*)set->mpi_part_buffers;
+    opp_part_all_neigh_comm_data* send_buffers = (opp_part_all_neigh_comm_data*)set->mpi_part_buffers;
 
     // increase the sizes of MPI buffers
     for (auto& move_indices_per_rank : opp_part_move_indices[set->index])
     {
         int send_rank = move_indices_per_rank.first;
-        std::vector<opp_particle_move_info>& move_indices_vector = move_indices_per_rank.second;
+        std::vector<opp_part_move_info>& move_indices_vector = move_indices_per_rank.second;
 
-        opp_mpi_part_buffer& send_rank_buffer = send_buffers->buffers[send_rank];
+        opp_part_neigh_buffers& send_rank_buffer = send_buffers->buffers[send_rank];
         int64_t required_buffer_size = (move_indices_vector.size() * (int64_t)set->particle_size);
 
         // resize the export buffer if required
@@ -257,10 +257,10 @@ void opp_part_pack_device(opp_set set)
     for (auto& move_indices_per_rank : opp_part_move_indices[set->index])
     {
         int send_rank = move_indices_per_rank.first;
-        std::vector<opp_particle_move_info>& move_indices_vector = move_indices_per_rank.second;
+        std::vector<opp_part_move_info>& move_indices_vector = move_indices_per_rank.second;
         size_t per_rank_move_count = move_indices_vector.size();
 
-        opp_mpi_part_buffer& send_rank_buffer = send_buffers->buffers[send_rank];
+        opp_part_neigh_buffers& send_rank_buffer = send_buffers->buffers[send_rank];
 
         int64_t displacement = 0;
         for (auto& dat : *(set->particle_dats))
@@ -326,7 +326,7 @@ void opp_part_unpack_device(opp_set set)
     std::vector<opp_dat>& particle_dats = *(set->particle_dats);
     int64_t num_new_particles = 0;
 
-    opp_all_mpi_part_buffers* recv_buffers = (opp_all_mpi_part_buffers*)set->mpi_part_buffers;
+    opp_part_all_neigh_comm_data* recv_buffers = (opp_part_all_neigh_comm_data*)set->mpi_part_buffers;
     std::vector<int>& neighbours = recv_buffers->neighbours;
 
     // count the number of particles to be received from all ranks
@@ -356,7 +356,7 @@ void opp_part_unpack_device(opp_set set)
         {
             int recv_rank = neighbours[i];
 
-            opp_mpi_part_buffer& receive_rank_buffer = recv_buffers->buffers[recv_rank];
+            opp_part_neigh_buffers& receive_rank_buffer = recv_buffers->buffers[recv_rank];
 
             int64_t receive_count = recv_buffers->import_counts[recv_rank];
             int64_t displacement = 0;
@@ -543,7 +543,7 @@ void opp_part_pack_and_exchange_hip_direct(opp_set set)
             thrust::raw_pointer_cast(OPP_thrust_move_particle_indices_d.data()),
             OPP_move_count_h * sizeof(int), hipMemcpyDeviceToHost, streams[-2]));
 
-    opp_all_mpi_part_buffers* mpi_buffers = (opp_all_mpi_part_buffers*)set->mpi_part_buffers;
+    opp_part_all_neigh_comm_data* mpi_buffers = (opp_part_all_neigh_comm_data*)set->mpi_part_buffers;
     const std::vector<int>& neighbours = mpi_buffers->neighbours;
     const int neighbour_count = neighbours.size();
     mpi_buffers->total_recv = 0;
@@ -605,11 +605,11 @@ void opp_part_pack_and_exchange_hip_direct(opp_set set)
     {
         const int64_t& send_count = mpi_buffers->export_counts[neighbours[i]];
         MPI_Isend((void*)&send_count, 1, MPI_INT64_T, neighbours[i], MPI_COUNT_EXCHANGE, 
-            OP_MPI_WORLD, &(send_req_count[i]));
+            OPP_MPI_WORLD, &(send_req_count[i]));
 
         const int64_t& recv_count = mpi_buffers->import_counts[neighbours[i]];
         MPI_Irecv((void*)&recv_count, 1, MPI_INT64_T, neighbours[i], MPI_COUNT_EXCHANGE, 
-            OP_MPI_WORLD, &(recv_req_count[i]));
+            OPP_MPI_WORLD, &(recv_req_count[i]));
     }
 
     // pack the send data to device memory arranged according to rank asynchronously
@@ -706,7 +706,7 @@ void opp_part_pack_and_exchange_hip_direct(opp_set set)
         cutilSafeCall(hipStreamSynchronize(streams[send_rank])); // wait till hip aync copy is done
 
         char* send_buff = (char*)thrust::raw_pointer_cast(send_data[send_rank].data());
-        MPI_Isend(send_buff, send_size, MPI_CHAR, send_rank, MPI_TAG_PART_EX, OP_MPI_WORLD, &req);
+        MPI_Isend(send_buff, send_size, MPI_CHAR, send_rank, MPI_TAG_PART_EX, OPP_MPI_WORLD, &req);
         mpi_buffers->send_req.push_back(req);
 
         total_send_size += (send_size * 1.0f);
@@ -736,7 +736,7 @@ void opp_part_pack_and_exchange_hip_direct(opp_set set)
         
         MPI_Request req;
         MPI_Irecv((char*)thrust::raw_pointer_cast(recv_data_dv.data()), recv_bytes, MPI_CHAR, 
-            recv_rank, MPI_TAG_PART_EX, OP_MPI_WORLD, &req);
+            recv_rank, MPI_TAG_PART_EX, OPP_MPI_WORLD, &req);
         mpi_buffers->recv_req.push_back(req);
     }
 
@@ -764,7 +764,7 @@ void opp_part_unpack_device_direct(opp_set set)
 #ifdef USE_MPI
     opp_profiler->start("Mv_UnpackDir");
 
-    opp_all_mpi_part_buffers* recv_buffers = (opp_all_mpi_part_buffers*)set->mpi_part_buffers;
+    opp_part_all_neigh_comm_data* recv_buffers = (opp_part_all_neigh_comm_data*)set->mpi_part_buffers;
     const auto& neighbours = recv_buffers->neighbours;
     int64_t num_new_particles = 0;
     std::map<int,int64_t> particle_start;
@@ -864,7 +864,7 @@ bool opp_finalize_particle_move(opp_set set)
 
 #ifdef USE_MPI
     // At this stage, particles of device is clean
-    if (OP_gpu_direct)
+    if (OPP_gpu_direct)
     {
         opp_part_pack_and_exchange_hip_direct(set);
     }
@@ -930,7 +930,7 @@ bool opp_finalize_particle_move(opp_set set)
     cutilSafeCall(hipDeviceSynchronize());
 
     // increase the particle count if required and unpack the communicated particles to separate dats
-    if (OP_gpu_direct)
+    if (OPP_gpu_direct)
     {
         opp_part_unpack_device_direct(set);  
     }

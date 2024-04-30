@@ -32,7 +32,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <opp_mpi.h>
 
-MPI_Comm OP_MPI_IO_WORLD;
+MPI_Comm OPP_MPI_IO_WORLD;
 
 extern const char fmt_double[] = " %2.25lE";
 extern const char fmt_float[] = " %f";
@@ -96,9 +96,9 @@ void write_file(opp_dat dat, const char *file_name)
 {
     // create new communicator for output
     int rank, comm_size;
-    MPI_Comm_dup(OP_MPI_WORLD, &OP_MPI_IO_WORLD);
-    MPI_Comm_rank(OP_MPI_IO_WORLD, &rank);
-    MPI_Comm_size(OP_MPI_IO_WORLD, &comm_size);
+    MPI_Comm_dup(OPP_MPI_WORLD, &OPP_MPI_IO_WORLD);
+    MPI_Comm_rank(OPP_MPI_IO_WORLD, &rank);
+    MPI_Comm_size(OPP_MPI_IO_WORLD, &comm_size);
 
     // compute local number of elements in dat
     int count = dat->set->size;
@@ -113,7 +113,7 @@ void write_file(opp_dat dat, const char *file_name)
     int disp = 0;
     T *g_array = 0;
 
-    MPI_Allgather(&l_size, 1, MPI_INT, recevcnts, 1, MPI_INT, OP_MPI_IO_WORLD);
+    MPI_Allgather(&l_size, 1, MPI_INT, recevcnts, 1, MPI_INT, OPP_MPI_IO_WORLD);
 
     int g_size = 0;
     for (int i = 0; i < comm_size; i++) 
@@ -131,7 +131,7 @@ void write_file(opp_dat dat, const char *file_name)
     if (rank == OPP_ROOT)
         g_array = (T *)opp_host_malloc(elem_size * g_size * sizeof(T));
 
-    _mpi_gather(l_array, g_array, l_size * elem_size, recevcnts, displs, OP_MPI_IO_WORLD);
+    _mpi_gather(l_array, g_array, l_size * elem_size, recevcnts, displs, OPP_MPI_IO_WORLD);
 
     if (rank == OPP_ROOT) 
     {
@@ -153,7 +153,7 @@ void write_file(opp_dat dat, const char *file_name)
     opp_host_free(recevcnts);
     opp_host_free(displs);
 
-    MPI_Comm_free(&OP_MPI_IO_WORLD);
+    MPI_Comm_free(&OPP_MPI_IO_WORLD);
 }
 
 void print_dat_to_txtfile_mpi(opp_dat dat, const char *file_name) 
@@ -177,20 +177,20 @@ opp_dat opp_mpi_get_data(opp_dat dat)
 {
     // create new communicator for fetching
     int my_rank, comm_size;
-    MPI_Comm_rank(OP_MPI_WORLD, &my_rank);
-    MPI_Comm_size(OP_MPI_WORLD, &comm_size);
+    MPI_Comm_rank(OPP_MPI_WORLD, &my_rank);
+    MPI_Comm_size(OPP_MPI_WORLD, &comm_size);
 
     // make a copy of the distributed opp_dat on to a distributed temporary opp_dat
     opp_dat temp_dat = (opp_dat)opp_host_malloc(sizeof(opp_dat_core));
     char *data = (char *)opp_host_malloc((size_t)dat->set->size * dat->size);
     memcpy(data, dat->data, dat->set->size * (size_t)dat->size);
 
-    // use orig_part_range to fill in OP_part_list[set->index]->elem_part with
+    // use orig_part_range to fill in OPP_part_list[set->index]->elem_part with
     // original partitioning information
     for (int i = 0; i < dat->set->size; i++)
     {
         int local_index;
-        OP_part_list[dat->set->index]->elem_part[i] = get_partition(OP_part_list[dat->set->index]->g_index[i],
+        OPP_part_list[dat->set->index]->elem_part[i] = get_partition(OPP_part_list[dat->set->index]->g_index[i],
             orig_part_range[dat->set->index], &local_index, comm_size);
     }
 
@@ -198,7 +198,7 @@ opp_dat opp_mpi_get_data(opp_dat dat)
     halo_list pi_list;
 
     // create export list
-    part p = OP_part_list[dat->set->index];
+    part p = OPP_part_list[dat->set->index];
     int count = 0;
     int cap = 1000;
     int *temp_list = (int *)opp_host_malloc(cap * sizeof(int));
@@ -233,7 +233,7 @@ opp_dat opp_mpi_get_data(opp_dat dat)
     neighbors = (int *)opp_host_malloc(comm_size * sizeof(int));
     sizes = (int *)opp_host_malloc(comm_size * sizeof(int));
 
-    find_neighbors_set(pe_list, neighbors, sizes, &ranks_size, my_rank, comm_size, OP_MPI_WORLD);
+    find_neighbors_set(pe_list, neighbors, sizes, &ranks_size, my_rank, comm_size, OPP_MPI_WORLD);
     
     MPI_Request request_send[pe_list->ranks_size];
 
@@ -244,7 +244,7 @@ opp_dat opp_mpi_get_data(opp_dat dat)
     for (int i = 0; i < pe_list->ranks_size; i++) 
     {
         int *sbuf = &pe_list->list[pe_list->disps[i]];
-        MPI_Isend(sbuf, pe_list->sizes[i], MPI_INT, pe_list->ranks[i], 1, OP_MPI_WORLD, &request_send[i]);
+        MPI_Isend(sbuf, pe_list->sizes[i], MPI_INT, pe_list->ranks[i], 1, OPP_MPI_WORLD, &request_send[i]);
     }
 
     for (int i = 0; i < ranks_size; i++)
@@ -254,7 +254,7 @@ opp_dat opp_mpi_get_data(opp_dat dat)
     for (int i = 0; i < ranks_size; i++) 
     {
         rbuf = (int *)opp_host_malloc(sizes[i] * sizeof(int));
-        MPI_Recv(rbuf, sizes[i], MPI_INT, neighbors[i], 1, OP_MPI_WORLD, MPI_STATUS_IGNORE);
+        MPI_Recv(rbuf, sizes[i], MPI_INT, neighbors[i], 1, OPP_MPI_WORLD, MPI_STATUS_IGNORE);
 
         memcpy(&temp_list[count], (void *)&rbuf[0], sizes[i] * sizeof(int));
         count = count + sizes[i];
@@ -286,7 +286,7 @@ opp_dat opp_mpi_get_data(opp_dat dat)
         }
 
         MPI_Isend(sbuf_char[i], (size_t)dat->size * pe_list->sizes[i], MPI_CHAR,
-                pe_list->ranks[i], dat->index, OP_MPI_WORLD, &request_send[i]);
+                pe_list->ranks[i], dat->index, OPP_MPI_WORLD, &request_send[i]);
     }
 
     char *rbuf_char = (char *)opp_host_malloc((size_t)dat->size * pi_list->size);
@@ -294,7 +294,7 @@ opp_dat opp_mpi_get_data(opp_dat dat)
     {
         MPI_Recv(&rbuf_char[pi_list->disps[i] * (size_t)dat->size],
                 (size_t)dat->size * pi_list->sizes[i], MPI_CHAR, pi_list->ranks[i],
-                dat->index, OP_MPI_WORLD, MPI_STATUS_IGNORE);
+                dat->index, OPP_MPI_WORLD, MPI_STATUS_IGNORE);
     }
 
     MPI_Waitall(pe_list->ranks_size, request_send, MPI_STATUSES_IGNORE);
@@ -309,7 +309,7 @@ opp_dat opp_mpi_get_data(opp_dat dat)
     count = 0;
     for (int i = 0; i < dat->set->size; i++) // iterate over old set size
     {
-        if (OP_part_list[dat->set->index]->elem_part[i] == my_rank) 
+        if (OPP_part_list[dat->set->index]->elem_part[i] == my_rank) 
         {
             memcpy(&new_dat[count * (size_t)dat->size], (void *)&data[(size_t)dat->size * i], dat->size);
             count++;
@@ -334,11 +334,11 @@ opp_dat opp_mpi_get_data(opp_dat dat)
         sbuf[i] = (int *)opp_host_malloc(pe_list->sizes[i] * sizeof(int));
         for (int j = 0; j < pe_list->sizes[i]; j++) 
         {
-            sbuf[i][j] = OP_part_list[dat->set->index]->g_index[pe_list->list[pe_list->disps[i] + j]];
+            sbuf[i][j] = OPP_part_list[dat->set->index]->g_index[pe_list->list[pe_list->disps[i] + j]];
         }
 
         MPI_Isend(sbuf[i], pe_list->sizes[i], MPI_INT, pe_list->ranks[i], dat->index, 
-            OP_MPI_WORLD, &request_send[i]);
+            OPP_MPI_WORLD, &request_send[i]);
     }
 
     rbuf = (int *)opp_host_malloc(sizeof(int) * pi_list->size);
@@ -347,7 +347,7 @@ opp_dat opp_mpi_get_data(opp_dat dat)
     for (int i = 0; i < pi_list->ranks_size; i++) 
     {
         MPI_Recv(&rbuf[pi_list->disps[i]], pi_list->sizes[i], MPI_INT, pi_list->ranks[i], dat->index, 
-            OP_MPI_WORLD, MPI_STATUS_IGNORE);
+            OPP_MPI_WORLD, MPI_STATUS_IGNORE);
     }
 
     MPI_Waitall(pe_list->ranks_size, request_send, MPI_STATUSES_IGNORE);
@@ -362,9 +362,9 @@ opp_dat opp_mpi_get_data(opp_dat dat)
     count = 0;
     for (int i = 0; i < dat->set->size; i++)  // iterate over old size of the g_index array
     { 
-        if (OP_part_list[dat->set->index]->elem_part[i] == my_rank) 
+        if (OPP_part_list[dat->set->index]->elem_part[i] == my_rank) 
         {
-            new_g_index[count] = OP_part_list[dat->set->index]->g_index[i];
+            new_g_index[count] = OPP_part_list[dat->set->index]->g_index[i];
             count++;
         }
     }
@@ -419,8 +419,8 @@ void decl_partition(opp_set set, int *g_index, int *partition)
     p->g_index = g_index;
     p->elem_part = partition;
     p->is_partitioned = 0;
-    OP_part_list[set->index] = p;
-    OP_part_index++;
+    OPP_part_list[set->index] = p;
+    OPP_part_index++;
 }
 
 /*******************************************************************************
@@ -446,7 +446,7 @@ void get_part_range(int **part_range, int my_rank, int comm_size, MPI_Comm Comm)
             part_range[set->index][2 * i + 1] = disp;
             disp++;
         #ifdef DEBUG
-            if (my_rank == OPP_ROOT && OP_diags > 5)
+            if (my_rank == OPP_ROOT && OPP_diags > 5)
                 printf("range of %10s in rank %d: %d-%d\n", set->name, i,
                     part_range[set->index][2 * i],
                     part_range[set->index][2 * i + 1]);
@@ -494,7 +494,7 @@ int get_global_index(int local_index, int partition, int *part_range, int comm_s
     (void)comm_size;
     int g_index = part_range[2 * partition] + local_index;
 #ifdef DEBUG
-    if (g_index > part_range[2 * (comm_size - 1) + 1] && OP_diags > 2)
+    if (g_index > part_range[2 * (comm_size - 1) + 1] && OPP_diags > 2)
         printf("Global index larger than set size\n");
 #endif
     return g_index;
@@ -542,8 +542,8 @@ void find_neighbors_set(halo_list List, int *neighbors, int *sizes, int *ranks_s
 
 bool is_double_indirect_reduction(opp_arg& arg)
 {
-    if (arg.argtype == OP_ARG_DAT && arg.mesh_mapping == OPP_Map_from_Mesh_Rel && 
-            arg.idx != -1 && arg.acc == OP_INC)
+    if (arg.argtype == OPP_ARG_DAT && arg.mesh_mapping == OPP_Map_from_Mesh_Rel && 
+            arg.idx != -1 && arg.acc == OPP_INC)
         return true;
     
     return false;

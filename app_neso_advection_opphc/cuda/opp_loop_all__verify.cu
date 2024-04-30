@@ -111,17 +111,17 @@ __global__ void opp_device_Verify(
 
     for (int d = 0; d < 1; d++)
     {
-        opp_reduction<OP_INC>(&dir_arg3[d + blockIdx.x * 1], arg3_l[d]);
+        opp_reduction<OPP_INC>(&dir_arg3[d + blockIdx.x * 1], arg3_l[d]);
     }
 }
 
 //*************************************************************************************************
 void opp_loop_all__verify(
     opp_set set,     // particles_set
-    opp_arg arg0,    // part_mesh_rel,        OP_RW
-    opp_arg arg1,    // part_pos,             OP_READ
-    opp_arg arg2,    // cell_global_index,    OP_READ
-    opp_arg arg3     // incorrect_part_count, OP_INC
+    opp_arg arg0,    // part_mesh_rel,        OPP_RW
+    opp_arg arg1,    // part_pos,             OPP_READ
+    opp_arg arg2,    // cell_global_index,    OPP_READ
+    opp_arg arg3     // incorrect_part_count, OPP_INC
 )
 { 
     
@@ -149,10 +149,10 @@ void opp_loop_all__verify(
                                                     &verify_stride_OPP_HOST_1, sizeof(int)));
 
         //set DEVICE execution parameters
-        #ifdef OP_BLOCK_SIZE_4
-        int nthread = OP_BLOCK_SIZE_4;
+        #ifdef OPP_BLOCK_SIZE_4
+        int nthread = OPP_BLOCK_SIZE_4;
         #else
-        int nthread = 32; // OP_block_size; // TODO : CHECK this
+        int nthread = 32; // OPP_block_size; // TODO : CHECK this
         #endif
 
         int nblocks = 200; // why? TODO : Check
@@ -168,8 +168,8 @@ void opp_loop_all__verify(
         opp_reallocReductArrays(reduct_bytes);
         
         reduct_bytes = 0;
-        args[3].data   = OP_reduct_h + reduct_bytes;
-        args[3].data_d = OP_reduct_d + reduct_bytes;
+        args[3].data   = OPP_reduct_h + reduct_bytes;
+        args[3].data_d = OPP_reduct_d + reduct_bytes;
         for (int b = 0; b < maxblocks; b++)
         {
             for (int d = 0; d < 1; d++)

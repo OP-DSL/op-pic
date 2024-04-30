@@ -75,28 +75,28 @@ int main(int argc, char* argv[])
             // STEP 1 - Weight mesh field values to particle positions ************************************
             opp_par_loop_all__WeightFieldsToParticles(
                 particles_set,
-                opp_arg_dat(node_field_E,    0, cell_to_nodes_map, OP_READ, OPP_Map_from_Mesh_Rel),  // lhs node_field_E
-                opp_arg_dat(node_field_E,    1, cell_to_nodes_map, OP_READ, OPP_Map_from_Mesh_Rel),  // rhs node_field_E  
-                opp_arg_dat(part_position_x,                       OP_READ),    
-                opp_arg_dat(part_field_E,                          OP_WRITE)     
+                opp_arg_dat(node_field_E,    0, cell_to_nodes_map, OPP_READ, OPP_Map_from_Mesh_Rel),  // lhs node_field_E
+                opp_arg_dat(node_field_E,    1, cell_to_nodes_map, OPP_READ, OPP_Map_from_Mesh_Rel),  // rhs node_field_E  
+                opp_arg_dat(part_position_x,                       OPP_READ),    
+                opp_arg_dat(part_field_E,                          OPP_WRITE)     
             );
 
             // STEP 2 - Move the particles with the influence of the fields ************************************
             opp_par_loop_particle_all__PushParticles(
                 particles_set, 
-                opp_arg_dat(part_field_E,    OP_READ),
-                opp_arg_dat(part_velocity_x, OP_RW),
-                opp_arg_dat(part_position_x, OP_RW),
-                opp_arg_dat(part_cell_index, OP_WRITE)
+                opp_arg_dat(part_field_E,    OPP_READ),
+                opp_arg_dat(part_velocity_x, OPP_RW),
+                opp_arg_dat(part_position_x, OPP_RW),
+                opp_arg_dat(part_cell_index, OPP_WRITE)
             );
 
             // STEP 3 - Gather the contribution from particle movement to the mesh ************************************
             opp_reset_dat(node_field_J, (char*)opp_zero_double16);
             opp_par_loop_all__WeightParticlesToFields(
                 particles_set,
-                opp_arg_dat(node_field_J, 0, cell_to_nodes_map, OP_INC, OPP_Map_from_Mesh_Rel),  // lhs node_field_J
-                opp_arg_dat(node_field_J, 1, cell_to_nodes_map, OP_INC, OPP_Map_from_Mesh_Rel),  // rhs node_field_J
-                opp_arg_dat(part_position_x,                    OP_READ)  
+                opp_arg_dat(node_field_J, 0, cell_to_nodes_map, OPP_INC, OPP_Map_from_Mesh_Rel),  // lhs node_field_J
+                opp_arg_dat(node_field_J, 1, cell_to_nodes_map, OPP_INC, OPP_Map_from_Mesh_Rel),  // rhs node_field_J
+                opp_arg_dat(part_position_x,                    OPP_READ)  
             );
         
             // STEP 4 - Solve field values on the mesh points ************************************
@@ -107,8 +107,8 @@ int main(int argc, char* argv[])
             );
             opp_par_loop_all__FieldSolveSumLaplace(
                 nodes_set,
-                opp_arg_dat(node_xlocal,  OP_READ),
-                opp_arg_dat(node_field_P, OP_WRITE)
+                opp_arg_dat(node_xlocal,  OPP_READ),
+                opp_arg_dat(node_field_P, OPP_WRITE)
             );
             seq_field_solve_get_potential_gradient( // TODO : This needs to be converted to kernels or to Petsc
                 nodes_set->size,

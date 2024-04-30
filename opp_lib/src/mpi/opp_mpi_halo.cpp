@@ -69,7 +69,7 @@ int opp_mpi_halo_exchanges(opp_set set, int nargs, opp_arg *args)
 
     // check if this is a direct loop
     for (int n = 0; n < nargs; n++)
-        if (args[n].opt && args[n].argtype == OP_ARG_DAT && args[n].idx != -1)
+        if (args[n].opt && args[n].argtype == OPP_ARG_DAT && args[n].idx != -1)
             direct_flag = false;
 
     // return set size if it is a direct loop
@@ -80,7 +80,7 @@ int opp_mpi_halo_exchanges(opp_set set, int nargs, opp_arg *args)
     int exec_flag = 0;
     for (int n = 0; n < nargs; n++) 
     {
-        if (args[n].opt && args[n].idx != -1 && args[n].acc != OP_READ) 
+        if (args[n].opt && args[n].idx != -1 && args[n].acc != OPP_READ) 
         {
             size = set->size + set->exec_size;
             exec_flag = 1;
@@ -89,7 +89,7 @@ int opp_mpi_halo_exchanges(opp_set set, int nargs, opp_arg *args)
 
     for (int n = 0; n < nargs; n++) 
     {
-        if (args[n].opt && args[n].argtype == OP_ARG_DAT && (!args[n].dat->set->is_particle) && 
+        if (args[n].opt && args[n].argtype == OPP_ARG_DAT && (!args[n].dat->set->is_particle) && 
             (args[n].dat->dirtybit == 1)) 
         {
             bool already_done = false;
@@ -129,7 +129,7 @@ void opp_mpi_halo_exchange(opp_arg *arg, int exec_flag)
     opp_dat dat = arg->dat;
 
         // need to exchange both direct and indirect data sets if they are dirty
-    if ((arg->acc == OP_READ || arg->acc == OP_RW) && (dat->dirtybit == 1)) 
+    if ((arg->acc == OPP_READ || arg->acc == OPP_RW) && (dat->dirtybit == 1)) 
     {
         if (OPP_DBG) 
             opp_printf("opp_mpi_halo_exchange", "__opp_mpi_host_halo_exchange for dat [%s] exec_flag %d", 

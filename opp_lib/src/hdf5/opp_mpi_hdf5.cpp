@@ -40,23 +40,23 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #define H5Acreate_vers 2
 #define H5Dcreate_vers 2
 
-MPI_Comm OP_MPI_HDF5_WORLD;
+MPI_Comm OPP_MPI_HDF5_WORLD;
 
 int compute_local_size_weight(int global_size, int mpi_comm_size, int mpi_rank) {
   
     int *hybrid_flags = (int *)malloc(mpi_comm_size * sizeof(int));
-    MPI_Allgather(&OP_hybrid_gpu, 1, MPI_INT, hybrid_flags, 1, MPI_INT,
-                    OP_MPI_HDF5_WORLD);
+    MPI_Allgather(&OPP_hybrid_gpu, 1, MPI_INT, hybrid_flags, 1, MPI_INT,
+                    OPP_MPI_HDF5_WORLD);
     double total = 0;
     for (int i = 0; i < mpi_comm_size; i++)
-        total += hybrid_flags[i] == 1 ? OP_hybrid_balance : 1.0;
+        total += hybrid_flags[i] == 1 ? OPP_hybrid_balance : 1.0;
     double cumulative = 0;
     for (int i = 0; i < mpi_rank; i++)
-        cumulative += hybrid_flags[i] == 1 ? OP_hybrid_balance : 1.0;
+        cumulative += hybrid_flags[i] == 1 ? OPP_hybrid_balance : 1.0;
 
     int local_start = ((double)global_size) * (cumulative / total);
     int local_end = ((double)global_size) *
-        ((cumulative + (OP_hybrid_gpu ? OP_hybrid_balance : 1.0)) / total);
+        ((cumulative + (OPP_hybrid_gpu ? OPP_hybrid_balance : 1.0)) / total);
     if (mpi_rank + 1 == mpi_comm_size)
         local_end = global_size; // make sure we don't have rounding problems
     int local_size = local_end - local_start;
@@ -67,12 +67,12 @@ int compute_local_size_weight(int global_size, int mpi_comm_size, int mpi_rank) 
 /*******************************************************************************
 * Routine to read an opp_set from an hdf5 file
 *******************************************************************************/
-int opp_decl_set_hdf5(char const *file, char const *name) {
+int opp_decl_set_hdf5_data(char const *file, char const *name) {
     // create new communicator
     int my_rank, comm_size;
-    MPI_Comm_dup(OP_MPI_WORLD, &OP_MPI_HDF5_WORLD);
-    MPI_Comm_rank(OP_MPI_HDF5_WORLD, &my_rank);
-    MPI_Comm_size(OP_MPI_HDF5_WORLD, &comm_size);
+    MPI_Comm_dup(OPP_MPI_WORLD, &OPP_MPI_HDF5_WORLD);
+    MPI_Comm_rank(OPP_MPI_HDF5_WORLD, &my_rank);
+    MPI_Comm_size(OPP_MPI_HDF5_WORLD, &comm_size);
 
     // MPI variables
     MPI_Info info = MPI_INFO_NULL;
@@ -84,12 +84,12 @@ int opp_decl_set_hdf5(char const *file, char const *name) {
 
     if (file_exist(file) == 0) {
         printf("File %s does not exist .... aborting op_decl_set_hdf5()\n", file);
-        MPI_Abort(OP_MPI_HDF5_WORLD, 2);
+        MPI_Abort(OPP_MPI_HDF5_WORLD, 2);
     }
 
     // Set up file access property list with parallel I/O access
     plist_id = H5Pcreate(H5P_FILE_ACCESS);
-    H5Pset_fapl_mpio(plist_id, OP_MPI_HDF5_WORLD, info);
+    H5Pset_fapl_mpio(plist_id, OPP_MPI_HDF5_WORLD, info);
 
     file_id = H5Fopen(file, H5F_ACC_RDONLY, plist_id);
     H5Pclose(plist_id);
@@ -116,30 +116,30 @@ int opp_decl_set_hdf5(char const *file, char const *name) {
 
     // calculate local size of set for this mpi process
     int l_size = compute_local_size_weight(g_size, comm_size, my_rank);
-    MPI_Comm_free(&OP_MPI_HDF5_WORLD);
+    MPI_Comm_free(&OPP_MPI_HDF5_WORLD);
 
     return l_size;
 }
 
-opp_set opp_decl_mesh_set_hdf5(char const *file, char const *name) {
+opp_set opp_decl_set_hdf5(char const *file, char const *name) {
 
-    int l_size = opp_decl_set_hdf5(file, name);
-    return opp_decl_mesh_set(l_size, name);
+    int l_size = opp_decl_set_hdf5_data(file, name);
+    return opp_decl_set(l_size, name);
 }
 
-opp_set opp_decl_part_set_hdf5(char const *file, char const *name, opp_set cells_set) {
+opp_set opp_decl_particle_set_hdf5(char const *file, char const *name, opp_set cells_set) {
 
-    int l_size = opp_decl_set_hdf5(file, name);
-    return opp_decl_part_set(l_size, name, cells_set);
+    int l_size = opp_decl_set_hdf5_data(file, name);
+    return opp_decl_particle_set(l_size, name, cells_set);
 }
 
 // opp_set op_decl_set_hdf5_infer_size(char const *file, char const *name, char const *set_dataset_name) {
 //   // printf("op_decl_set_hdf5_infer_size() called in op_mpi_hdf5.c\n");
 //   // create new communicator
 //   int my_rank, comm_size;
-//   MPI_Comm_dup(OP_MPI_WORLD, &OP_MPI_HDF5_WORLD);
-//   MPI_Comm_rank(OP_MPI_HDF5_WORLD, &my_rank);
-//   MPI_Comm_size(OP_MPI_HDF5_WORLD, &comm_size);
+//   MPI_Comm_dup(OPP_MPI_WORLD, &OPP_MPI_HDF5_WORLD);
+//   MPI_Comm_rank(OPP_MPI_HDF5_WORLD, &my_rank);
+//   MPI_Comm_size(OPP_MPI_HDF5_WORLD, &comm_size);
 
 //   // MPI variables
 //   MPI_Info info = MPI_INFO_NULL;
@@ -154,25 +154,25 @@ opp_set opp_decl_part_set_hdf5(char const *file, char const *name, opp_set cells
 //   if (file_exist(file) == 0) {
 //     printf("File %s does not exist .... aborting op_decl_set_hdf5()\n",
 //               file);
-//     MPI_Abort(OP_MPI_HDF5_WORLD, 2);
+//     MPI_Abort(OPP_MPI_HDF5_WORLD, 2);
 //   }
 
 //   // Set up file access property list with parallel I/O access
 //   plist_id = H5Pcreate(H5P_FILE_ACCESS);
 //   if (plist_id < 0) {
 //     printf("H5Pcreate() failed\n");
-//     MPI_Abort(OP_MPI_HDF5_WORLD, 2);
+//     MPI_Abort(OPP_MPI_HDF5_WORLD, 2);
 //   }
-//   if (H5Pset_fapl_mpio(plist_id, OP_MPI_HDF5_WORLD, info) < 0) {
+//   if (H5Pset_fapl_mpio(plist_id, OPP_MPI_HDF5_WORLD, info) < 0) {
 //     printf("H5Pset_fapl_mpio() failed\n");
-//     MPI_Abort(OP_MPI_HDF5_WORLD, 2);
+//     MPI_Abort(OPP_MPI_HDF5_WORLD, 2);
 //   }
 
 //   file_id = H5Fopen(file, H5F_ACC_RDONLY, plist_id);
 //   H5Pclose(plist_id);
 //   if (file_id < 0) {
 //     printf("Could not obtain read access to file '%s'\n", file);
-//     MPI_Abort(OP_MPI_HDF5_WORLD, 2);
+//     MPI_Abort(OPP_MPI_HDF5_WORLD, 2);
 //   }
 
 //   if (!H5Lexists(file_id, set_dataset_name, H5P_DEFAULT)) {
@@ -195,7 +195,7 @@ opp_set opp_decl_part_set_hdf5(char const *file, char const *name, opp_set cells
 //   status = get_dataset_properties(dset_id, &dset_props);
 //   if (status < 0) {
 //     printf("Could not access dataset '%s' in file '%s'\n", set_dataset_name, file);
-//     MPI_Abort(OP_MPI_HDF5_WORLD, 2);
+//     MPI_Abort(OPP_MPI_HDF5_WORLD, 2);
 //   }
 //   int g_size = dset_props.size;
 
@@ -206,7 +206,7 @@ opp_set opp_decl_part_set_hdf5(char const *file, char const *name, opp_set cells
 
 //   // calculate local size of set for this mpi process
 //   int l_size = compute_local_size_weight(g_size, comm_size, my_rank);
-//   MPI_Comm_free(&OP_MPI_HDF5_WORLD);
+//   MPI_Comm_free(&OPP_MPI_HDF5_WORLD);
 
 //   return op_decl_set(l_size, name);
 // }
@@ -215,14 +215,14 @@ opp_set opp_decl_part_set_hdf5(char const *file, char const *name, opp_set cells
 * Routine to read an opp_map from an hdf5 file
 *******************************************************************************/
 
-opp_map opp_decl_mesh_map_hdf5(opp_set from, opp_set to, int dim, char const *file,
+opp_map opp_decl_map_hdf5(opp_set from, opp_set to, int dim, char const *file,
                         char const *name) {
   
     // create new communicator
     int my_rank, comm_size;
-    MPI_Comm_dup(OP_MPI_WORLD, &OP_MPI_HDF5_WORLD);
-    MPI_Comm_rank(OP_MPI_HDF5_WORLD, &my_rank);
-    MPI_Comm_size(OP_MPI_HDF5_WORLD, &comm_size);
+    MPI_Comm_dup(OPP_MPI_WORLD, &OPP_MPI_HDF5_WORLD);
+    MPI_Comm_rank(OPP_MPI_HDF5_WORLD, &my_rank);
+    MPI_Comm_size(OPP_MPI_HDF5_WORLD, &comm_size);
 
     // MPI variables
     MPI_Info info = MPI_INFO_NULL;
@@ -241,12 +241,12 @@ opp_map opp_decl_mesh_map_hdf5(opp_set from, opp_set to, int dim, char const *fi
     if (file_exist(file) == 0) {
         printf("File %s does not exist .... aborting op_decl_map_hdf5()\n",
                 file);
-        MPI_Abort(OP_MPI_HDF5_WORLD, 2);
+        MPI_Abort(OPP_MPI_HDF5_WORLD, 2);
     }
 
     // Set up file access property list with parallel I/O access
     plist_id = H5Pcreate(H5P_FILE_ACCESS);
-    H5Pset_fapl_mpio(plist_id, OP_MPI_HDF5_WORLD, info);
+    H5Pset_fapl_mpio(plist_id, OPP_MPI_HDF5_WORLD, info);
     file_id = H5Fopen(file, H5F_ACC_RDONLY, plist_id);
     H5Pclose(plist_id);
 
@@ -267,7 +267,7 @@ opp_map opp_decl_mesh_map_hdf5(opp_set from, opp_set to, int dim, char const *fi
     status = get_dataset_properties(dset_id, &dset_props);
     if (status < 0) {
         printf("Could not get properties of dataset '%s' in file '%s'\n", name, file);
-        MPI_Abort(OP_MPI_HDF5_WORLD, 2);
+        MPI_Abort(OPP_MPI_HDF5_WORLD, 2);
     }
 
     int g_size = dset_props.size;
@@ -279,14 +279,14 @@ opp_map opp_decl_mesh_map_hdf5(opp_set from, opp_set to, int dim, char const *fi
         printf(
             "map from set size %d in file %s and size %d do not match on rank %d\n",
             l_size, file, from->size, my_rank);
-        MPI_Abort(OP_MPI_HDF5_WORLD, 2);
+        MPI_Abort(OPP_MPI_HDF5_WORLD, 2);
     }
 
     int map_dim = dset_props.dim;
     if (map_dim != dim) {
         printf("map.dim %d in file %s and dim %d do not match\n", map_dim, file,
                 dim);
-        MPI_Abort(OP_MPI_HDF5_WORLD, 2);
+        MPI_Abort(OPP_MPI_HDF5_WORLD, 2);
     }
 
     const char *typ = dset_props.type_str;
@@ -300,7 +300,7 @@ opp_map opp_decl_mesh_map_hdf5(opp_set from, opp_set to, int dim, char const *fi
     // file.
     int disp = 0;
     int *sizes = (int *)malloc(sizeof(int) * comm_size);
-    MPI_Allgather(&l_size, 1, MPI_INT, sizes, 1, MPI_INT, OP_MPI_HDF5_WORLD);
+    MPI_Allgather(&l_size, 1, MPI_INT, sizes, 1, MPI_INT, OPP_MPI_HDF5_WORLD);
     for (int i = 0; i < my_rank; i++)
         disp = disp + sizes[i];
     free(sizes);
@@ -332,7 +332,7 @@ opp_map opp_decl_mesh_map_hdf5(opp_set from, opp_set to, int dim, char const *fi
         H5Dread(dset_id, H5T_NATIVE_LLONG, memspace, dataspace, plist_id, map);
     } else {
         printf("unknown type\n");
-        MPI_Abort(OP_MPI_HDF5_WORLD, 2);
+        MPI_Abort(OPP_MPI_HDF5_WORLD, 2);
     }
 
     H5Pclose(plist_id);
@@ -340,11 +340,11 @@ opp_map opp_decl_mesh_map_hdf5(opp_set from, opp_set to, int dim, char const *fi
     H5Sclose(dataspace);
     H5Dclose(dset_id);
     H5Fclose(file_id);
-    MPI_Comm_free(&OP_MPI_HDF5_WORLD);
+    MPI_Comm_free(&OPP_MPI_HDF5_WORLD);
 
     free((char*)dset_props.type_str);
 
-    opp_map new_map = opp_decl_mesh_map(from, to, dim, map, name);
+    opp_map new_map = opp_decl_map(from, to, dim, map, name);
     free(map);
     new_map->user_managed = 0;
     
@@ -355,13 +355,13 @@ opp_map opp_decl_mesh_map_hdf5(opp_set from, opp_set to, int dim, char const *fi
 * Routine to read an opp_dat from an hdf5 file
 *******************************************************************************/
 
-char* opp_decl_dat_hdf5(opp_set set, int dim, char const *type, char const *file, char const *name) {
+char* opp_get_hdf5_dat_data(opp_set set, int dim, char const *type, char const *file, char const *name) {
   
     // create new communicator
     int my_rank, comm_size;
-    MPI_Comm_dup(OP_MPI_WORLD, &OP_MPI_HDF5_WORLD);
-    MPI_Comm_rank(OP_MPI_HDF5_WORLD, &my_rank);
-    MPI_Comm_size(OP_MPI_HDF5_WORLD, &comm_size);
+    MPI_Comm_dup(OPP_MPI_WORLD, &OPP_MPI_HDF5_WORLD);
+    MPI_Comm_rank(OPP_MPI_HDF5_WORLD, &my_rank);
+    MPI_Comm_size(OPP_MPI_HDF5_WORLD, &comm_size);
 
     // MPI variables
     MPI_Info info = MPI_INFO_NULL;
@@ -381,12 +381,12 @@ char* opp_decl_dat_hdf5(opp_set set, int dim, char const *type, char const *file
     if (file_exist(file) == 0) {
         printf("File %s does not exist .... aborting op_decl_dat_hdf5()\n",
                 file);
-        MPI_Abort(OP_MPI_HDF5_WORLD, 2);
+        MPI_Abort(OPP_MPI_HDF5_WORLD, 2);
     }
 
     // Set up file access property list with parallel I/O access
     plist_id = H5Pcreate(H5P_FILE_ACCESS);
-    H5Pset_fapl_mpio(plist_id, OP_MPI_HDF5_WORLD, info);
+    H5Pset_fapl_mpio(plist_id, OPP_MPI_HDF5_WORLD, info);
 
     file_id = H5Fopen(file, H5F_ACC_RDONLY, plist_id);
     H5Pclose(plist_id);
@@ -409,14 +409,14 @@ char* opp_decl_dat_hdf5(opp_set set, int dim, char const *type, char const *file
     status = get_dataset_properties(dset_id, &dset_props);
     if (status < 0) {
         printf("Could not get properties of dataset '%s' in file '%s'\n", name, file);
-        MPI_Abort(OP_MPI_HDF5_WORLD, 2);
+        MPI_Abort(OPP_MPI_HDF5_WORLD, 2);
     }
     //size_t type_size;
 
     int dat_dim = dset_props.dim;
     if (dat_dim != dim) {
         printf("dat.dim %d in file %s and dim %d do not match\n", dat_dim, file, dim);
-        MPI_Abort(OP_MPI_HDF5_WORLD, 2);
+        MPI_Abort(OPP_MPI_HDF5_WORLD, 2);
     }
 
     const char *typ = dset_props.type_str;
@@ -436,7 +436,7 @@ char* opp_decl_dat_hdf5(opp_set set, int dim, char const *type, char const *file
     // file.
     int disp = 0;
     int *sizes = (int *)malloc(sizeof(int) * comm_size);
-    MPI_Allgather(&(set->size), 1, MPI_INT, sizes, 1, MPI_INT, OP_MPI_HDF5_WORLD);
+    MPI_Allgather(&(set->size), 1, MPI_INT, sizes, 1, MPI_INT, OPP_MPI_HDF5_WORLD);
     for (int i = 0; i < my_rank; i++)
         disp = disp + sizes[i];
     free(sizes);
@@ -476,7 +476,7 @@ char* opp_decl_dat_hdf5(opp_set set, int dim, char const *type, char const *file
         //type_size = sizeof(int);
     } else {
         printf("unknown type\n");
-        MPI_Abort(OP_MPI_HDF5_WORLD, 2);
+        MPI_Abort(OPP_MPI_HDF5_WORLD, 2);
     }
 
     H5Pclose(plist_id);
@@ -484,37 +484,42 @@ char* opp_decl_dat_hdf5(opp_set set, int dim, char const *type, char const *file
     H5Sclose(dataspace);
     H5Dclose(dset_id);
     H5Fclose(file_id);
-    MPI_Comm_free(&OP_MPI_HDF5_WORLD);
+    MPI_Comm_free(&OPP_MPI_HDF5_WORLD);
 
     free((char*)dset_props.type_str);
     
     return data;
 }
 
-opp_dat opp_decl_mesh_dat_hdf5(opp_set set, int dim, opp_data_type dtype, char const *file, char const *name) {
+// opp_dat opp_decl_dat_hdf5(opp_set set, int dim, opp_data_type dtype, char const *file, char const *name) {
     
-    std::string type = "";
-    int size = -1;
-    getDatTypeSize(dtype, type, size);
+//     std::string type = "";
+//     int size = -1;
+//     getDatTypeSize(dtype, type, size);
 
-    char* data = opp_decl_dat_hdf5(set, dim, type.c_str(), file, name);
+//     char* data = opp_get_hdf5_dat_data(set, dim, type.c_str(), file, name);
 
-    opp_dat new_dat = opp_decl_dat(set, dim, dtype, (void*)data, name);
-    free(data);
+//     opp_dat new_dat = opp_decl_dat(set, dim, dtype, (void*)data, name);
+//     free(data);
     
-    return new_dat;
-}
+//     return new_dat;
+// }
 
-opp_dat opp_decl_part_dat_hdf5(opp_set set, int dim, opp_data_type dtype, char const *file, char const *name, 
+opp_dat opp_decl_dat_hdf5(opp_set set, int dim, opp_data_type dtype, char const *file, char const *name, 
                                 bool cell_index) {
     
     std::string type = "";
     int size = -1;
     getDatTypeSize(dtype, type, size);
 
-    char* data = opp_decl_dat_hdf5(set, dim, type.c_str(), file, name);
+    char* data = opp_get_hdf5_dat_data(set, dim, type.c_str(), file, name);
 
-    opp_dat new_dat = opp_decl_dat(set, dim, dtype, (void*)data, name, cell_index);
+    opp_dat new_dat = nullptr;
+    if (set->is_particle) 
+        new_dat = opp_decl_part_dat(set, dim, dtype, data, name, cell_index);
+    else
+        new_dat = opp_decl_mesh_dat(set, dim, dtype, data, name);    
+
     free(data);
     
     return new_dat;
@@ -528,9 +533,9 @@ void opp_get_const_hdf5(char const *name, int dim, char const *type, char *const
     
     // create new communicator
     int my_rank, comm_size;
-    MPI_Comm_dup(OP_MPI_WORLD, &OP_MPI_HDF5_WORLD);
-    MPI_Comm_rank(OP_MPI_HDF5_WORLD, &my_rank);
-    MPI_Comm_size(OP_MPI_HDF5_WORLD, &comm_size);
+    MPI_Comm_dup(OPP_MPI_WORLD, &OPP_MPI_HDF5_WORLD);
+    MPI_Comm_rank(OPP_MPI_HDF5_WORLD, &my_rank);
+    MPI_Comm_size(OPP_MPI_HDF5_WORLD, &comm_size);
 
     // MPI variables
     MPI_Info info = MPI_INFO_NULL;
@@ -545,12 +550,12 @@ void opp_get_const_hdf5(char const *name, int dim, char const *type, char *const
 
     if (file_exist(file_name) == 0) {
         printf("File %s does not exist .... aborting op_get_const_hdf5()\n", file_name);
-        MPI_Abort(OP_MPI_HDF5_WORLD, 2);
+        MPI_Abort(OPP_MPI_HDF5_WORLD, 2);
     }
 
     // Set up file access property list with parallel I/O access
     plist_id = H5Pcreate(H5P_FILE_ACCESS);
-    H5Pset_fapl_mpio(plist_id, OP_MPI_HDF5_WORLD, info);
+    H5Pset_fapl_mpio(plist_id, OPP_MPI_HDF5_WORLD, info);
 
     file_id = H5Fopen(file_name, H5F_ACC_RDONLY, plist_id);
     H5Pclose(plist_id);
@@ -573,14 +578,14 @@ void opp_get_const_hdf5(char const *name, int dim, char const *type, char *const
     status = get_dataset_properties(dset_id, &dset_props);
     if (status < 0) {
         printf("Could not get properties of dataset '%s' in file '%s'\n", name, file_name);
-        MPI_Abort(OP_MPI_HDF5_WORLD, 2);
+        MPI_Abort(OPP_MPI_HDF5_WORLD, 2);
     }
 
     const_dim = dset_props.size;
     if (const_dim != dim) {
         printf("dim of constant %d in file %s and requested dim %d do not match\n",
                 const_dim, file_name, dim);
-        MPI_Abort(OP_MPI_HDF5_WORLD, 2);
+        MPI_Abort(OPP_MPI_HDF5_WORLD, 2);
     }
 
     const char* typ = dset_props.type_str;
@@ -624,7 +629,7 @@ void opp_get_const_hdf5(char const *name, int dim, char const *type, char *const
         memcpy((void *)const_data, (void *)data, sizeof(double) * const_dim);
     } else {
         printf("Unknown type in file %s for constant %s\n", file_name, name);
-        MPI_Abort(OP_MPI_HDF5_WORLD, 2);
+        MPI_Abort(OPP_MPI_HDF5_WORLD, 2);
     }
 
     free(data);
@@ -634,7 +639,7 @@ void opp_get_const_hdf5(char const *name, int dim, char const *type, char *const
     H5Pclose(plist_id);
     H5Dclose(dset_id);
     H5Fclose(file_id);
-    MPI_Comm_free(&OP_MPI_HDF5_WORLD);
+    MPI_Comm_free(&OPP_MPI_HDF5_WORLD);
 }
 
 /*******************************************************************************
@@ -648,9 +653,9 @@ void opp_dump_to_hdf5(char const *file_name) {
 
     // create new communicator
     int my_rank, comm_size;
-    MPI_Comm_dup(OP_MPI_WORLD, &OP_MPI_HDF5_WORLD);
-    MPI_Comm_rank(OP_MPI_HDF5_WORLD, &my_rank);
-    MPI_Comm_size(OP_MPI_HDF5_WORLD, &comm_size);
+    MPI_Comm_dup(OPP_MPI_WORLD, &OPP_MPI_HDF5_WORLD);
+    MPI_Comm_rank(OPP_MPI_HDF5_WORLD, &my_rank);
+    MPI_Comm_size(OPP_MPI_HDF5_WORLD, &comm_size);
 
     // MPI variables
     MPI_Info info = MPI_INFO_NULL;
@@ -668,16 +673,16 @@ void opp_dump_to_hdf5(char const *file_name) {
 
     // Set up file access property list with parallel I/O access
     plist_id = H5Pcreate(H5P_FILE_ACCESS);
-    H5Pset_fapl_mpio(plist_id, OP_MPI_HDF5_WORLD, info);
+    H5Pset_fapl_mpio(plist_id, OPP_MPI_HDF5_WORLD, info);
 
     // Create a new file collectively and release property list identifier.
     file_id = H5Fcreate(file_name, H5F_ACC_TRUNC, H5P_DEFAULT, plist_id);
     H5Pclose(plist_id);
 
     /*loop over all the opp_sets and write them to file*/
-    for (int s = 0; s < OP_set_index; s++) {
+    for (int s = 0; s < (int)opp_sets.size(); s++) {
         
-        opp_set set = OP_set_list[s];
+        opp_set set = opp_sets[s];
 
         // Create the dataspace for the dataset.
         hsize_t dimsf_set[] = {1};
@@ -693,7 +698,7 @@ void opp_dump_to_hdf5(char const *file_name) {
 
         int size = 0;
         int *sizes = (int *)malloc(sizeof(int) * comm_size);
-        MPI_Allgather(&set->size, 1, MPI_INT, sizes, 1, MPI_INT, OP_MPI_HDF5_WORLD);
+        MPI_Allgather(&set->size, 1, MPI_INT, sizes, 1, MPI_INT, OPP_MPI_HDF5_WORLD);
         for (int i = 0; i < comm_size; i++)
             size = size + sizes[i];
 
@@ -705,9 +710,9 @@ void opp_dump_to_hdf5(char const *file_name) {
     }
 
     /*loop over all the opp_maps and write them to file*/
-    for (int m = 0; m < OP_map_index; m++) {
+    for (int m = 0; m < (int)opp_maps.size(); m++) {
         
-        opp_map map = OP_map_list[m];
+        opp_map map = opp_maps[m];
 
         if (map->dim == 0)
             continue;
@@ -715,7 +720,7 @@ void opp_dump_to_hdf5(char const *file_name) {
         // find total size of map
         int *sizes = (int *)malloc(sizeof(int) * comm_size);
         int g_size = 0;
-        MPI_Allgather(&map->from->size, 1, MPI_INT, sizes, 1, MPI_INT, OP_MPI_HDF5_WORLD);
+        MPI_Allgather(&map->from->size, 1, MPI_INT, sizes, 1, MPI_INT, OPP_MPI_HDF5_WORLD);
         for (int i = 0; i < comm_size; i++)
             g_size = g_size + sizes[i];
 
@@ -818,9 +823,9 @@ void opp_dump_to_hdf5(char const *file_name) {
     }
 
     /*loop over all the opp_dats and write them to file*/
-    for (int k = 0; k < OP_dat_index; k++) {
+    for (int k = 0; k < (int)opp_dats.size(); k++) {
         
-        opp_dat dat = OP_dat_list[k];
+        opp_dat dat = opp_dats[k];
         
         if (dat->size == 0)
             continue;
@@ -832,7 +837,7 @@ void opp_dump_to_hdf5(char const *file_name) {
         // find total size of dat
         int *sizes = (int *)malloc(sizeof(int) * comm_size);
         int g_size = 0;
-        MPI_Allgather(&dat->set->size, 1, MPI_INT, sizes, 1, MPI_INT, OP_MPI_HDF5_WORLD);
+        MPI_Allgather(&dat->set->size, 1, MPI_INT, sizes, 1, MPI_INT, OPP_MPI_HDF5_WORLD);
         for (int i = 0; i < comm_size; i++)
             g_size = g_size + sizes[i];
         
@@ -910,7 +915,7 @@ void opp_dump_to_hdf5(char const *file_name) {
         } else {
 
             printf("Unknown type - in op_dump_to_hdf5() writing opp_dats\n");
-            MPI_Abort(OP_MPI_HDF5_WORLD, 2);
+            MPI_Abort(OPP_MPI_HDF5_WORLD, 2);
 
         }
 
@@ -963,7 +968,7 @@ void opp_dump_to_hdf5(char const *file_name) {
 
     opp_profiler->end("Dump_hdf5");
 
-    MPI_Comm_free(&OP_MPI_HDF5_WORLD);
+    MPI_Comm_free(&OPP_MPI_HDF5_WORLD);
 }
 
 // /*******************************************************************************
@@ -976,9 +981,9 @@ void opp_dump_to_hdf5(char const *file_name) {
 
 //   // create new communicator
 //   int my_rank, comm_size;
-//   MPI_Comm_dup(OP_MPI_WORLD, &OP_MPI_HDF5_WORLD);
-//   MPI_Comm_rank(OP_MPI_HDF5_WORLD, &my_rank);
-//   MPI_Comm_size(OP_MPI_HDF5_WORLD, &comm_size);
+//   MPI_Comm_dup(OPP_MPI_WORLD, &OPP_MPI_HDF5_WORLD);
+//   MPI_Comm_rank(OPP_MPI_HDF5_WORLD, &my_rank);
+//   MPI_Comm_size(OPP_MPI_HDF5_WORLD, &comm_size);
 
 //   // MPI variables
 //   MPI_Info info = MPI_INFO_NULL;
@@ -991,7 +996,7 @@ void opp_dump_to_hdf5(char const *file_name) {
 
 //   // Set up file access property list with parallel I/O access
 //   plist_id = H5Pcreate(H5P_FILE_ACCESS);
-//   H5Pset_fapl_mpio(plist_id, OP_MPI_HDF5_WORLD, info);
+//   H5Pset_fapl_mpio(plist_id, OPP_MPI_HDF5_WORLD, info);
 
 //   if (file_exist(file_name) == 0) {
 //     if (OPP_DBG) {
@@ -1056,7 +1061,7 @@ void opp_dump_to_hdf5(char const *file_name) {
 //   } else {
 //     printf("Unknown type %s for constant %s: cannot write constant to file\n",
 //               type, name);
-//     MPI_Abort(OP_MPI_HDF5_WORLD, 2);
+//     MPI_Abort(OPP_MPI_HDF5_WORLD, 2);
 //   }
 
 //   H5Pclose(plist_id);
@@ -1105,7 +1110,7 @@ void opp_dump_to_hdf5(char const *file_name) {
 //   else {
 //     printf("Unknown type %s for constant %s: cannot write constant to file\n",
 //               type, name);
-//     MPI_Abort(OP_MPI_HDF5_WORLD, 2);
+//     MPI_Abort(OPP_MPI_HDF5_WORLD, 2);
 //   }
 
 //   H5Aclose(attribute);
@@ -1113,7 +1118,7 @@ void opp_dump_to_hdf5(char const *file_name) {
 //   H5Dclose(dset_id);
 
 //   H5Fclose(file_id);
-//   MPI_Comm_free(&OP_MPI_HDF5_WORLD);
+//   MPI_Comm_free(&OPP_MPI_HDF5_WORLD);
 // }
 
 /*******************************************************************************
@@ -1132,9 +1137,9 @@ void opp_fetch_data_hdf5(opp_dat data, char const *file_name, char const *path_n
 
     // create new communicator
     int my_rank, comm_size;
-    MPI_Comm_dup(OP_MPI_WORLD, &OP_MPI_HDF5_WORLD);
-    MPI_Comm_rank(OP_MPI_HDF5_WORLD, &my_rank);
-    MPI_Comm_size(OP_MPI_HDF5_WORLD, &comm_size);
+    MPI_Comm_dup(OPP_MPI_WORLD, &OPP_MPI_HDF5_WORLD);
+    MPI_Comm_rank(OPP_MPI_HDF5_WORLD, &my_rank);
+    MPI_Comm_size(OPP_MPI_HDF5_WORLD, &comm_size);
 
     // MPI variables
     MPI_Info info = MPI_INFO_NULL;
@@ -1156,21 +1161,21 @@ void opp_fetch_data_hdf5(opp_dat data, char const *file_name, char const *path_n
 
     // Set up file access property list with parallel I/O access
     plist_id = H5Pcreate(H5P_FILE_ACCESS);
-    H5Pset_fapl_mpio(plist_id, OP_MPI_HDF5_WORLD, info);
+    H5Pset_fapl_mpio(plist_id, OPP_MPI_HDF5_WORLD, info);
 
     if (file_exist(file_name) == 0) {
 
-        MPI_Barrier(OP_MPI_WORLD);
+        MPI_Barrier(OPP_MPI_WORLD);
         if (OPP_DBG) {
             printf("File %s does not exist .... creating file\n", file_name);
         }
-        MPI_Barrier(OP_MPI_HDF5_WORLD);
+        MPI_Barrier(OPP_MPI_HDF5_WORLD);
         if (OPP_rank == OPP_ROOT) {
             FILE *fp;
             fp = fopen(file_name, "w");
             fclose(fp);
         }
-        MPI_Barrier(OP_MPI_HDF5_WORLD);
+        MPI_Barrier(OPP_MPI_HDF5_WORLD);
         file_id = H5Fcreate(file_name, H5F_ACC_TRUNC, H5P_DEFAULT, plist_id);
     
     } 
@@ -1198,7 +1203,7 @@ void opp_fetch_data_hdf5(opp_dat data, char const *file_name, char const *path_n
             if (status < 0) {
                 printf("Could not get properties of dataset '%s' in file '%s'\n",
                         path_name, file_name);
-                MPI_Abort(OP_MPI_HDF5_WORLD, 2);
+                MPI_Abort(OPP_MPI_HDF5_WORLD, 2);
             }
 
             // find element size of this dat with available attributes
@@ -1207,7 +1212,7 @@ void opp_fetch_data_hdf5(opp_dat data, char const *file_name, char const *path_n
             if (dat_size != (size_t)dat->size) {
                 printf("dat.size %zu in file %s and dim %d do not match ... aborting\n",
                     dat_size, file_name, dat->dim);
-                MPI_Abort(OP_MPI_HDF5_WORLD, 2);
+                MPI_Abort(OPP_MPI_HDF5_WORLD, 2);
             }
 
             // find dim with available attributes
@@ -1216,7 +1221,7 @@ void opp_fetch_data_hdf5(opp_dat data, char const *file_name, char const *path_n
             if (dat_dim != dat->dim) {
                 printf("dat.dim %d in file %s and dim %d do not match ... aborting\n",
                         dat_dim, file_name, dat->dim);
-                MPI_Abort(OP_MPI_HDF5_WORLD, 2);
+                MPI_Abort(OPP_MPI_HDF5_WORLD, 2);
             }
 
             // find type with available attributes
@@ -1227,7 +1232,7 @@ void opp_fetch_data_hdf5(opp_dat data, char const *file_name, char const *path_n
             if (!opp_type_equivalence(typ, dat->type)) {
                 printf("dat.type %s in file %s and type %s do not match\n", typ,
                         file_name, dat->type);
-                MPI_Abort(OP_MPI_HDF5_WORLD, 2);
+                MPI_Abort(OPP_MPI_HDF5_WORLD, 2);
             }
 
             //
@@ -1237,7 +1242,7 @@ void opp_fetch_data_hdf5(opp_dat data, char const *file_name, char const *path_n
             // find total size of dat
             int *sizes = (int *)malloc(sizeof(int) * comm_size);
             int g_size = 0;
-            MPI_Allgather(&dat->set->size, 1, MPI_INT, sizes, 1, MPI_INT, OP_MPI_HDF5_WORLD);
+            MPI_Allgather(&dat->set->size, 1, MPI_INT, sizes, 1, MPI_INT, OPP_MPI_HDF5_WORLD);
             for (int i = 0; i < comm_size; i++)
                 g_size = g_size + sizes[i];
 
@@ -1301,7 +1306,7 @@ void opp_fetch_data_hdf5(opp_dat data, char const *file_name, char const *path_n
             else {
 
                 printf("Unknown type in op_fetch_data_hdf5_file()\n");
-                MPI_Abort(OP_MPI_HDF5_WORLD, 2);
+                MPI_Abort(OPP_MPI_HDF5_WORLD, 2);
             }
 
             H5Dclose(dset_id);
@@ -1316,7 +1321,7 @@ void opp_fetch_data_hdf5(opp_dat data, char const *file_name, char const *path_n
             free(dat->set);
             free(dat);
 
-            MPI_Comm_free(&OP_MPI_HDF5_WORLD);
+            MPI_Comm_free(&OPP_MPI_HDF5_WORLD);
             return;
         } 
         else {
@@ -1337,7 +1342,7 @@ void opp_fetch_data_hdf5(opp_dat data, char const *file_name, char const *path_n
     int *sizes = (int *)malloc(sizeof(int) * comm_size);
     int g_size = 0;
     MPI_Allgather(&dat->set->size, 1, MPI_INT, sizes, 1, MPI_INT,
-                    OP_MPI_HDF5_WORLD);
+                    OPP_MPI_HDF5_WORLD);
     for (int i = 0; i < comm_size; i++)
         g_size = g_size + sizes[i];
 
@@ -1405,7 +1410,7 @@ void opp_fetch_data_hdf5(opp_dat data, char const *file_name, char const *path_n
                 dat->data);
     } else {
         printf("Unknown type in op_fetch_data_hdf5_file()\n");
-        MPI_Abort(OP_MPI_HDF5_WORLD, 2);
+        MPI_Abort(OPP_MPI_HDF5_WORLD, 2);
     }
 
     H5Dclose(dset_id);
@@ -1454,7 +1459,7 @@ void opp_fetch_data_hdf5(opp_dat data, char const *file_name, char const *path_n
     free(dat->set);
     free(dat);
 
-    MPI_Comm_free(&OP_MPI_HDF5_WORLD);
+    MPI_Comm_free(&OPP_MPI_HDF5_WORLD);
 }
 
 /*******************************************************************************

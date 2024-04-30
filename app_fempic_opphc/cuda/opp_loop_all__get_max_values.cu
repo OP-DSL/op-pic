@@ -84,11 +84,11 @@ __global__ void opp_cuda_GetFinalMaxValues(
 
     for (int d = 0; d < 1; d++)
     {
-        opp_reduction<OP_MAX>(&dir_arg1[d + blockIdx.x * 1], arg1_l[d]);
+        opp_reduction<OPP_MAX>(&dir_arg1[d + blockIdx.x * 1], arg1_l[d]);
     }
     for (int d = 0; d < 1; d++)
     {
-        opp_reduction<OP_MAX>(&dir_arg3[d + blockIdx.x * 1], arg3_l[d]);
+        opp_reduction<OPP_MAX>(&dir_arg3[d + blockIdx.x * 1], arg3_l[d]);
     }
 }
 
@@ -123,10 +123,10 @@ void opp_loop_all__get_max_values(
     {
 
         //set CUDA execution parameters
-        #ifdef OP_BLOCK_SIZE_4
-        int nthread = OP_BLOCK_SIZE_4;
+        #ifdef OPP_BLOCK_SIZE_4
+        int nthread = OPP_BLOCK_SIZE_4;
         #else
-        int nthread = 32; // OP_block_size; // TODO : CHECK this
+        int nthread = 32; // OPP_block_size; // TODO : CHECK this
         #endif
 
         int nblocks = 200; // why? TODO : Check
@@ -143,8 +143,8 @@ void opp_loop_all__get_max_values(
         opp_reallocReductArrays(reduct_bytes);
         
         reduct_bytes = 0;
-        args[1].data   = OP_reduct_h + reduct_bytes;
-        args[1].data_d = OP_reduct_d + reduct_bytes;
+        args[1].data   = OPP_reduct_h + reduct_bytes;
+        args[1].data_d = OPP_reduct_d + reduct_bytes;
         for (int b = 0; b < maxblocks; b++)
         {
             for (int d = 0; d < 1; d++)
@@ -154,8 +154,8 @@ void opp_loop_all__get_max_values(
         }
         reduct_bytes += ROUND_UP(maxblocks*1*sizeof(double));
 
-        args[3].data   = OP_reduct_h + reduct_bytes;
-        args[3].data_d = OP_reduct_d + reduct_bytes;
+        args[3].data   = OPP_reduct_h + reduct_bytes;
+        args[3].data_d = OPP_reduct_d + reduct_bytes;
         for (int b = 0; b < maxblocks; b++)
         {
             for (int d = 0; d < 1; d++)

@@ -32,8 +32,8 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <opp_mpi_core.h>
 
-MPI_Comm OP_MPI_WORLD;
-MPI_Comm OP_MPI_GLOBAL;
+MPI_Comm OPP_MPI_WORLD;
+MPI_Comm OPP_MPI_GLOBAL;
 
 void opp_halo_create();
 void opp_part_comm_init();
@@ -93,18 +93,18 @@ void opp_partition_core(std::string lib_name, opp_set prime_set, opp_map prime_m
 
     //     if (std::string(set->name) != std::string("mesh_cells")) continue;
 
-    //     for (int m = 0; m < OP_map_index; m++) // for each maping table
+    //     for (int m = 0; m < OPP_map_index; m++) // for each maping table
     //     { 
-    //         opp_map map = OP_map_list[m];
+    //         opp_map map = OPP_map_list[m];
 
     //         if (compare_sets(map->from, set) == 1) // need to select mappings FROM this set
     //         { 
     //             opp_print_map_to_txtfile(map  , "BACKEND", map->name);
     //         }
     //     }
-    //     for (int k = 0; k < OP_dat_index; k++) // for each dat
+    //     for (int k = 0; k < OPP_dat_index; k++) // for each dat
     //     {
-    //         opp_dat dat = OP_dat_list[k];
+    //         opp_dat dat = OPP_dat_list[k];
 
     //         if (std::string(dat->name) == std::string("c_index")) // if this data array is defined on this set
     //         { 
@@ -125,7 +125,7 @@ void opp_partition_core(std::string lib_name, opp_set prime_set, opp_map prime_m
         recv_vec.resize(OPP_comm_size * 3);
 
         std::vector<int> sizes{ set->size, set->exec_size, set->nonexec_size };
-        MPI_Gather(&(sizes[0]), 3, MPI_INT, &(recv_vec[0]), 3, MPI_INT, OPP_ROOT, OP_MPI_WORLD);
+        MPI_Gather(&(sizes[0]), 3, MPI_INT, &(recv_vec[0]), 3, MPI_INT, OPP_ROOT, OPP_MPI_WORLD);
     }
 
     // print the set sizes of all ranks after partitioning
@@ -459,35 +459,35 @@ void opp_mpi_reduce_double(opp_arg *arg, double *data)
     if (arg->data == NULL)
         return;
 
-    if (arg->argtype == OP_ARG_GBL && arg->acc != OP_READ) 
+    if (arg->argtype == OPP_ARG_GBL && arg->acc != OPP_READ) 
     {
         double result_static;
         double *result;
         
-        if (arg->dim > 1 && arg->acc != OP_WRITE)
+        if (arg->dim > 1 && arg->acc != OPP_WRITE)
             result = (double *)opp_host_malloc(arg->dim * sizeof(double));
         else
             result = &result_static;
 
-        if (arg->acc == OP_INC) // global reduction
+        if (arg->acc == OPP_INC) // global reduction
         {
             MPI_Allreduce((double *)arg->data, result, arg->dim, MPI_DOUBLE, MPI_SUM,
                             MPI_COMM_WORLD);
             memcpy(arg->data, result, sizeof(double) * arg->dim);
         } 
-        else if (arg->acc == OP_MAX) // global maximum
+        else if (arg->acc == OPP_MAX) // global maximum
         {
             MPI_Allreduce((double *)arg->data, result, arg->dim, MPI_DOUBLE, MPI_MAX,
                             MPI_COMM_WORLD);
             memcpy(arg->data, result, sizeof(double) * arg->dim);
         } 
-        else if (arg->acc == OP_MIN) // global minimum
+        else if (arg->acc == OPP_MIN) // global minimum
         {
             MPI_Allreduce((double *)arg->data, result, arg->dim, MPI_DOUBLE, MPI_MIN,
                             MPI_COMM_WORLD);
             memcpy(arg->data, result, sizeof(double) * arg->dim);
         } 
-        else if (arg->acc == OP_WRITE) // any
+        else if (arg->acc == OPP_WRITE) // any
         {
             result = (double *)opp_host_malloc(arg->dim * OPP_comm_size * sizeof(double));
             MPI_Allgather((double *)arg->data, arg->dim, MPI_DOUBLE, result, arg->dim,
@@ -520,35 +520,35 @@ void opp_mpi_reduce_int(opp_arg *arg, int *data)
     if (arg->data == NULL)
         return;
 
-    if (arg->argtype == OP_ARG_GBL && arg->acc != OP_READ) 
+    if (arg->argtype == OPP_ARG_GBL && arg->acc != OPP_READ) 
     {
         int result_static;
         int *result;
 
-        if (arg->dim > 1 && arg->acc != OP_WRITE)
+        if (arg->dim > 1 && arg->acc != OPP_WRITE)
             result = (int *)opp_host_malloc(arg->dim * sizeof(int));
         else
             result = &result_static;
 
-        if (arg->acc == OP_INC) // global reduction
+        if (arg->acc == OPP_INC) // global reduction
         {
             MPI_Allreduce((int *)arg->data, result, arg->dim, MPI_INT, MPI_SUM,
                             MPI_COMM_WORLD);
             memcpy(arg->data, result, sizeof(int) * arg->dim);
         } 
-        else if (arg->acc == OP_MAX) // global maximum
+        else if (arg->acc == OPP_MAX) // global maximum
         {
             MPI_Allreduce((int *)arg->data, result, arg->dim, MPI_INT, MPI_MAX,
                             MPI_COMM_WORLD);
             memcpy(arg->data, result, sizeof(int) * arg->dim);
         } 
-        else if (arg->acc == OP_MIN) // global minimum
+        else if (arg->acc == OPP_MIN) // global minimum
         {
             MPI_Allreduce((int *)arg->data, result, arg->dim, MPI_INT, MPI_MIN,
                             MPI_COMM_WORLD);
             memcpy(arg->data, result, sizeof(int) * arg->dim);
         } 
-        else if (arg->acc == OP_WRITE) // any
+        else if (arg->acc == OPP_WRITE) // any
         {
             result = (int *)opp_host_malloc(arg->dim * OPP_comm_size * sizeof(int));
             MPI_Allgather((int *)arg->data, arg->dim, MPI_INT, result, arg->dim,

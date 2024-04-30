@@ -43,12 +43,12 @@ std::vector<opp_set> opp_sets;
 std::vector<opp_map> opp_maps;
 std::vector<opp_dat> opp_dats;
 
-int OP_hybrid_gpu                   = 0;
-int OP_maps_base_index              = 0;
-int OP_auto_soa                     = 0;
-int OP_gpu_direct                   = 0;
-double OP_part_alloc_mult           = 1;
-int OP_auto_sort                    = 1;
+int OPP_hybrid_gpu                   = 0;
+int OPP_maps_base_index              = 0;
+int OPP_auto_soa                     = 0;
+int OPP_gpu_direct                   = 0;
+double OPP_part_alloc_mult           = 1;
+int OPP_auto_sort                    = 1;
 int OPP_fill_period                 = 2;
 opp_fill_type OPP_fill_type         = OPP_HoleFill_All;
 int OPP_mpi_part_alloc_mult         = 1;
@@ -85,8 +85,8 @@ void opp_init_core(int argc, char **argv)
     opp_profiler = std::make_unique<opp::Profiler>();
 
     // these will be overidden by args
-    OP_auto_sort = opp_params->get<OPP_BOOL>("opp_auto_sort");
-    OP_part_alloc_mult = opp_params->get<OPP_REAL>("opp_allocation_multiple");
+    OPP_auto_sort = opp_params->get<OPP_BOOL>("opp_auto_sort");
+    OPP_part_alloc_mult = opp_params->get<OPP_REAL>("opp_allocation_multiple");
 
     if (opp_params->get<OPP_STRING>("opp_fill") == "HoleFill_All")
         OPP_fill_type = OPP_HoleFill_All;
@@ -163,20 +163,20 @@ void opp_set_args_core(char *argv)
     if (pch != NULL) 
     {
         strncpy(temp, pch, 20);
-        OP_part_alloc_mult = atof(temp + 15);
+        OPP_part_alloc_mult = atof(temp + 15);
         
-        printf("\topp_set_args_core OP_part_alloc_mult = %lf\n", OP_part_alloc_mult);
+        printf("\topp_set_args_core OPP_part_alloc_mult = %lf\n", OPP_part_alloc_mult);
     }
 
     pch = strstr(argv, "OPP_AUTO_SORT=");
     if (pch != NULL) 
     {
         strncpy(temp, pch, 20);
-        OP_auto_sort = atoi(temp + 14);
+        OPP_auto_sort = atoi(temp + 14);
         
-        printf("\topp_set_args_core OP_auto_sort = %d\n", OP_auto_sort);
+        printf("\topp_set_args_core OPP_auto_sort = %d\n", OPP_auto_sort);
         
-        if (!(OP_auto_sort == 1 || OP_auto_sort == 0))
+        if (!(OPP_auto_sort == 1 || OPP_auto_sort == 0))
             std::cerr << "OPP_AUTO_SORT should be 0 or 1, Not Auto Sorting" << std::endl;
     }
 
@@ -256,7 +256,7 @@ opp_map opp_decl_map_core(opp_set from, opp_set to, int dim, int *imap, char con
     map->map      = (int *)opp_host_malloc((size_t)from->size * (size_t)dim * sizeof(int));
     memcpy(map->map, imap, sizeof(int) * from->size * dim);  
 
-    if (OP_maps_base_index == 1) // convert map to 0 based indexing -- i.e. reduce each map value by 1
+    if (OPP_maps_base_index == 1) // convert map to 0 based indexing -- i.e. reduce each map value by 1
     {
         for (int i = 0; i < from->size * dim; i++)
             (map->map[i])--;
@@ -356,7 +356,7 @@ opp_arg opp_arg_dat_core(opp_dat dat, int idx, opp_map map, int dim, const char 
 {
     opp_arg arg;
     arg.index       = -1;
-    arg.argtype     = OP_ARG_DAT;
+    arg.argtype     = OPP_ARG_DAT;
 
     arg.dat         = dat;
     arg.map         = map;
@@ -388,7 +388,7 @@ opp_arg opp_arg_dat_core(opp_map data_map, int idx, opp_map map, opp_access acc,
                                 opp_mapping mapping)
 {
     opp_arg arg;
-    arg.argtype     = OP_ARG_MAP;
+    arg.argtype     = OPP_ARG_MAP;
 
     arg.dat         = NULL;
     arg.map         = map;
@@ -412,7 +412,7 @@ opp_arg opp_arg_dat_core(opp_map data_map, int idx, opp_map map, opp_access acc,
 opp_arg opp_arg_gbl_core(double *data, int dim, char const *typ, opp_access acc)
 {
     opp_arg arg;
-    arg.argtype     = OP_ARG_GBL;
+    arg.argtype     = OPP_ARG_GBL;
 
     arg.dat         = NULL;
     arg.map         = NULL;
@@ -431,7 +431,7 @@ opp_arg opp_arg_gbl_core(double *data, int dim, char const *typ, opp_access acc)
 opp_arg opp_arg_gbl_core(int *data, int dim, char const *typ, opp_access acc)
 {
     opp_arg arg;
-    arg.argtype     = OP_ARG_GBL;
+    arg.argtype     = OPP_ARG_GBL;
 
     arg.dat         = NULL;
     arg.map         = NULL;
@@ -450,7 +450,7 @@ opp_arg opp_arg_gbl_core(int *data, int dim, char const *typ, opp_access acc)
 opp_arg opp_arg_gbl_core(const bool *data, int dim, char const *typ, opp_access acc)
 {
     opp_arg arg;
-    arg.argtype     = OP_ARG_GBL;
+    arg.argtype     = OPP_ARG_GBL;
 
     arg.dat         = NULL;
     arg.map         = NULL;
@@ -533,7 +533,7 @@ bool opp_increase_particle_count_core(opp_set part_set, const int num_parts_to_i
     }
 
     // if the set needs resizing, then use alloc multiple to increase set capacity to reduce regular resizing of the set
-    const size_t new_part_set_capacity = part_set->size + (int)(num_parts_to_insert * OP_part_alloc_mult);
+    const size_t new_part_set_capacity = part_set->size + (int)(num_parts_to_insert * OPP_part_alloc_mult);
     bool return_flag = true;
 
     if (OPP_DBG) //  || part_set->size != 0
@@ -640,7 +640,7 @@ void opp_finalize_particle_move_core(opp_set set)
 
     if (set->particle_remove_count <= 0) return;
 
-    if (OP_auto_sort == 0) // if not auto sorting, fill the holes
+    if (OPP_auto_sort == 0) // if not auto sorting, fill the holes
     {
         // getting a backup of cell index since it will also be rearranged using a random OMP thread
         int *mesh_relation_data = (int *)opp_host_malloc(set->set_capacity * set->mesh_relation_dat->size); 
@@ -710,7 +710,7 @@ void opp_finalize_particle_move_core(opp_set set)
     else
     {
         if (OPP_DBG) 
-            opp_printf("opp_finalize_particle_move_core", "Not processing dats since OP_auto_sort = TRUE");
+            opp_printf("opp_finalize_particle_move_core", "Not processing dats since OPP_auto_sort = TRUE");
     }
 
     set->size -= set->particle_remove_count;
@@ -729,7 +729,7 @@ void opp_finalize_particle_move_core(opp_set set)
     if (set->particle_remove_count <= 0) 
         return;
 
-    if (OP_auto_sort == 0) // if not auto sorting, fill the holes
+    if (OPP_auto_sort == 0) // if not auto sorting, fill the holes
     {
         int *mesh_relation_data = (int *)set->mesh_relation_dat->data;
         std::vector<std::pair<size_t, size_t>> swap_indices;    // contain hole index and the index from back to swap
@@ -789,7 +789,7 @@ void opp_finalize_particle_move_core(opp_set set)
     else
     {
         if (OPP_DBG) 
-            opp_printf("opp_finalize_particle_move_core", "Not processing dats since OP_auto_sort = TRUE");
+            opp_printf("opp_finalize_particle_move_core", "Not processing dats since OPP_auto_sort = TRUE");
     }
 
     set->size -= set->particle_remove_count;
@@ -1237,9 +1237,9 @@ void opp_set_dirtybit(int nargs, opp_arg *args)
 {
     for (int n = 0; n < nargs; n++) 
     {
-        if ((args[n].opt == 1) && (args[n].argtype == OP_ARG_DAT) &&
-            (args[n].acc == OP_INC || args[n].acc == OP_WRITE ||
-            args[n].acc == OP_RW)) 
+        if ((args[n].opt == 1) && (args[n].argtype == OPP_ARG_DAT) &&
+            (args[n].acc == OPP_INC || args[n].acc == OPP_WRITE ||
+            args[n].acc == OPP_RW)) 
         {
             if (OPP_DBG) opp_printf("opp_set_dirtybit", "Setting Dirty::Device| %s", args[n].dat->name);
             args[n].dat->dirty_hd = Dirty::Device;
@@ -1255,9 +1255,9 @@ void opp_set_dirtybit_cuda(int nargs, opp_arg *args)
 {
     for (int n = 0; n < nargs; n++) 
     {
-        if ((args[n].opt == 1) && (args[n].argtype == OP_ARG_DAT) &&
-            (args[n].acc == OP_INC || args[n].acc == OP_WRITE ||
-            args[n].acc == OP_RW)) 
+        if ((args[n].opt == 1) && (args[n].argtype == OPP_ARG_DAT) &&
+            (args[n].acc == OPP_INC || args[n].acc == OPP_WRITE ||
+            args[n].acc == OPP_RW)) 
         {
             if (OPP_DBG) opp_printf("opp_set_dirtybit_cuda", "Setting Dirty::Host| %s", args[n].dat->name);          
             args[n].dat->dirty_hd = Dirty::Host;

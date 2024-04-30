@@ -300,7 +300,7 @@ bool opp_finalize_particle_move(opp_set set)
 { 
     opp_finalize_particle_move_core(set);
 
-    if (OP_auto_sort == 1)
+    if (OPP_auto_sort == 1)
     {
         if (OPP_DBG) printf("\topp_finalize_particle_move auto sorting particle set [%s]\n", set->name);
         opp_particle_sort(set);

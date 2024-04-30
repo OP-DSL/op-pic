@@ -35,7 +35,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 // USER WRITTEN CODE
 //*********************************************
 
-// #define OPP_KERNEL_LOOP_UNROLL
+// #define OPP_KERNEL_LOOPP_UNROLL
 
 #include "fempic_ori/maths.h"
 #include "opp_lib.h"
@@ -137,7 +137,7 @@ inline void calculate_new_pos_vel__kernel(
     double *part_pos,
     double *part_vel ) {
 
-#ifdef OPP_KERNEL_LOOP_UNROLL
+#ifdef OPP_KERNEL_LOOPP_UNROLL
     const double coefficient1 = CONST_charge / CONST_mass * (CONST_dt);
     part_vel[0] += (coefficient1 * cell_ef[0]);                  
     part_vel[1] += (coefficient1 * cell_ef[1]);  
@@ -271,7 +271,7 @@ inline void compute_electric_field__kernel(
 )
 {
 
-#ifdef OPP_KERNEL_LOOP_UNROLL
+#ifdef OPP_KERNEL_LOOPP_UNROLL
         double c1, c2, c3, c4;
 
         c1 = (cell_shape_deriv[0 * KERNEL_DIM + 0] * (*node_potential0));
@@ -309,7 +309,7 @@ inline void compute_electric_field__kernel(
 
 //*************************************************************************************************
 
-// #define OPP_LOOP_UNROLL
+// #define OPP_LOOPP_UNROLL
 //*******************************************************************************
 inline void isPointInCellKernel(bool& inside, const double *point_pos, double* point_lc, 
                                 const double *cell_volume, const double *cell_det) { 
@@ -317,7 +317,7 @@ inline void isPointInCellKernel(bool& inside, const double *point_pos, double* p
     inside = true;  
     const double coefficient2 = KERNEL_ONE_OVER_SIX / (*cell_volume);
 
-#ifdef OPP_LOOP_UNROLL
+#ifdef OPP_LOOPP_UNROLL
 
     point_lc[0] = coefficient2 * (
             cell_det[0] - 

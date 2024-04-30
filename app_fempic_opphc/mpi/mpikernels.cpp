@@ -872,7 +872,7 @@ void opp_particle_move__move(
 
         // need to change arg data since particle resize in globalMover::finalize could change the pointer in dat->data 
         for (int i = 0; i < nargs; i++)
-            if (args[i].argtype == OP_ARG_DAT && args[i].dat->set->is_particle)
+            if (args[i].argtype == OPP_ARG_DAT && args[i].dat->set->is_particle)
                 args[i].data = args[i].dat->data;
 
         // check whether the new particle is within cell, and if not move between cells within the MPI rank, 

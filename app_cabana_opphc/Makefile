@@ -96,7 +96,7 @@ mpi: mklib
 mpi_hdf5: mklib
 		 $(MPICPP) $(CPPFLAGS) -DUSE_MPI -c cabana_op_hdf5.cpp -o $(OBJ)/cabana_op_hdf5.o $(ALL_INC)
 		 $(MPICPP) $(CPPFLAGS) -DUSE_MPI -c mpi/mpikernels.cpp -o $(OBJ)/mpikernels.o $(ALL_INC)
-		 $(MPICPP) $(CPPFLAGS) -DUSE_MPI -c opp_mpi_hdf5.cpp -o $(OBJ)/opp_mpi_hdf5.o $(ALL_INC)
+		 $(MPICPP) $(CPPFLAGS) -DUSE_MPI -c $(OPP_PATH)/src/hdf5/opp_mpi_hdf5.cpp -o $(OBJ)/opp_mpi_hdf5.o $(ALL_INC)
 	     $(MPICPP) $(CPPFLAGS) -DUSE_MPI -o $(BIN)/mpi_hdf5 \
 		 	$(OBJ)/cabana_op_hdf5.o \
 			$(OBJ)/opp_mpi_hdf5.o \

@@ -84,7 +84,7 @@ extern std::map<int, thrust::device_vector<char>> send_data;
 extern std::map<int, thrust::device_vector<char>> recv_data;
 
 // arrays for global constants and reductions
-extern char *OP_reduct_h, *OP_reduct_d;
+extern char *OPP_reduct_h, *OPP_reduct_d;
 
 //*************************************************************************************************
 
@@ -187,14 +187,14 @@ __inline__ __device__ void opp_reduction(volatile T *dat_g, T dat_l)
         dat_t = temp[tid + d];
 
         switch (reduction) {
-        case OP_INC:
+        case OPP_INC:
         dat_l = dat_l + dat_t;
         break;
-        case OP_MIN:
+        case OPP_MIN:
         if (dat_t < dat_l)
             dat_l = dat_t;
         break;
-        case OP_MAX:
+        case OPP_MAX:
         if (dat_t > dat_l)
             dat_l = dat_t;
         break;
@@ -212,14 +212,14 @@ __inline__ __device__ void opp_reduction(volatile T *dat_g, T dat_l)
             dat_t = temp[tid + d];
 
             switch (reduction) {
-            case OP_INC:
+            case OPP_INC:
                 dat_l = dat_l + dat_t;
                 break;
-            case OP_MIN:
+            case OPP_MIN:
                 if (dat_t < dat_l)
                 dat_l = dat_t;
                 break;
-            case OP_MAX:
+            case OPP_MAX:
                 if (dat_t > dat_l)
                 dat_l = dat_t;
                 break;
@@ -241,14 +241,14 @@ __inline__ __device__ void opp_reduction(volatile T *dat_g, T dat_l)
                 dat_t = temp[tid + d];
 
                 switch (reduction) {
-                case OP_INC:
+                case OPP_INC:
                 dat_l = dat_l + dat_t;
                 break;
-                case OP_MIN:
+                case OPP_MIN:
                 if (dat_t < dat_l)
                     dat_l = dat_t;
                 break;
-                case OP_MAX:
+                case OPP_MAX:
                 if (dat_t > dat_l)
                     dat_l = dat_t;
                 break;
@@ -262,14 +262,14 @@ __inline__ __device__ void opp_reduction(volatile T *dat_g, T dat_l)
 
         if (tid == 0) {
             switch (reduction) {
-            case OP_INC:
+            case OPP_INC:
                 *dat_g = *dat_g + dat_l;
                 break;
-            case OP_MIN:
+            case OPP_MIN:
                 if (dat_l < *dat_g)
                 *dat_g = dat_l;
                 break;
-            case OP_MAX:
+            case OPP_MAX:
                 if (dat_l > *dat_g)
                 *dat_g = dat_l;
                 break;

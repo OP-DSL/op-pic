@@ -17,7 +17,7 @@ STRING global_mesh  = /ext-home/zl/phd/box_mesh_gen/48000/mesh.dat
 STRING inlet_mesh   = /ext-home/zl/phd/box_mesh_gen/48000/inlet.dat
 STRING wall_mesh    = /ext-home/zl/phd/box_mesh_gen/48000/wall.dat
 # OR
-STRING hdf_filename = /ext-home/zl/phd/box_mesh_gen/hdf5/box_96000.hdf5
+STRING hdf_filename = /ext-home/zl/phd/neso_test/OP-PIC_Configs/fempic/mesh_files/box_48000.hdf5
 
 STRING rand_file    = /ext-home/zl/phd/box_mesh_gen/random_100k.dat
 

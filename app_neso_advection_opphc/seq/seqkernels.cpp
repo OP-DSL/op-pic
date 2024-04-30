@@ -60,11 +60,11 @@ void opp_decl_const_impl(int dim, int size, char* data, const char* name)
 //*************************************************************************************************
 void opp_particle_move__update_pos_move(
     opp_set set,        // particles_set
-    opp_arg arg0,       // part_mesh_rel, OP_RW
-    opp_arg arg1,       // part_vel,      OP_RW
-    opp_arg arg2,       // part_pos,      OP_RW
-    opp_arg arg3,       // cell_pos_ll,   OP_READ
-    opp_arg arg4        // cell_cell_map, OP_READ
+    opp_arg arg0,       // part_mesh_rel, OPP_RW
+    opp_arg arg1,       // part_vel,      OPP_RW
+    opp_arg arg2,       // part_pos,      OPP_RW
+    opp_arg arg3,       // cell_pos_ll,   OPP_READ
+    opp_arg arg4        // cell_cell_map, OPP_READ
 )
 {
 
@@ -116,8 +116,8 @@ void opp_particle_move__update_pos_move(
 //*******************************************************************************
 void opp_loop_all__UpdatePos(
     opp_set set,        // particles_set
-    opp_arg arg0,       // part_vel,      OP_READ
-    opp_arg arg1        // part_pos,      OP_RW      
+    opp_arg arg0,       // part_vel,      OPP_READ
+    opp_arg arg1        // part_pos,      OPP_RW      
 )
 {
     if (OPP_DBG) 
@@ -146,10 +146,10 @@ void opp_loop_all__UpdatePos(
 //*******************************************************************************
 void opp_particle_mover__Move(
     opp_set set,        // particles_set
-    opp_arg arg0,       // part_mesh_rel, OP_RW
-    opp_arg arg1,       // part_pos,      OP_READ
-    opp_arg arg2,       // cell_centroid, OP_READ
-    opp_arg arg3        // cell_cell_map, OP_READ
+    opp_arg arg0,       // part_mesh_rel, OPP_RW
+    opp_arg arg1,       // part_pos,      OPP_READ
+    opp_arg arg2,       // cell_centroid, OPP_READ
+    opp_arg arg3        // cell_cell_map, OPP_READ
 )
 {
     if (OPP_DBG) 
@@ -198,10 +198,10 @@ void opp_particle_mover__Move(
 //*******************************************************************************
 void opp_loop_all__verify(
     opp_set set,        // particles_set
-    opp_arg arg0,       // part_mesh_rel,        OP_RW
-    opp_arg arg1,       // part_pos,             OP_READ
-    opp_arg arg2,       // cell_global_index,    OP_READ
-    opp_arg arg3        // incorrect_part_count, OP_INC
+    opp_arg arg0,       // part_mesh_rel,        OPP_RW
+    opp_arg arg1,       // part_pos,             OPP_READ
+    opp_arg arg2,       // cell_global_index,    OPP_READ
+    opp_arg arg3        // incorrect_part_count, OPP_INC
 )
 {
     if (OPP_DBG) 

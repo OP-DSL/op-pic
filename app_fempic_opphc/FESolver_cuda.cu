@@ -222,8 +222,8 @@ void FESolver::init_node_to_eq_map(opp_dat node_type_dat) // relation from node 
     // receive all node_to_eq_map values of the import non exec halos and 
     // assign the values to the correct indices of node_to_eq_map array
 
-    halo_list exp_nonexec_list = OP_export_nonexec_list[node_type_dat->set->index];
-    halo_list imp_nonexec_list = OP_import_nonexec_list[node_type_dat->set->index];
+    halo_list exp_nonexec_list = OPP_export_nonexec_list[node_type_dat->set->index];
+    halo_list imp_nonexec_list = OPP_import_nonexec_list[node_type_dat->set->index];
 
     int* send_buffer = new int[exp_nonexec_list->size];
     std::vector<MPI_Request> send_req(exp_nonexec_list->ranks_size);
@@ -243,7 +243,7 @@ void FESolver::init_node_to_eq_map(opp_dat node_type_dat) // relation from node 
         }
 
         MPI_Isend(&send_buffer[exp_nonexec_list->disps[i]], exp_nonexec_list->sizes[i], MPI_INT,
-                exp_nonexec_list->ranks[i], 11, OP_MPI_WORLD, &(send_req[i]));
+                exp_nonexec_list->ranks[i], 11, OPP_MPI_WORLD, &(send_req[i]));
     }
 
     int nonexec_init = node_type_dat->set->size + node_type_dat->set->exec_size;
@@ -252,7 +252,7 @@ void FESolver::init_node_to_eq_map(opp_dat node_type_dat) // relation from node 
         // opp_printf("SEND", "count=%d from rank %d", imp_nonexec_list->sizes[i], imp_nonexec_list->ranks[i]);
 
         MPI_Recv(&(node_to_eq_map[nonexec_init + imp_nonexec_list->disps[i]]), imp_nonexec_list->sizes[i], MPI_INT,
-            imp_nonexec_list->ranks[i], 11, OP_MPI_WORLD, MPI_STATUS_IGNORE);
+            imp_nonexec_list->ranks[i], 11, OPP_MPI_WORLD, MPI_STATUS_IGNORE);
     }
 
     MPI_Waitall(exp_nonexec_list->ranks_size, send_req.data(), MPI_STATUSES_IGNORE);
@@ -794,7 +794,7 @@ void FESolver::enrich_cell_shape_deriv(opp_dat cell_shape_deriv)
 
 #ifdef USE_MPI
     cell_shape_deriv->dirtybit = 1;
-    opp_arg arg0 = opp_arg_dat(cell_shape_deriv, OP_RW);
+    opp_arg arg0 = opp_arg_dat(cell_shape_deriv, OPP_RW);
     arg0.idx = 2; // HACK
     opp_mpi_halo_exchanges_grouped(cell_shape_deriv->set, 1, &arg0, Device_CPU);  
     opp_mpi_halo_wait_all(1, &arg0);

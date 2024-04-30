@@ -71,7 +71,7 @@ void gather_data_to_buffer(opp_arg arg, halo_list exp_exec_list,
     const int blocks = 1 + ((exp_exec_list->size - 1) / threads);
     const int blocks2 = 1 + ((exp_nonexec_list->size - 1) / threads);
 
-    if (strstr(arg.dat->type, ":soa") != NULL || (OP_auto_soa && arg.dat->dim > 1)) 
+    if (strstr(arg.dat->type, ":soa") != NULL || (OPP_auto_soa && arg.dat->dim > 1)) 
     {
         const int set_size = arg.dat->set->size + arg.dat->set->exec_size +
                     arg.dat->set->nonexec_size;
@@ -144,7 +144,7 @@ void scatter_data_from_buffer(opp_arg arg)
     const int blocks = 1 + ((arg.dat->set->exec_size - 1) / 192);
     const int blocks2 = 1 + ((arg.dat->set->nonexec_size - 1) / 192);
 
-    if (strstr(arg.dat->type, ":soa") != NULL || (OP_auto_soa && arg.dat->dim > 1)) 
+    if (strstr(arg.dat->type, ":soa") != NULL || (OPP_auto_soa && arg.dat->dim > 1)) 
     {
         const int set_size = arg.dat->set->size + arg.dat->set->exec_size +
                     arg.dat->set->nonexec_size;

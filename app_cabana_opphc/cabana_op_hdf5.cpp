@@ -86,18 +86,18 @@ int main(int argc, char **argv)
         opp_map c2cugb4_map = opp_decl_map_hdf5(c_set, c_set, 1,          file.c_str(), "c2c_ugb_4_map");
         opp_map c2cugb5_map = opp_decl_map_hdf5(c_set, c_set, 1,          file.c_str(), "c2c_ugb_5_map");
 
-        opp_dat c_index      = opp_decl_mesh_dat_hdf5(c_set,   ONE, DT_INT,  file.c_str(), "c_index");
+        opp_dat c_index      = opp_decl_dat_hdf5(c_set,   ONE, DT_INT,  file.c_str(), "c_index");
         opp_dat c_e          = opp_decl_dat(c_set,        DIM, DT_REAL, m->c_e,       "c_e");  
         opp_dat c_b          = opp_decl_dat(c_set,        DIM, DT_REAL, m->c_b,       "c_b");        
         opp_dat c_j          = opp_decl_dat(c_set,        DIM, DT_REAL, m->c_j,       "c_j");
         opp_dat c_acc        = opp_decl_dat(c_set,    ACC_LEN, DT_REAL, m->c_acc,     "c_acc"); 
         opp_dat c_interp     = opp_decl_dat(c_set, INTERP_LEN, DT_REAL, m->c_interp,  "c_interp"); 
-        opp_dat c_pos_ll     = opp_decl_mesh_dat_hdf5(c_set,   DIM, DT_REAL, file.c_str(), "c_pos_ll");       
+        opp_dat c_pos_ll     = opp_decl_dat_hdf5(c_set,   DIM, DT_REAL, file.c_str(), "c_pos_ll");       
         opp_dat c_colors     = opp_decl_dat(c_set,        ONE, DT_INT,  m->c_colours, "c_colors"); // init dummy
-        opp_dat c_mask_ghost = opp_decl_mesh_dat_hdf5(c_set,   ONE, DT_INT,  file.c_str(), "c_mask_ghost");
-        opp_dat c_mask_right = opp_decl_mesh_dat_hdf5(c_set,   ONE, DT_INT,  file.c_str(), "c_mask_right");
-        opp_dat c_mask_ug    = opp_decl_mesh_dat_hdf5(c_set,     6, DT_INT,  file.c_str(), "c_mask_ug");
-        opp_dat c_mask_ugb   = opp_decl_mesh_dat_hdf5(c_set,     6, DT_INT,  file.c_str(), "c_mask_ugb");
+        opp_dat c_mask_ghost = opp_decl_dat_hdf5(c_set,   ONE, DT_INT,  file.c_str(), "c_mask_ghost");
+        opp_dat c_mask_right = opp_decl_dat_hdf5(c_set,   ONE, DT_INT,  file.c_str(), "c_mask_right");
+        opp_dat c_mask_ug    = opp_decl_dat_hdf5(c_set,     6, DT_INT,  file.c_str(), "c_mask_ug");
+        opp_dat c_mask_ugb   = opp_decl_dat_hdf5(c_set,     6, DT_INT,  file.c_str(), "c_mask_ugb");
 
         opp_set p_set        = opp_decl_particle_set("particles", c_set);  // Zero particles, inject after partitioning
         opp_dat p_index      = nullptr; // opp_decl_dat(p_set, ONE, DT_INT,  nullptr, "p_index"); // Unused
@@ -159,132 +159,132 @@ int main(int argc, char **argv)
                 opp_printf("Main", "Starting main loop iteration %d ****", OPP_main_loop_iter);
 
             opp_loop_all__interpolate_mesh_fields(c_set,
-                opp_arg_dat(c_e,                            OP_READ),
-                opp_arg_dat(c_b,                            OP_READ),
-                opp_arg_dat(c_e, CellMap::xu_y_z,  c2c_map, OP_READ),
-                opp_arg_dat(c_e, CellMap::x_yu_z,  c2c_map, OP_READ),
-                opp_arg_dat(c_e, CellMap::x_y_zu,  c2c_map, OP_READ),
-                opp_arg_dat(c_e, CellMap::xu_yu_z, c2c_map, OP_READ),
-                opp_arg_dat(c_e, CellMap::x_yu_zu, c2c_map, OP_READ),
-                opp_arg_dat(c_e, CellMap::xu_y_zu, c2c_map, OP_READ),
-                opp_arg_dat(c_b, CellMap::xu_y_z,  c2c_map, OP_READ),
-                opp_arg_dat(c_b, CellMap::x_yu_z,  c2c_map, OP_READ),
-                opp_arg_dat(c_b, CellMap::x_y_zu,  c2c_map, OP_READ),
-                opp_arg_dat(c_interp,                       OP_WRITE),
-                opp_arg_dat(c_mask_ghost,                   OP_READ)
+                opp_arg_dat(c_e,                            OPP_READ),
+                opp_arg_dat(c_b,                            OPP_READ),
+                opp_arg_dat(c_e, CellMap::xu_y_z,  c2c_map, OPP_READ),
+                opp_arg_dat(c_e, CellMap::x_yu_z,  c2c_map, OPP_READ),
+                opp_arg_dat(c_e, CellMap::x_y_zu,  c2c_map, OPP_READ),
+                opp_arg_dat(c_e, CellMap::xu_yu_z, c2c_map, OPP_READ),
+                opp_arg_dat(c_e, CellMap::x_yu_zu, c2c_map, OPP_READ),
+                opp_arg_dat(c_e, CellMap::xu_y_zu, c2c_map, OPP_READ),
+                opp_arg_dat(c_b, CellMap::xu_y_z,  c2c_map, OPP_READ),
+                opp_arg_dat(c_b, CellMap::x_yu_z,  c2c_map, OPP_READ),
+                opp_arg_dat(c_b, CellMap::x_y_zu,  c2c_map, OPP_READ),
+                opp_arg_dat(c_interp,                       OPP_WRITE),
+                opp_arg_dat(c_mask_ghost,                   OPP_READ)
             );
 
             opp_reset_dat(c_acc, (char*)opp_zero_double16);
 
             opp_particle_move__move_deposit(p_set,
-                opp_arg_dat(p_mesh_rel,   OP_RW),
-                opp_arg_dat(p_vel,        OP_RW),
-                opp_arg_dat(p_pos,        OP_RW),
-                opp_arg_dat(p_streak_mid, OP_RW),
-                opp_arg_dat(p_weight,     OP_READ),
-                opp_arg_dat(c_interp,     OP_READ, OPP_Map_from_Mesh_Rel),
-                opp_arg_dat(c_acc,        OP_INC,  OPP_Map_from_Mesh_Rel),
-                opp_arg_dat(c2ngc_map,    OP_READ, OPP_Map_from_Mesh_Rel)
+                opp_arg_dat(p_mesh_rel,   OPP_RW),
+                opp_arg_dat(p_vel,        OPP_RW),
+                opp_arg_dat(p_pos,        OPP_RW),
+                opp_arg_dat(p_streak_mid, OPP_RW),
+                opp_arg_dat(p_weight,     OPP_READ),
+                opp_arg_dat(c_interp,     OPP_READ, OPP_Map_from_Mesh_Rel),
+                opp_arg_dat(c_acc,        OPP_INC,  OPP_Map_from_Mesh_Rel),
+                opp_arg_dat(c2ngc_map,    OPP_READ, OPP_Map_from_Mesh_Rel)
             );
 
             opp_loop_all__accumulate_current_to_cells(c_set,
-                opp_arg_dat(c_j,                              OP_WRITE),
-                opp_arg_dat(c_acc,                            OP_READ),
-                opp_arg_dat(c_acc, CellMap::xd_y_z , c2c_map, OP_READ),
-                opp_arg_dat(c_acc, CellMap::x_yd_z , c2c_map, OP_READ),
-                opp_arg_dat(c_acc, CellMap::x_y_zd , c2c_map, OP_READ),
-                opp_arg_dat(c_acc, CellMap::xd_yd_z, c2c_map, OP_READ),
-                opp_arg_dat(c_acc, CellMap::x_yd_zd, c2c_map, OP_READ),
-                opp_arg_dat(c_acc, CellMap::xd_y_zd, c2c_map, OP_READ),
-                opp_arg_dat(c_mask_right,                     OP_READ)
+                opp_arg_dat(c_j,                              OPP_WRITE),
+                opp_arg_dat(c_acc,                            OPP_READ),
+                opp_arg_dat(c_acc, CellMap::xd_y_z , c2c_map, OPP_READ),
+                opp_arg_dat(c_acc, CellMap::x_yd_z , c2c_map, OPP_READ),
+                opp_arg_dat(c_acc, CellMap::x_y_zd , c2c_map, OPP_READ),
+                opp_arg_dat(c_acc, CellMap::xd_yd_z, c2c_map, OPP_READ),
+                opp_arg_dat(c_acc, CellMap::x_yd_zd, c2c_map, OPP_READ),
+                opp_arg_dat(c_acc, CellMap::xd_y_zd, c2c_map, OPP_READ),
+                opp_arg_dat(c_mask_right,                     OPP_READ)
             );
 
             // Leap frog method
             opp_loop_all__half_advance_b(c_set,
-                opp_arg_dat(c_e, CellMap::xu_y_z, c2c_map, OP_READ),
-                opp_arg_dat(c_e, CellMap::x_yu_z, c2c_map, OP_READ), 
-                opp_arg_dat(c_e, CellMap::x_y_zu, c2c_map, OP_READ), 
-                opp_arg_dat(c_e,                           OP_READ),
-                opp_arg_dat(c_b,                           OP_INC),
-                opp_arg_dat(c_mask_ghost,                  OP_READ)
+                opp_arg_dat(c_e, CellMap::xu_y_z, c2c_map, OPP_READ),
+                opp_arg_dat(c_e, CellMap::x_yu_z, c2c_map, OPP_READ), 
+                opp_arg_dat(c_e, CellMap::x_y_zu, c2c_map, OPP_READ), 
+                opp_arg_dat(c_e,                           OPP_READ),
+                opp_arg_dat(c_b,                           OPP_INC),
+                opp_arg_dat(c_mask_ghost,                  OPP_READ)
             );
 
-            opp_loop_all__update_ghosts_B(c_set, opp_arg_dat(c_mask_ugb, OP_READ), opp_arg_dat(c_b, OP_READ),
-                opp_arg_dat(c_b, 0, c2cugb0_map, OP_WRITE), opp_arg_gbl(&m0, 1, "int", OP_READ));
-            opp_loop_all__update_ghosts_B(c_set, opp_arg_dat(c_mask_ugb, OP_READ), opp_arg_dat(c_b, OP_READ),
-                opp_arg_dat(c_b, 0, c2cugb1_map, OP_WRITE), opp_arg_gbl(&m1, 1, "int", OP_READ));
-            opp_loop_all__update_ghosts_B(c_set, opp_arg_dat(c_mask_ugb, OP_READ), opp_arg_dat(c_b, OP_READ),
-                opp_arg_dat(c_b, 0, c2cugb2_map, OP_WRITE), opp_arg_gbl(&m2, 1, "int", OP_READ));
-            opp_loop_all__update_ghosts_B(c_set, opp_arg_dat(c_mask_ugb, OP_READ), opp_arg_dat(c_b, OP_READ),
-                opp_arg_dat(c_b, 0, c2cugb3_map, OP_WRITE), opp_arg_gbl(&m3, 1, "int", OP_READ));
-            opp_loop_all__update_ghosts_B(c_set, opp_arg_dat(c_mask_ugb, OP_READ), opp_arg_dat(c_b, OP_READ),
-                opp_arg_dat(c_b, 0, c2cugb4_map, OP_WRITE), opp_arg_gbl(&m4, 1, "int", OP_READ));
-            opp_loop_all__update_ghosts_B(c_set, opp_arg_dat(c_mask_ugb, OP_READ), opp_arg_dat(c_b, OP_READ),
-                opp_arg_dat(c_b, 0, c2cugb5_map, OP_WRITE), opp_arg_gbl(&m5, 1, "int", OP_READ));
+            opp_loop_all__update_ghosts_B(c_set, opp_arg_dat(c_mask_ugb, OPP_READ), opp_arg_dat(c_b, OPP_READ),
+                opp_arg_dat(c_b, 0, c2cugb0_map, OPP_WRITE), opp_arg_gbl(&m0, 1, "int", OPP_READ));
+            opp_loop_all__update_ghosts_B(c_set, opp_arg_dat(c_mask_ugb, OPP_READ), opp_arg_dat(c_b, OPP_READ),
+                opp_arg_dat(c_b, 0, c2cugb1_map, OPP_WRITE), opp_arg_gbl(&m1, 1, "int", OPP_READ));
+            opp_loop_all__update_ghosts_B(c_set, opp_arg_dat(c_mask_ugb, OPP_READ), opp_arg_dat(c_b, OPP_READ),
+                opp_arg_dat(c_b, 0, c2cugb2_map, OPP_WRITE), opp_arg_gbl(&m2, 1, "int", OPP_READ));
+            opp_loop_all__update_ghosts_B(c_set, opp_arg_dat(c_mask_ugb, OPP_READ), opp_arg_dat(c_b, OPP_READ),
+                opp_arg_dat(c_b, 0, c2cugb3_map, OPP_WRITE), opp_arg_gbl(&m3, 1, "int", OPP_READ));
+            opp_loop_all__update_ghosts_B(c_set, opp_arg_dat(c_mask_ugb, OPP_READ), opp_arg_dat(c_b, OPP_READ),
+                opp_arg_dat(c_b, 0, c2cugb4_map, OPP_WRITE), opp_arg_gbl(&m4, 1, "int", OPP_READ));
+            opp_loop_all__update_ghosts_B(c_set, opp_arg_dat(c_mask_ugb, OPP_READ), opp_arg_dat(c_b, OPP_READ),
+                opp_arg_dat(c_b, 0, c2cugb5_map, OPP_WRITE), opp_arg_gbl(&m5, 1, "int", OPP_READ));
 
-            opp_loop_all__update_ghosts(c_set, opp_arg_dat(c_mask_ug, OP_READ), opp_arg_dat(c_j, OP_READ),
-                opp_arg_dat(c_j, 0, c2cug0_map, OP_INC), opp_arg_gbl(&m0, 1, "int", OP_READ), 
-                opp_arg_gbl(&m0, 1, "int", OP_READ));
-            opp_loop_all__update_ghosts(c_set, opp_arg_dat(c_mask_ug, OP_READ), opp_arg_dat(c_j, OP_READ),
-                opp_arg_dat(c_j, 0, c2cug1_map, OP_INC), opp_arg_gbl(&m1, 1, "int", OP_READ), 
-                opp_arg_gbl(&m0, 1, "int", OP_READ));
-            opp_loop_all__update_ghosts(c_set, opp_arg_dat(c_mask_ug, OP_READ), opp_arg_dat(c_j, OP_READ),
-                opp_arg_dat(c_j, 0, c2cug2_map, OP_INC), opp_arg_gbl(&m2, 1, "int", OP_READ), 
-                opp_arg_gbl(&m1, 1, "int", OP_READ));
-            opp_loop_all__update_ghosts(c_set, opp_arg_dat(c_mask_ug, OP_READ), opp_arg_dat(c_j, OP_READ),
-                opp_arg_dat(c_j, 0, c2cug3_map, OP_INC), opp_arg_gbl(&m3, 1, "int", OP_READ), 
-                opp_arg_gbl(&m1, 1, "int", OP_READ));
-            opp_loop_all__update_ghosts(c_set, opp_arg_dat(c_mask_ug, OP_READ), opp_arg_dat(c_j, OP_READ),
-                opp_arg_dat(c_j, 0, c2cug4_map, OP_INC), opp_arg_gbl(&m4, 1, "int", OP_READ), 
-                opp_arg_gbl(&m2, 1, "int", OP_READ));
-            opp_loop_all__update_ghosts(c_set, opp_arg_dat(c_mask_ug, OP_READ), opp_arg_dat(c_j, OP_READ),
-                opp_arg_dat(c_j, 0, c2cug5_map, OP_INC), opp_arg_gbl(&m5, 1, "int", OP_READ), 
-                opp_arg_gbl(&m2, 1, "int", OP_READ));
+            opp_loop_all__update_ghosts(c_set, opp_arg_dat(c_mask_ug, OPP_READ), opp_arg_dat(c_j, OPP_READ),
+                opp_arg_dat(c_j, 0, c2cug0_map, OPP_INC), opp_arg_gbl(&m0, 1, "int", OPP_READ), 
+                opp_arg_gbl(&m0, 1, "int", OPP_READ));
+            opp_loop_all__update_ghosts(c_set, opp_arg_dat(c_mask_ug, OPP_READ), opp_arg_dat(c_j, OPP_READ),
+                opp_arg_dat(c_j, 0, c2cug1_map, OPP_INC), opp_arg_gbl(&m1, 1, "int", OPP_READ), 
+                opp_arg_gbl(&m0, 1, "int", OPP_READ));
+            opp_loop_all__update_ghosts(c_set, opp_arg_dat(c_mask_ug, OPP_READ), opp_arg_dat(c_j, OPP_READ),
+                opp_arg_dat(c_j, 0, c2cug2_map, OPP_INC), opp_arg_gbl(&m2, 1, "int", OPP_READ), 
+                opp_arg_gbl(&m1, 1, "int", OPP_READ));
+            opp_loop_all__update_ghosts(c_set, opp_arg_dat(c_mask_ug, OPP_READ), opp_arg_dat(c_j, OPP_READ),
+                opp_arg_dat(c_j, 0, c2cug3_map, OPP_INC), opp_arg_gbl(&m3, 1, "int", OPP_READ), 
+                opp_arg_gbl(&m1, 1, "int", OPP_READ));
+            opp_loop_all__update_ghosts(c_set, opp_arg_dat(c_mask_ug, OPP_READ), opp_arg_dat(c_j, OPP_READ),
+                opp_arg_dat(c_j, 0, c2cug4_map, OPP_INC), opp_arg_gbl(&m4, 1, "int", OPP_READ), 
+                opp_arg_gbl(&m2, 1, "int", OPP_READ));
+            opp_loop_all__update_ghosts(c_set, opp_arg_dat(c_mask_ug, OPP_READ), opp_arg_dat(c_j, OPP_READ),
+                opp_arg_dat(c_j, 0, c2cug5_map, OPP_INC), opp_arg_gbl(&m5, 1, "int", OPP_READ), 
+                opp_arg_gbl(&m2, 1, "int", OPP_READ));
 
-            opp_loop_all__update_ghosts_B(c_set, opp_arg_dat(c_mask_ugb, OP_READ), opp_arg_dat(c_j, OP_READ),
-                opp_arg_dat(c_j, 0, c2cugb0_map, OP_WRITE), opp_arg_gbl(&m0, 1, "int", OP_READ));
-            opp_loop_all__update_ghosts_B(c_set, opp_arg_dat(c_mask_ugb, OP_READ), opp_arg_dat(c_j, OP_READ),
-                opp_arg_dat(c_j, 0, c2cugb1_map, OP_WRITE), opp_arg_gbl(&m1, 1, "int", OP_READ));
-            opp_loop_all__update_ghosts_B(c_set, opp_arg_dat(c_mask_ugb, OP_READ), opp_arg_dat(c_j, OP_READ),
-                opp_arg_dat(c_j, 0, c2cugb2_map, OP_WRITE), opp_arg_gbl(&m2, 1, "int", OP_READ));
-            opp_loop_all__update_ghosts_B(c_set, opp_arg_dat(c_mask_ugb, OP_READ), opp_arg_dat(c_j, OP_READ),
-                opp_arg_dat(c_j, 0, c2cugb3_map, OP_WRITE), opp_arg_gbl(&m3, 1, "int", OP_READ));
-            opp_loop_all__update_ghosts_B(c_set, opp_arg_dat(c_mask_ugb, OP_READ), opp_arg_dat(c_j, OP_READ),
-                opp_arg_dat(c_j, 0, c2cugb4_map, OP_WRITE), opp_arg_gbl(&m4, 1, "int", OP_READ));
-            opp_loop_all__update_ghosts_B(c_set, opp_arg_dat(c_mask_ugb, OP_READ), opp_arg_dat(c_j, OP_READ),
-                opp_arg_dat(c_j, 0, c2cugb5_map, OP_WRITE), opp_arg_gbl(&m5, 1, "int", OP_READ));
+            opp_loop_all__update_ghosts_B(c_set, opp_arg_dat(c_mask_ugb, OPP_READ), opp_arg_dat(c_j, OPP_READ),
+                opp_arg_dat(c_j, 0, c2cugb0_map, OPP_WRITE), opp_arg_gbl(&m0, 1, "int", OPP_READ));
+            opp_loop_all__update_ghosts_B(c_set, opp_arg_dat(c_mask_ugb, OPP_READ), opp_arg_dat(c_j, OPP_READ),
+                opp_arg_dat(c_j, 0, c2cugb1_map, OPP_WRITE), opp_arg_gbl(&m1, 1, "int", OPP_READ));
+            opp_loop_all__update_ghosts_B(c_set, opp_arg_dat(c_mask_ugb, OPP_READ), opp_arg_dat(c_j, OPP_READ),
+                opp_arg_dat(c_j, 0, c2cugb2_map, OPP_WRITE), opp_arg_gbl(&m2, 1, "int", OPP_READ));
+            opp_loop_all__update_ghosts_B(c_set, opp_arg_dat(c_mask_ugb, OPP_READ), opp_arg_dat(c_j, OPP_READ),
+                opp_arg_dat(c_j, 0, c2cugb3_map, OPP_WRITE), opp_arg_gbl(&m3, 1, "int", OPP_READ));
+            opp_loop_all__update_ghosts_B(c_set, opp_arg_dat(c_mask_ugb, OPP_READ), opp_arg_dat(c_j, OPP_READ),
+                opp_arg_dat(c_j, 0, c2cugb4_map, OPP_WRITE), opp_arg_gbl(&m4, 1, "int", OPP_READ));
+            opp_loop_all__update_ghosts_B(c_set, opp_arg_dat(c_mask_ugb, OPP_READ), opp_arg_dat(c_j, OPP_READ),
+                opp_arg_dat(c_j, 0, c2cugb5_map, OPP_WRITE), opp_arg_gbl(&m5, 1, "int", OPP_READ));
 
             opp_loop_all__advance_e(c_set,
-                opp_arg_dat(c_b, CellMap::xd_y_z, c2c_map, OP_READ),
-                opp_arg_dat(c_b, CellMap::x_yd_z, c2c_map, OP_READ),
-                opp_arg_dat(c_b, CellMap::x_y_zd, c2c_map, OP_READ),
-                opp_arg_dat(c_b,                           OP_READ),
-                opp_arg_dat(c_j,                           OP_READ), 
-                opp_arg_dat(c_e,                           OP_INC),
-                opp_arg_dat(c_mask_right,                  OP_READ)
+                opp_arg_dat(c_b, CellMap::xd_y_z, c2c_map, OPP_READ),
+                opp_arg_dat(c_b, CellMap::x_yd_z, c2c_map, OPP_READ),
+                opp_arg_dat(c_b, CellMap::x_y_zd, c2c_map, OPP_READ),
+                opp_arg_dat(c_b,                           OPP_READ),
+                opp_arg_dat(c_j,                           OPP_READ), 
+                opp_arg_dat(c_e,                           OPP_INC),
+                opp_arg_dat(c_mask_right,                  OPP_READ)
             );
 
             opp_loop_all__half_advance_b(c_set,
-                opp_arg_dat(c_e, CellMap::xu_y_z, c2c_map, OP_READ),
-                opp_arg_dat(c_e, CellMap::x_yu_z, c2c_map, OP_READ), 
-                opp_arg_dat(c_e, CellMap::x_y_zu, c2c_map, OP_READ), 
-                opp_arg_dat(c_e,                           OP_READ),
-                opp_arg_dat(c_b,                           OP_INC),
-                opp_arg_dat(c_mask_ghost,                  OP_READ) 
+                opp_arg_dat(c_e, CellMap::xu_y_z, c2c_map, OPP_READ),
+                opp_arg_dat(c_e, CellMap::x_yu_z, c2c_map, OPP_READ), 
+                opp_arg_dat(c_e, CellMap::x_y_zu, c2c_map, OPP_READ), 
+                opp_arg_dat(c_e,                           OPP_READ),
+                opp_arg_dat(c_b,                           OPP_INC),
+                opp_arg_dat(c_mask_ghost,                  OPP_READ) 
             );
 
-            opp_loop_all__update_ghosts_B(c_set, opp_arg_dat(c_mask_ugb, OP_READ), opp_arg_dat(c_b, OP_READ),
-                opp_arg_dat(c_b, 0, c2cugb0_map, OP_WRITE), opp_arg_gbl(&m0, 1, "int", OP_READ));
-            opp_loop_all__update_ghosts_B(c_set, opp_arg_dat(c_mask_ugb, OP_READ), opp_arg_dat(c_b, OP_READ),
-                opp_arg_dat(c_b, 0, c2cugb1_map, OP_WRITE), opp_arg_gbl(&m1, 1, "int", OP_READ));
-            opp_loop_all__update_ghosts_B(c_set, opp_arg_dat(c_mask_ugb, OP_READ), opp_arg_dat(c_b, OP_READ),
-                opp_arg_dat(c_b, 0, c2cugb2_map, OP_WRITE), opp_arg_gbl(&m2, 1, "int", OP_READ));
-            opp_loop_all__update_ghosts_B(c_set, opp_arg_dat(c_mask_ugb, OP_READ), opp_arg_dat(c_b, OP_READ),
-                opp_arg_dat(c_b, 0, c2cugb3_map, OP_WRITE), opp_arg_gbl(&m3, 1, "int", OP_READ));
-            opp_loop_all__update_ghosts_B(c_set, opp_arg_dat(c_mask_ugb, OP_READ), opp_arg_dat(c_b, OP_READ),
-                opp_arg_dat(c_b, 0, c2cugb4_map, OP_WRITE), opp_arg_gbl(&m4, 1, "int", OP_READ));
-            opp_loop_all__update_ghosts_B(c_set, opp_arg_dat(c_mask_ugb, OP_READ), opp_arg_dat(c_b, OP_READ),
-                opp_arg_dat(c_b, 0, c2cugb5_map, OP_WRITE), opp_arg_gbl(&m5, 1, "int", OP_READ));
+            opp_loop_all__update_ghosts_B(c_set, opp_arg_dat(c_mask_ugb, OPP_READ), opp_arg_dat(c_b, OPP_READ),
+                opp_arg_dat(c_b, 0, c2cugb0_map, OPP_WRITE), opp_arg_gbl(&m0, 1, "int", OPP_READ));
+            opp_loop_all__update_ghosts_B(c_set, opp_arg_dat(c_mask_ugb, OPP_READ), opp_arg_dat(c_b, OPP_READ),
+                opp_arg_dat(c_b, 0, c2cugb1_map, OPP_WRITE), opp_arg_gbl(&m1, 1, "int", OPP_READ));
+            opp_loop_all__update_ghosts_B(c_set, opp_arg_dat(c_mask_ugb, OPP_READ), opp_arg_dat(c_b, OPP_READ),
+                opp_arg_dat(c_b, 0, c2cugb2_map, OPP_WRITE), opp_arg_gbl(&m2, 1, "int", OPP_READ));
+            opp_loop_all__update_ghosts_B(c_set, opp_arg_dat(c_mask_ugb, OPP_READ), opp_arg_dat(c_b, OPP_READ),
+                opp_arg_dat(c_b, 0, c2cugb3_map, OPP_WRITE), opp_arg_gbl(&m3, 1, "int", OPP_READ));
+            opp_loop_all__update_ghosts_B(c_set, opp_arg_dat(c_mask_ugb, OPP_READ), opp_arg_dat(c_b, OPP_READ),
+                opp_arg_dat(c_b, 0, c2cugb4_map, OPP_WRITE), opp_arg_gbl(&m4, 1, "int", OPP_READ));
+            opp_loop_all__update_ghosts_B(c_set, opp_arg_dat(c_mask_ugb, OPP_READ), opp_arg_dat(c_b, OPP_READ),
+                opp_arg_dat(c_b, 0, c2cugb5_map, OPP_WRITE), opp_arg_gbl(&m5, 1, "int", OPP_READ));
 
 
             std::string log = ""; // TODO : print some unseful information to verify
@@ -292,14 +292,14 @@ int main(int argc, char **argv)
             {
                 OPP_REAL e_energy = 0.0, b_energy = 0.0;
                 opp_loop_all__compute_energy(c_set,
-                    opp_arg_dat(c_mask_ghost, OP_READ),
-                    opp_arg_dat(c_e,          OP_READ),
-                    opp_arg_gbl(&e_energy, 1, "double", OP_INC)
+                    opp_arg_dat(c_mask_ghost, OPP_READ),
+                    opp_arg_dat(c_e,          OPP_READ),
+                    opp_arg_gbl(&e_energy, 1, "double", OPP_INC)
                 );
                 opp_loop_all__compute_energy(c_set,
-                    opp_arg_dat(c_mask_ghost, OP_READ),
-                    opp_arg_dat(c_b,          OP_READ),
-                    opp_arg_gbl(&b_energy, 1, "double", OP_INC)
+                    opp_arg_dat(c_mask_ghost, OPP_READ),
+                    opp_arg_dat(c_b,          OPP_READ),
+                    opp_arg_gbl(&b_energy, 1, "double", OPP_INC)
                 );
                 log += str(e_energy*0.5, " e_energy: \t%.15f");
                 log += str(b_energy*0.5, " b_energy: \t%.15f");
@@ -312,12 +312,12 @@ int main(int argc, char **argv)
                 OPP_REAL max_j = 0.0, max_e = 0.0, max_b = 0.0;
 
                 opp_loop_all__get_max_values(c_set, // plan is to get only the x values reduced here
-                    opp_arg_dat(c_j, OP_READ),
-                    opp_arg_gbl(&max_j, 1, "double", OP_MAX),
-                    opp_arg_dat(c_e, OP_READ),
-                    opp_arg_gbl(&max_e, 1, "double", OP_MAX),
-                    opp_arg_dat(c_b, OP_READ),
-                    opp_arg_gbl(&max_b, 1, "double", OP_MAX)
+                    opp_arg_dat(c_j, OPP_READ),
+                    opp_arg_gbl(&max_j, 1, "double", OPP_MAX),
+                    opp_arg_dat(c_e, OPP_READ),
+                    opp_arg_gbl(&max_e, 1, "double", OPP_MAX),
+                    opp_arg_dat(c_b, OPP_READ),
+                    opp_arg_gbl(&max_b, 1, "double", OPP_MAX)
                 );
 
                 log += str(max_j, " max_jx: %.10f"); // %2.15lE");

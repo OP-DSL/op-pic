@@ -63,16 +63,16 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #define UNUSED(expr) do { (void)(expr); } while (0)
 
-#define OP_READ        0
-#define OP_WRITE       1
-#define OP_RW          2
-#define OP_INC         3
-#define OP_MIN         4
-#define OP_MAX         5
+#define OPP_READ        0
+#define OPP_WRITE       1
+#define OPP_RW          2
+#define OPP_INC         3
+#define OPP_MIN         4
+#define OPP_MAX         5
 
-#define OP_ARG_GBL     0
-#define OP_ARG_DAT     1
-#define OP_ARG_MAP     2
+#define OPP_ARG_GBL     0
+#define OPP_ARG_DAT     1
+#define OPP_ARG_MAP     2
 
 #define ZERO_double    0.0
 #define ZERO_float     0.0f
@@ -99,8 +99,8 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //*************************************************************************************************
 enum opp_iterate_type
 {
-    OP_ITERATE_ALL = 1,
-    OP_ITERATE_INJECTED,
+    OPP_ITERATE_ALL = 1,
+    OPP_ITERATE_INJECTED,
 };
 
 enum opp_move_status 
@@ -178,11 +178,11 @@ struct opp_dat_core;
 typedef struct opp_dat_core *opp_dat;
 
 // TODO : Remove below two and keep opp_
-typedef int opp_access;       /* holds OP_READ, OP_WRITE, OP_RW, OP_INC, OP_MIN, OP_MAX */
-typedef int opp_arg_type;     /* holds OP_ARG_GBL, OP_ARG_DAT, OP_ARG_MAP */
+typedef int opp_access;       /* holds OPP_READ, OPP_WRITE, OPP_RW, OPP_INC, OPP_MIN, OPP_MAX */
+typedef int opp_arg_type;     /* holds OPP_ARG_GBL, OPP_ARG_DAT, OPP_ARG_MAP */
 
-typedef int opp_access;       /* holds OP_READ, OP_WRITE, OP_RW, OP_INC, OP_MIN, OP_MAX */
-typedef int opp_arg_type;     /* holds OP_ARG_GBL, OP_ARG_DAT, OP_ARG_MAP */
+typedef int opp_access;       /* holds OPP_READ, OPP_WRITE, OPP_RW, OPP_INC, OPP_MIN, OPP_MAX */
+typedef int opp_arg_type;     /* holds OPP_ARG_GBL, OPP_ARG_DAT, OPP_ARG_MAP */
 
 
 struct opp_arg {
@@ -197,7 +197,7 @@ struct opp_arg {
     int *map_data;              /* data on host */
     int *map_data_d;            /* data on device (for CUDA execution) */
     char const *type;           /* datatype */
-    opp_access acc;           /* opp_accessor OP_READ, OP_WRITE, OP_RW, OP_INC, OP_MIN, OP_MAX */
+    opp_access acc;           /* opp_accessor OPP_READ, OPP_WRITE, OPP_RW, OPP_INC, OPP_MIN, OPP_MAX */
     opp_arg_type argtype;
     int sent;                   /* flag to indicate if this argument has data in flight under non-blocking MPI comms*/
     int opt;                    /* flag to indicate if this argument is in use */
@@ -337,13 +337,13 @@ void opp_host_free(void* ptr);
 
 //*************************************************************************************************
 
-extern int OP_hybrid_gpu;
-extern double OP_hybrid_balance;
-extern int OP_maps_base_index;
-extern int OP_auto_soa;
-extern int OP_gpu_direct;
-extern double OP_part_alloc_mult;
-extern int OP_auto_sort;
+extern int OPP_hybrid_gpu;
+extern double OPP_hybrid_balance;
+extern int OPP_maps_base_index;
+extern int OPP_auto_soa;
+extern int OPP_gpu_direct;
+extern double OPP_part_alloc_mult;
+extern int OPP_auto_sort;
 extern int OPP_fill_period;
 extern opp_fill_type OPP_fill_type;
 extern int OPP_mpi_part_alloc_mult;

@@ -52,11 +52,11 @@ void opp_init(int argc, char **argv)
 #endif
 
 #ifdef USE_MPI
-    OP_MPI_WORLD = MPI_COMM_WORLD;
-    OP_MPI_GLOBAL = MPI_COMM_WORLD;
+    OPP_MPI_WORLD = MPI_COMM_WORLD;
+    OPP_MPI_GLOBAL = MPI_COMM_WORLD;
     
-    MPI_Comm_rank(OP_MPI_WORLD, &OPP_rank);
-    MPI_Comm_size(OP_MPI_WORLD, &OPP_comm_size);
+    MPI_Comm_rank(OPP_MPI_WORLD, &OPP_rank);
+    MPI_Comm_size(OPP_MPI_WORLD, &OPP_comm_size);
 #endif
 
     OPP_nthreads = omp_get_max_threads();
@@ -100,7 +100,7 @@ void opp_abort(std::string s)
 {
     opp_printf("opp_abort", "%s", s.c_str());
 #ifdef USE_MPI 
-    MPI_Abort(OP_MPI_WORLD, 2);
+    MPI_Abort(OPP_MPI_WORLD, 2);
 #else
     exit(-1);
 #endif
@@ -366,7 +366,7 @@ void opp_init_particle_move(opp_set set, int nargs, opp_arg *args)
         // need to change the arg data since particle communication could change the pointer in realloc dat->data
         for (int i = 0; i < nargs; i++)
         {
-            if (args[i].argtype == OP_ARG_DAT && args[i].dat->set->is_particle)
+            if (args[i].argtype == OPP_ARG_DAT && args[i].dat->set->is_particle)
             {
                 args[i].data = args[i].dat->data;
                 if (OPP_DBG) opp_printf("SSSS", "dat %s", args[i].dat->name);
@@ -414,7 +414,7 @@ bool opp_finalize_particle_move(opp_set set)
 
     opp_finalize_particle_move_omp(set);
 
-    if (OP_auto_sort == 1)
+    if (OPP_auto_sort == 1)
     {
         if (OPP_DBG) printf("\topp_finalize_particle_move auto sorting particle set [%s]\n", set->name);
         opp_particle_sort(set);
@@ -465,7 +465,7 @@ void opp_finalize_particle_move_omp(opp_set set)
 
     if (set->particle_remove_count <= 0) return;
 
-    if (OP_auto_sort == 0) // if not auto sorting, fill the holes
+    if (OPP_auto_sort == 0) // if not auto sorting, fill the holes
     {
         // getting a backup of cell index since it will also be rearranged using a random OMP thread
         int *mesh_relation_data = (int *)opp_host_malloc(set->set_capacity * set->mesh_relation_dat->size); 
@@ -532,7 +532,7 @@ void opp_finalize_particle_move_omp(opp_set set)
 
     if (set->particle_remove_count <= 0) return;
 
-    if (OP_auto_sort == 0) // if not auto sorting, fill the holes
+    if (OPP_auto_sort == 0) // if not auto sorting, fill the holes
     {
         int *mesh_relation_data = (int *)set->mesh_relation_dat->data;
         std::vector<std::pair<size_t, size_t>> swap_indices;    // contain hole index and the index from back to swap

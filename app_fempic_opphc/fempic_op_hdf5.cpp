@@ -94,39 +94,39 @@ int main(int argc, char **argv)
         opp_map iface_v_cell_map = opp_decl_map_hdf5(iface_set, cell_set, ONE,      file.c_str(), "if_v_c_map"); 
         opp_map iface_v_node_map = opp_decl_map_hdf5(iface_set, node_set, N_PER_IF, file.c_str(), "if_v_n_map");
 
-        opp_dat cell_det         = opp_decl_mesh_dat_hdf5(cell_set, ALL_DET,     DT_REAL, file.c_str(), "c_det");  
-        opp_dat cell_volume      = opp_decl_mesh_dat_hdf5(cell_set, ONE,         DT_REAL, file.c_str(), "c_volume");        
-        opp_dat cell_ef          = opp_decl_mesh_dat_hdf5(cell_set, DIM,         DT_REAL, file.c_str(), "c_ef");
-        opp_dat cell_shape_deriv = opp_decl_mesh_dat_hdf5(cell_set, N_PER_C*DIM, DT_REAL, file.c_str(), "c_shape_deri"); 
-        opp_dat global_cell_id   = opp_decl_mesh_dat_hdf5(cell_set, ONE,         DT_INT,  file.c_str(), "c_gbl_id"); 
-        opp_dat cell_colors      = opp_decl_mesh_dat_hdf5(cell_set, ONE,         DT_INT,  file.c_str(), "c_colors");
-        opp_dat cell_centroids   = opp_decl_mesh_dat_hdf5(cell_set, DIM,         DT_REAL, file.c_str(), "c_centroids");
+        opp_dat cell_det         = opp_decl_dat_hdf5(cell_set, ALL_DET,     DT_REAL, file.c_str(), "c_det");  
+        opp_dat cell_volume      = opp_decl_dat_hdf5(cell_set, ONE,         DT_REAL, file.c_str(), "c_volume");        
+        opp_dat cell_ef          = opp_decl_dat_hdf5(cell_set, DIM,         DT_REAL, file.c_str(), "c_ef");
+        opp_dat cell_shape_deriv = opp_decl_dat_hdf5(cell_set, N_PER_C*DIM, DT_REAL, file.c_str(), "c_shape_deri"); 
+        opp_dat global_cell_id   = opp_decl_dat_hdf5(cell_set, ONE,         DT_INT,  file.c_str(), "c_gbl_id"); 
+        opp_dat cell_colors      = opp_decl_dat_hdf5(cell_set, ONE,         DT_INT,  file.c_str(), "c_colors");
+        opp_dat cell_centroids   = opp_decl_dat_hdf5(cell_set, DIM,         DT_REAL, file.c_str(), "c_centroids");
 
-        opp_dat node_volume      = opp_decl_mesh_dat_hdf5(node_set, ONE, DT_REAL, file.c_str(), "n_vol");        
-        opp_dat node_potential   = opp_decl_mesh_dat_hdf5(node_set, ONE, DT_REAL, file.c_str(), "n_potential");     
-        opp_dat node_charge_den  = opp_decl_mesh_dat_hdf5(node_set, ONE, DT_REAL, file.c_str(), "n_charge_den");
-        opp_dat node_pos         = opp_decl_mesh_dat_hdf5(node_set, DIM, DT_REAL, file.c_str(), "n_pos");     
-        opp_dat node_type        = opp_decl_mesh_dat_hdf5(node_set, ONE, DT_INT,  file.c_str(), "n_type");
-        opp_dat node_bnd_pot     = opp_decl_mesh_dat_hdf5(node_set, ONE, DT_REAL, file.c_str(), "n_bnd_pot");
-        // opp_dat node_id          = opp_decl_mesh_dat_hdf5(node_set, ONE, DT_INT,  file.c_str(), "n_id"); 
-        // opp_dat node_colors      = opp_decl_mesh_dat_hdf5(node_set, ONE, DT_INT,  file.c_str(), "n_colors");
+        opp_dat node_volume      = opp_decl_dat_hdf5(node_set, ONE, DT_REAL, file.c_str(), "n_vol");        
+        opp_dat node_potential   = opp_decl_dat_hdf5(node_set, ONE, DT_REAL, file.c_str(), "n_potential");     
+        opp_dat node_charge_den  = opp_decl_dat_hdf5(node_set, ONE, DT_REAL, file.c_str(), "n_charge_den");
+        opp_dat node_pos         = opp_decl_dat_hdf5(node_set, DIM, DT_REAL, file.c_str(), "n_pos");     
+        opp_dat node_type        = opp_decl_dat_hdf5(node_set, ONE, DT_INT,  file.c_str(), "n_type");
+        opp_dat node_bnd_pot     = opp_decl_dat_hdf5(node_set, ONE, DT_REAL, file.c_str(), "n_bnd_pot");
+        // opp_dat node_id          = opp_decl_dat_hdf5(node_set, ONE, DT_INT,  file.c_str(), "n_id"); 
+        // opp_dat node_colors      = opp_decl_dat_hdf5(node_set, ONE, DT_INT,  file.c_str(), "n_colors");
 
-        opp_dat iface_v_norm  = opp_decl_mesh_dat_hdf5(iface_set, DIM,          DT_REAL, file.c_str(), "iface_v_norm");        
-        opp_dat iface_u_norm  = opp_decl_mesh_dat_hdf5(iface_set, DIM,          DT_REAL, file.c_str(), "iface_u_norm"); 
-        opp_dat iface_norm    = opp_decl_mesh_dat_hdf5(iface_set, DIM,          DT_REAL, file.c_str(), "iface_norm");     
-        opp_dat iface_area    = opp_decl_mesh_dat_hdf5(iface_set, ONE,          DT_REAL, file.c_str(), "iface_area");
-        opp_dat iface_dist    = opp_decl_mesh_dat_hdf5(iface_set, ONE,          DT_INT,  file.c_str(), "iface_dist");
-        opp_dat iface_n_pos   = opp_decl_mesh_dat_hdf5(iface_set, N_PER_IF*DIM, DT_REAL, file.c_str(), "iface_n_pos"); 
-        // opp_dat iface_id      = opp_decl_mesh_dat_hdf5(iface_set, ONE, DT_INT, file.c_str(), "iface_id"); 
+        opp_dat iface_v_norm  = opp_decl_dat_hdf5(iface_set, DIM,          DT_REAL, file.c_str(), "iface_v_norm");        
+        opp_dat iface_u_norm  = opp_decl_dat_hdf5(iface_set, DIM,          DT_REAL, file.c_str(), "iface_u_norm"); 
+        opp_dat iface_norm    = opp_decl_dat_hdf5(iface_set, DIM,          DT_REAL, file.c_str(), "iface_norm");     
+        opp_dat iface_area    = opp_decl_dat_hdf5(iface_set, ONE,          DT_REAL, file.c_str(), "iface_area");
+        opp_dat iface_dist    = opp_decl_dat_hdf5(iface_set, ONE,          DT_INT,  file.c_str(), "iface_dist");
+        opp_dat iface_n_pos   = opp_decl_dat_hdf5(iface_set, N_PER_IF*DIM, DT_REAL, file.c_str(), "iface_n_pos"); 
+        // opp_dat iface_id      = opp_decl_dat_hdf5(iface_set, ONE, DT_INT, file.c_str(), "iface_id"); 
 
-        opp_dat part_position = opp_decl_part_dat_hdf5(particle_set, DIM,     DT_REAL, file.c_str(), "part_position");
-        opp_dat part_velocity = opp_decl_part_dat_hdf5(particle_set, DIM,     DT_REAL, file.c_str(), "part_velocity");    
-        opp_dat part_lc       = opp_decl_part_dat_hdf5(particle_set, N_PER_C, DT_REAL, file.c_str(), "part_lc");
-        opp_dat part_mesh_rel = opp_decl_part_dat_hdf5(particle_set, ONE,     DT_INT,  file.c_str(), "part_mesh_rel", true);
-        // opp_dat part_id       = opp_decl_part_dat_hdf5(particle_set, ONE,     DT_INT,  file.c_str(), "part_id");
+        opp_dat part_position = opp_decl_dat_hdf5(particle_set, DIM,     DT_REAL, file.c_str(), "part_position");
+        opp_dat part_velocity = opp_decl_dat_hdf5(particle_set, DIM,     DT_REAL, file.c_str(), "part_velocity");    
+        opp_dat part_lc       = opp_decl_dat_hdf5(particle_set, N_PER_C, DT_REAL, file.c_str(), "part_lc");
+        opp_dat part_mesh_rel = opp_decl_dat_hdf5(particle_set, ONE,     DT_INT,  file.c_str(), "part_mesh_rel", true);
+        // opp_dat part_id       = opp_decl_dat_hdf5(particle_set, ONE,     DT_INT,  file.c_str(), "part_id");
 
         opp_set dummy_part_set   = opp_decl_particle_set_hdf5(file.c_str(), "dummy particles", cell_set); 
-        opp_dat dummy_part_rand  = opp_decl_part_dat_hdf5(dummy_part_set, 2, DT_REAL, file.c_str(), "dummy_part_rand");
+        opp_dat dummy_part_rand  = opp_decl_dat_hdf5(dummy_part_set, 2, DT_REAL, file.c_str(), "dummy_part_rand");
 
         opp_decl_const<OPP_REAL>(ONE, &spwt,           "CONST_spwt");
         opp_decl_const<OPP_REAL>(ONE, &ion_velocity,   "CONST_ion_velocity");
@@ -147,8 +147,8 @@ int main(int argc, char **argv)
         
         opp_loop_all__init_boundary_pot(
             node_set, 
-            opp_arg_dat(node_type, OP_READ), 
-            opp_arg_dat(node_bnd_pot, OP_WRITE)
+            opp_arg_dat(node_type, OPP_READ), 
+            opp_arg_dat(node_bnd_pot, OPP_WRITE)
         );
 
         int n_parts_to_inject = InitializeInjectDistributions(iface_dist, iface_area, dummy_part_rand);
@@ -181,17 +181,17 @@ int main(int argc, char **argv)
             int old_nparts = particle_set->size;
             opp_loop_inject__inject_ions(
                 particle_set,                                                                           
-                opp_arg_dat(part_position,                OP_WRITE),                      
-                opp_arg_dat(part_velocity,                OP_WRITE),                      
-                opp_arg_dat(part_mesh_rel,                OP_RW),
-                opp_arg_dat(part_mesh_rel,                OP_RW),
-                opp_arg_dat(iface_v_cell_map,             OP_READ, OPP_Map_from_Mesh_Rel),
-                opp_arg_dat(cell_ef, 0, iface_v_cell_map, OP_READ, OPP_Map_from_Mesh_Rel),
-                opp_arg_dat(iface_u_norm,                 OP_READ, OPP_Map_from_Mesh_Rel),
-                opp_arg_dat(iface_v_norm,                 OP_READ, OPP_Map_from_Mesh_Rel),
-                opp_arg_dat(iface_norm,                   OP_READ, OPP_Map_from_Mesh_Rel),
-                opp_arg_dat(iface_n_pos,                  OP_READ, OPP_Map_from_Mesh_Rel),
-                opp_arg_dat(dummy_part_rand,              OP_READ, OPP_Map_from_Inj_part) 
+                opp_arg_dat(part_position,                OPP_WRITE),                      
+                opp_arg_dat(part_velocity,                OPP_WRITE),                      
+                opp_arg_dat(part_mesh_rel,                OPP_RW),
+                opp_arg_dat(part_mesh_rel,                OPP_RW),
+                opp_arg_dat(iface_v_cell_map,             OPP_READ, OPP_Map_from_Mesh_Rel),
+                opp_arg_dat(cell_ef, 0, iface_v_cell_map, OPP_READ, OPP_Map_from_Mesh_Rel),
+                opp_arg_dat(iface_u_norm,                 OPP_READ, OPP_Map_from_Mesh_Rel),
+                opp_arg_dat(iface_v_norm,                 OPP_READ, OPP_Map_from_Mesh_Rel),
+                opp_arg_dat(iface_norm,                   OPP_READ, OPP_Map_from_Mesh_Rel),
+                opp_arg_dat(iface_n_pos,                  OPP_READ, OPP_Map_from_Mesh_Rel),
+                opp_arg_dat(dummy_part_rand,              OPP_READ, OPP_Map_from_Inj_part) 
             );
 
             opp_reset_dat(
@@ -200,40 +200,40 @@ int main(int argc, char **argv)
 
             opp_loop_all__calc_pos_vel(
                 particle_set,                                                                           
-                opp_arg_dat(cell_ef,       OP_READ, OPP_Map_from_Mesh_Rel),
-                opp_arg_dat(part_position, OP_WRITE),                         
-                opp_arg_dat(part_velocity, OP_WRITE)
+                opp_arg_dat(cell_ef,       OPP_READ, OPP_Map_from_Mesh_Rel),
+                opp_arg_dat(part_position, OPP_WRITE),                         
+                opp_arg_dat(part_velocity, OPP_WRITE)
             );
 
             opp_particle_move__move(
                 particle_set,
-                opp_arg_dat(part_position,   OP_READ),
-                opp_arg_dat(part_mesh_rel,   OP_RW),
-                opp_arg_dat(part_lc,         OP_WRITE),
-                opp_arg_dat(cell_volume,     OP_READ, OPP_Map_from_Mesh_Rel),
-                opp_arg_dat(cell_det,        OP_READ, OPP_Map_from_Mesh_Rel),
-                opp_arg_dat(cell_v_cell_map, OP_READ, OPP_Map_from_Mesh_Rel)
+                opp_arg_dat(part_position,   OPP_READ),
+                opp_arg_dat(part_mesh_rel,   OPP_RW),
+                opp_arg_dat(part_lc,         OPP_WRITE),
+                opp_arg_dat(cell_volume,     OPP_READ, OPP_Map_from_Mesh_Rel),
+                opp_arg_dat(cell_det,        OPP_READ, OPP_Map_from_Mesh_Rel),
+                opp_arg_dat(cell_v_cell_map, OPP_READ, OPP_Map_from_Mesh_Rel)
             );
 
             opp_loop_all__deposit_charge_on_nodes(
                 particle_set, 
-                opp_arg_dat(part_lc,                              OP_READ),
-                opp_arg_dat(node_charge_den, 0, cell_v_nodes_map, OP_INC,  OPP_Map_from_Mesh_Rel),
-                opp_arg_dat(node_charge_den, 1, cell_v_nodes_map, OP_INC,  OPP_Map_from_Mesh_Rel),
-                opp_arg_dat(node_charge_den, 2, cell_v_nodes_map, OP_INC,  OPP_Map_from_Mesh_Rel),
-                opp_arg_dat(node_charge_den, 3, cell_v_nodes_map, OP_INC,  OPP_Map_from_Mesh_Rel)
+                opp_arg_dat(part_lc,                              OPP_READ),
+                opp_arg_dat(node_charge_den, 0, cell_v_nodes_map, OPP_INC,  OPP_Map_from_Mesh_Rel),
+                opp_arg_dat(node_charge_den, 1, cell_v_nodes_map, OPP_INC,  OPP_Map_from_Mesh_Rel),
+                opp_arg_dat(node_charge_den, 2, cell_v_nodes_map, OPP_INC,  OPP_Map_from_Mesh_Rel),
+                opp_arg_dat(node_charge_den, 3, cell_v_nodes_map, OPP_INC,  OPP_Map_from_Mesh_Rel)
             );
 
             opp_loop_all__compute_node_charge_density(
                 node_set,                            
-                opp_arg_dat(node_charge_den,  OP_RW), 
-                opp_arg_dat(node_volume,      OP_READ)
+                opp_arg_dat(node_charge_den,  OPP_RW), 
+                opp_arg_dat(node_volume,      OPP_READ)
             );
 
             field_solver->computePhi(  // TODO: Change this to kernel calls
-                opp_arg_dat(node_potential,  OP_WRITE),
-                opp_arg_dat(node_charge_den, OP_READ),
-                opp_arg_dat(node_bnd_pot,    OP_READ)
+                opp_arg_dat(node_potential,  OPP_WRITE),
+                opp_arg_dat(node_charge_den, OPP_READ),
+                opp_arg_dat(node_bnd_pot,    OPP_READ)
             );
 
             opp_reset_dat(
@@ -242,12 +242,12 @@ int main(int argc, char **argv)
 
             opp_loop_all__compute_electric_field(
                 cell_set,                                                   
-                opp_arg_dat(cell_ef,                             OP_INC), 
-                opp_arg_dat(cell_shape_deriv,                    OP_READ),
-                opp_arg_dat(node_potential, 0, cell_v_nodes_map, OP_READ),
-                opp_arg_dat(node_potential, 1, cell_v_nodes_map, OP_READ),
-                opp_arg_dat(node_potential, 2, cell_v_nodes_map, OP_READ),
-                opp_arg_dat(node_potential, 3, cell_v_nodes_map, OP_READ) 
+                opp_arg_dat(cell_ef,                             OPP_INC), 
+                opp_arg_dat(cell_shape_deriv,                    OPP_READ),
+                opp_arg_dat(node_potential, 0, cell_v_nodes_map, OPP_READ),
+                opp_arg_dat(node_potential, 1, cell_v_nodes_map, OPP_READ),
+                opp_arg_dat(node_potential, 2, cell_v_nodes_map, OPP_READ),
+                opp_arg_dat(node_potential, 3, cell_v_nodes_map, OPP_READ) 
             );
 
             if (print_final_log || OPP_main_loop_iter + 1 == max_iter)
@@ -256,10 +256,10 @@ int main(int argc, char **argv)
 
                 opp_loop_all__get_max_values(
                     node_set,
-                    opp_arg_dat(node_charge_den, OP_READ),
-                    opp_arg_gbl(&max_n_chg_den, 1, "double", OP_MAX),
-                    opp_arg_dat(node_potential, OP_READ),
-                    opp_arg_gbl(&max_n_pot, 1, "double", OP_MAX)
+                    opp_arg_dat(node_charge_den, OPP_READ),
+                    opp_arg_gbl(&max_n_chg_den, 1, "double", OPP_MAX),
+                    opp_arg_dat(node_potential, OPP_READ),
+                    opp_arg_gbl(&max_n_pot, 1, "double", OPP_MAX)
                 );
 
                 log = get_global_level_log(max_n_chg_den, max_n_pot, particle_set->size, 

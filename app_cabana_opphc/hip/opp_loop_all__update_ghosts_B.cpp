@@ -90,9 +90,9 @@ __global__ void opp_dev_update_ghosts_B(
 //*************************************************************************************************
 void opp_loop_all__update_ghosts_B(
     opp_set set,     // cells set
-    opp_arg arg0,    // cell_mask_ugb,       OP_READ
-    opp_arg arg1,    // cell,                OP_READ
-    opp_arg arg2,    // cell, 0, c2cugb_map, OP_WRITE
+    opp_arg arg0,    // cell_mask_ugb,       OPP_READ
+    opp_arg arg1,    // cell,                OPP_READ
+    opp_arg arg2,    // cell, 0, c2cugb_map, OPP_WRITE
     opp_arg arg3     // mask_idx global
 )
 {

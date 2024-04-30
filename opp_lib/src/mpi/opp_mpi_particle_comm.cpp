@@ -46,20 +46,6 @@ std::map<int, std::map<int, std::vector<opp_part_move_info>>> opp_part_move_indi
 // This vector will get enriched during move loop, if a particle needs to be communicated
 std::vector<int> opp_move_part_indices; 
 
-/******************************************************************************** 
-  * opp_part_mark_move() will add the opp_part_move_info (particle index and local index of the receiving rank)
-  * to a send rank based vector, to be directly used during particle send
-*/
-inline void opp_part_mark_move(opp_set set, int particle_index, opp_particle_comm_data& comm_data)
-{
-    // if (OPP_DBG) 
-    //     opp_printf("opp_part_mark_move", "commIter[%d] part_id[%d] send_rank[%d] foreign_rank_index[%d]", 
-    //         OPP_comm_iteration, particle_index, comm_data.cell_residing_rank, comm_data.local_index);
-
-    std::vector<opp_part_move_info>& vec = opp_part_move_indices[set->index][comm_data.cell_residing_rank];
-    vec.emplace_back(particle_index, comm_data.local_index);
-}
-
 /*******************************************************************************
  * opp_part_pack() will get the opp_part_move_indices and pack the particle data into send rank based buffers
  * Used in Multi-hop
@@ -329,11 +315,11 @@ void opp_part_exchange(opp_set set)
 
         const int64_t& send_count = mpi_part_data->export_counts[neighbour_rank];
         MPI_Isend((void*)&send_count, 1, MPI_INT64_T, neighbour_rank, MPI_MH_COUNT_EXCHANGE, 
-                    OP_MPI_WORLD, &(send_count_reqs[i]));
+                    OPP_MPI_WORLD, &(send_count_reqs[i]));
 
         const int64_t& recv_count = mpi_part_data->import_counts[neighbour_rank];
         MPI_Irecv((void*)&recv_count, 1, MPI_INT64_T, neighbour_rank, MPI_MH_COUNT_EXCHANGE, 
-                    OP_MPI_WORLD, &(recv_count_reqs[i]));
+                    OPP_MPI_WORLD, &(recv_count_reqs[i]));
     }
 
     double total_send_bytes = 0.0;
@@ -359,7 +345,7 @@ void opp_part_exchange(opp_set set)
         char* send_rank_buffer = mpi_part_data->buffers[neighbour_rank].buf_export;
 
         MPI_Request req;
-        MPI_Isend(send_rank_buffer, send_bytes, MPI_CHAR, neighbour_rank, MPI_MH_TAG_PART_EX, OP_MPI_WORLD, &req);
+        MPI_Isend(send_rank_buffer, send_bytes, MPI_CHAR, neighbour_rank, MPI_MH_TAG_PART_EX, OPP_MPI_WORLD, &req);
         mpi_part_data->send_req.push_back(req); 
     }
 
@@ -408,7 +394,7 @@ void opp_part_exchange(opp_set set)
         //     neighbour_rank, recv_bytes, mpi_part_data->total_recv, recv_buffer.buf_import_capacity);
 
         MPI_Request req;
-        MPI_Irecv(recv_buffer.buf_import, recv_bytes, MPI_CHAR, neighbour_rank, MPI_MH_TAG_PART_EX, OP_MPI_WORLD, &req);
+        MPI_Irecv(recv_buffer.buf_import, recv_bytes, MPI_CHAR, neighbour_rank, MPI_MH_TAG_PART_EX, OPP_MPI_WORLD, &req);
         mpi_part_data->recv_req.push_back(req);
     }
 
@@ -483,7 +469,7 @@ bool opp_part_check_all_done(opp_set set)
 
     // gather from all MPI ranks to see whether atleast one rank needs to communicate to another
     std::vector<char> buffer_recv(OPP_comm_size, 0);
-    MPI_Allgather(&imported_parts, 1, MPI_C_BOOL, buffer_recv.data(), 1, MPI_C_BOOL, OP_MPI_WORLD);
+    MPI_Allgather(&imported_parts, 1, MPI_C_BOOL, buffer_recv.data(), 1, MPI_C_BOOL, OPP_MPI_WORLD);
 
     opp_profiler->endMpiComm("", opp::OPP_Particle);
 
@@ -547,8 +533,8 @@ void opp_part_set_comm_init(opp_set set)
 
     if (OPP_DBG) opp_printf("opp_part_set_comm_init", "set: %s", set->name);
 
-    const halo_list exp_exec_list = OP_export_exec_list[set->cells_set->index];
-    const halo_list imp_exec_list = OP_import_exec_list[set->cells_set->index];
+    const halo_list exp_exec_list = OPP_export_exec_list[set->cells_set->index];
+    const halo_list imp_exec_list = OPP_import_exec_list[set->cells_set->index];
 
     std::vector<MPI_Request> send_reqs;
     std::vector<MPI_Request> recv_reqs;    
@@ -561,7 +547,7 @@ void opp_part_set_comm_init(opp_set set)
         const int send_size = exp_exec_list->sizes[i];
     
         MPI_Request req;
-        MPI_Isend(send_buffer, send_size, MPI_INT, neighbour_rank, OPP_rank, OP_MPI_WORLD, &req);
+        MPI_Isend(send_buffer, send_size, MPI_INT, neighbour_rank, OPP_rank, OPP_MPI_WORLD, &req);
         send_reqs.push_back(req);  
 
         //print the per rank send buffers
@@ -587,7 +573,7 @@ void opp_part_set_comm_init(opp_set set)
         recv_buffer.resize(recv_size);
         
         MPI_Request req;
-        MPI_Irecv(&recv_buffer[0], recv_size, MPI_INT, neighbour_rank, neighbour_rank, OP_MPI_WORLD, &req);
+        MPI_Irecv(&recv_buffer[0], recv_size, MPI_INT, neighbour_rank, neighbour_rank, OPP_MPI_WORLD, &req);
         recv_reqs.push_back(req);  
     }
 

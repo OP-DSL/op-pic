@@ -38,13 +38,13 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 template <typename... T, typename... OPARG>
 void opp_par_loop(void (*kernel)(T *...), char const *name, opp_set set, opp_iterate_type iter_type,
                  OPARG... arguments) {
-    printf("opp_par_loop %s iterate %s\n", name, (iter_type == OP_ITERATE_ALL) ? "all" : "only injected");
+    printf("opp_par_loop %s iterate %s\n", name, (iter_type == OPP_ITERATE_ALL) ? "all" : "only injected");
 }
 
 template <typename... T, typename... OPARG>
 void opp_par_loop_particle(void (*kernel)(T *...), char const *name, opp_set set, opp_iterate_type iter_type,
                  OPARG... arguments) {
-    printf("opp_par_loopp_particle %s iterate %s\n", name, (iter_type == OP_ITERATE_ALL) ? "all" : "only injected");
+    printf("opp_par_loopp_particle %s iterate %s\n", name, (iter_type == OPP_ITERATE_ALL) ? "all" : "only injected");
 }
 
 

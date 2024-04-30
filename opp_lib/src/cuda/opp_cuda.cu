@@ -35,9 +35,9 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "opp_increase_part_count.cu"
 
 // arrays for global constants and reductions
-int OP_consts_bytes = 0, OP_reduct_bytes = 0;
-char *OP_reduct_h = nullptr;
-char *OP_reduct_d = nullptr;
+int OPP_consts_bytes = 0, OPP_reduct_bytes = 0;
+char *OPP_reduct_h = nullptr;
+char *OPP_reduct_d = nullptr;
 
 //****************************************
 void opp_init(int argc, char **argv)
@@ -51,11 +51,11 @@ void opp_init(int argc, char **argv)
 #endif
 
 #ifdef USE_MPI
-    OP_MPI_WORLD = MPI_COMM_WORLD;
-    OP_MPI_GLOBAL = MPI_COMM_WORLD;
+    OPP_MPI_WORLD = MPI_COMM_WORLD;
+    OPP_MPI_GLOBAL = MPI_COMM_WORLD;
     
-    MPI_Comm_rank(OP_MPI_WORLD, &OPP_rank);
-    MPI_Comm_size(OP_MPI_WORLD, &OPP_comm_size);
+    MPI_Comm_rank(OPP_MPI_WORLD, &OPP_rank);
+    MPI_Comm_size(OPP_MPI_WORLD, &OPP_comm_size);
 #endif
 
     if (OPP_rank == OPP_ROOT)
@@ -79,7 +79,7 @@ void opp_init(int argc, char **argv)
     cutilSafeCall(cudaDeviceSetCacheConfig(cudaFuncCachePreferShared));
     cutilSafeCall(cudaDeviceSetSharedMemConfig(cudaSharedMemBankSizeEightByte));
 
-    OP_auto_soa = 1; // TODO : Make this configurable with args
+    OPP_auto_soa = 1; // TODO : Make this configurable with args
 
     const int threads_per_block = opp_params->get<OPP_INT>("opp_threads_per_block");   
     if (threads_per_block > 0 && threads_per_block < INT_MAX)
@@ -87,7 +87,7 @@ void opp_init(int argc, char **argv)
 
     const int gpu_direct = opp_params->get<OPP_INT>("opp_gpu_direct");   
     if (gpu_direct > 0 && gpu_direct < INT_MAX)
-        OP_gpu_direct = gpu_direct;
+        OPP_gpu_direct = gpu_direct;
 
     int deviceId = -1;
     cudaGetDevice(&deviceId);
@@ -105,7 +105,7 @@ void opp_init(int argc, char **argv)
 
     opp_printf("opp_init", 
         "Device: %d [%s] on Host [%s] threads=%d Shared_Mem=%lubytes GPU_Direct=%d", deviceId, 
-        prop.name, hostname, OPP_gpu_threads_per_block, prop.sharedMemPerBlock, OP_gpu_direct);
+        prop.name, hostname, OPP_gpu_threads_per_block, prop.sharedMemPerBlock, OPP_gpu_direct);
 }
 
 //****************************************
@@ -116,8 +116,8 @@ void opp_exit()
     boundingBox.reset();
     comm.reset();
 
-    if (OP_reduct_h) free(OP_reduct_h);
-    if (OP_reduct_d) cutilSafeCall(cudaFree(OP_reduct_d));
+    if (OPP_reduct_h) free(OPP_reduct_h);
+    if (OPP_reduct_d) cutilSafeCall(cudaFree(OPP_reduct_d));
 
 #ifdef USE_MPI 
         opp_halo_destroy(); // free memory allocated to halos and mpi_buffers 
@@ -138,7 +138,7 @@ void opp_abort(std::string s)
 {
     opp_printf("opp_abort", "%s", s.c_str());
 #ifdef USE_MPI 
-    MPI_Abort(OP_MPI_WORLD, 2);
+    MPI_Abort(OPP_MPI_WORLD, 2);
 #else
     exit(-1);
 #endif
@@ -147,7 +147,7 @@ void opp_abort(std::string s)
 //****************************************
 void opp_cuda_exit() 
 {
-    if (!OP_hybrid_gpu)
+    if (!OPP_hybrid_gpu)
         return;
 
     for (auto& a : opp_maps) 
@@ -590,7 +590,7 @@ void opp_download_dat(opp_dat dat)
     cutilSafeCall(cudaDeviceSynchronize());
 
     size_t set_size = dat->set->set_capacity;
-    if (strstr(dat->type, ":soa") != NULL || (OP_auto_soa && dat->dim > 1)) 
+    if (strstr(dat->type, ":soa") != NULL || (OPP_auto_soa && dat->dim > 1)) 
     {
         if (OPP_DBG) opp_printf("opp_download_dat", "GPU->CPU SOA | %s", dat->name);
 
@@ -628,7 +628,7 @@ void opp_upload_dat(opp_dat dat)
 
     size_t set_capacity = dat->set->set_capacity;
 
-    if (strstr(dat->type, ":soa") != NULL || (OP_auto_soa && dat->dim > 1)) 
+    if (strstr(dat->type, ":soa") != NULL || (OPP_auto_soa && dat->dim > 1)) 
     {
         if (OPP_DBG) opp_printf("opp_upload_dat","CPU->GPU SOA | %s", dat->name);
 
@@ -931,15 +931,15 @@ void cutilDeviceInit(int argc, char **argv)
     {
         float *test;
         if (cudaMalloc((void **)&test, sizeof(float)) != cudaSuccess) {
-            OP_hybrid_gpu = 0;
+            OPP_hybrid_gpu = 0;
         }
         else {
             cudaFree(test);
-            OP_hybrid_gpu = 1;
+            OPP_hybrid_gpu = 1;
         }
     }
 
-    if (OP_hybrid_gpu == 0) 
+    if (OPP_hybrid_gpu == 0) 
     {
         opp_printf("cutilDeviceInit", "Error... Init device Device Failed");
         opp_abort();
@@ -990,28 +990,28 @@ void opp_host_free(void* ptr)
 //*******************************************************************************
 void opp_reallocReductArrays(int reduct_bytes) 
 {
-    if (reduct_bytes > OP_reduct_bytes) 
+    if (reduct_bytes > OPP_reduct_bytes) 
     {
-        if (OP_reduct_bytes > 0) 
+        if (OPP_reduct_bytes > 0) 
         {
-            free(OP_reduct_h);
-            cutilSafeCall(cudaFree(OP_reduct_d));
+            free(OPP_reduct_h);
+            cutilSafeCall(cudaFree(OPP_reduct_d));
         }
-        OP_reduct_bytes = 4 * reduct_bytes; // 4 is arbitrary, more than needed
-        OP_reduct_h = (char *)malloc(OP_reduct_bytes);
-        cutilSafeCall(cudaMalloc((void **)&OP_reduct_d, OP_reduct_bytes));
+        OPP_reduct_bytes = 4 * reduct_bytes; // 4 is arbitrary, more than needed
+        OPP_reduct_h = (char *)malloc(OPP_reduct_bytes);
+        cutilSafeCall(cudaMalloc((void **)&OPP_reduct_d, OPP_reduct_bytes));
     }
 }
 
 void opp_mvReductArraysToDevice(int reduct_bytes) 
 {
-    cutilSafeCall(cudaMemcpy(OP_reduct_d, OP_reduct_h, reduct_bytes, cudaMemcpyHostToDevice));
+    cutilSafeCall(cudaMemcpy(OPP_reduct_d, OPP_reduct_h, reduct_bytes, cudaMemcpyHostToDevice));
     cutilSafeCall(cudaDeviceSynchronize());
 }
 
 void opp_mvReductArraysToHost(int reduct_bytes) 
 {
-    cutilSafeCall(cudaMemcpy(OP_reduct_h, OP_reduct_d, reduct_bytes, cudaMemcpyDeviceToHost));
+    cutilSafeCall(cudaMemcpy(OPP_reduct_h, OPP_reduct_d, reduct_bytes, cudaMemcpyDeviceToHost));
     cutilSafeCall(cudaDeviceSynchronize());
 }
 

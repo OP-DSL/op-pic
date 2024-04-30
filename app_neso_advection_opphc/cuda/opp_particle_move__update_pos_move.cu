@@ -182,11 +182,11 @@ __global__ void opp_device_all_Move(
 //*******************************************************************************
 void opp_particle_move__update_pos_move(
     opp_set set,        // particles_set
-    opp_arg arg0,       // part_mesh_rel, OP_RW
-    opp_arg arg1,       // part_vel,      OP_RW
-    opp_arg arg2,       // part_pos,      OP_RW
-    opp_arg arg3,       // cell_pos_ll,   OP_READ
-    opp_arg arg4        // cell_cell_map, OP_READ
+    opp_arg arg0,       // part_mesh_rel, OPP_RW
+    opp_arg arg1,       // part_vel,      OPP_RW
+    opp_arg arg2,       // part_pos,      OPP_RW
+    opp_arg arg3,       // cell_pos_ll,   OPP_READ
+    opp_arg arg4        // cell_cell_map, OPP_READ
 ) 
 { 
 

@@ -108,7 +108,7 @@ void opp_reduce_thread_level_data(opp_arg arg)
 
                     switch (arg.acc)
                     {
-                        case OP_INC:
+                        case OPP_INC:
                             ((T*)dat->data)[n] += td[n];
                             break;
                         default:

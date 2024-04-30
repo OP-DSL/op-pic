@@ -82,16 +82,16 @@ __global__ void opp_dev_compute_energy(
 
     for (int d = 0; d < 1; d++)
     {
-        opp_reduction<OP_INC>(&dir_arg2[d + blockIdx.x * 1], arg2_l[d]);
+        opp_reduction<OPP_INC>(&dir_arg2[d + blockIdx.x * 1], arg2_l[d]);
     }
 }
 
 //*************************************************************************************************
 void opp_loop_all__compute_energy(
     opp_set set,     // cells set
-    opp_arg arg0,    // cell0_ghost, OP_READ
-    opp_arg arg1,    // cell_field,  OP_READ
-    opp_arg arg2     // energy,      OP_INC
+    opp_arg arg0,    // cell0_ghost, OPP_READ
+    opp_arg arg1,    // cell_field,  OPP_READ
+    opp_arg arg2     // energy,      OPP_INC
 )
 {
     if (OPP_DBG) opp_printf("CABANA", "opp_loop_all__compute_energy set_size %d", set->size);
@@ -115,10 +115,10 @@ void opp_loop_all__compute_energy(
         cutilSafeCall(cudaMemcpyToSymbol(ce_OPP_DEVICE_1, &ce_OPP_HOST_1, sizeof(int)));
 
         //set DEVICE execution parameters
-        #ifdef OP_BLOCK_SIZE_4
-        int nthread = OP_BLOCK_SIZE_4;
+        #ifdef OPP_BLOCK_SIZE_4
+        int nthread = OPP_BLOCK_SIZE_4;
         #else
-        int nthread = 32; // OP_block_size; // TODO : CHECK this
+        int nthread = 32; // OPP_block_size; // TODO : CHECK this
         #endif
 
         int nblocks = 200; // why? TODO : Check
@@ -134,8 +134,8 @@ void opp_loop_all__compute_energy(
         opp_reallocReductArrays(reduct_bytes);
         
         reduct_bytes = 0;
-        args[2].data   = OP_reduct_h + reduct_bytes;
-        args[2].data_d = OP_reduct_d + reduct_bytes;
+        args[2].data   = OPP_reduct_h + reduct_bytes;
+        args[2].data_d = OPP_reduct_d + reduct_bytes;
         for (int b = 0; b < maxblocks; b++)
         {
             for (int d = 0; d < 1; d++)

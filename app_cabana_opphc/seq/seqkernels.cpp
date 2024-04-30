@@ -343,9 +343,9 @@ void opp_loop_all__get_max_values(
 //*************************************************************************************************
 void opp_loop_all__update_ghosts_B(
     opp_set set,     // cells set
-    opp_arg arg0,    // cell_mask_ugb,       OP_READ
-    opp_arg arg1,    // cell,                OP_READ
-    opp_arg arg2,    // cell, 0, c2cugb_map, OP_WRITE
+    opp_arg arg0,    // cell_mask_ugb,       OPP_READ
+    opp_arg arg1,    // cell,                OPP_READ
+    opp_arg arg2,    // cell, 0, c2cugb_map, OPP_WRITE
     opp_arg arg3     // mask_idx global
 )
 {
@@ -380,9 +380,9 @@ void opp_loop_all__update_ghosts_B(
 //*************************************************************************************************
 void opp_loop_all__update_ghosts(
     opp_set set,     // cells set
-    opp_arg arg0,    // cell_mask_ug,       OP_READ
-    opp_arg arg1,    // cell,               OP_READ
-    opp_arg arg2,    // cell, 0, c2cug_map, OP_INC
+    opp_arg arg0,    // cell_mask_ug,       OPP_READ
+    opp_arg arg1,    // cell,               OPP_READ
+    opp_arg arg2,    // cell, 0, c2cug_map, OPP_INC
     opp_arg arg3,    // mask_idx global
     opp_arg arg4     // dim_idx
 )
@@ -420,9 +420,9 @@ void opp_loop_all__update_ghosts(
 //*************************************************************************************************
 void opp_loop_all__compute_energy(
     opp_set set,     // cells set
-    opp_arg arg0,    // cell0_ghost, OP_READ
-    opp_arg arg1,    // cell_field,  OP_READ
-    opp_arg arg2     // energy,      OP_INC
+    opp_arg arg0,    // cell0_ghost, OPP_READ
+    opp_arg arg1,    // cell_field,  OPP_READ
+    opp_arg arg2     // energy,      OPP_INC
 )
 {
     if (OPP_DBG) 

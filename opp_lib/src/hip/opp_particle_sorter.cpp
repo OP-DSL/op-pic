@@ -164,7 +164,7 @@ void particle_sort_device(opp_set set, bool hole_filling)
     {    
         opp_dat& dat = set->particle_dats->at(i);
 
-        if (!(strstr(dat->type, ":soa") != NULL || OP_auto_soa || (dat->dim > 1)))
+        if (!(strstr(dat->type, ":soa") != NULL || OPP_auto_soa || (dat->dim > 1)))
         {
             std::cerr << "particle_sort_device not implemented for non SOA data structures [dat " << 
                 dat->name << "]" << std::endl;
@@ -383,7 +383,7 @@ void particle_hole_fill_device(opp_set set)
     // For all the dats, fill the holes using the swap_indices
     for (opp_dat& dat : *(set->particle_dats))
     {
-        if (!(strstr(dat->type, ":soa") != NULL || OP_auto_soa || (dat->dim > 1)))
+        if (!(strstr(dat->type, ":soa") != NULL || OPP_auto_soa || (dat->dim > 1)))
         {
             std::cerr << "particle_hole_fill_device not implemented for non SOA data structures [dat " << 
                 dat->name << "]" << std::endl;

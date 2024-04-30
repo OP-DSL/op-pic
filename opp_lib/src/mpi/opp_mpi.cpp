@@ -49,11 +49,11 @@ void opp_init(int argc, char **argv)
     MPI_Init(&argc, &argv);
 #endif
 
-    OP_MPI_WORLD = MPI_COMM_WORLD;
-    OP_MPI_GLOBAL = MPI_COMM_WORLD;
+    OPP_MPI_WORLD = MPI_COMM_WORLD;
+    OPP_MPI_GLOBAL = MPI_COMM_WORLD;
     
-    MPI_Comm_rank(OP_MPI_WORLD, &OPP_rank);
-    MPI_Comm_size(OP_MPI_WORLD, &OPP_comm_size);
+    MPI_Comm_rank(OPP_MPI_WORLD, &OPP_rank);
+    MPI_Comm_size(OPP_MPI_WORLD, &OPP_comm_size);
 
     if (OPP_rank == OPP_ROOT)
     {
@@ -86,15 +86,15 @@ void opp_exit()
         
         // opp_host_free(set_import_buffer_size);
 
-        // for (int i = 0; i < OP_import_index; i++)
-        //     opp_host_free(OP_import_list[i]);
-        // if (OP_import_list)
-        //     opp_host_free(OP_import_list);
+        // for (int i = 0; i < OPP_import_index; i++)
+        //     opp_host_free(OPP_import_list[i]);
+        // if (OPP_import_list)
+        //     opp_host_free(OPP_import_list);
         
-        // for (int i = 0; i < OP_export_index; i++)
-        //     opp_host_free(OP_export_list[i]);
-        // if (OP_export_list)
-        //     opp_host_free(OP_export_list);
+        // for (int i = 0; i < OPP_export_index; i++)
+        //     opp_host_free(OPP_export_list[i]);
+        // if (OPP_export_list)
+        //     opp_host_free(OPP_export_list);
     }
 
     opp_exit_core();
@@ -111,7 +111,7 @@ void opp_exit()
 void opp_abort(std::string s)
 {
     opp_printf("opp_abort", "%s", s.c_str());
-    MPI_Abort(OP_MPI_WORLD, 2);
+    MPI_Abort(OPP_MPI_WORLD, 2);
 }
 
 //****************************************
@@ -320,7 +320,7 @@ void opp_init_particle_move(opp_set set, int nargs, opp_arg *args)
         // need to change the arg data since particle communication could change the pointer in realloc dat->data
         for (int i = 0; i < nargs; i++)
         {
-            if (args[i].argtype == OP_ARG_DAT && args[i].dat->set->is_particle)
+            if (args[i].argtype == OPP_ARG_DAT && args[i].dat->set->is_particle)
             {
                 args[i].data = args[i].dat->data;
                 if (OPP_DBG) opp_printf("SSSS", "dat %s", args[i].dat->name);
@@ -349,7 +349,7 @@ bool opp_finalize_particle_move(opp_set set)
     // Can fill the holes here, since the communicated particles will be added at the end
     opp_finalize_particle_move_core(set);
 
-    if (OP_auto_sort == 1)
+    if (OPP_auto_sort == 1)
     {
         if (OPP_DBG) opp_printf("opp_finalize_particle_move", "auto sorting particle set [%s]", set->name);
         opp_particle_sort(set);

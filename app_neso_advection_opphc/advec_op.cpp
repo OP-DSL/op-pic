@@ -118,25 +118,25 @@ int main(int argc, char **argv)
 #ifdef FUSE_KERNELS        
             opp_particle_move__update_pos_move(
                 part_set,
-                opp_arg_dat(part_mesh_rel, OP_RW),
-                opp_arg_dat(part_vel,      OP_RW),
-                opp_arg_dat(part_pos,      OP_RW),
-                opp_arg_dat(cell_pos_ll,   OP_READ, OPP_Map_from_Mesh_Rel),
-                opp_arg_dat(cell_cell_map, OP_READ, OPP_Map_from_Mesh_Rel)
+                opp_arg_dat(part_mesh_rel, OPP_RW),
+                opp_arg_dat(part_vel,      OPP_RW),
+                opp_arg_dat(part_pos,      OPP_RW),
+                opp_arg_dat(cell_pos_ll,   OPP_READ, OPP_Map_from_Mesh_Rel),
+                opp_arg_dat(cell_cell_map, OPP_READ, OPP_Map_from_Mesh_Rel)
             );
 #else
             opp_loop_all__update_pos(
                 part_set,
-                opp_arg_dat(part_vel,      OP_READ),
-                opp_arg_dat(part_pos,      OP_RW)
+                opp_arg_dat(part_vel,      OPP_READ),
+                opp_arg_dat(part_pos,      OPP_RW)
             );
 
             opp_particle_move__move(
                 part_set,
-                opp_arg_dat(part_mesh_rel, OP_RW),
-                opp_arg_dat(part_pos,      OP_READ),
-                opp_arg_dat(cell_pos_ll,   OP_READ, OPP_Map_from_Mesh_Rel),
-                opp_arg_dat(cell_cell_map, OP_READ, OPP_Map_from_Mesh_Rel)
+                opp_arg_dat(part_mesh_rel, OPP_RW),
+                opp_arg_dat(part_pos,      OPP_READ),
+                opp_arg_dat(cell_pos_ll,   OPP_READ, OPP_Map_from_Mesh_Rel),
+                opp_arg_dat(cell_cell_map, OPP_READ, OPP_Map_from_Mesh_Rel)
             );
 #endif
             std::string log = "";
@@ -145,10 +145,10 @@ int main(int argc, char **argv)
                 int incorrect_part_count = 0;
                 opp_loop_all__verify(
                     part_set,
-                    opp_arg_dat(part_mesh_rel, OP_READ),
-                    opp_arg_dat(part_pos,      OP_READ),
-                    opp_arg_dat(cell_index,    OP_READ, OPP_Map_from_Mesh_Rel),
-                    opp_arg_gbl(&incorrect_part_count, 1, "int", OP_INC)
+                    opp_arg_dat(part_mesh_rel, OPP_READ),
+                    opp_arg_dat(part_pos,      OPP_READ),
+                    opp_arg_dat(cell_index,    OPP_READ, OPP_Map_from_Mesh_Rel),
+                    opp_arg_gbl(&incorrect_part_count, 1, "int", OPP_INC)
                 );
                 log += str(incorrect_part_count, "%d Errors");
             }

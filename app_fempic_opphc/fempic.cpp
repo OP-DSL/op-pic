@@ -116,69 +116,69 @@ int main(int argc, char **argv)
             opp_inject__Increase_particle_count(
                 particles_set,                                                                // inject to particles_set
                 ifaces_set,                                                                   // inlect_face_set
-                opp_arg_gbl(&(injected_count), 1, "int",   OP_RW),                          // injected total global,
-                opp_arg_dat(iface_area,                    OP_READ),                        // iface_area,
-                opp_arg_dat(iface_inj_part_dist,           OP_WRITE, OPP_Map_to_Mesh_Rel),  // iface_inj_part_dist,
-                opp_arg_gbl(&(remainder),     1, "double", OP_RW)                           // remainder global,
+                opp_arg_gbl(&(injected_count), 1, "int",   OPP_RW),                          // injected total global,
+                opp_arg_dat(iface_area,                    OPP_READ),                        // iface_area,
+                opp_arg_dat(iface_inj_part_dist,           OPP_WRITE, OPP_Map_to_Mesh_Rel),  // iface_inj_part_dist,
+                opp_arg_gbl(&(remainder),     1, "double", OPP_RW)                           // remainder global,
             );
 
             int old_nparts = particles_set->size;
             opp_par_loop_inject__InjectIons(
                 inject_ions__kernel, "inject_ions__kernel",
-                particles_set, OP_ITERATE_INJECTED,                                                          // particles_set
-                opp_arg_dat(part_position,                             OP_WRITE),                          // part_position,
-                opp_arg_dat(part_velocity,                             OP_WRITE),                          // part_velocity,
-                opp_arg_dat(part_mesh_relation,                        OP_RW),                             // part_cell_connectivity,
-                opp_arg_dat(iface_to_cell_map,                         OP_READ, OPP_Map_from_Mesh_Rel),    // iface to cell map
-                opp_arg_dat(cell_electric_field, 0, iface_to_cell_map, OP_READ, OPP_Map_from_Mesh_Rel),    // cell_ef,
-                opp_arg_dat(iface_u_normal,                            OP_READ, OPP_Map_from_Mesh_Rel),    // iface_u,
-                opp_arg_dat(iface_v_normal,                            OP_READ, OPP_Map_from_Mesh_Rel),    // iface_v,
-                opp_arg_dat(iface_normal,                              OP_READ, OPP_Map_from_Mesh_Rel),    // iface_normal,
-                opp_arg_dat(iface_node_pos,                            OP_READ, OPP_Map_from_Mesh_Rel),    // iface_node_pos
-                opp_arg_dat(dum_part_random,                           OP_READ, OPP_Map_from_Inj_part)     // dum_part_random
+                particles_set, OPP_ITERATE_INJECTED,                                                          // particles_set
+                opp_arg_dat(part_position,                             OPP_WRITE),                          // part_position,
+                opp_arg_dat(part_velocity,                             OPP_WRITE),                          // part_velocity,
+                opp_arg_dat(part_mesh_relation,                        OPP_RW),                             // part_cell_connectivity,
+                opp_arg_dat(iface_to_cell_map,                         OPP_READ, OPP_Map_from_Mesh_Rel),    // iface to cell map
+                opp_arg_dat(cell_electric_field, 0, iface_to_cell_map, OPP_READ, OPP_Map_from_Mesh_Rel),    // cell_ef,
+                opp_arg_dat(iface_u_normal,                            OPP_READ, OPP_Map_from_Mesh_Rel),    // iface_u,
+                opp_arg_dat(iface_v_normal,                            OPP_READ, OPP_Map_from_Mesh_Rel),    // iface_v,
+                opp_arg_dat(iface_normal,                              OPP_READ, OPP_Map_from_Mesh_Rel),    // iface_normal,
+                opp_arg_dat(iface_node_pos,                            OPP_READ, OPP_Map_from_Mesh_Rel),    // iface_node_pos
+                opp_arg_dat(dum_part_random,                           OPP_READ, OPP_Map_from_Inj_part)     // dum_part_random
             );
 
             opp_reset_dat(node_charge_density, (char*)opp_zero_double16);
             opp_par_loop_particle_all__MoveToCells(
                 move_all_particles_to_cell__kernel, "move_all_particles_to_cell__kernel",
-                particles_set, OP_ITERATE_ALL,                                                                // particles_set
-                opp_arg_dat(cell_electric_field,                       OP_READ, OPP_Map_from_Mesh_Rel),     // cell_ef,
-                opp_arg_dat(part_position,                             OP_RW),                              // part_pos,
-                opp_arg_dat(part_velocity,                             OP_RW),                              // part_vel,
-                opp_arg_dat(part_lc,                                   OP_RW),                              // part_lc,
-                opp_arg_dat(part_mesh_relation,                        OP_RW),                              // current_cell_index,
-                opp_arg_dat(cell_volume,                               OP_READ, OPP_Map_from_Mesh_Rel),     // current_cell_volume,
-                opp_arg_dat(cell_determinants,                         OP_READ, OPP_Map_from_Mesh_Rel),     // current_cell_det,
-                opp_arg_dat(cell_to_cell_map,                          OP_READ, OPP_Map_from_Mesh_Rel),     // cell_connectivity,
-                opp_arg_dat(node_charge_density, 0, cell_to_nodes_map, OP_INC,  OPP_Map_from_Mesh_Rel),     // node_charge_den0,
-                opp_arg_dat(node_charge_density, 1, cell_to_nodes_map, OP_INC,  OPP_Map_from_Mesh_Rel),     // node_charge_den1,
-                opp_arg_dat(node_charge_density, 2, cell_to_nodes_map, OP_INC,  OPP_Map_from_Mesh_Rel),     // node_charge_den2,
-                opp_arg_dat(node_charge_density, 3, cell_to_nodes_map, OP_INC,  OPP_Map_from_Mesh_Rel)      // node_charge_den3,
+                particles_set, OPP_ITERATE_ALL,                                                                // particles_set
+                opp_arg_dat(cell_electric_field,                       OPP_READ, OPP_Map_from_Mesh_Rel),     // cell_ef,
+                opp_arg_dat(part_position,                             OPP_RW),                              // part_pos,
+                opp_arg_dat(part_velocity,                             OPP_RW),                              // part_vel,
+                opp_arg_dat(part_lc,                                   OPP_RW),                              // part_lc,
+                opp_arg_dat(part_mesh_relation,                        OPP_RW),                              // current_cell_index,
+                opp_arg_dat(cell_volume,                               OPP_READ, OPP_Map_from_Mesh_Rel),     // current_cell_volume,
+                opp_arg_dat(cell_determinants,                         OPP_READ, OPP_Map_from_Mesh_Rel),     // current_cell_det,
+                opp_arg_dat(cell_to_cell_map,                          OPP_READ, OPP_Map_from_Mesh_Rel),     // cell_connectivity,
+                opp_arg_dat(node_charge_density, 0, cell_to_nodes_map, OPP_INC,  OPP_Map_from_Mesh_Rel),     // node_charge_den0,
+                opp_arg_dat(node_charge_density, 1, cell_to_nodes_map, OPP_INC,  OPP_Map_from_Mesh_Rel),     // node_charge_den1,
+                opp_arg_dat(node_charge_density, 2, cell_to_nodes_map, OPP_INC,  OPP_Map_from_Mesh_Rel),     // node_charge_den2,
+                opp_arg_dat(node_charge_density, 3, cell_to_nodes_map, OPP_INC,  OPP_Map_from_Mesh_Rel)      // node_charge_den3,
             );
 
             opp_par_loop_all__ComputeNodeChargeDensity(
                 compute_node_charge_density__kernel, "compute_node_charge_density__kernel",
-                nodes_set, OP_ITERATE_ALL,                       // nodes_set
-                opp_arg_dat(node_charge_density,  OP_RW),      // node_charge_density
-                opp_arg_dat(node_volume,          OP_READ)     // node_volume
+                nodes_set, OPP_ITERATE_ALL,                       // nodes_set
+                opp_arg_dat(node_charge_density,  OPP_RW),      // node_charge_density
+                opp_arg_dat(node_volume,          OPP_READ)     // node_volume
             );
 
             mesh.solver->computePhi(  // TODO: Change this to kernel calls
                 mesh.fesolver_method,
-                opp_arg_dat(node_potential,      OP_WRITE),
-                opp_arg_dat(node_charge_density, OP_READ)
+                opp_arg_dat(node_potential,      OPP_WRITE),
+                opp_arg_dat(node_charge_density, OPP_READ)
             );
 
             opp_reset_dat(cell_electric_field, (char*)opp_zero_double16); 
             opp_par_loop_all__ComputeElectricField(
                 compute_electric_field__kernel, "compute_electric_field__kernel",
-                cells_set, OP_ITERATE_ALL,                                        // cells_set
-                opp_arg_dat(cell_electric_field,                  OP_INC),      // cell_electric_field,
-                opp_arg_dat(cell_shape_deriv,                     OP_READ),     // cell_shape_deriv,
-                opp_arg_dat(node_potential, 0, cell_to_nodes_map, OP_READ),     // node_potential0,
-                opp_arg_dat(node_potential, 1, cell_to_nodes_map, OP_READ),     // node_potential1,
-                opp_arg_dat(node_potential, 2, cell_to_nodes_map, OP_READ),     // node_potential2,
-                opp_arg_dat(node_potential, 3, cell_to_nodes_map, OP_READ)      // node_potential3,
+                cells_set, OPP_ITERATE_ALL,                                        // cells_set
+                opp_arg_dat(cell_electric_field,                  OPP_INC),      // cell_electric_field,
+                opp_arg_dat(cell_shape_deriv,                     OPP_READ),     // cell_shape_deriv,
+                opp_arg_dat(node_potential, 0, cell_to_nodes_map, OPP_READ),     // node_potential0,
+                opp_arg_dat(node_potential, 1, cell_to_nodes_map, OPP_READ),     // node_potential1,
+                opp_arg_dat(node_potential, 2, cell_to_nodes_map, OPP_READ),     // node_potential2,
+                opp_arg_dat(node_potential, 3, cell_to_nodes_map, OPP_READ)      // node_potential3,
             );
 
             {

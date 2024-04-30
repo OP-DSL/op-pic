@@ -37,8 +37,8 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <sys/queue.h>
 
 /** extern variables for halo creation and exchange**/
-extern MPI_Comm OP_MPI_WORLD;
-extern MPI_Comm OP_MPI_GLOBAL;
+extern MPI_Comm OPP_MPI_WORLD;
+extern MPI_Comm OPP_MPI_GLOBAL;
 
 /*******************************************************************************
 * MPI halo list data type
@@ -142,8 +142,8 @@ struct opp_part_move_info
 };
 
 /** external variables **/
-extern int OP_part_index;
-extern part *OP_part_list;
+extern int OPP_part_index;
+extern part *OPP_part_list;
 extern int **orig_part_range;
 
 /** export list on the device **/
@@ -157,14 +157,14 @@ extern int *set_import_buffer_size;
 extern int **import_exec_list_disps_d;
 extern int **import_nonexec_list_disps_d;
 
-extern halo_list *OP_export_exec_list; // EEH list
-extern halo_list *OP_import_exec_list; // IEH list
+extern halo_list *OPP_export_exec_list; // EEH list
+extern halo_list *OPP_import_exec_list; // IEH list
 
-extern halo_list *OP_import_nonexec_list; // INH list
-extern halo_list *OP_export_nonexec_list; // ENH list
+extern halo_list *OPP_import_nonexec_list; // INH list
+extern halo_list *OPP_export_nonexec_list; // ENH list
 
-extern int OP_part_index;
-extern part *OP_part_list;
+extern int OPP_part_index;
+extern part *OPP_part_list;
 extern int **orig_part_range;
 
 extern std::map<opp_set, std::map<int, opp_particle_comm_data>> opp_part_comm_neighbour_data; 
@@ -193,8 +193,8 @@ typedef struct
     MPI_Request **requests;
     MPI_Status **statuses;
 
-    char *OP_global_buffer;
-    int OP_global_buffer_size;
+    char *OPP_global_buffer;
+    int OPP_global_buffer_size;
 
     int gbl_num_ifaces;
     int *gbl_iface_list;
@@ -473,7 +473,20 @@ void opp_part_exchange(opp_set set);
 bool opp_part_check_all_done(opp_set set);
 void opp_part_wait_all(opp_set set);
 void opp_part_comm_destroy();
-void opp_part_mark_move(opp_set set, int particle_index, opp_particle_comm_data& comm_data);
+
+/******************************************************************************** 
+  * opp_part_mark_move() will add the opp_part_move_info (particle index and local index of the receiving rank)
+  * to a send rank based vector, to be directly used during particle send
+*/
+inline void opp_part_mark_move(opp_set set, int particle_index, opp_particle_comm_data& comm_data)
+{
+    // if (OPP_DBG) 
+    //     opp_printf("opp_part_mark_move", "commIter[%d] part_id[%d] send_rank[%d] foreign_rank_index[%d]", 
+    //         OPP_comm_iteration, particle_index, comm_data.cell_residing_rank, comm_data.local_index);
+
+    std::vector<opp_part_move_info>& vec = opp_part_move_indices[set->index][comm_data.cell_residing_rank];
+    vec.emplace_back(particle_index, comm_data.local_index);
+}
 
 // returns true, if the current particle needs to be removed from the rank
 bool opp_part_checkForGlobalMove(opp_set set, const opp_point& point, const int partIndex, int& cellIdx);

@@ -56,8 +56,8 @@ void opp_init_double_indirect_reductions(int nargs, opp_arg *args)
                 char* reset_values = nullptr;
                 switch (args[n].acc)
                 {
-                    case OP_INC:
-                    case OP_MAX:
+                    case OPP_INC:
+                    case OPP_MAX:
                         if (strcmp(args[n].dat->type, "double") == 0)
                             reset_values = (char*)opp_zero_double16;
                         else if (strcmp(args[n].dat->type, "int") == 0)
@@ -107,9 +107,9 @@ void opp_exchange_double_indirect_reductions(int nargs, opp_arg *args)
                 opp_reduc_comm reduc_comm = OPP_Reduc_NO_Comm;
                 switch (args[n].acc)
                 {
-                    case OP_INC: reduc_comm = OPP_Reduc_SUM_Comm; break;
-                    case OP_MAX: reduc_comm = OPP_Reduc_MAX_Comm; break;
-                    case OP_MIN: reduc_comm = OPP_Reduc_MIN_Comm; break;
+                    case OPP_INC: reduc_comm = OPP_Reduc_SUM_Comm; break;
+                    case OPP_MAX: reduc_comm = OPP_Reduc_MAX_Comm; break;
+                    case OPP_MIN: reduc_comm = OPP_Reduc_MIN_Comm; break;
                 }
 
                 opp_exchange_double_indirect_reductions(args[n].dat, reduc_comm);
@@ -125,8 +125,8 @@ void opp_exchange_double_indirect_reductions(opp_dat dat, opp_reduc_comm reduc_c
 {
     if (OPP_DBG) opp_printf("opp_exchange_double_indirect_reductions", "START dat %s", dat->name);
 
-    halo_list imp_nonexec_list = OP_import_nonexec_list[dat->set->index];
-    halo_list exp_nonexec_list = OP_export_nonexec_list[dat->set->index];
+    halo_list imp_nonexec_list = OPP_import_nonexec_list[dat->set->index];
+    halo_list exp_nonexec_list = OPP_export_nonexec_list[dat->set->index];
     op_mpi_buffer reduc_buf    = (op_mpi_buffer)(dat->mpi_reduc_buffer);
 
     opp_profiler->startMpiComm("", opp::OPP_Mesh);
@@ -144,7 +144,7 @@ void opp_exchange_double_indirect_reductions(opp_dat dat, opp_reduc_comm reduc_c
 
         if (OPP_DBG) opp_printf("opp_exchange_double_indirect_reductions", "SEND SIZE %zu bytes", send_size);
 
-        MPI_Isend(send_buf, send_size, MPI_CHAR, send_rank, dat->index, OP_MPI_WORLD, req);
+        MPI_Isend(send_buf, send_size, MPI_CHAR, send_rank, dat->index, OPP_MPI_WORLD, req);
 
         total_send_size += (send_size * 1.0f);
     }
@@ -161,7 +161,7 @@ void opp_exchange_double_indirect_reductions(opp_dat dat, opp_reduc_comm reduc_c
 
         if (OPP_DBG) opp_printf("opp_exchange_double_indirect_reductions", "RECEIVE SIZE %zu bytes", recv_size);
 
-        MPI_Irecv(recv_buf, recv_size, MPI_CHAR, recv_rank, dat->index, OP_MPI_WORLD, req);
+        MPI_Irecv(recv_buf, recv_size, MPI_CHAR, recv_rank, dat->index, OPP_MPI_WORLD, req);
     }
 
     dat->reduc_comm = reduc_comm;
@@ -222,7 +222,7 @@ void opp_complete_double_indirect_reductions(opp_dat dat)
     reduc_buf->s_num_req = 0;
     reduc_buf->r_num_req = 0;
 
-    halo_list exp_nonexec_list = OP_export_nonexec_list[dat->set->index];
+    halo_list exp_nonexec_list = OPP_export_nonexec_list[dat->set->index];
 
     opp_reduc_comm reduc_comm = dat->reduc_comm;
     int dim = dat->dim;

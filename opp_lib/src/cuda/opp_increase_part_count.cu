@@ -77,7 +77,7 @@ void opp_inc_part_count_with_distribution(opp_set particles_set,
 
     // int nargs = 1;
     // opp_arg args[nargs];
-    // args[0] = opp_arg_dat(mesh_rel_dat, OP_READ);
+    // args[0] = opp_arg_dat(mesh_rel_dat, OPP_READ);
 
     // int set_size = opp_mpi_halo_exchanges_grouped(particles_set, nargs, args, Device_CPU);
 
@@ -89,8 +89,8 @@ void opp_inc_part_count_with_distribution(opp_set particles_set,
     opp_arg args1[nargs1];
 
     // if iface particle distribution is dirty in device, get it to the device
-    args1[0] = opp_arg_dat(iface_dist, OP_READ);
-    args1[1] = opp_arg_dat(mesh_rel_dat, OP_WRITE);
+    args1[0] = opp_arg_dat(iface_dist, OPP_READ);
+    args1[1] = opp_arg_dat(mesh_rel_dat, OPP_WRITE);
 
     int set_size = opp_mpi_halo_exchanges_grouped(particles_set, nargs1, args1, Device_GPU);
     opp_mpi_halo_wait_all(nargs1, args1);
