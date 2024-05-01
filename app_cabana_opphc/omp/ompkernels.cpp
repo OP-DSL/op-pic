@@ -123,15 +123,13 @@ void opp_loop_all__interpolate_mesh_fields(
 
 //*************************************************************************************************
 void opp_particle_move__move_deposit(
-    opp_set set,        // particles_set
-    opp_arg arg0,       // part_cid           // OPP_RW
-    opp_arg arg1,       // part_vel           // OPP_RW
-    opp_arg arg2,       // part_pos           // OPP_RW
-    opp_arg arg3,       // part_streak_mid    // OPP_RW
-    opp_arg arg4,       // part_weight        // OPP_READ
-    opp_arg arg5,       // cell_inter         // OPP_READ
-    opp_arg arg6,       // cell_acc           // OPP_INC
-    opp_arg arg7        // cell_cell_map      // OPP_READ
+    opp_set set, opp_map c2c_map, opp_dat p2c_map,
+    opp_arg arg0,       // part_vel           // OPP_RW
+    opp_arg arg1,       // part_pos           // OPP_RW
+    opp_arg arg2,       // part_streak_mid    // OPP_RW
+    opp_arg arg3,       // part_weight        // OPP_READ
+    opp_arg arg4,       // cell_inter         // OPP_READ
+    opp_arg arg5        // cell_acc           // OPP_INC
 )
 {
 
@@ -142,9 +140,10 @@ void opp_particle_move__move_deposit(
 
     opp_init_particle_move(set, 0, nullptr);
 
-    opp_create_thread_level_data<OPP_REAL>(arg6, 0.0);
+    opp_create_thread_level_data<OPP_REAL>(arg5, 0.0);
 
     const int nthreads = omp_get_max_threads();
+    const int c2c_dim   = c2c_map->dim;
 
     #pragma omp parallel for
     for (int thr = 0; thr < nthreads; thr++)
@@ -152,36 +151,35 @@ void opp_particle_move__move_deposit(
         const size_t start  = ((size_t)set->size * thr) / nthreads;
         const size_t finish = ((size_t)set->size * (thr+1)) / nthreads;
 
-        char* arg6_dat_thread_data = (*(arg6.dat->thread_data))[thr]; // checked, all values are zero
-        int* cellIdx = nullptr;
+        char* arg5_dat_thread_data = (*(arg5.dat->thread_data))[thr]; // checked, all values are zero       
         char move_flag = OPPX_MOVE_DONE;
         bool iter_one_flag = true;
 
         for (size_t n = start; n < finish; n++)
         { 
             iter_one_flag = true;
+            OPP_INT *opp_thr_c2c = nullptr, *opp_thr_p2c = nullptr;
 
             do
             {
                 move_flag = OPPX_MOVE_DONE;
-                cellIdx = &(OPP_mesh_relation_data[n]);
+                opp_thr_p2c = &((OPP_INT*) p2c_map->data)[n];   // TODO : remove OPP_INT* after making this into a map
+                opp_thr_c2c = &(c2c_map->map)[*opp_thr_p2c * c2c_dim];
 
-                push_particles_kernel_omp(move_flag, iter_one_flag,
-                    &((int*)arg0.data)[n * arg0.dim],                       // part_cid 
-                    &((double*)arg1.data)[n * arg1.dim],                    // part_vel 
-                    &((double*)arg2.data)[n * arg2.dim],                    // part_pos 
-                    &((double*)arg3.data)[n * arg3.dim],                    // part_streak_mid 
-                    &((double*)arg4.data)[n * arg4.dim],                    // part_weight 
-                    &((double*)arg5.data)[*cellIdx * arg5.dim],             // cell_interp 
-                    &((double*)arg6_dat_thread_data)[*cellIdx * arg6.dim],  // cell_acc
-                    &((int*)   arg7.data)[*cellIdx * arg7.dim]              // cell_cell_map
+                push_particles_kernel_omp(move_flag, iter_one_flag, opp_thr_c2c, opp_thr_p2c,
+                    &((double*)arg0.data)[n * arg0.dim],                    // part_vel 
+                    &((double*)arg1.data)[n * arg1.dim],                    // part_pos 
+                    &((double*)arg2.data)[n * arg2.dim],                    // part_streak_mid 
+                    &((double*)arg3.data)[n * arg3.dim],                    // part_weight 
+                    &((double*)arg4.data)[*opp_thr_p2c * arg4.dim],             // cell_interp 
+                    &((double*)arg5_dat_thread_data)[*opp_thr_p2c * arg5.dim]   // cell_acc
                 );
 
-            } while (opp_check_part_move_status(move_flag, iter_one_flag, *cellIdx, n, thr)); 
+            } while (opp_check_part_move_status(move_flag, iter_one_flag, *opp_thr_p2c, n, thr)); 
         }
     }
 
-    opp_reduce_thread_level_data<OPP_REAL>(arg6);
+    opp_reduce_thread_level_data<OPP_REAL>(arg5);
 
     opp_finalize_particle_move(set);
 

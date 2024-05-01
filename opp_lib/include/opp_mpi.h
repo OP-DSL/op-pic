@@ -69,6 +69,8 @@ enum oppx_move_status : char
 
 extern char opp_move_status_flag;
 extern bool opp_move_hop_iter_one_flag;
+extern OPP_INT* opp_p2c;
+extern OPP_INT* opp_c2c;
 
 #define OPP_PARTICLE_MOVE_DONE { opp_move_status_flag = OPPX_MOVE_DONE; }
 #define OPP_PARTICLE_NEED_MOVE { opp_move_status_flag = OPPX_NEED_MOVE; }

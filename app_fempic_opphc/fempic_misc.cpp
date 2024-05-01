@@ -38,10 +38,10 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #define PRECISION 12
 
 //*************************************************************************************************
-inline int InitializeInjectDistributions(opp_dat if_dist_dat, opp_dat if_area_dat, 
+inline int init_inject_distributions(opp_dat if_dist_dat, opp_dat if_area_dat, 
                                         opp_dat dummy_random)
 {
-    if (OPP_DBG) opp_printf("InitializeInjectDistributions", "START");
+    if (OPP_DBG) opp_printf("init_inject_distributions", "START");
 
     double plasma_den   = opp_params->get<OPP_REAL>("plasma_den");
     double dt           = opp_params->get<OPP_REAL>("dt");
@@ -72,7 +72,7 @@ inline int InitializeInjectDistributions(opp_dat if_dist_dat, opp_dat if_area_da
     }
 
     if (OPP_DBG)
-        opp_printf("InitializeInjectDistributions", "RAND_FILE inj_count %d max_inj_count_per_face %d", 
+        opp_printf("init_inject_distributions", "RAND_FILE inj_count %d max_inj_count_per_face %d", 
             total_inject_count, max_inject_count_per_face);  
             
     // increase dummy random particle set size, to load the random numbers for particle injections
@@ -87,14 +87,14 @@ inline int InitializeInjectDistributions(opp_dat if_dist_dat, opp_dat if_area_da
     {       
         if ((fp = fopen(rand_file_path.c_str(), "r")) == NULL)
         {
-            opp_printf("InitializeInjectDistributions", "Unable to open file %s\n", 
+            opp_printf("init_inject_distributions", "Unable to open file %s\n", 
                 rand_file_path.c_str());
             opp_abort();
         }
 
         if (fscanf(fp, "%d %d\n", &fsize, &fdim) != 2)
         {
-            opp_printf("InitializeInjectDistributions", "Error reading file data from %s\n", 
+            opp_printf("init_inject_distributions", "Error reading file data from %s\n", 
                 rand_file_path.c_str());
             opp_abort();
         }
@@ -103,7 +103,7 @@ inline int InitializeInjectDistributions(opp_dat if_dist_dat, opp_dat if_area_da
 
         if (max_inject_count_per_face * dummy_random->dim > total_size)
         {
-            opp_printf("InitializeInjectDistributions", "dim and/or set_size issue in file %s\n", 
+            opp_printf("init_inject_distributions", "dim and/or set_size issue in file %s\n", 
                 rand_file_path.c_str());
             opp_abort();     
         }
@@ -122,7 +122,7 @@ inline int InitializeInjectDistributions(opp_dat if_dist_dat, opp_dat if_area_da
         {
             if (fscanf(fp, " %lf %lf\n", &dist[n * 2 + 0], &dist[n * 2 + 1]) != 2) 
             {
-                opp_printf("InitializeInjectDistributions", "Error reading from %s at index %d\n", 
+                opp_printf("init_inject_distributions", "Error reading from %s at index %d\n", 
                     rand_file_path.c_str(), n);
                 opp_abort();
             }
@@ -164,7 +164,7 @@ inline int InitializeInjectDistributions(opp_dat if_dist_dat, opp_dat if_area_da
     dummy_random->dirty_hd = Dirty::Device; // To make GPU versions to download updated data!
     if_dist_dat->dirty_hd = Dirty::Device; // To make GPU versions to download updated data!
     
-    if (OPP_DBG) opp_printf("InitializeInjectDistributions", "total_inject_count %d", total_inject_count);
+    if (OPP_DBG) opp_printf("init_inject_distributions", "total_inject_count %d", total_inject_count);
 
     return total_inject_count;
 }

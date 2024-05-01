@@ -37,7 +37,6 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "opp_seq.h"
 #include "../cabana_defs.h"
 
-OPP_INT CONST_c_per_dim[DIM];
 OPP_REAL CONST_dt;
 OPP_REAL CONST_qsp;
 OPP_REAL CONST_cdt_d[DIM];
@@ -49,8 +48,7 @@ OPP_REAL CONST_acc_coef[DIM];
 //****************************************
 void opp_decl_const_impl(int dim, int size, char* data, const char* name)
 {
-    if (!strcmp(name,"CONST_c_per_dim"))     std::memcpy(CONST_c_per_dim, data, (size*dim));
-    else if (!strcmp(name,"CONST_dt"))       std::memcpy(&CONST_dt, data, (size*dim));
+    if (!strcmp(name,"CONST_dt"))            std::memcpy(&CONST_dt, data, (size*dim));
     else if (!strcmp(name,"CONST_qsp"))      std::memcpy(&CONST_qsp, data, (size*dim));
     else if (!strcmp(name,"CONST_cdt_d"))    std::memcpy(&CONST_cdt_d, data, (size*dim));
     else if (!strcmp(name,"CONST_p"))        std::memcpy(&CONST_p, data, (size*dim));
@@ -83,7 +81,6 @@ void opp_loop_all__interpolate_mesh_fields(
     opp_arg arg12       // cell0_ghost     // OPP_READ
 )
 {
-
     if (OPP_DBG) opp_printf("CABANA", "opp_loop_all__interpolate_mesh_fields set_size %d", set->size);
 
     opp_profiler->start("Interpolate");
@@ -121,21 +118,17 @@ void opp_loop_all__interpolate_mesh_fields(
     opp_profiler->end("Interpolate");
 }
 
-
 //*************************************************************************************************
 void opp_particle_move__move_deposit(
-    opp_set set,        // particles_set
-    opp_arg arg0,       // part_cid           // OPP_RW
-    opp_arg arg1,       // part_vel           // OPP_RW
-    opp_arg arg2,       // part_pos           // OPP_RW
-    opp_arg arg3,       // part_streak_mid    // OPP_RW
-    opp_arg arg4,       // part_weight        // OPP_READ
-    opp_arg arg5,       // cell_inter         // OPP_READ
-    opp_arg arg6,       // cell_acc           // OPP_INC
-    opp_arg arg7        // cell_cell_map      // OPP_READ
+    opp_set set, opp_map c2c_map, opp_dat p2c_map,
+    opp_arg arg0,       // part_vel           // OPP_RW
+    opp_arg arg1,       // part_pos           // OPP_RW
+    opp_arg arg2,       // part_streak_mid    // OPP_RW
+    opp_arg arg3,       // part_weight        // OPP_READ
+    opp_arg arg4,       // cell_inter         // OPP_READ
+    opp_arg arg5        // cell_acc           // OPP_INC
 )
 {
-
     if (OPP_DBG) 
         opp_printf("CABANA", "opp_particle_move__move_deposit set_size %d diff %d", set->size, set->diff);
 
@@ -143,37 +136,36 @@ void opp_particle_move__move_deposit(
 
     opp_init_particle_move(set, 0, nullptr);
 
-    OPP_INT* cellIdx = nullptr;
-    max_int_hops = 0;
+    // max_int_hops = 0;
+    const int c2c_dim   = c2c_map->dim;
 
     const int set_size = set->size;
     for (int n = 0; n < set_size; n++)
     {
-        int_hops = -1;
+        // int_hops = -1;
         OPP_MOVE_RESET_FLAGS;
         
         do
         {
-            cellIdx = &(OPP_mesh_relation_data[n]);
-            int_hops++;
+            opp_p2c = &((OPP_INT*) p2c_map->data)[n];   // TODO : remove OPP_INT* after making this into a map
+            opp_c2c = &(c2c_map->map)[*opp_p2c * c2c_dim];
+            // int_hops++;
 
             push_particles_kernel(
-                &((OPP_INT*)        arg0.data)[n * arg0.dim],        // part_cid 
-                &((OPP_REAL*)       arg1.data)[n * arg1.dim],        // part_vel 
-                &((OPP_REAL*)       arg2.data)[n * arg2.dim],        // part_pos 
-                &((OPP_REAL*)       arg3.data)[n * arg3.dim],        // part_streak_mid 
-                &((const OPP_REAL*) arg4.data)[n * arg4.dim],        // part_weight 
-                &((const OPP_REAL*) arg5.data)[*cellIdx * arg5.dim], // cell_interp 
-                &((OPP_REAL*)       arg6.data)[*cellIdx * arg6.dim], // cell_acc
-                &((const OPP_INT*)  arg7.data)[*cellIdx * arg7.dim]  // cell_cell_map
+                &((OPP_REAL*)       arg0.data)[n * arg0.dim],        // part_vel 
+                &((OPP_REAL*)       arg1.data)[n * arg1.dim],        // part_pos 
+                &((OPP_REAL*)       arg2.data)[n * arg2.dim],        // part_streak_mid 
+                &((const OPP_REAL*) arg3.data)[n * arg3.dim],        // part_weight 
+                &((const OPP_REAL*) arg4.data)[*opp_p2c * arg4.dim], // cell_interp 
+                &((OPP_REAL*)       arg5.data)[*opp_p2c * arg5.dim]  // cell_acc
             );
 
-        } while (opp_check_part_move_status(*cellIdx, n, set->particle_remove_count)); 
+        } while (opp_check_part_move_status(*opp_p2c, n, set->particle_remove_count)); 
     
-        max_int_hops = (max_int_hops > int_hops ? max_int_hops : int_hops );  
+        // max_int_hops = (max_int_hops > int_hops ? max_int_hops : int_hops );  
     }
 
-    printf("MOVE Max hops %d ", max_int_hops);
+    // opp_printf("move_deposit", "Max hops %d ", max_int_hops);
 
     opp_finalize_particle_move(set);
 

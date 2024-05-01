@@ -41,11 +41,6 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
     #include <petscksp.h>
 #endif
 
-#define opp_set opp_set
-#define opp_map opp_map
-#define opp_dat opp_dat
-#define opp_arg opp_arg
-
 //*************************************************************************************************
 
 #ifdef DEBUG_LOG
@@ -187,8 +182,9 @@ typedef int opp_arg_type;     /* holds OPP_ARG_GBL, OPP_ARG_DAT, OPP_ARG_MAP */
 
 struct opp_arg {
     int index;                  /* index */
-    opp_dat dat;              /* dataset */
-    opp_map map;              /* indirect mapping */
+    opp_dat dat;                /* dataset */
+    opp_map map;                /* indirect mapping */
+    opp_dat p2c_map;            /* double indirect mapping - used for only particles */
     int dim;                    /* dimension of data */
     int idx;                    /* size (for sequential execution) */
     int size;                   /* size (for sequential execution) */
@@ -281,11 +277,13 @@ opp_map opp_decl_map_core(opp_set from, opp_set to, int dim, int *imap, char con
 
 opp_dat opp_decl_dat_core(opp_set set, int dim, char const *type, int size, char *data, char const *name);
 
-opp_arg opp_arg_dat_core(opp_dat dat, int idx, opp_map map, int dim, const char *typ, opp_access acc, opp_mapping mapping = OPP_Map_Default);
-opp_arg opp_arg_dat_core(opp_dat dat, int idx, opp_map map, opp_access acc, opp_mapping mapping = OPP_Map_Default);
-opp_arg opp_arg_dat_core(opp_dat dat, opp_access acc, opp_mapping mapping = OPP_Map_Default);
-opp_arg opp_arg_dat_core(opp_map data_map, opp_access acc, opp_mapping mapping = OPP_Map_Default);
-opp_arg opp_arg_dat_core(opp_map data_map, int idx, opp_map map, opp_access acc, opp_mapping mapping = OPP_Map_Default);
+opp_arg opp_arg_dat_core(opp_dat dat, int idx, opp_map map, int dim, const char *typ, opp_dat p2c_map, opp_access acc);
+// opp_arg opp_arg_dat_core(opp_dat dat, int idx, opp_map map, opp_dat p2c_map, opp_access acc);
+// opp_arg opp_arg_dat_core(opp_dat dat, int idx, opp_map map, opp_access acc);
+// opp_arg opp_arg_dat_core(opp_dat dat, opp_dat p2c_map, opp_access acc);
+// opp_arg opp_arg_dat_core(opp_dat dat, opp_access acc);
+// opp_arg opp_arg_dat_core(opp_map data_map, opp_access acc);
+opp_arg opp_arg_dat_core(opp_map data_map, int idx, opp_map map, opp_dat p2c_map, opp_access acc);
 
 // template <class T> opp_arg opp_arg_gbl(T *data, int dim, char const *typ, opp_access acc);
 opp_arg opp_arg_gbl_core(double *data, int dim, char const *typ, opp_access acc);

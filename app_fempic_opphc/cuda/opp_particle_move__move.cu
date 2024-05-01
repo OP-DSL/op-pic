@@ -34,7 +34,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //*********************************************
 
 //*******************************************************************************
-void initializeParticleMover(const double gridSpacing, int dim, const opp_dat node_pos_dat, 
+void init_particle_mover(const double gridSpacing, int dim, const opp_dat node_pos_dat, 
     const opp_dat cellVolume_dat, const opp_dat cellDet_dat, const opp_dat global_cell_id_dat) {
     
     opp_profiler->start("SetupMover");

@@ -34,9 +34,9 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //*********************************************
 
 //*******************************************************************************
-inline void getCellIndexKernel_omp(char& opp_move_flag, const bool iter_one_flag,
-    const double *point_pos, int* current_cell_index,  double* point_lc, const double *cell_volume, 
-    const double *cell_det, const int *cell_connectivity) { 
+inline void getCellIndexKernel_omp(
+    char& opp_move_flag, const bool iter_one_flag, const OPP_INT* opp_thr_c2c, OPP_INT* opp_thr_p2c, // added by code-gen
+    const double *point_pos, double* point_lc, const double *cell_volume, const double *cell_det) { 
     
     bool inside;
 
@@ -64,12 +64,12 @@ inline void getCellIndexKernel_omp(char& opp_move_flag, const bool iter_one_flag
         }
     }
 
-    if (cell_connectivity[min_i] >= 0) { // is there a neighbor in this direction?
-        (*current_cell_index) = cell_connectivity[min_i];
+    if (opp_thr_c2c[min_i] >= 0) { // is there a neighbor in this direction?
+        (*opp_thr_p2c) = opp_thr_c2c[min_i];
         opp_move_flag = OPP_NEED_MOVE;
     }
     else {
-        (*current_cell_index) = MAX_CELL_INDEX;
+        (*opp_thr_p2c) = MAX_CELL_INDEX;
         opp_move_flag = OPP_NEED_REMOVE;
     }
 }

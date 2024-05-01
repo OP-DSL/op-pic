@@ -509,7 +509,7 @@ inline void generateStructMeshToGlobalCellMappings(opp_set cells_set, const opp_
 }
 
 //*******************************************************************************
-void initializeParticleMover(const double gridSpacing, int dim, const opp_dat node_pos_dat, 
+void init_particle_mover(const double gridSpacing, int dim, const opp_dat node_pos_dat, 
     const opp_dat cellVolume_dat, const opp_dat cellDet_dat, const opp_dat global_cell_id_dat) {
     
     opp_profiler->start("SetupMover");
@@ -539,13 +539,11 @@ void initializeParticleMover(const double gridSpacing, int dim, const opp_dat no
 
 //*******************************************************************************
 void opp_particle_move__move(
-    opp_set set,  // particle_set,
+    opp_set set, opp_map c2c_map, opp_dat p2c_map,
     opp_arg arg0, // part_position,   
-    opp_arg arg1, // part_mesh_rel,   
-    opp_arg arg2, // part_lc,         
-    opp_arg arg3, // cell_volume,     
-    opp_arg arg4, // cell_det,        
-    opp_arg arg5  // cell_v_cell_map
+    opp_arg arg1, // part_lc,       
+    opp_arg arg2, // cell_volume, 
+    opp_arg arg3  // cell_det,    
 ) 
 {
     if (FP_DEBUG) opp_printf("FEMPIC", "move set_size %d diff %d", 
@@ -553,42 +551,42 @@ void opp_particle_move__move(
 
     opp_profiler->start("Move");
 
-    const int nargs = 6;
+    const int nargs = 5;
     opp_arg args[nargs];
 
     args[0] = arg0;
     args[1] = arg1;
     args[2] = arg2;
     args[3] = arg3;
-    args[4] = arg4;
-    args[5] = arg5;
+    args[4] = opp_arg_dat(p2c_map, OPP_RW); // required to make dirty
 
     const int args0_dim = args[0].dim;
+    const int args1_dim = args[1].dim;
     const int args2_dim = args[2].dim;
-    const int args4_dim = args[4].dim;
-    const int args5_dim = args[5].dim;
+    const int args3_dim = args[3].dim;
+    const int c2c_dim   = c2c_map->dim;
 
     // lambda function for multi hop particle movement
     auto multihop_mover = [&](const int i) {
 
-        OPP_INT& cellIdx = ((OPP_INT*)args[1].data)[i];
+        opp_p2c = &((OPP_INT*) p2c_map->data)[i];   // TODO : remove OPP_INT* after making this into a map
 
-        if (cellIdx == MAX_CELL_INDEX) {
+        if (*opp_p2c == MAX_CELL_INDEX) {
             return;
         }
 
         OPP_MOVE_RESET_FLAGS;
 
-        do {
+        do {        
+            opp_c2c = &(c2c_map->map)[*opp_p2c * c2c_dim];
+            
             getCellIndexKernel(
                 &((const OPP_REAL*) args[0].data)[i * args0_dim], 
-                &((OPP_INT*)        args[1].data)[i],
-                &((OPP_REAL*)       args[2].data)[i * args2_dim],
-                &((const OPP_REAL*) args[3].data)[cellIdx], 
-                &((const OPP_REAL*) args[4].data)[cellIdx * args4_dim],   // 16 -> cellDet_dat->dim
-                &((const OPP_INT*)  args[5].data)[cellIdx * args5_dim]);   // 4 -> cellConnectivity_map->dim
+                &((OPP_REAL*)       args[1].data)[i * args1_dim],
+                &((const OPP_REAL*) args[2].data)[*opp_p2c * args2_dim], 
+                &((const OPP_REAL*) args[3].data)[*opp_p2c * args3_dim]);
 
-        } while (opp_check_part_move_status(cellIdx, i, set->particle_remove_count));
+        } while (opp_check_part_move_status(*opp_p2c, i, set->particle_remove_count));
     };
 
     // ----------------------------------------------------------------------------
@@ -603,11 +601,11 @@ void opp_particle_move__move(
         const int end = OPP_iter_end;
         for (int i = start; i < end; i++) {   
             
-            OPP_INT* cellIdx = &((OPP_INT*)args[1].data)[i];
+            opp_p2c = &((OPP_INT*) p2c_map->data)[i];   // TODO : remove OPP_INT* after making this into a map
             const opp_point* point = (const opp_point*)&(((OPP_REAL*)args[0].data)[i * args[0].dim]);
 
             // check for global move, and if satisfy global move criteria, then remove the particle from current rank
-            if (opp_part_checkForGlobalMove(set, *point, i, *cellIdx)) {
+            if (opp_part_checkForGlobalMove(set, *point, i, *opp_p2c)) {
                 
                 set->particle_remove_count++;
             }

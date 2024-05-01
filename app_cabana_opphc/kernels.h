@@ -140,14 +140,12 @@ inline void weight_current_to_accumulator_kernel(
 
 //*************************************************************************************************
 inline void push_particles_kernel(
-    OPP_INT* part_cid, 
     OPP_REAL* part_vel, 
     OPP_REAL* part_pos, 
     OPP_REAL* part_streak_mid, 
     const OPP_REAL* part_weight, 
     const OPP_REAL* cell_interp, 
-    OPP_REAL* cell_acc,
-    const OPP_INT* cell_cell_map)
+    OPP_REAL* cell_acc)
 {
     if (OPP_DO_ONCE)
     {
@@ -342,7 +340,7 @@ inline void push_particles_kernel(
         face = axis;
         if( v0>0 ) face += 3;
         
-        part_cid[0] =  cell_cell_map[face];
+        (*opp_p2c) =  opp_c2c[face];
 
         // TODO: this conditional/branching could be better
         if (axis == 0) { part_pos[Dim::x] = -v0; /* printf("0\n"); */ }

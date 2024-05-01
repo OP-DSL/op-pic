@@ -384,10 +384,9 @@ inline void isPointInCellKernel(bool& inside, const double *point_pos, double* p
 }
 
 //*******************************************************************************
-inline void getCellIndexKernel(const double *point_pos, int* current_cell_index,
-    double* point_lc, const double *cell_volume, const double *cell_det, const int *cell_connectivity) { 
-    
-    
+inline void getCellIndexKernel(const double *point_pos, double* point_lc, 
+                              const double *cell_volume, const double *cell_det) {
+
     const double coefficient2 = KERNEL_ONE_OVER_SIX / (*cell_volume);
 
     for (int i=0; i<KERNEL_N_PER_C; i++) { /*loop over vertices*/
@@ -438,12 +437,12 @@ inline void getCellIndexKernel(const double *point_pos, int* current_cell_index,
         }
     }
 
-    if (cell_connectivity[min_i] >= 0) { // is there a neighbor in this direction?
-        (*current_cell_index) = cell_connectivity[min_i];
+    if (opp_c2c[min_i] >= 0) { // is there a neighbor in this direction?
+        (*opp_p2c) = opp_c2c[min_i];
         OPP_PARTICLE_NEED_MOVE;
     }
     else {
-        (*current_cell_index) = MAX_CELL_INDEX;
+        (*opp_p2c) = MAX_CELL_INDEX;
         OPP_PARTICLE_NEED_REMOVE;
     }
 }

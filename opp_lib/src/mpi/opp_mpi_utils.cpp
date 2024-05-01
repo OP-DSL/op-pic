@@ -542,7 +542,7 @@ void find_neighbors_set(halo_list List, int *neighbors, int *sizes, int *ranks_s
 
 bool is_double_indirect_reduction(opp_arg& arg)
 {
-    if (arg.argtype == OPP_ARG_DAT && arg.mesh_mapping == OPP_Map_from_Mesh_Rel && 
+    if (arg.argtype == OPP_ARG_DAT && arg.p2c_map != nullptr && 
             arg.idx != -1 && arg.acc == OPP_INC)
         return true;
     

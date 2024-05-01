@@ -3,12 +3,12 @@
 module purge
 
 export OPP_COMPILER=intel
-export OPP_INSTALL_PATH=/ext-home/zl/phd/OP-PIC/opp
+export OPP_INSTALL_PATH=/home/zl/phd/OP-PIC/opp
 
-export PARMETIS_INSTALL_PATH=/ext-home/zl/libs/parmetis-4.0.3/
-export LD_LIBRARY_PATH=$PARMETIS_INSTALL_PATH/lib:$PARMETIS_INSTALL_PATH/metis/lib:/ext-home/zl/libs/metis/5.1.0/lib:$LD_LIBRARY_PATH
+export PARMETIS_INSTALL_PATH=/home/zl/libs/parmetis-4.0.3/
+export LD_LIBRARY_PATH=$PARMETIS_INSTALL_PATH/lib:$PARMETIS_INSTALL_PATH/metis/lib:/home/zl/libs/metis/5.1.0/lib:$LD_LIBRARY_PATH
 
-export HDF5_INSTALL_PATH=/opt/hdf5/1.8.18/intel/18.0/impi/2018/
+export HDF5_INSTALL_PATH=/opt/hdf5/1.8.18/intel/18.0/impi/2018
 export PATH=$HDF5_INSTALL_PATH/bin:$PATH
 export LD_LIBRARY_PATH=$HDF5_INSTALL_PATH/lib:$LD_LIBRARY_PATH
 
@@ -21,7 +21,7 @@ if [ "$(hostname)" == 'telos' ]; then
   export CUDA_VISIBLE_DEVICES=0
   echo $NV_ARCH $(hostname)
 
-  export PETSC_INSTALL_PATH=/ext-home/zl/lib_install/petsc-3.18.3-oneapi-2021.3-mpi_telos
+  export PETSC_INSTALL_PATH=/home/zl/lib_install/petsc-3.18.3-oneapi-2021.3-mpi_telos
 
 elif [ "$(hostname)" == 'kos' ]; then
   module load cuda/toolkit-10.2.89
@@ -32,17 +32,17 @@ elif [ "$(hostname)" == 'kos' ]; then
   export CUDA_VISIBLE_DEVICES=0,1
   echo $NV_ARCH $(hostname)
 
-  export PETSC_INSTALL_PATH=/ext-home/zl/lib_install/petsc-3.18.3-oneapi-2021.3-mpi_kos
+  export PETSC_INSTALL_PATH=/home/zl/lib_install/petsc-3.18.3-oneapi-2021.3-mpi_kos
 
 elif [ "$(hostname)" == 'amos' ]; then
   export ROCM_INSTALL_DIR=/opt/rocm-5.6.0
   export PATH=$ROCM_INSTALL_DIR/bin:$PATH
-  export ROCM_THRUST_DIR=/ext-home/zl/lib_install/rocThrust_rel
-  export ROCM_PRIM_DIR=/ext-home/zl/lib_install/rocPrim_rel
+  export ROCM_THRUST_DIR=/home/zl/lib_install/rocThrust_rel
+  export ROCM_PRIM_DIR=/home/zl/lib_install/rocPrim_rel
   export HIP_COMPILER=hipcc
   echo AMD $(hostname)
 
-  export PETSC_INSTALL_PATH=/ext-home/zl/lib_install/petsc-3.18.3-oneapi-2021.3-cpu-rel-amos
+  export PETSC_INSTALL_PATH=/home/zl/lib_install/petsc-3.18.3-oneapi-2021.3-cpu-rel-amos
 
 elif [ "$(hostname)" == 'demos' ]; then
   module load nvhpc/23.7
@@ -54,14 +54,14 @@ elif [ "$(hostname)" == 'demos' ]; then
   echo $NV_ARCH $(hostname)
   unset CUDA_HOME
 
-  export PETSC_INSTALL_PATH=/ext-home/zl/lib_install/petsc-3.20.5-nvhpc23.7-mpi_demos
+  export PETSC_INSTALL_PATH=/home/zl/lib_install/petsc-3.20.5-nvhpc23.7-mpi_demos
 else
   echo The machine not configured, PETSC_INSTALL_PATH and some other variables may be missing!
 fi
 
 echo "petsc lib linked is - " $PETSC_INSTALL_PATH
 
-export OPP_PATH=/ext-home/zl/phd/OP-PIC/opp_lib
+export OPP_PATH=/home/zl/phd/OP-PIC/opp_lib
 export LD_LIBRARY_PATH=$PETSC_INSTALL_PATH/lib:$LD_LIBRARY_PATH
 
 export CC_COMPILER=mpicxx

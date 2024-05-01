@@ -329,30 +329,38 @@ opp_dat opp_decl_dat_core(opp_set set, int dim, char const *type, int size, char
 }
 
 //****************************************
-opp_arg opp_arg_dat_core(opp_dat dat, int idx, opp_map map, opp_access acc, opp_mapping mapping) 
-{
-    if (dat == nullptr) 
-    { 
-        std::cerr << "dat is NULL at opp_arg_dat" << std::endl; 
-        return opp_arg(); 
-    }
+// opp_arg opp_arg_dat_core(opp_dat dat, int idx, opp_map map, opp_access acc) 
+// {
+//     if (dat == nullptr) 
+//         opp_abort("dat is NULL at opp_arg_dat 1");
     
-    return opp_arg_dat_core(dat, idx, map, dat->dim, dat->type, acc, mapping);
-}
+//     return opp_arg_dat_core(dat, idx, map, dat->dim, dat->type, nullptr, acc);
+// }
+// opp_arg opp_arg_dat_core(opp_dat dat, int idx, opp_map map, opp_dat p2c_map, opp_access acc) 
+// {
+//     if (dat == nullptr) 
+//         opp_abort("dat is NULL at opp_arg_dat 2");
+    
+//     return opp_arg_dat_core(dat, idx, map, dat->dim, dat->type, p2c_map, acc);
+// }
 
-opp_arg opp_arg_dat_core(opp_dat dat, opp_access acc, opp_mapping mapping) 
-{
-    if (dat == nullptr) 
-    { 
-        std::cerr << "dat is NULL at opp_arg_dat" << std::endl; 
-        return opp_arg(); 
-    }
+// opp_arg opp_arg_dat_core(opp_dat dat, opp_access acc) 
+// {
+//     if (dat == nullptr) 
+//         opp_abort("dat is NULL at opp_arg_dat 3");
     
-    return opp_arg_dat_core(dat, -1, NULL, dat->dim, dat->type, acc, mapping);
-}
+//     return opp_arg_dat_core(dat, -1, NULL, dat->dim, dat->type, nullptr, acc);
+// }
+// opp_arg opp_arg_dat_core(opp_dat dat, opp_dat p2c_map, opp_access acc) 
+// {
+//     if (dat == nullptr) 
+//         opp_abort("dat is NULL at opp_arg_dat 3");
+    
+//     return opp_arg_dat_core(dat, -1, NULL, dat->dim, dat->type, p2c_map, acc);
+// }
 
 opp_arg opp_arg_dat_core(opp_dat dat, int idx, opp_map map, int dim, const char *typ, 
-                                opp_access acc, opp_mapping mapping) 
+                                opp_dat p2c_map, opp_access acc) 
 {
     opp_arg arg;
     arg.index       = -1;
@@ -360,6 +368,7 @@ opp_arg opp_arg_dat_core(opp_dat dat, int idx, opp_map map, int dim, const char 
 
     arg.dat         = dat;
     arg.map         = map;
+    arg.p2c_map     = p2c_map;
     arg.dim         = dim;
     arg.idx         = idx;
     
@@ -373,25 +382,24 @@ opp_arg opp_arg_dat_core(opp_dat dat, int idx, opp_map map, int dim, const char 
     arg.acc         = acc;
     arg.opt         = 1;
     arg.sent        = 0;
-    arg.mesh_mapping= mapping;
     
     return arg;
 }
 
-opp_arg opp_arg_dat_core(opp_map data_map, opp_access acc, opp_mapping mapping)
-{
-    return opp_arg_dat_core(data_map, -1, NULL, acc, mapping);
-}
+// opp_arg opp_arg_dat_core(opp_map data_map, opp_access acc)
+// {
+//     return opp_arg_dat_core(data_map, -1, NULL, acc);
+// }
 
 // arg.map has the map, can change to mapping data map if required
-opp_arg opp_arg_dat_core(opp_map data_map, int idx, opp_map map, opp_access acc, 
-                                opp_mapping mapping)
+opp_arg opp_arg_dat_core(opp_map data_map, int idx, opp_map map, opp_dat p2c_map, opp_access acc)
 {
     opp_arg arg;
     arg.argtype     = OPP_ARG_MAP;
 
     arg.dat         = NULL;
     arg.map         = map;
+    arg.p2c_map     = p2c_map;
     arg.dim         = data_map->dim;
     arg.idx         = idx;
     

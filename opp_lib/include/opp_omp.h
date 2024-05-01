@@ -155,6 +155,9 @@ enum oppx_move_status : char
     OPPX_NEED_REMOVE,
 };
 
+extern OPP_INT* opp_p2c;
+extern OPP_INT* opp_c2c;
+
 #define OPP_PARTICLE_MOVE_DONE {  }
 #define OPP_PARTICLE_NEED_MOVE {  }
 #define OPP_PARTICLE_NEED_REMOVE {  }

@@ -36,6 +36,8 @@ int OPP_nthreads = 1;
 std::vector<int> part_remove_count_per_thr;
 std::vector<std::vector<int>> move_part_indices_per_thr;
 std::vector<opp_move_var> move_var_per_thr;
+OPP_INT* opp_p2c = nullptr;
+OPP_INT* opp_c2c = nullptr;
 
 void opp_part_pack(opp_set set);
 void opp_part_unpack(opp_set set);
@@ -166,27 +168,59 @@ opp_dat opp_decl_dat_txt(opp_set set, int dim, opp_data_type dtype, const char* 
 }
 
 //****************************************
-opp_arg opp_arg_dat(opp_dat dat, int idx, opp_map map, int dim, const char *typ, opp_access acc, opp_mapping mapping)
+opp_arg opp_arg_dat(opp_dat dat, int idx, opp_map map, int dim, const char *typ, opp_access acc)
 {
-    return opp_arg_dat_core(dat, idx, map, dim, typ, acc, mapping);
+    if (dat == nullptr) opp_abort("dat is NULL at opp_arg_dat1");
+    return opp_arg_dat_core(dat, idx, map, dat->dim, dat->type, nullptr, acc);
+}
+opp_arg opp_arg_dat(opp_dat dat, int idx, opp_map map, int dim, const char *typ, opp_dat p2c_map, opp_access acc)
+{
+    if (dat == nullptr) opp_abort("dat is NULL at opp_arg_dat2");
+    return opp_arg_dat_core(dat, idx, map, dat->dim, dat->type, p2c_map, acc);
 }
 
 //****************************************
-opp_arg opp_arg_dat(opp_dat dat, int idx, opp_map map, opp_access acc, opp_mapping mapping)
+opp_arg opp_arg_dat(opp_dat dat, int idx, opp_map map, opp_dat p2c_map, opp_access acc)
 {
-    return opp_arg_dat_core(dat, idx, map, acc, mapping);
+    if (dat == nullptr) opp_abort("dat is NULL at opp_arg_dat3");
+    return opp_arg_dat_core(dat, idx, map, dat->dim, dat->type, p2c_map, acc);
 }
-opp_arg opp_arg_dat(opp_dat dat, opp_access acc, opp_mapping mapping)
+opp_arg opp_arg_dat(opp_dat dat, int idx, opp_map map, opp_access acc)
 {
-    return opp_arg_dat_core(dat, acc, mapping);
+    if (dat == nullptr) opp_abort("dat is NULL at opp_arg_dat4");
+    return opp_arg_dat_core(dat, idx, map, dat->dim, dat->type, nullptr, acc);
 }
-opp_arg opp_arg_dat(opp_map data_map, opp_access acc, opp_mapping mapping)
+opp_arg opp_arg_dat(opp_dat dat, opp_dat p2c_map, opp_access acc)
 {
-    return opp_arg_dat_core(data_map, acc, mapping);
+    if (dat == nullptr) opp_abort("dat is NULL at opp_arg_dat5");
+    return opp_arg_dat_core(dat, -1, NULL, dat->dim, dat->type, p2c_map, acc);
 }
-opp_arg opp_arg_dat(opp_map data_map, int idx, opp_map map, opp_access acc, opp_mapping mapping)
+opp_arg opp_arg_dat(opp_dat dat, opp_access acc)
 {
-    return opp_arg_dat_core(data_map, idx, map, acc, mapping);
+    if (dat == nullptr) opp_abort("dat is NULL at opp_arg_dat6");
+    return opp_arg_dat_core(dat, -1, NULL, dat->dim, dat->type, nullptr, acc);
+}
+
+//****************************************
+opp_arg opp_arg_dat(opp_map data_map, opp_access acc)
+{
+    if (data_map == nullptr) opp_abort("dat is NULL at opp_arg_dat7");
+    return opp_arg_dat_core(data_map, -1, nullptr, nullptr, acc);
+}
+opp_arg opp_arg_dat(opp_map data_map, opp_dat p2c_map, opp_access acc)
+{
+    if (data_map == nullptr) opp_abort("dat is NULL at opp_arg_dat8");
+    return opp_arg_dat_core(data_map, -1, nullptr, p2c_map, acc);
+}
+opp_arg opp_arg_dat(opp_map data_map, int idx, opp_map map, opp_access acc)
+{
+    if (data_map == nullptr) opp_abort("dat is NULL at opp_arg_dat9");
+    return opp_arg_dat_core(data_map, idx, map, nullptr, acc);
+}
+opp_arg opp_arg_dat(opp_map data_map, int idx, opp_map map, opp_dat p2c_map, opp_access acc)
+{
+    if (data_map == nullptr) opp_abort("dat is NULL at opp_arg_dat10");
+    return opp_arg_dat_core(data_map, idx, map, p2c_map, acc);
 }
 
 

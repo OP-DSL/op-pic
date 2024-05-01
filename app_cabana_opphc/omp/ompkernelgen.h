@@ -35,15 +35,14 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 
 //*************************************************************************************************
-inline void push_particles_kernel_omp(char& opp_move_flag, const bool iter_one_flag,
-    OPP_INT* part_cid, 
+inline void push_particles_kernel_omp(
+    char& opp_move_flag, const bool iter_one_flag, const OPP_INT* opp_thr_c2c, OPP_INT* opp_thr_p2c, // added by code-gen
     OPP_REAL* part_vel, 
     OPP_REAL* part_pos, 
     OPP_REAL* part_streak_mid, 
     const OPP_REAL* part_weight, 
     const OPP_REAL* cell_interp, 
-    OPP_REAL* cell_acc,
-    const OPP_INT* cell_cell_map)
+    OPP_REAL* cell_acc)
 {
     if (iter_one_flag)
     {
@@ -238,7 +237,7 @@ inline void push_particles_kernel_omp(char& opp_move_flag, const bool iter_one_f
         face = axis;
         if( v0>0 ) face += 3;
         
-        part_cid[0] =  cell_cell_map[face];
+        (*opp_thr_p2c) =  opp_thr_c2c[face];
 
         // TODO: this conditional/branching could be better
         if (axis == 0) { part_pos[Dim::x] = -v0; /* printf("0\n"); */ }
