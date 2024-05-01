@@ -1,6 +1,4 @@
 /*==============================================================================*
- * MESHES
- *------------------------------------------------------------------------------*
  * Maintainer: Ed Higgins <ed.higgins@york.ac.uk>
  * Based on `fem-pic.cpp` by Lubos Brieda 
  * See https://www.particleincell.com/2015/fem-pic/ for more information
@@ -10,21 +8,226 @@
  * This code is distributed under the MIT license.
  *==============================================================================*/
 
+#pragma once
 
-#include <string>
-#include <iostream>
-#include <sstream>
-#include <iomanip>
-#include <map>
-#include <algorithm>
 #include <set>
 
-#include "maths.h"
-#include "particles.h"
-#include "meshes.h"
+/***************************************************************************************************
+* maths.h
+***************************************************************************************************/
 
-/*loads and initializes volume mesh*/
-bool LoadVolumeMesh(const std::string file_name, Volume &volume) { 
+/*compute inverse of a 3x3 matrix using the adjugate method*/
+inline void inverse(double M[3][3], double V[3][3]) 
+{
+
+    double a=M[0][0];
+    double b=M[0][1];
+    double c=M[0][2];
+    double d=M[1][0];
+    double e=M[1][1];
+    double f=M[1][2];
+    double g=M[2][0];
+    double h=M[2][1];
+    double i=M[2][2];
+
+    V[0][0]=(e*i-f*h);
+    V[1][0]=-(d*i-f*g);
+    V[2][0]=(d*h-e*g);
+    V[0][1]=-(b*i-c*h);
+    V[1][1]=(a*i-c*g);
+    V[2][1]=-(a*h-b*g);
+    V[0][2]=(b*f-c*e);
+    V[1][2]=-(a*f-c*d);
+    V[2][2]=(a*e-b*d);
+    double det = a*V[0][0]+b*V[1][0]+c*V[2][0];
+
+    double Vmax = 0;
+    for (int m=0;  m<3; m++) 
+    {
+        for (int n=0;  n<3; n++) 
+        {
+            Vmax = fabs(V[m][n]) > Vmax ? fabs(V[m][n]) : Vmax;
+        }
+    }
+
+    double idet=0;
+    if (fabs(Vmax) / fabs(det) > 1e12) 
+    {
+        std::cerr<<"Matrix is not invertible, |det M| = " << fabs(det) << 
+            "! setting to [0]."<<std::endl;
+    }
+    else 
+        idet=1/det;
+
+    /*1/det*/
+    for (int i=0;i<3;i++)
+        for (int j=0;j<3;j++)
+            V[i][j]*=idet;
+}
+
+/*computes determinant of a 3x3 matrix*/
+inline double det3(double (*M)[3]) { 
+    return M[0][0]*(M[1][1]*M[2][2]-M[1][2]*M[2][1])-
+           M[0][1]*(M[1][0]*M[2][2]-M[1][2]*M[2][0])+
+           M[0][2]*(M[1][0]*M[2][1]-M[1][1]*M[2][0]);
+}
+
+inline double det4(double (*M)[4]) { 
+    double M0[3][3];
+    double M1[3][3];
+    double M2[3][3];
+    double M3[3][3];
+
+    for (int i=0;i<3;i++) {
+        M0[i][0]=M[i+1][1];
+        M0[i][1]=M[i+1][2];
+        M0[i][2]=M[i+1][3];
+
+        M1[i][0]=M[i+1][0];
+        M1[i][1]=M[i+1][2];
+        M1[i][2]=M[i+1][3];
+
+        M2[i][0]=M[i+1][0];
+        M2[i][1]=M[i+1][1];
+        M2[i][2]=M[i+1][3];
+
+        M3[i][0]=M[i+1][0];
+        M3[i][1]=M[i+1][1];
+        M3[i][2]=M[i+1][2];
+    }
+
+    return M[0][0]*det3(M0) -
+           M[0][1]*det3(M1) +
+           M[0][2]*det3(M2) -
+           M[0][3]*det3(M3);
+}
+
+/***************************************************************************************************
+* particles.h
+***************************************************************************************************/
+
+/*particle*/
+struct Particle {
+    double pos[3];
+    double vel[3];
+    double lc[4];    /*particle's weights*/
+    int cell_index;    /*last cell known to contain this particle*/
+};
+
+/***************************************************************************************************
+* meshes.h
+***************************************************************************************************/
+
+//*********************************************
+enum NodeType {
+    NORMAL=0,
+    OPEN=1,
+    INLET=2,
+    FIXED=3
+};
+
+//*********************************************
+struct Node {
+    Node(double x, double y, double z) {pos[0]=x;pos[1]=y;pos[2]=z;type=NORMAL;}
+    double pos[3];    /*node position*/
+    NodeType type;
+    double volume = 0;    /*node volume*/
+};
+
+//*********************************************
+struct Tetra {
+    int con[4];
+    double volume;
+    Tetra (int n1, int n2, int n3, int n4) {con[0]=n1;con[1]=n2;con[2]=n3;con[3]=n4;}
+
+    /*data structures to hold precomputed 3x3 determinants*/
+    double alpha[4], beta[4], gamma[4], delta[4];
+
+    /*cell connectivity*/
+    int cell_con[4] = { -1, -1, -1, -1 };    /*index corresponds to the face opposite the i-th node*/
+    bool initDone = false;
+};
+
+//*********************************************
+struct Face {
+    Face(int n1, int n2, int n3) {con[0]=n1, con[1]=n2, con[2]=n3;}
+    int con[3];     // IDs of Nodes comprising the face
+    double area;
+    double u[3];
+    double v[3];
+    int cell_con = -1;
+    double normal[3];
+};
+
+//*********************************************
+struct Volume {
+    std::vector <Node> nodes;
+    std::vector <Tetra> elements;
+    std::vector <Face> inlet_faces;
+    double avg_edge_len;
+
+    void summarize(std::ostream &out) {
+        out << "MESH INFORMATION" << std::endl << "----------------" << std::endl;
+        out << "  Number of nodes          = " << nodes.size() << std::endl;
+        out << "  Number of elements       = " << elements.size() << std::endl;
+        out << "  Number of inlet faces    = " << inlet_faces.size() << std::endl;
+        out << std::endl;
+
+        double min_pos[3] = {99999,99999,99999};
+        double max_pos[3] = {0,0,0};
+        for (auto node: nodes) {
+            for (int d=0; d<3; d++) {
+                min_pos[d] = std::min(node.pos[d], min_pos[d]);
+                max_pos[d] = std::max(node.pos[d], max_pos[d]);
+            }
+        }
+
+        out << "  Simulation region: "
+            << max_pos[0] - min_pos[0] << "m x "
+            << max_pos[1] - min_pos[1] << "m x "
+            << max_pos[2] - min_pos[2] << "m" << std::endl;
+        out << "  Average edge length: " << avg_edge_len <<"m"<< std::endl;
+
+        out << std::endl;        
+    }
+};
+
+//*********************************************
+/*converts physical coordinate to logical
+Returns true if particle matched to a tet
+*/
+inline bool XtoLtet(Particle &part, Volume &volume, bool search) {
+    /*first try the current tetrahedron*/
+    Tetra &tet = volume.elements[part.cell_index];
+
+    bool inside = true;
+    /*loop over vertices*/
+    for (int i=0;i<4;i++) {
+        part.lc[i] = (1.0/6.0)*(tet.alpha[i] - part.pos[0]*tet.beta[i] +
+                      part.pos[1]*tet.gamma[i] - part.pos[2]*tet.delta[i])/tet.volume;
+        if (part.lc[i]<0 || part.lc[i]>1.0) inside=false;
+    }
+
+    if (inside) return true;
+
+    if (!search) return false;
+    /*we are outside the last known tet, find most negative weight*/
+    int min_i=0;
+    double min_lc=part.lc[0];
+    for (int i=1;i<4;i++)
+        if (part.lc[i]<min_lc) {min_lc=part.lc[i];min_i=i;}
+
+    /*is there a neighbor in this direction?*/
+    if (tet.cell_con[min_i]>=0) {
+        part.cell_index = tet.cell_con[min_i];
+        return XtoLtet(part,volume,true);
+    }
+
+    return false;
+}
+
+//*********************************************
+inline bool LoadVolumeMesh(const std::string file_name, Volume &volume) { 
     /*open file*/
     std::ifstream in(file_name);
     if (!in.is_open()) {std::cerr<<"Failed to open "<<file_name<<std::endl; return false;}
@@ -273,8 +476,9 @@ bool LoadVolumeMesh(const std::string file_name, Volume &volume) {
     return true;
 }
 
+//*********************************************
 /*loads nodes from a surface mesh file and sets them to the specified node type*/
-bool LoadSurfaceMesh(const std::string file_name, Volume &volume, NodeType node_type, bool invert_normal) { 
+inline bool LoadSurfaceMesh(const std::string file_name, Volume &volume, NodeType node_type, bool invert_normal) { 
     /*open file*/
     std::ifstream in(file_name);
     if (!in.is_open()) {std::cerr<<"Failed to open "<<file_name<<std::endl; return false;}
@@ -382,152 +586,4 @@ bool LoadSurfaceMesh(const std::string file_name, Volume &volume, NodeType node_
     return true;
 }
 
-/*saves volume mesh*/
-void OutputMesh(int ts, Volume &volume, double *phi, double **ef, double *ion_den) { 
-    std::stringstream ss;
-    ss<<"mesh_"<<std::setfill('0')<<std::setw(4)<<ts+1<<".vtu";
-    std::ofstream out(ss.str());
-    if (!out.is_open()) {std::cerr<<"Failed to open file "<<ss.str()<<std::endl;exit(-1);}
-
-    /*header*/
-    out<<"<?xml version=\"1.0\"?>\n";
-    out<<"<VTKFile type=\"UnstructuredGrid\" version=\"0.1\" byte_order=\"LittleEndian\">\n";
-    out<<"<UnstructuredGrid>\n";
-    out<<"<Piece NumberOfPoints=\""<<volume.nodes.size()<<"\" NumberOfVerts=\"0\" NumberOfLines=\"0\" ";
-    out<<"NumberOfStrips=\"0\" NumberOfCells=\""<<volume.elements.size()<<"\">\n";
-
-    /*points*/
-    out<<"<Points>\n";
-    out<<"<DataArray type=\"Float32\" NumberOfComponents=\"3\" format=\"ascii\">\n";
-    for (Node &node: volume.nodes)
-        out<<node.pos[0]<<" "<<node.pos[1]<<" "<<node.pos[2]<<"\n";
-    out<<"</DataArray>\n";
-    out<<"</Points>\n";
-
-    /*Cells*/
-    out<<"<Cells>\n";
-    out<<"<DataArray type=\"Int32\" Name=\"connectivity\" format=\"ascii\">\n";
-    for (Tetra &tetra: volume.elements)
-        out<<tetra.con[0]<<" "<<tetra.con[1]<<" "<<tetra.con[2]<<" "<<tetra.con[3]<<"\n";
-    out<<"</DataArray>\n";
-
-    out<<"<DataArray type=\"Int32\" Name=\"offsets\" format=\"ascii\">\n";
-    for (size_t e=0; e<volume.elements.size();e++)
-        out<<(e+1)*4<<" ";
-    out<<"\n";
-    out<<"</DataArray>\n";
-
-    out<<"<DataArray type=\"UInt8\" Name=\"types\" format=\"ascii\">\n";
-    for (size_t e=0; e<volume.elements.size();e++)
-        out<<"10 ";
-    out<<"\n";
-    out<<"</DataArray>\n";
-    out<<"</Cells>\n";
-
-    /*save point data*/
-    out<<"<PointData Scalars=\"phi\">\n";
-    out<<"<DataArray type=\"Int32\" Name=\"node_index\" format=\"ascii\">\n";
-    for (size_t n=0; n<volume.nodes.size();n++)
-        out<<n<<" ";
-    out<<"\n";
-    out<<"</DataArray>\n";
-    out<<"<DataArray type=\"Int32\" Name=\"node_type\" format=\"ascii\">\n";
-    for (size_t n=0; n<volume.nodes.size();n++)
-        out<<volume.nodes[n].type<<" ";
-    out<<"\n";
-    out<<"</DataArray>\n";
-
-    out<<"<DataArray type=\"Float32\" Name=\"phi\" format=\"ascii\">\n";
-    for (size_t n=0; n<volume.nodes.size();n++)
-        out<<phi[n]<<" ";
-    out<<"\n";
-    out<<"</DataArray>\n";
-
-    out<<"<DataArray type=\"Float32\" Name=\"ion_den\" format=\"ascii\">\n";
-    for (size_t n=0; n<volume.nodes.size();n++)
-        out<<ion_den[n]<<" ";
-    out<<"\n";
-    out<<"</DataArray>\n";
-
-    out<<"</PointData>\n";
-
-    /*save cell data*/
-    out<<"<CellData Vectors=\"ef\">\n";
-    out<<"<DataArray type=\"Float32\" NumberOfComponents=\"3\" Name=\"ef\" format=\"ascii\">\n";
-    for (size_t e=0; e<volume.elements.size();e++)
-        out<<ef[e][0]<<" "<<ef[e][1]<<" "<<ef[e][2]<<" ";
-    out<<"\n";
-    out<<"</DataArray>\n";
-
-    out<<"<DataArray type=\"Float32\" Name=\"cell_volume\" format=\"ascii\">\n";
-    for (Tetra &tet:volume.elements)
-        out<<tet.volume<<" ";
-    out<<"\n";
-    out<<"</DataArray>\n";
-
-    out<<"</CellData>\n";
-
-    out<<"</Piece>\n";
-    out<<"</UnstructuredGrid>\n";
-    out<<"</VTKFile>\n";
-
-    out.close();
-}
-
-/*converts physical coordinate to logical
-Returns true if particle matched to a tet
-*/
-bool XtoLtet(Particle &part, Volume &volume, bool search) {
-    /*first try the current tetrahedron*/
-    Tetra &tet = volume.elements[part.cell_index];
-
-    bool inside = true;
-    /*loop over vertices*/
-    for (int i=0;i<4;i++) {
-        part.lc[i] = (1.0/6.0)*(tet.alpha[i] - part.pos[0]*tet.beta[i] +
-                      part.pos[1]*tet.gamma[i] - part.pos[2]*tet.delta[i])/tet.volume;
-        if (part.lc[i]<0 || part.lc[i]>1.0) inside=false;
-    }
-
-    if (inside) return true;
-
-    if (!search) return false;
-    /*we are outside the last known tet, find most negative weight*/
-    int min_i=0;
-    double min_lc=part.lc[0];
-    for (int i=1;i<4;i++)
-        if (part.lc[i]<min_lc) {min_lc=part.lc[i];min_i=i;}
-
-    /*is there a neighbor in this direction?*/
-    if (tet.cell_con[min_i]>=0) {
-        part.cell_index = tet.cell_con[min_i];
-        return XtoLtet(part,volume);
-    }
-
-    return false;
-}
-
-void Volume::summarize(std::ostream &out) {
-    out << "MESH INFORMATION" << std::endl << "----------------" << std::endl;
-    out << "  Number of nodes          = " << nodes.size() << std::endl;
-    out << "  Number of elements       = " << elements.size() << std::endl;
-    out << "  Number of inlet faces    = " << inlet_faces.size() << std::endl;
-    out << std::endl;
-
-    double min_pos[3] = {99999,99999,99999};
-    double max_pos[3] = {0,0,0};
-    for (auto node: nodes) {
-        for (int d=0; d<3; d++) {
-            min_pos[d] = std::min(node.pos[d], min_pos[d]);
-            max_pos[d] = std::max(node.pos[d], max_pos[d]);
-        }
-    }
-
-    out << "  Simulation region: "
-        << max_pos[0] - min_pos[0] << "m x "
-        << max_pos[1] - min_pos[1] << "m x "
-        << max_pos[2] - min_pos[2] << "m" << std::endl;
-    out << "  Average edge length: " << avg_edge_len <<"m"<< std::endl;
-
-    out << std::endl;
-}
+//***************************************************************************************************

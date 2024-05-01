@@ -56,19 +56,19 @@ __constant__ double kTe_CUDA_CONST;
 #ifdef USE_PETSC
 //*************************************************************************************************
 FESolver::FESolver(
-    opp_map cell_to_nodes_map, 
-    opp_dat node_type_dat, 
-    opp_dat node_pos_dat,
-    opp_dat node_bnd_pot_dat,
+    opp_map c2n_map, 
+    opp_dat n_type_dat, 
+    opp_dat n_pos_dat,
+    opp_dat n_bnd_pot_dat,
     int argc, char **argv) :
-        cell_to_nodes_map(cell_to_nodes_map),
+        c2n_map(c2n_map),
         n0(opp_params->get<OPP_REAL>("plasma_den")),
         kTe(Kb * opp_params->get<OPP_REAL>("electron_temperature")),
         wall_potential(-(opp_params->get<OPP_REAL>("wall_potential"))),
-        n_nodes_set(node_type_dat->set->size),
-        n_nodes_inc_halo(node_type_dat->set->size + node_type_dat->set->exec_size + node_type_dat->set->nonexec_size),
-        n_elements_set(cell_to_nodes_map->from->size),
-        n_elements_inc_halo(cell_to_nodes_map->from->size + cell_to_nodes_map->from->exec_size)
+        n_nodes_set(n_type_dat->set->size),
+        n_nodes_inc_halo(n_type_dat->set->size + n_type_dat->set->exec_size + n_type_dat->set->nonexec_size),
+        n_elements_set(c2n_map->from->size),
+        n_elements_inc_halo(c2n_map->from->size + c2n_map->from->exec_size)
 {
     if (OPP_DBG) opp_printf("FESolver", "FESolver");
 
@@ -77,7 +77,7 @@ FESolver::FESolver(
 
     // TODO : DO NOT CALCULATE SOLUTION FOR IMPORT NON EXEC, the owning rank will do that
     for (int i = 0; i < n_nodes_set; i++) 
-        if (((int*)node_type_dat->data)[i] == NORMAL || ((int*)node_type_dat->data)[i] == OPEN) 
+        if (((int*)n_type_dat->data)[i] == NORMAL || ((int*)n_type_dat->data)[i] == OPEN) 
             neq++;
 
     node_to_eq_map = new int[n_nodes_inc_halo];
@@ -106,13 +106,13 @@ FESolver::FESolver(
 
     initPetscStructures();
 
-    init_node_to_eq_map(node_type_dat);
+    init_node_to_eq_map(n_type_dat);
 
-    computeNX(node_pos_dat, cell_to_nodes_map);
+    computeNX(n_pos_dat, c2n_map);
 
     summarize(std::cout);
 
-    preAssembly(cell_to_nodes_map, node_bnd_pot_dat);
+    preAssembly(c2n_map, n_bnd_pot_dat);
 
     if (print_petsc) 
     {
@@ -199,13 +199,13 @@ FESolver::~FESolver()
 }
 
 //*************************************************************************************************
-void FESolver::init_node_to_eq_map(opp_dat node_type_dat) // relation from node indices to equation indices
+void FESolver::init_node_to_eq_map(opp_dat n_type_dat) // relation from node indices to equation indices
 {
     int P=0;
     for (int n = 0; n < n_nodes_inc_halo; n++)
     {
         if (n < n_nodes_set && 
-            (((int*)node_type_dat->data)[n] == NORMAL || ((int*)node_type_dat->data)[n] == OPEN))
+            (((int*)n_type_dat->data)[n] == NORMAL || ((int*)n_type_dat->data)[n] == OPEN))
         {
             node_to_eq_map[n]=P;
             P++;
@@ -222,8 +222,8 @@ void FESolver::init_node_to_eq_map(opp_dat node_type_dat) // relation from node 
     // receive all node_to_eq_map values of the import non exec halos and 
     // assign the values to the correct indices of node_to_eq_map array
 
-    halo_list exp_nonexec_list = OPP_export_nonexec_list[node_type_dat->set->index];
-    halo_list imp_nonexec_list = OPP_import_nonexec_list[node_type_dat->set->index];
+    halo_list exp_nonexec_list = OPP_export_nonexec_list[n_type_dat->set->index];
+    halo_list imp_nonexec_list = OPP_import_nonexec_list[n_type_dat->set->index];
 
     int* send_buffer = new int[exp_nonexec_list->size];
     std::vector<MPI_Request> send_req(exp_nonexec_list->ranks_size);
@@ -246,7 +246,7 @@ void FESolver::init_node_to_eq_map(opp_dat node_type_dat) // relation from node 
                 exp_nonexec_list->ranks[i], 11, OPP_MPI_WORLD, &(send_req[i]));
     }
 
-    int nonexec_init = node_type_dat->set->size + node_type_dat->set->exec_size;
+    int nonexec_init = n_type_dat->set->size + n_type_dat->set->exec_size;
     for (int i = 0; i < imp_nonexec_list->ranks_size; i++) 
     {
         // opp_printf("SEND", "count=%d from rank %d", imp_nonexec_list->sizes[i], imp_nonexec_list->ranks[i]);
@@ -326,7 +326,7 @@ void FESolver::initPetscStructures()
 
 //*************************************************************************************************
 /* preassembles the K matrix and "F0 vector */
-void FESolver::preAssembly(opp_map cell_to_nodes_map, opp_dat node_bnd_pot) 
+void FESolver::preAssembly(opp_map c2n_map, opp_dat n_bnd_pot) 
 {
     if (OPP_DBG)
         opp_printf("FESolver", "preAssembly global_neq %d neq %d n_elements_inc_halo %d", 
@@ -372,8 +372,8 @@ void FESolver::preAssembly(opp_map cell_to_nodes_map, opp_dat node_bnd_pot)
             for (int b=0;b<4;b++) 
             {
                 // This can reach import halos
-                int node_idx = cell_to_nodes_map->map[e * cell_to_nodes_map->dim + b]; 
-                double gb = ((double*)node_bnd_pot->data)[node_idx];
+                int node_idx = c2n_map->map[e * c2n_map->dim + b]; 
+                double gb = ((double*)n_bnd_pot->data)[node_idx];
                 fg-=ke[a][b]*gb;
             }
 
@@ -413,7 +413,7 @@ __global__ void initBuildF1VectorKernel(const int* node_to_eq_map_d, const doubl
 }
 
 //*************************************************************************************************
-__global__ void computeF1VectorValuesKernel(const int n_elements_inc_halo, const int* cell_to_nodes_map_d,  
+__global__ void computeF1VectorValuesKernel(const int n_elements_inc_halo, const int* c2n_map_d,  
                     const int* node_to_eq_map_d, const double* tempNEQ1_d, double* f1Local_d, const double* detJ_d, const int stride) 
 {
     int e = blockIdx.x * blockDim.x + threadIdx.x;
@@ -425,7 +425,7 @@ __global__ void computeF1VectorValuesKernel(const int n_elements_inc_halo, const
         double ff = 0.0;
 
         for (int a = 0; a < 4; a++) {
-            const int node_idx = cell_to_nodes_map_d[e + stride * a];  // Assuming 4 nodes per element
+            const int node_idx = c2n_map_d[e + stride * a];  // Assuming 4 nodes per element
             const int A = node_to_eq_map_d[node_idx];
 
             if (A >= 0) {
@@ -454,7 +454,7 @@ __global__ void computeF1VectorValuesKernel(const int n_elements_inc_halo, const
         }
 
         for (int a = 0; a < 4; a++) {
-            const int node_idx = cell_to_nodes_map_d[e + stride * a];
+            const int node_idx = c2n_map_d[e + stride * a];
             const int P = node_to_eq_map_d[node_idx];
 
             if (P >= 0) {
@@ -484,7 +484,7 @@ __global__ void initBuildJmatrixKernel(double *f2_d, double *f3_d, const double 
 }
 
 //*************************************************************************************************
-__global__ void computeJmatrixValuesKernel(const int n_elements_inc_halo, const int* cell_to_nodes_map_d, 
+__global__ void computeJmatrixValuesKernel(const int n_elements_inc_halo, const int* c2n_map_d, 
                 const int* node_to_eq_map_d, const double* detJ_d, double* tempNEQ3_d, double* tempNEQ2_d, const int stride) 
 {
     int e = blockIdx.x * blockDim.x + threadIdx.x;
@@ -497,8 +497,8 @@ __global__ void computeJmatrixValuesKernel(const int n_elements_inc_halo, const 
         for (int a = 0; a < 4; a++) {
             double ff = 0;
 
-            //const int node_idx = cell_to_nodes_map_d[e * 4 + a];  // Assuming 4 nodes per element
-            const int node_idx = cell_to_nodes_map_d[e + stride * a];  // Assuming 4 nodes per element
+            //const int node_idx = c2n_map_d[e * 4 + a];  // Assuming 4 nodes per element
+            const int node_idx = c2n_map_d[e + stride * a];  // Assuming 4 nodes per element
             const int A = node_to_eq_map_d[node_idx];
 
             if (A >= 0) {
@@ -525,7 +525,7 @@ __global__ void computeJmatrixValuesKernel(const int n_elements_inc_halo, const 
         }
 
         for (int a = 0; a < 4; a++) {
-            const int node_idx = cell_to_nodes_map_d[e + stride * a];
+            const int node_idx = c2n_map_d[e + stride * a];
             const int P = node_to_eq_map_d[node_idx];
             if (P >= 0) {  // Skip g nodes
                 atomicAdd(&tempNEQ2_d[P], fe[a]);
@@ -542,15 +542,15 @@ void FESolver::buildJmatrix()
 
 //*************************************************************************************************
 __global__ void computeNodePotentialKernel(const int n_nodes_set_d, const int* node_to_eq_map_d, const double* dLocal_d, 
-                                            const double* node_bnd_pot_d, double* node_potential_d) 
+                                            const double* n_bnd_pot_d, double* node_potential_d) 
 {
     int n = blockIdx.x * blockDim.x + threadIdx.x;
 
     if (n < n_nodes_set_d) {
-        node_potential_d[n] = node_bnd_pot_d[n]; /*zero on non-g nodes*/
+        node_potential_d[n] = n_bnd_pot_d[n]; /*zero on non-g nodes*/
 
-        if (!(node_bnd_pot_d[n] == -10000000 || node_bnd_pot_d[n] == 0)) {
-            printf("WRONG BND POT %2.20lE\n", node_bnd_pot_d[n]);
+        if (!(n_bnd_pot_d[n] == -10000000 || n_bnd_pot_d[n] == 0)) {
+            printf("WRONG BND POT %2.20lE\n", n_bnd_pot_d[n]);
         }
         int A = node_to_eq_map_d[n];
         if (A >= 0) /*is this a non-boundary node?*/
@@ -570,7 +570,7 @@ void FESolver::computePhi(opp_arg arg0, opp_arg arg1, opp_arg arg2)
     opp_arg args[nargs];
     args[0] = arg0;  // node_potential
     args[1] = arg1;  // ion_den
-    args[2] = arg2;  // node_bnd_pot
+    args[2] = arg2;  // n_bnd_pot
     args[1].idx = 2; // HACK to forcefully make halos to download
 
     opp_profiler->start("FSolve_halo");
@@ -624,13 +624,13 @@ bool FESolver::linearSolve(double *ion_den_d)
     opp_profiler->end("FSolve_solv_init");
 
     opp_profiler->start("FSolve_j_and_f1");
-    const int stride = cell_to_nodes_map->from->size + cell_to_nodes_map->from->exec_size + cell_to_nodes_map->from->nonexec_size;
+    const int stride = c2n_map->from->size + c2n_map->from->exec_size + c2n_map->from->nonexec_size;
 
     computeF1VectorValuesKernel <<<cells_inc_haloNBlocks, OPP_gpu_threads_per_block>>> (n_elements_inc_halo, 
-                                            cell_to_nodes_map->map_d, node_to_eq_map_d, tempNEQ1_d, f1Local_d, detJ_d, stride);
+                                            c2n_map->map_d, node_to_eq_map_d, tempNEQ1_d, f1Local_d, detJ_d, stride);
 
     computeJmatrixValuesKernel <<<cells_inc_haloNBlocks, OPP_gpu_threads_per_block>>> (n_elements_inc_halo, 
-                    cell_to_nodes_map->map_d, node_to_eq_map_d, detJ_d, tempNEQ3_d, tempNEQ2_d, stride);
+                    c2n_map->map_d, node_to_eq_map_d, detJ_d, tempNEQ3_d, tempNEQ2_d, stride);
 
     MatCopy(Kmat, Jmat, DIFFERENT_NONZERO_PATTERN);
 
@@ -817,12 +817,12 @@ void FESolver::addKe(std::map<int, std::map<int, double>>& sparse_K, int e, doub
     {
         for (int b=0;b<4;b++) 
         {
-            const int node_idx1 = cell_to_nodes_map->map[e * cell_to_nodes_map->dim + a];
+            const int node_idx1 = c2n_map->map[e * c2n_map->dim + a];
             const int P = node_to_eq_map[node_idx1]; 
 
             if (P<0) continue;    /* skip g nodes or not in current ranks own row range */
 
-            const int node_idx2 = cell_to_nodes_map->map[e * cell_to_nodes_map->dim + b];
+            const int node_idx2 = c2n_map->map[e * c2n_map->dim + b];
             int Q = node_to_eq_map[node_idx2]; 
 
             if (Q<0)
@@ -853,7 +853,7 @@ void FESolver::addFe(Vec *Fvec, int e, double fe[4])
     
     for (int a=0;a<4;a++)    /*tetrahedra*/ 
     {
-        const int node_idx = cell_to_nodes_map->map[e * cell_to_nodes_map->dim + a];
+        const int node_idx = c2n_map->map[e * c2n_map->dim + a];
         const int P = node_to_eq_map[node_idx]; 
         if (P<0) continue;    /* skip g nodes or on a different rank (owner compute)*/
         
@@ -885,7 +885,7 @@ void FESolver::getNax(double nx[3], int e, int a)
 
 /*computes derivatives of the shape functions for all elements constants since 
 using linear elements*/
-void FESolver::computeNX(opp_dat node_pos, opp_map cell_to_nodes_map) 
+void FESolver::computeNX(opp_dat n_pos, opp_map c2n_map) 
 { 
 
     /*derivatives of the shape functions vs. xi*/
@@ -894,13 +894,13 @@ void FESolver::computeNX(opp_dat node_pos, opp_map cell_to_nodes_map)
     for (int e = 0; e < n_elements_inc_halo; e++) 
     {       
         /*node indices*/
-        int* map0idx = &((int*)cell_to_nodes_map->map)[e * cell_to_nodes_map->dim]; 
+        int* map0idx = &((int*)c2n_map->map)[e * c2n_map->dim]; 
 
         double x[4][3];
         for (int a=0;a<4;a++) 
         {
             /*node positions*/
-            double *pos = &((double*)node_pos->data)[map0idx[a] * node_pos->dim]; 
+            double *pos = &((double*)n_pos->data)[map0idx[a] * n_pos->dim]; 
             for (int d=0;d<3;d++) 
                 x[a][d] = pos[d];
         }
@@ -961,16 +961,16 @@ void FESolver::sanityCheck()
 #else
 
     FESolver::FESolver(
-        opp_map cell_to_nodes_map, 
-        opp_dat node_type, 
-        opp_dat node_pos,  
-        opp_dat node_bnd_pot,
-        int argc, char **argv) : cell_to_nodes_map(cell_to_nodes_map) {};
+        opp_map c2n_map, 
+        opp_dat n_type, 
+        opp_dat n_pos,  
+        opp_dat n_bnd_pot,
+        int argc, char **argv) : c2n_map(c2n_map) {};
     FESolver::~FESolver() {};
 
     void FESolver::computePhi(opp_arg arg0, opp_arg arg1, opp_arg arg2) {};
     
-    void FESolver::preAssembly(opp_map cell_to_nodes_map, opp_dat node_bnd_pot) {};
+    void FESolver::preAssembly(opp_map c2n_map, opp_dat n_bnd_pot) {};
     void FESolver::enrich_cell_shape_deriv(opp_dat cell_shape_deriv) {};
 
     bool FESolver::linearSolve(double *ion_den) { return true; }; 
@@ -984,9 +984,9 @@ void FESolver::sanityCheck()
     double FESolver::evalNa(int a, double xi, double eta, double zeta) { return -1.0; };
     void FESolver::getNax(double nx[3], int e, int a) {};
     void FESolver::initialzeMatrix(std::map<int, std::map<int, double>>& sparse_K) {};
-    void FESolver::computeNX(opp_dat node_pos, opp_map cell_to_nodes_map) {};
+    void FESolver::computeNX(opp_dat n_pos, opp_map c2n_map) {};
     void FESolver::sanityCheck() {};
-    void FESolver::init_node_to_eq_map(opp_dat node_type_dat) {};
+    void FESolver::init_node_to_eq_map(opp_dat n_type_dat) {};
     void FESolver::initPetscStructures() {};
     
 #endif

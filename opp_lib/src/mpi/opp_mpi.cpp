@@ -44,6 +44,10 @@ OPP_INT* opp_c2c = nullptr;
 //*******************************************************************************
 void opp_init(int argc, char **argv) 
 {
+    if (argc < 2) {
+        std::cerr << "Usage: " << argv[0] << " <config_file> ..." << std::endl;
+        exit(-1);
+    }
 
 #ifdef USE_PETSC
     PetscInitialize(&argc, &argv, PETSC_NULLPTR, "opp::PetscMPI");
@@ -67,6 +71,7 @@ void opp_init(int argc, char **argv)
     MPI_Barrier(MPI_COMM_WORLD);
     
     opp_init_core(argc, argv);
+    opp_params->write(std::cout);
 
     opp_profiler->reg("Mv_Finalize");
 }
@@ -419,11 +424,11 @@ bool opp_finalize_particle_move(opp_set set)
 }
 
 //****************************************
-void opp_reset_dat(opp_dat dat, char* val, opp_reset reset)
+void opp_reset_dat_impl(opp_dat dat, char* val, opp_reset reset)
 {
     if (!val)
     {
-        opp_printf("opp_reset_dat", "Error: val is NULL");
+        opp_printf("opp_reset_dat_impl", "Error: val is NULL");
         return;
     }
 

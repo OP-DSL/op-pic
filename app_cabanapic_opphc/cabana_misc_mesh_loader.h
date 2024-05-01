@@ -34,22 +34,11 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //*********************************************
 
 #include "cabana_defs.h"
-#include "cabana_part_distribution.h"
-
-using namespace opp;
-
-int m0 = 0;
-int m1 = 1;
-int m2 = 2;
-int m3 = 3;
-int m4 = 4;
-int m5 = 5;
 
 void init_mesh(const Deck& deck, std::shared_ptr<DataPointers> m);
 void distribute_data_over_ranks(std::shared_ptr<DataPointers>& g_m, std::shared_ptr<DataPointers>& m);
 
-//*************************************************************************************************
-/**
+/***************************************************************************************************
  * @brief Initialize the rank specific mesh data to a DataPointers utility class shared pointer
  * @return std::shared_ptr<DataPointers>
  */
@@ -57,8 +46,7 @@ std::shared_ptr<DataPointers> load_mesh(const Deck& deck) {
 
     std::shared_ptr<DataPointers> g_m(new DataPointers());
 
-    if (OPP_rank == OPP_ROOT)      
-        init_mesh(deck, g_m);
+    OPP_RUN_ON_ROOT() init_mesh(deck, g_m);
 
     std::shared_ptr<DataPointers> m;
     distribute_data_over_ranks(g_m, m);
@@ -66,8 +54,7 @@ std::shared_ptr<DataPointers> load_mesh(const Deck& deck) {
     return m;
 }
 
-//*************************************************************************************************
-/**
+/***************************************************************************************************
  * @brief Initializes the mesh using 2D (nx,ny) and cell_width values in the config file
  *          Expect this to run only on the ROOT MPI rank
  * @param m std::shared_ptr<DataPointers> loaded with mesh data
@@ -266,82 +253,7 @@ void init_mesh(const Deck& deck, std::shared_ptr<DataPointers> m) {
     opp_printf("Setup", "init_mesh DONE");
 }
 
-//*************************************************************************************************
-/**
- * @brief Initializes the particles in to the particle dats in the arguments, using the cell_pos_ll dat
- *          Expect this to run on every MPI rank
- * @param part_index - opp_dat : Particle index relative to rank. TODO: make this global
- * @param part_pos - opp_dat : Particle 3D position (x,y,z)
- * @param part_vel - opp_dat : Particle 3D velocity (x,y,z)
- * @param part_streak_mid - opp_dat : Particle 3D temporary position (x,y,z)
- * @param part_weight - opp_dat : Particle weight
- * @param part_mesh_rel - opp_dat : Particle belonging cell index 
- * @param cell_pos_ll - opp_dat : Lower left 2D position coordicate of the cell
- * @return (void)
- */
-void init_particles(const Deck& deck, opp_dat part_index, opp_dat part_pos, opp_dat part_vel, opp_dat part_streak_mid,
-                    opp_dat part_weight, opp_dat part_mesh_rel, opp_dat cell_pos_ll, opp_dat cell_cgid, opp_dat cell_ghost) 
-{
-    if (OPP_rank == OPP_ROOT)
-        opp_printf("Setup", "Init particles START");
-
-    const OPP_INT npart_per_cell = deck.nppc;
-
-    const int all_cell_count = cell_pos_ll->set->size;
-    int non_ghost_cell_count = 0;
-
-    for (int i = 0; i < all_cell_count; i++) {
-        if (((int*)cell_ghost->data)[i] == 0)
-            non_ghost_cell_count++;
-    }
-
-    const int rank_npart = npart_per_cell * non_ghost_cell_count;
-    int rank_part_start  = 0;
-
-    if (rank_npart <= 0) {
-        opp_printf("Setup", "Error No particles to add in rank %d", OPP_rank);
-        return;
-    }
-
-#ifdef USE_MPI // canculate the starting particle index incase of MPI
-    {
-        std::vector<OPP_INT> temp(OPP_comm_size, 0);
-        MPI_Allgather(&rank_npart, 1, MPI_INT, temp.data(), 1, MPI_INT, MPI_COMM_WORLD);
-        for (int i = 0; i < OPP_rank; ++i) rank_part_start += temp[i];
-    }  
-#endif
-
-    if (OPP_DBG)
-        opp_printf("Setup", "%d parts to add in rank %d [part_start=%d]", rank_npart, OPP_rank, rank_part_start);
-
-    // Host/Device space to store the particles.
-    opp_increase_particle_count(part_pos->set, rank_npart);
-
-    if (opp_params->get<OPP_STRING>("part_enrich") == "two_stream")
-        enrich_particles_two_stream(deck, all_cell_count, (OPP_REAL*)part_pos->data, (OPP_REAL*)part_vel->data, 
-            (OPP_REAL*)part_streak_mid->data, (OPP_INT*)part_mesh_rel->data, nullptr, // (OPP_INT*)part_index->data, 
-            (OPP_REAL*)part_weight->data, (OPP_INT*)cell_cgid->data, (OPP_INT*)cell_ghost->data);
-    else
-        enrich_particles_random(deck, all_cell_count, (OPP_REAL*)part_pos->data, (OPP_REAL*)part_vel->data, 
-            (OPP_REAL*)part_streak_mid->data, (OPP_INT*)part_mesh_rel->data, nullptr, // (OPP_INT*)part_index->data, 
-            (OPP_REAL*)part_weight->data, (OPP_REAL*)cell_pos_ll->data, rank_part_start, (OPP_INT*)cell_ghost->data);
-
-    if (OPP_rank == OPP_ROOT)
-        opp_printf("Setup", "Init particles Uploading Start");
-
-    opp_upload_particle_set(part_pos->set);
-
-#ifdef USE_MPI
-    MPI_Barrier(MPI_COMM_WORLD);
-#endif
-
-    if (OPP_rank == OPP_ROOT)
-        opp_printf("Setup", "Init particles END");
-}
-
-
-//*************************************************************************************************
-/**
+/***************************************************************************************************
  * @brief This block distributes temporary DataPointers from ROOT rank to other ranks
  * @param g_m - Global mesh of temporary shared pointer of DataPointers, Root Rank should have data
  * @param m - rank specific block partitioned mesh of temporary shared pointer of DataPointers
@@ -391,172 +303,4 @@ inline void distribute_data_over_ranks(std::shared_ptr<DataPointers>& g_m, std::
 #endif
 
     m->CreateMeshNonCommArrays();
-}
-
-//*************************************************************************************************
-/**
- * @brief This uses MPI routines to colour the cell dats like a bundle of pencils along the direction of X
- *        this directional partitioning minimize the particle MPI communications
- * @param deck - 
- * @param cell_index - cell index dat of the current rank, this includes the global cell indices
- * @param cell_index - cell colours to be enriched for partitioning
- * @return (void)
- */
-void cabana_color_pencil_x(const Deck& deck, opp_dat cell_index, const opp_dat cell_colors) 
-{
-#ifdef USE_MPI
-    if (OPP_rank == OPP_ROOT) opp_printf("Setup", "x=%d y=%d z=%d", deck.nx, deck.ny, deck.nz);
-
-    MPI_Comm comm_cart;
-    int mpi_dims[3] = {0, 0, 0};
-    int periods[3] = {1, 1, 1};
-    int coords[3] = {0, 0, 0};
-    int cell_starts[3] = {0, 0, 0}; // Holds the first cell this rank owns in each dimension.
-    int cell_ends[3] = {1, 1, 1}; // Holds the last cell+1 this ranks owns in each dimension.
-    
-    const OPP_INT ndim = 2;
-    std::vector<int> cell_counts = { deck.ny, deck.nz }; // x is the dir of velocity
-
-    MPI_Dims_create(OPP_comm_size, ndim, mpi_dims);
-
-    std::vector<int> cell_count_ordering = reverse_argsort(cell_counts); // direction with most cells first to match mpi_dims order
-
-    std::vector<int> mpi_dims_reordered(ndim);
-    for (int dimx = 0; dimx < ndim; dimx++)  // reorder the mpi_dims to match the actual domain
-        mpi_dims_reordered[cell_count_ordering[dimx]] = mpi_dims[dimx];
-
-    MPI_Cart_create(MPI_COMM_WORLD, ndim, mpi_dims_reordered.data(), periods, 1, &comm_cart);
-    MPI_Cart_get(comm_cart, ndim, mpi_dims, periods, coords);
-
-    for (int dimx = 0; dimx < ndim; dimx++) 
-        get_decomp_1d(mpi_dims[dimx], cell_counts[dimx], coords[dimx], &cell_starts[dimx], &cell_ends[dimx]);
-
-    for (int dimx = 0; dimx < ndim; dimx++) {
-        cell_starts[dimx] += NG;
-        cell_ends[dimx] += NG;
-    }
-
-    std::vector<int> all_cell_starts(OPP_comm_size * ndim);
-    std::vector<int> all_cell_ends(OPP_comm_size * ndim);
-
-    MPI_Allgather(cell_starts, ndim, MPI_INT, all_cell_starts.data(), ndim, MPI_INT, MPI_COMM_WORLD);
-    MPI_Allgather(cell_ends, ndim, MPI_INT, all_cell_ends.data(), ndim, MPI_INT, MPI_COMM_WORLD);
-
-    if (OPP_rank == OPP_ROOT)
-    {
-        std::string log = "";
-        for (int r = 0; r < OPP_comm_size; r++) {
-            log += std::string("\nrank ") + std::to_string(r) + " start (";
-            for (int d = 0; d < ndim; d++)
-                log += std::to_string(all_cell_starts[r*ndim+d]) + ",";
-            log += ") end (";
-            for (int d = 0; d < ndim; d++)
-                log += std::to_string(all_cell_ends[r*ndim+d]) + ",";
-            log += ")";
-        }
-        opp_printf("cabana_color_pencil_x", "%s", log.c_str());
-    }
-
-#define CART_RANK_TO_INDEX(gcidx,ix,iy,iz,_x,_y) \
-    int _ix, _iy, _iz;                                                    \
-    _ix  = (gcidx);                        /* ix = ix+gpx*( iy+gpy*iz ) */ \
-    _iy  = _ix/int(_x);                   /* iy = iy+gpy*iz */            \
-    _ix -= _iy*int(_x);                   /* ix = ix */                   \
-    _iz  = _iy/int(_y);                   /* iz = iz */                   \
-    _iy -= _iz*int(_y);                   /* iy = iy */                   \
-    (ix) = _ix;                                                           \
-    (iy) = _iy;                                                           \
-    (iz) = _iz;                                                           \
-
-    // used global id of cell and assign the color to the correct MPI rank
-    const OPP_INT* gcid = ((OPP_INT*)cell_index->data);
-    for (OPP_INT i = 0; i < cell_index->set->size; i++)
-    {
-        int coord[3] = {-1, -1 -1};
-        CART_RANK_TO_INDEX(gcid[i], coord[0], coord[1], coord[2], deck.nx+2*NG, deck.ny+2*NG);
-
-        if (coord[0] < NG) coord[0] = NG;
-        else if (coord[0] >= (deck.nx + NG)) coord[0] = (deck.nx + NG - 1);
-        if (coord[1] < NG) coord[1] = NG;
-        else if (coord[1] >= (deck.ny + NG)) coord[1] = (deck.ny + NG - 1);
-        if (coord[2] < NG) coord[2] = NG;
-        else if (coord[2] >= (deck.nz + NG)) coord[2] = (deck.nz + NG - 1);
-
-        for (int rank = 0; rank < OPP_comm_size; rank++) 
-        {
-            bool is_rank_suitable = true;
-
-            if ((all_cell_starts[ndim*rank+0] > coord[1]) || (all_cell_ends[ndim*rank+0] <= coord[1]) || 
-                (all_cell_starts[ndim*rank+1] > coord[2]) || (all_cell_ends[ndim*rank+1] <= coord[2]))
-            {
-                is_rank_suitable = false;
-            }
-
-            if (is_rank_suitable)
-            {
-                ((OPP_INT*)cell_colors->data)[i] = rank;
-                break;
-            }
-        }    
-    }
-
-#undef CART_RANK_TO_INDEX
-#endif
-}
-
-//*************************************************************************************************
-/**
- * @brief This uses block colouring in YZ plane to colour the cell dats along the direction of X
- *        this directional partitioning minimize the particle MPI communications
- * @param deck - 
- * @param cell_index - cell index dat of the current rank, this includes the global cell indices
- * @param cell_index - cell colours to be enriched for partitioning
- * @return (void)
- */
-void cabana_color_block_x(const Deck& deck, opp_dat cell_index, const opp_dat cell_colors) 
-{
-#ifdef USE_MPI
-
-    const OPP_INT numClusters = deck.ny * deck.nz;
-    std::vector<int> assignments;
-    std::vector<int> clusterSizes(numClusters, 0);
-
-    for (int r = 0; r < OPP_comm_size; r++) {
-        int countForRank = opp_get_uniform_local_size(numClusters, r);
-        for (int i = 0; i < countForRank; i++) {
-            assignments.emplace_back(r);
-            clusterSizes[r]++;
-        }
-    }
-
-#define CART_RANK_TO_INDEX(gcidx,ix,iy,iz,_x,_y) \
-    int _ix, _iy, _iz;                                                    \
-    _ix  = (gcidx);                        /* ix = ix+gpx*( iy+gpy*iz ) */ \
-    _iy  = _ix/int(_x);                   /* iy = iy+gpy*iz */            \
-    _ix -= _iy*int(_x);                   /* ix = ix */                   \
-    _iz  = _iy/int(_y);                   /* iz = iz */                   \
-    _iy -= _iz*int(_y);                   /* iy = iy */                   \
-    (ix) = _ix;                                                           \
-    (iy) = _iy;                                                           \
-    (iz) = _iz;                                                           \
-
-    // used global id of cell and assign the color to the correct MPI rank
-    const OPP_INT* gcid = ((OPP_INT*)cell_index->data);
-    for (OPP_INT i = 0; i < cell_index->set->size; i++)
-    {
-        int coord[3] = {-1, -1 -1};
-        CART_RANK_TO_INDEX(gcid[i], coord[0], coord[1], coord[2], deck.nx+2*NG, deck.ny+2*NG);    
-        
-        if (coord[1] >= (deck.ny + NG)) coord[1] -= 2*NG;
-        else if (coord[1] >= NG) coord[1] -= NG;
-        if (coord[2] >= (deck.nz + NG)) coord[2] -= 2*NG;
-        else if (coord[2] >= NG) coord[2] -= NG;
-
-        const int idx = (coord[1] + deck.ny * coord[2]);
-        ((OPP_INT*)cell_colors->data)[i] = assignments[idx]; 
-    }
-
-#undef CART_RANK_TO_INDEX
-
-#endif
 }

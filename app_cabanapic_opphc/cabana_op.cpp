@@ -33,7 +33,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 // AUTO GENERATED CODE
 //*********************************************
 
-#include "cabana_defs.h"
+#include "cabana_misc.h"
 
 void opp_loop_all__interpolate_mesh_fields(opp_set,opp_arg,opp_arg,opp_arg,opp_arg,opp_arg,opp_arg,opp_arg,opp_arg,opp_arg,opp_arg,opp_arg,opp_arg,opp_arg);
 void opp_particle_move__move_deposit(opp_set,opp_map,opp_dat,opp_arg,opp_arg,opp_arg,opp_arg,opp_arg,opp_arg);
@@ -45,31 +45,19 @@ void opp_loop_all__compute_energy(opp_set,opp_arg,opp_arg,opp_arg);
 void opp_loop_all__update_ghosts_B(opp_set,opp_arg,opp_arg,opp_arg,opp_arg);
 void opp_loop_all__update_ghosts(opp_set,opp_arg,opp_arg,opp_arg,opp_arg,opp_arg);
 
-using namespace opp;
-
-#include "cabana_misc.cpp"
-
 //*********************************************MAIN****************************************************
 int main(int argc, char **argv) 
 {
-    if (argc < 2) {
-        std::cerr << "Usage: " << argv[0] << " <config_file> ..." << std::endl;
-        exit(-1);
-    }
-
     opp_init(argc, argv);
-    opp_params->write(std::cout);
-
+    
     {
         opp_profiler->start("Setup");
 
         Deck deck(*opp_params);
-        if (OPP_rank == OPP_ROOT) deck.print();
-
         std::shared_ptr<DataPointers> m = load_mesh(deck);
 
         opp_set c_set       = opp_decl_set(m->n_cells, "mesh_cells");
-        opp_set p_set        = opp_decl_particle_set("particles", c_set);  // Zero particles, inject after partitioning
+        opp_set p_set       = opp_decl_particle_set("particles", c_set);  // Zero particles, inject after partitioning
 
         opp_map c2c_map     = opp_decl_map(c_set, c_set, NEIGHBOURS, m->c2c_map,     "c2c_map");
         opp_map c2ngc_map   = opp_decl_map(c_set, c_set, FACES,      m->c2ngc_map,   "c2c_non_ghost_map");
@@ -99,7 +87,6 @@ int main(int argc, char **argv)
         opp_dat c_mask_ug    = opp_decl_dat(c_set, 6,          DT_INT,  m->c_mask_ug,    "c_mask_ug");
         opp_dat c_mask_ugb   = opp_decl_dat(c_set, 6,          DT_INT,  m->c_mask_ugb,   "c_mask_ugb");
    
-        opp_dat p_index      = nullptr; // opp_decl_dat(p_set, ONE, DT_INT,  nullptr, "p_index"); // Unused
         opp_dat p_pos        = opp_decl_dat(p_set, DIM, DT_REAL, nullptr, "p_pos");
         opp_dat p_vel        = opp_decl_dat(p_set, DIM, DT_REAL, nullptr, "p_vel");    
         opp_dat p_streak_mid = opp_decl_dat(p_set, DIM, DT_REAL, nullptr, "p_streak_mid");
@@ -121,31 +108,30 @@ int main(int argc, char **argv)
 
         m->DeleteValues();
 
+#ifdef USE_MPI
         // opp_colour_cartesian_mesh does nothing for non-mpi runs
         if (opp_params->get<OPP_STRING>("cluster") == "block")
-            cabana_color_block_x(deck, c_index, c_colors);
+            cabana_color_block(deck, c_index, c_colors);
         else if (opp_params->get<OPP_STRING>("cluster") == "pencil")
-            cabana_color_pencil_x(deck, c_index, c_colors);
+            cabana_color_pencil(deck, c_index, c_colors);
         else if (opp_params->get<OPP_STRING>("cluster") == "cart")
             opp_colour_cartesian_mesh(DIM, std::vector<OPP_INT>(cells_per_dim, cells_per_dim + DIM), 
                                         c_index, c_colors, 1);
         else
             opp_abort("cluster type not supported");
 
-#ifdef USE_MPI
         opp_partition(std::string("EXTERNAL"), c_set, nullptr, c_colors);
 #endif
 
-        init_particles(deck, p_index, p_pos, p_vel, p_streak_mid, p_weight, p2c_map, 
-                        c_pos_ll, c_index, c_mask_ghost);
+        init_particles(deck, p_pos, p_vel, p_streak_mid, p_weight, p2c_map, c_pos_ll, c_index, c_mask_ghost);
 
         FILE *fptre = nullptr;
-        if (OPP_rank == OPP_ROOT) fptre = fopen("energy.csv", "w");
-        if (OPP_rank == OPP_ROOT) fprintf(fptre, "timestep,e_energy,b_energy\n");
+        OPP_RUN_ON_ROOT() fptre = fopen("energy.csv", "w");
+        OPP_RUN_ON_ROOT() fprintf(fptre, "timestep,e_energy,b_energy\n");
 
-        int ghosts = 0;
-        for (int i = 0; i < c_set->size; i++) if (((int*)c_mask_ghost->data)[i] == 1) ghosts++;
-        opp_printf("Setup", "Cells[%d][ghosts:%d] Particles[%d]", c_set->size, ghosts, p_set->size);
+        // int ghosts = 0;
+        // for (int i = 0; i < c_set->size; i++) if (((int*)c_mask_ghost->data)[i] == 1) ghosts++;
+        // opp_printf("Setup", "Cells[%d][ghosts:%d] Particles[%d]", c_set->size, ghosts, p_set->size);
         
         opp_profiler->end("Setup");
 
@@ -154,10 +140,9 @@ int main(int argc, char **argv)
 #endif
 
         opp_profiler->start("MainLoop");
-
         for (OPP_main_loop_iter = 0; OPP_main_loop_iter < deck.num_steps; OPP_main_loop_iter++)
         {
-            if (OPP_DBG && OPP_rank == OPP_ROOT) 
+            OPP_RUN_ON_ROOT(&& OPP_DBG)
                 opp_printf("Main", "Starting main loop iteration %d ****", OPP_main_loop_iter);
 
             opp_loop_all__interpolate_mesh_fields(c_set,
@@ -175,7 +160,7 @@ int main(int argc, char **argv)
                 opp_arg_dat(c_interp,                       OPP_WRITE),
                 opp_arg_dat(c_mask_ghost,                   OPP_READ));
 
-            opp_reset_dat(c_acc, (char*)opp_zero_double16);
+            opp_reset_dat(c_acc, opp_zero_double16);
 
             opp_particle_move__move_deposit(p_set, c2ngc_map, p2c_map,
                 opp_arg_dat(p_vel,             OPP_RW),
@@ -296,8 +281,7 @@ int main(int argc, char **argv)
                 log += str(e_energy*0.5, " e_energy: \t%.15f");
                 log += str(b_energy*0.5, " b_energy: \t%.15f");
 
-                if (OPP_rank == OPP_ROOT) 
-                    fprintf(fptre,"%d, %.15f, %.15f\n", OPP_main_loop_iter, e_energy*0.5, b_energy*0.5);
+                OPP_RUN_ON_ROOT() fprintf(fptre,"%d, %.15f, %.15f\n", OPP_main_loop_iter, e_energy*0.5, b_energy*0.5);
             }
             if (opp_params->get<OPP_BOOL>("print_final"))
             {
@@ -313,15 +297,13 @@ int main(int argc, char **argv)
                 log += str(max_e, " max_ex: %.10f"); // %2.15lE");
                 log += str(max_b, " max_bx: %.16f"); // %2.15lE");
             }
-            if (OPP_rank == OPP_ROOT) 
-                opp_printf("Main", "ts: %d %s ****", OPP_main_loop_iter, log.c_str());
+            OPP_RUN_ON_ROOT() opp_printf("Main", "ts: %d %s ****", OPP_main_loop_iter, log.c_str());
         }
         opp_profiler->end("MainLoop");
         
-        if (OPP_rank == OPP_ROOT) fclose(fptre);
+        OPP_RUN_ON_ROOT() fclose(fptre);
 
-        if (OPP_rank == OPP_ROOT) 
-            opp_printf("Main", "Main loop completed after %d iterations ****", deck.num_steps);
+        OPP_RUN_ON_ROOT() opp_printf("Main", "Main loop completed [%d iterations]", deck.num_steps);
     }
 
     opp_exit();

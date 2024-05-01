@@ -33,6 +33,8 @@ constexpr int MIN_INT = std::numeric_limits<int>::min();
 
 #define GET_VERT(D,K) ((K > maxCoordinate.D) ? maxCoordinate.D : K)
 
+#define OPP_RUN_ON_ROOT(command) if (OPP_rank == OPP_ROOT command)
+
 #define ASSIGN_CENTROID_TO_DIM(K)                                   \
     if (coordinate.K + this->gridSpacing <= maxCoordinate.K) {      \
         centroid.K = coordinate.K + this->gridSpacing * 0.5;         \

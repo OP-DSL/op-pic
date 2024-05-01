@@ -37,7 +37,6 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 // #define OPP_KERNEL_LOOPP_UNROLL
 
-#include "fempic_ori/maths.h"
 #include "opp_lib.h"
 
 //****************************************

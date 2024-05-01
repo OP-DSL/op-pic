@@ -42,6 +42,10 @@ OPP_INT* opp_c2c = nullptr;
 //****************************************
 void opp_init(int argc, char **argv)
 {
+    if (argc < 2) {
+        std::cerr << "Usage: " << argv[0] << " <config_file> ..." << std::endl;
+        exit(-1);
+    }
 
 #ifdef USE_PETSC
     PetscInitialize(&argc, &argv, PETSC_NULLPTR, "opp::PetscSEQ");
@@ -52,6 +56,7 @@ void opp_init(int argc, char **argv)
     opp_printf("OP-PIC", "---------------------------------------------");
 
     opp_init_core(argc, argv);
+    opp_params->write(std::cout);
 }
 
 //****************************************
@@ -344,7 +349,7 @@ bool opp_finalize_particle_move(opp_set set)
 }
 
 //****************************************
-void opp_reset_dat(opp_dat dat, char* val, opp_reset reset)
+void opp_reset_dat_impl(opp_dat dat, char* val, opp_reset reset)
 {
     int set_size = dat->set->size;
 

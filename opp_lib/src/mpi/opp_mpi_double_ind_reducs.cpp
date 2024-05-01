@@ -75,7 +75,7 @@ void opp_init_double_indirect_reductions(int nargs, opp_arg *args)
                 }
 
                 // reset the import non execute halos
-                opp_reset_dat(args[n].dat, reset_values, OPP_Reset_inh);
+                opp_reset_dat_impl(args[n].dat, reset_values, OPP_Reset_inh);
             }
         }
     }

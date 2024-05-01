@@ -44,19 +44,19 @@ bool print_petsc = false;
 #ifdef USE_PETSC
 //*************************************************************************************************
 FESolver::FESolver(
-    opp_map cell_to_nodes_map, 
-    opp_dat node_type_dat, 
-    opp_dat node_pos_dat,
-    opp_dat node_bnd_pot_dat,
+    opp_map c2n_map, 
+    opp_dat n_type_dat, 
+    opp_dat n_pos_dat,
+    opp_dat n_bnd_pot_dat,
     int argc, char **argv) :
-        cell_to_nodes_map(cell_to_nodes_map),
+        c2n_map(c2n_map),
         n0(opp_params->get<OPP_REAL>("plasma_den")),
         kTe(Kb * opp_params->get<OPP_REAL>("electron_temperature")),
         wall_potential(-(opp_params->get<OPP_REAL>("wall_potential"))),
-        n_nodes_set(node_type_dat->set->size),
-        n_nodes_inc_halo(node_type_dat->set->size + node_type_dat->set->exec_size + node_type_dat->set->nonexec_size),
-        n_elements_set(cell_to_nodes_map->from->size),
-        n_elements_inc_halo(cell_to_nodes_map->from->size + cell_to_nodes_map->from->exec_size)
+        n_nodes_set(n_type_dat->set->size),
+        n_nodes_inc_halo(n_type_dat->set->size + n_type_dat->set->exec_size + n_type_dat->set->nonexec_size),
+        n_elements_set(c2n_map->from->size),
+        n_elements_inc_halo(c2n_map->from->size + c2n_map->from->exec_size)
 {
     if (OPP_DBG) opp_printf("FESolver", "FESolver");
 
@@ -70,7 +70,7 @@ FESolver::FESolver(
 
     // TODO : DO NOT CALCULATE SOLUTION FOR IMPORT NON EXEC, the owning rank will do that
     for (int i = 0; i < n_nodes_set; i++) 
-        if (((int*)node_type_dat->data)[i] == NORMAL || ((int*)node_type_dat->data)[i] == OPEN) 
+        if (((int*)n_type_dat->data)[i] == NORMAL || ((int*)n_type_dat->data)[i] == OPEN) 
             neq++;
 
     node_to_eq_map = new int[n_nodes_inc_halo];
@@ -99,13 +99,13 @@ FESolver::FESolver(
 
     initPetscStructures();
 
-    init_node_to_eq_map(node_type_dat);
+    init_node_to_eq_map(n_type_dat);
 
-    computeNX(node_pos_dat, cell_to_nodes_map);
+    computeNX(n_pos_dat, c2n_map);
 
     summarize(std::cout);
 
-    preAssembly(cell_to_nodes_map, node_bnd_pot_dat);
+    preAssembly(c2n_map, n_bnd_pot_dat);
 
     if (print_petsc) 
     {
@@ -151,13 +151,13 @@ FESolver::~FESolver()
 }
 
 //*************************************************************************************************
-void FESolver::init_node_to_eq_map(opp_dat node_type_dat) // relation from node indices to equation indices
+void FESolver::init_node_to_eq_map(opp_dat n_type_dat) // relation from node indices to equation indices
 {
     int P=0;
     for (int n = 0; n < n_nodes_inc_halo; n++)
     {
         if (n < n_nodes_set && 
-            (((int*)node_type_dat->data)[n] == NORMAL || ((int*)node_type_dat->data)[n] == OPEN))
+            (((int*)n_type_dat->data)[n] == NORMAL || ((int*)n_type_dat->data)[n] == OPEN))
         {
             node_to_eq_map[n]=P;
             P++;
@@ -174,8 +174,8 @@ void FESolver::init_node_to_eq_map(opp_dat node_type_dat) // relation from node 
     // receive all node_to_eq_map values of the import non exec halos and 
     // assign the values to the correct indices of node_to_eq_map array
 
-    halo_list exp_nonexec_list = OPP_export_nonexec_list[node_type_dat->set->index];
-    halo_list imp_nonexec_list = OPP_import_nonexec_list[node_type_dat->set->index];
+    halo_list exp_nonexec_list = OPP_export_nonexec_list[n_type_dat->set->index];
+    halo_list imp_nonexec_list = OPP_import_nonexec_list[n_type_dat->set->index];
 
     int* send_buffer = new int[exp_nonexec_list->size];
     std::vector<MPI_Request> send_req(exp_nonexec_list->ranks_size);
@@ -198,7 +198,7 @@ void FESolver::init_node_to_eq_map(opp_dat node_type_dat) // relation from node 
                 exp_nonexec_list->ranks[i], 11, OPP_MPI_WORLD, &(send_req[i]));
     }
 
-    int nonexec_init = node_type_dat->set->size + node_type_dat->set->exec_size;
+    int nonexec_init = n_type_dat->set->size + n_type_dat->set->exec_size;
     for (int i = 0; i < imp_nonexec_list->ranks_size; i++) 
     {
         // opp_printf("SEND", "count=%d from rank %d", imp_nonexec_list->sizes[i], imp_nonexec_list->ranks[i]);
@@ -278,7 +278,7 @@ void FESolver::initPetscStructures()
 
 //*************************************************************************************************
 /* preassembles the K matrix and "F0 vector */
-void FESolver::preAssembly(opp_map cell_to_nodes_map, opp_dat node_bnd_pot) 
+void FESolver::preAssembly(opp_map c2n_map, opp_dat n_bnd_pot) 
 {
     if (OPP_DBG)
         opp_printf("FESolver", "preAssembly global_neq %d neq %d n_elements_inc_halo %d", 
@@ -324,8 +324,8 @@ void FESolver::preAssembly(opp_map cell_to_nodes_map, opp_dat node_bnd_pot)
             for (int b=0;b<4;b++) 
             {
                 // This can reach import halos
-                int node_idx = cell_to_nodes_map->map[e * cell_to_nodes_map->dim + b]; 
-                double gb = ((double*)node_bnd_pot->data)[node_idx];
+                int node_idx = c2n_map->map[e * c2n_map->dim + b]; 
+                double gb = ((double*)n_bnd_pot->data)[node_idx];
                 fg-=ke[a][b]*gb;
             }
 
@@ -370,7 +370,7 @@ void FESolver::buildF1Vector(double *ion_den)
         {
             // IDEA : F1vec will be enriched only for the own range (owner compute),
             // hence import halo region calculation is not required here. is it correct?
-            const int node_idx = cell_to_nodes_map->map[e * cell_to_nodes_map->dim + a];
+            const int node_idx = c2n_map->map[e * c2n_map->dim + a];
             const int A = node_to_eq_map[node_idx]; 
             if (A>=0)    /*if unknown node*/ 
             {
@@ -404,7 +404,7 @@ void FESolver::buildF1Vector(double *ion_den)
 
         for (int a=0;a<4;a++)    /*tetrahedra*/ 
         {
-            const int node_idx = cell_to_nodes_map->map[e * cell_to_nodes_map->dim + a];
+            const int node_idx = c2n_map->map[e * c2n_map->dim + a];
             const int P = node_to_eq_map[node_idx]; 
             if (P<0) continue;    /* skip g nodes or on a different rank (owner compute)*/
             
@@ -433,7 +433,7 @@ void FESolver::buildJmatrix()
         {
             double ff=0;
 
-            const int node_idx = cell_to_nodes_map->map[e * cell_to_nodes_map->dim + a];
+            const int node_idx = c2n_map->map[e * c2n_map->dim + a];
             const int A = node_to_eq_map[node_idx]; 
             if (A>=0)    /*if unknown node*/ 
             {
@@ -462,7 +462,7 @@ void FESolver::buildJmatrix()
         /*assembly*/
         for (int a=0;a<4;a++)    /*tetrahedra*/ 
         {
-            const int node_idx = cell_to_nodes_map->map[e * cell_to_nodes_map->dim + a];
+            const int node_idx = c2n_map->map[e * c2n_map->dim + a];
             const int P = node_to_eq_map[node_idx]; 
             if (P<0) continue;    /*skip g nodes*/
 
@@ -511,7 +511,7 @@ opp_profiler->end("FSolve_halo");
 
     double *ion_den = (double*)arg1.dat->data;
     double *node_potential = (double*)arg0.dat->data;
-    double *node_bnd_pot = (double*)arg2.dat->data;
+    double *n_bnd_pot = (double*)arg2.dat->data;
 
     if (fesolver_method == Method::NonLinear) 
     {
@@ -536,7 +536,7 @@ opp_profiler->start("FSolve_npot");
     /* combine d (solution from linear solver) and boundary potential to get node_potential */
     for (int n = 0;n < n_nodes_set; n++) // owner compute, hence can have only upto node set size
     {
-        node_potential[n] = node_bnd_pot[n]; /*zero on non-g nodes*/
+        node_potential[n] = n_bnd_pot[n]; /*zero on non-g nodes*/
 
         int A=node_to_eq_map[n];
         if (A>=0)           /*is this a non-boundary node?*/
@@ -786,12 +786,12 @@ void FESolver::addKe(std::map<int, std::map<int, double>>& sparse_K, int e, doub
     {
         for (int b=0;b<4;b++) 
         {
-            const int node_idx1 = cell_to_nodes_map->map[e * cell_to_nodes_map->dim + a];
+            const int node_idx1 = c2n_map->map[e * c2n_map->dim + a];
             const int P = node_to_eq_map[node_idx1]; 
 
             if (P<0) continue;    /* skip g nodes or not in current ranks own row range */
 
-            const int node_idx2 = cell_to_nodes_map->map[e * cell_to_nodes_map->dim + b];
+            const int node_idx2 = c2n_map->map[e * c2n_map->dim + b];
             int Q = node_to_eq_map[node_idx2]; 
 
             if (Q<0)
@@ -822,7 +822,7 @@ void FESolver::addFe(Vec *Fvec, int e, double fe[4])
     
     for (int a=0;a<4;a++)    /*tetrahedra*/ 
     {
-        const int node_idx = cell_to_nodes_map->map[e * cell_to_nodes_map->dim + a];
+        const int node_idx = c2n_map->map[e * c2n_map->dim + a];
         const int P = node_to_eq_map[node_idx]; 
         if (P<0) continue;    /* skip g nodes or on a different rank (owner compute)*/
         
@@ -854,7 +854,7 @@ void FESolver::getNax(double nx[3], int e, int a)
 
 /*computes derivatives of the shape functions for all elements constants since 
 using linear elements*/
-void FESolver::computeNX(opp_dat node_pos, opp_map cell_to_nodes_map) 
+void FESolver::computeNX(opp_dat n_pos, opp_map c2n_map) 
 { 
 
     /*derivatives of the shape functions vs. xi*/
@@ -863,13 +863,13 @@ void FESolver::computeNX(opp_dat node_pos, opp_map cell_to_nodes_map)
     for (int e = 0; e < n_elements_inc_halo; e++) 
     {       
         /*node indices*/
-        int* map0idx = &((int*)cell_to_nodes_map->map)[e * cell_to_nodes_map->dim]; 
+        int* map0idx = &((int*)c2n_map->map)[e * c2n_map->dim]; 
 
         double x[4][3];
         for (int a=0;a<4;a++) 
         {
             /*node positions*/
-            double *pos = &((double*)node_pos->data)[map0idx[a] * node_pos->dim]; 
+            double *pos = &((double*)n_pos->data)[map0idx[a] * n_pos->dim]; 
             for (int d=0;d<3;d++) 
                 x[a][d] = pos[d];
         }
@@ -930,16 +930,16 @@ void FESolver::sanityCheck()
 #else
 
     FESolver::FESolver(
-        opp_map cell_to_nodes_map, 
-        opp_dat node_type, 
-        opp_dat node_pos,  
-        opp_dat node_bnd_pot,
-        int argc, char **argv) : cell_to_nodes_map(cell_to_nodes_map) {};
+        opp_map c2n_map, 
+        opp_dat n_type, 
+        opp_dat n_pos,  
+        opp_dat n_bnd_pot,
+        int argc, char **argv) : c2n_map(c2n_map) {};
     FESolver::~FESolver() {};
 
     void FESolver::computePhi(opp_arg arg0, opp_arg arg1, opp_arg arg2) {};
     
-    void FESolver::preAssembly(opp_map cell_to_nodes_map, opp_dat node_bnd_pot) {};
+    void FESolver::preAssembly(opp_map c2n_map, opp_dat n_bnd_pot) {};
     void FESolver::enrich_cell_shape_deriv(opp_dat cell_shape_deriv) {};
 
     bool FESolver::linearSolve(double *ion_den) { return true; }; 
@@ -954,9 +954,9 @@ void FESolver::sanityCheck()
     double FESolver::evalNa(int a, double xi, double eta, double zeta) { return -1.0; };
     void FESolver::getNax(double nx[3], int e, int a) {};
     void FESolver::initialzeMatrix(std::map<int, std::map<int, double>>& sparse_K) {};
-    void FESolver::computeNX(opp_dat node_pos, opp_map cell_to_nodes_map) {};
+    void FESolver::computeNX(opp_dat n_pos, opp_map c2n_map) {};
     void FESolver::sanityCheck() {};
-    void FESolver::init_node_to_eq_map(opp_dat node_type_dat) {};
+    void FESolver::init_node_to_eq_map(opp_dat n_type_dat) {};
     void FESolver::initPetscStructures() {};
     
 #endif

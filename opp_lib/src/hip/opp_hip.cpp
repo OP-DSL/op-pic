@@ -42,6 +42,11 @@ char *OPP_reduct_d = nullptr;
 //****************************************
 void opp_init(int argc, char **argv)
 {
+    if (argc < 2) {
+        std::cerr << "Usage: " << argv[0] << " <config_file> ..." << std::endl;
+        exit(-1);
+    }
+
 #ifdef USE_PETSC
     PetscInitialize(&argc, &argv, PETSC_NULLPTR, "opp::PetscHIP");
 #else
@@ -73,6 +78,7 @@ void opp_init(int argc, char **argv)
 #endif  
 
     opp_init_core(argc, argv);
+    opp_params->write(std::cout);
     cutilDeviceInit(argc, argv);
 
     // cutilSafeCall(hipDeviceSetCacheConfig(hipFuncCachePreferL1));
@@ -490,10 +496,10 @@ void opp_print_map_to_txtfile(opp_map map, const char *file_name_prefix, const c
 
 //****************************************
 // Set the complete dat to zero (upto array capacity)
-void opp_reset_dat(opp_dat dat, char* val, opp_reset reset)
+void opp_reset_dat_impl(opp_dat dat, char* val, opp_reset reset)
 {
     if (OPP_DBG) 
-        opp_printf("opp_reset_dat", "dat [%s] dim [%d] dat size [%d] set size [%d] set capacity [%d]", 
+        opp_printf("opp_reset_dat_impl", "dat [%s] dim [%d] dat size [%d] set size [%d] set capacity [%d]", 
             dat->name, dat->dim, dat->size, dat->set->size, dat->set->set_capacity);
 
 #ifdef USE_MPI
@@ -507,7 +513,7 @@ void opp_reset_dat(opp_dat dat, char* val, opp_reset reset)
         size_t data_d_offset = (i * dat->set->set_capacity + start) * element_size;
 
         if (OPP_DBG) 
-            opp_printf("opp_reset_dat", "dat %s dim %lld bytes_to_copy_per_dim %zu %p offset %zu", 
+            opp_printf("opp_reset_dat_impl", "dat %s dim %lld bytes_to_copy_per_dim %zu %p offset %zu", 
                 dat->name, i, (end - start) * element_size, dat->data_d, data_d_offset);
 
         cutilSafeCall(hipMemset((dat->data_d + data_d_offset), 0, (end - start) * element_size));  

@@ -45,6 +45,11 @@ void opp_part_unpack(opp_set set);
 //****************************************
 void opp_init(int argc, char **argv)
 {
+    if (argc < 2) {
+        std::cerr << "Usage: " << argv[0] << " <config_file> ..." << std::endl;
+        exit(-1);
+    }
+
 #ifdef USE_PETSC
     PetscInitialize(&argc, &argv, PETSC_NULLPTR, "opp::PetscOMP");
 #else
@@ -79,6 +84,7 @@ void opp_init(int argc, char **argv)
 #endif  
 
     opp_init_core(argc, argv);
+    opp_params->write(std::cout);
 }
 
 //****************************************
@@ -703,10 +709,10 @@ void opp_dump_dat(opp_dat dat)
 }
 
 //****************************************
-void opp_reset_dat(opp_dat dat, char* val, opp_reset reset)
+void opp_reset_dat_impl(opp_dat dat, char* val, opp_reset reset)
 {
     if (OPP_DBG) 
-        opp_printf("opp_reset_dat", "dat [%s] dim [%d] dat size [%d] set size [%d] set capacity [%d]", 
+        opp_printf("opp_reset_dat_impl", "dat [%s] dim [%d] dat size [%d] set size [%d] set capacity [%d]", 
             dat->name, dat->dim, dat->size, dat->set->size, dat->set->set_capacity);
 
     int start = 0, end = dat->set->size;

@@ -37,8 +37,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "opp_lib.h"
 #include "fempic_defs.h"
-#include "fempic_ori/meshes.h"
-#include "fempic_ori/maths.h"
+#include "minifempic_funcs.h"
 
 #ifndef USE_PETSC
     #define Vec int
@@ -47,27 +46,18 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
     #define KSPConvergedReason int
 #endif
 
-const double EPS0 = 8.8541878e-12;      /*permittivity of free space*/
-const double QE   = 1.602e-19;          /*elementary charge*/
-const double AMU  = 1.660538921e-27;    /*atomic mass unit*/
-const double Kb   = 8.617333262e-5;     /*Boltzmann's  constant*/
-
 /*solver class*/
 class FESolver {
 public:
     enum Method { NonLinear, GaussSeidel, Lapack, Petsc };
 
-    FESolver(
-        opp_map cell_to_nodes_map, 
-        opp_dat node_type, 
-        opp_dat node_pos,  
-        opp_dat node_bnd_pot,
-        int argc, char **argv);
+    FESolver(opp_map c2n_map, opp_dat n_type, opp_dat n_pos, opp_dat n_bnd_pot,  
+                int argc, char **argv);
     ~FESolver();
 
     void computePhi(opp_arg arg0, opp_arg arg1, opp_arg arg2);
     
-    void preAssembly(opp_map cell_to_nodes_map, opp_dat node_bnd_pot);
+    void preAssembly(opp_map c2n_map, opp_dat n_bnd_pot);
     void enrich_cell_shape_deriv(opp_dat cell_shape_deriv);
 
     bool linearSolve(double *ion_den); 
@@ -83,9 +73,9 @@ protected:
     double evalNa(int a, double xi, double eta, double zeta);
     void getNax(double nx[3], int e, int a);
     void initialzeMatrix(std::map<int, std::map<int, double>>& sparse_K);
-    void computeNX(opp_dat node_pos, opp_map cell_to_nodes_map);
+    void computeNX(opp_dat n_pos, opp_map c2n_map);
     void sanityCheck();
-    void init_node_to_eq_map(opp_dat node_type_dat);
+    void init_node_to_eq_map(opp_dat n_type_dat);
     void initPetscStructures();
 
     Method fesolver_method = Method::Petsc;
@@ -95,7 +85,7 @@ protected:
     
     double *detJ = nullptr;     /* determinant of the jacobian x_xi */
 
-    const opp_map cell_to_nodes_map;
+    const opp_map c2n_map;
 
     const double n0 = 0.0;
     const double phi0 = 0.0;
@@ -145,4 +135,3 @@ protected:
     int cells_inc_haloNBlocks = 0;
 // #endif
 };
-

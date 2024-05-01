@@ -116,7 +116,13 @@ void opp_dump_dat(opp_dat data);
 
 opp_dat opp_fetch_data(opp_dat dat);
 
-void opp_reset_dat(opp_dat dat, char* val, opp_reset reset = OPP_Reset_All);
+void opp_reset_dat_impl(opp_dat dat, char* val, opp_reset reset = OPP_Reset_All);
+
+template <typename T> 
+void opp_reset_dat(opp_dat dat, T* val, opp_reset reset = OPP_Reset_All)
+{
+    opp_reset_dat_impl(dat, (char*)val, reset);
+}
 
 opp_move_var opp_get_move_var(int thread = 0);
 

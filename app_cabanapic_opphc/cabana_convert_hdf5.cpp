@@ -33,9 +33,8 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 // AUTO GENERATED CODE
 //*********************************************
 
-#include "cabana_defs.h"
 #include "opp_hdf5.h"
-#include "cabana_misc.cpp"
+#include "cabana_misc.h"
 
 //*********************************************MAIN****************************************************
 int main(int argc, char **argv) 

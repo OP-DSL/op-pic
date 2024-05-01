@@ -33,9 +33,8 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 // AUTO GENERATED CODE
 //*********************************************
 
-#include "cabana_defs.h"
 #include "opp_hdf5.h"
-#include "cabana_misc.cpp"
+#include "cabana_misc.h"
 
 void opp_loop_all__interpolate_mesh_fields(opp_set,opp_arg,opp_arg,opp_arg,opp_arg,opp_arg,opp_arg,opp_arg,opp_arg,opp_arg,opp_arg,opp_arg,opp_arg,opp_arg);
 void opp_particle_move__move_deposit(opp_set,opp_arg,opp_arg,opp_arg,opp_arg,opp_arg,opp_arg,opp_arg,opp_arg);
@@ -100,7 +99,6 @@ int main(int argc, char **argv)
         opp_dat c_mask_ugb   = opp_decl_dat_hdf5(c_set,     6, DT_INT,  file.c_str(), "c_mask_ugb");
 
         opp_set p_set        = opp_decl_particle_set("particles", c_set);  // Zero particles, inject after partitioning
-        opp_dat p_index      = nullptr; // opp_decl_dat(p_set, ONE, DT_INT,  nullptr, "p_index"); // Unused
         opp_dat p_pos        = opp_decl_dat(p_set, DIM, DT_REAL, nullptr, "p_pos");
         opp_dat p_vel        = opp_decl_dat(p_set, DIM, DT_REAL, nullptr, "p_vel");    
         opp_dat p_streak_mid = opp_decl_dat(p_set, DIM, DT_REAL, nullptr, "p_streak_mid");
@@ -138,8 +136,7 @@ int main(int argc, char **argv)
         opp_partition(std::string("EXTERNAL"), c_set, nullptr, c_colors);
 #endif
 
-        init_particles(deck, p_index, p_pos, p_vel, p_streak_mid, p_weight, p_mesh_rel, 
-                        c_pos_ll, c_index, c_mask_ghost);
+        init_particles(deck, p_pos, p_vel, p_streak_mid, p_weight, p_mesh_rel, c_pos_ll, c_index, c_mask_ghost);
 
         FILE *fptre = nullptr;
         if (OPP_rank == OPP_ROOT) fptre = fopen("energy.csv", "w");

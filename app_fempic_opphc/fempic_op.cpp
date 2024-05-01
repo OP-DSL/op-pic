@@ -33,11 +33,9 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 // AUTO GENERATED CODE
 //*********************************************
 
-#include "fempic_loader.h"
-#include "fempic_misc.cpp"
+#include "fempic_misc_mesh_loader.h"
+#include "fempic_misc.h"
 #include "FESolver.h"
-
-using namespace opp;
 
 void opp_loop_all__init_boundary_pot(opp_set,opp_arg,opp_arg);
 void opp_loop_inject__inject_ions(opp_set,opp_arg,opp_arg,opp_arg,opp_arg,opp_arg,opp_arg,opp_arg,
@@ -55,15 +53,7 @@ void init_particle_mover(const double gridSpacing, int dim, const opp_dat n_pos_
 //*********************************************MAIN****************************************************
 int main(int argc, char **argv) 
 {
-    if (argc < 2) 
-    {
-        std::cerr << "Usage: " << argv[0] << " <config_file> ..." << 
-        "/ext-home/zl/phd/OP-PIC/scripts/fempic_tests/configs/coarse_1.param" << std::endl;
-        exit(-1);
-    }
-
     opp_init(argc, argv);
-    opp_params->write(std::cout);
 
     {
         opp_profiler->start("Setup");
@@ -79,21 +69,9 @@ int main(int argc, char **argv)
         int max_iter          = opp_params->get<OPP_INT>("max_iter");   
         std::string log       = "";
         const bool print_final_log = opp_params->get<OPP_BOOL>("print_final");
+        int64_t total_part_iter = 0;
 
-        std::shared_ptr<FieldPointers> g_m, m; // g_m - global mesh, m - local mesh
-        g_m = std::make_shared<FieldPointers>();
-        
-        if (OPP_rank == OPP_ROOT)
-        {
-            // Load using the original FemPIC loaders and distribute
-            g_m = LoadMesh(opp_params->get<OPP_STRING>("global_mesh"), opp_params->get<OPP_STRING>("inlet_mesh"),
-                                opp_params->get<OPP_STRING>("wall_mesh"), opp_params->get<OPP_STRING>("cluster"));
-            
-            opp_printf("Main", "Global counts - Nodes[%d] Cells[%d] IFaces[%d]", 
-                g_m->n_nodes, g_m->n_cells, g_m->n_ifaces);
-        }
-
-        DistributeMeshOverRanks(g_m, m);
+        std::shared_ptr<DataPointers> m = load_mesh();
 
         opp_set node_set       = opp_decl_set(m->n_nodes, "mesh_nodes");
         opp_set cell_set       = opp_decl_set(m->n_cells, "mesh_cells");
@@ -146,7 +124,7 @@ int main(int argc, char **argv)
         m->DeleteValues();
 
 #ifdef USE_MPI
-        genColoursForBlockPartition(c_colors, c_centroids, if_n_pos, if2n_map);
+        fempic_color_block(c_colors, c_centroids, if_n_pos, if2n_map);
 
         // opp_partition(std::string("PARMETIS_KWAY"), cell_set, c2n_map);
         // opp_partition(std::string("PARMETIS_GEOM"), iface_set, nullptr, if_n_pos);
@@ -154,22 +132,20 @@ int main(int argc, char **argv)
         opp_partition(std::string("EXTERNAL"), cell_set, nullptr, c_colors);
 #endif
         
-        opp_loop_all__init_boundary_pot(
-            node_set, 
+        opp_loop_all__init_boundary_pot(node_set, 
             opp_arg_dat(n_type,    OPP_READ), 
-            opp_arg_dat(n_bnd_pot, OPP_WRITE)
-        );
+            opp_arg_dat(n_bnd_pot, OPP_WRITE));
 
-        const int n_parts_to_inject = init_inject_distributions(if_distrib, if_area, dp_rand);
+        const int inject_count = init_inject_distributions(if_distrib, if_area, dp_rand);
 
         init_particle_mover(grid_spacing, DIM, n_pos, c_volume, c_det, c_gbl_id);
 
-        std::unique_ptr<FESolver> field_solver = std::make_unique<FESolver>(c2n_map, 
-            n_type, n_pos, n_bnd_pot, argc, argv);
+        std::unique_ptr<FESolver> field_solver = std::make_unique<FESolver>(c2n_map, n_type,
+                                                            n_pos, n_bnd_pot, argc, argv);
             
         field_solver->enrich_cell_shape_deriv(c_sd);
 
-        opp_inc_part_count_with_distribution(particle_set, n_parts_to_inject, if_distrib, false);
+        opp_inc_part_count_with_distribution(particle_set, inject_count, if_distrib, false);
 
         opp_profiler->end("Setup");
 
@@ -177,15 +153,13 @@ int main(int argc, char **argv)
         MPI_Barrier(MPI_COMM_WORLD);
 #endif
 
-        int64_t total_part_iter = 0;
         opp_profiler->start("MainLoop");
         for (OPP_main_loop_iter = 0; OPP_main_loop_iter < max_iter; OPP_main_loop_iter++)
         {
-            if (OPP_DBG && OPP_rank == OPP_ROOT) 
-                opp_printf("Main", "Starting main loop iteration %d *************", OPP_main_loop_iter);
+            OPP_RUN_ON_ROOT(&& OPP_DBG) opp_printf("Main", "Loop %d start ***", OPP_main_loop_iter);
 
             if (OPP_main_loop_iter != 0)
-                opp_inc_part_count_with_distribution(particle_set, n_parts_to_inject, if_distrib, false);
+                opp_inc_part_count_with_distribution(particle_set, inject_count, if_distrib, false);
 
             int old_nparts = particle_set->size;
             opp_loop_inject__inject_ions(particle_set,                                                                           
@@ -201,7 +175,7 @@ int main(int argc, char **argv)
                 opp_arg_dat(if_n_pos,          p2c_map, OPP_READ),
                 opp_arg_dat(dp_rand,           p2c_map, OPP_READ));
 
-            opp_reset_dat(n_charge_den, (char*)opp_zero_double16);
+            opp_reset_dat(n_charge_den, opp_zero_double16);
 
             opp_loop_all__calc_pos_vel(particle_set,                                                                           
                 opp_arg_dat(c_ef, p2c_map, OPP_READ),
@@ -230,7 +204,7 @@ int main(int argc, char **argv)
                 opp_arg_dat(n_charge_den, OPP_READ),
                 opp_arg_dat(n_bnd_pot,    OPP_READ));
 
-            opp_reset_dat(c_ef, (char*)opp_zero_double16); 
+            opp_reset_dat(c_ef, opp_zero_double16); 
 
             opp_loop_all__compute_electric_field(cell_set,                                                   
                 opp_arg_dat(c_ef,                    OPP_INC), 
@@ -251,31 +225,19 @@ int main(int argc, char **argv)
                     opp_arg_gbl(&max_n_pot, 1, "double", OPP_MAX));
 
                 log = get_global_level_log(max_n_chg_den, max_n_pot, particle_set->size, 
-                    n_parts_to_inject, (old_nparts - particle_set->size));
+                    inject_count, (old_nparts - particle_set->size));
             }
-            // opp_printf("XXX", "particle_set->size=%d", particle_set->size); 
-            
+
             total_part_iter += particle_set->size;  
 
-            if (OPP_rank == OPP_ROOT)
-                opp_printf("Main", "ts: %d %s ****", OPP_main_loop_iter, log.c_str());
+            OPP_RUN_ON_ROOT() opp_printf("Main", "ts: %d %s ****", OPP_main_loop_iter, log.c_str());
         }
         opp_profiler->end("MainLoop");
 
-        // if (OPP_DBG)
-        //     print_per_cell_particle_counts(c_colors, p2c_map); // c_colors will reset
-
-        opp_printf("Main","total particles= %" PRId64, total_part_iter); 
-
-        int64_t gbl_total_part_iter = 0;
-#ifdef USE_MPI
-        MPI_Reduce(&total_part_iter, &gbl_total_part_iter, 1, MPI_INT64_T, MPI_SUM, OPP_ROOT, MPI_COMM_WORLD);
-#else
-        gbl_total_part_iter = total_part_iter;
-#endif
-        if (OPP_rank == OPP_ROOT) 
-            opp_printf("Main", "Main loop completed after %d iterations with %" PRId64 " particle iterations ****", 
-                max_iter, gbl_total_part_iter);  
+        const int64_t global_parts_iterated = get_global_parts_iterated(total_part_iter);
+        OPP_RUN_ON_ROOT()
+            opp_printf("Main", "Loop completed : %d iterations with %" PRId64 " particle iterations ****", 
+                max_iter, global_parts_iterated);  
     }
 
     opp_exit();
