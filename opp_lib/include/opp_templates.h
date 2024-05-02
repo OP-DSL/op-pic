@@ -1,3 +1,4 @@
+
 /* 
 BSD 3-Clause License
 
@@ -7,15 +8,15 @@ Redistribution and use in source and binary forms, with or without
 modification, are permitted provided that the following conditions are met:
 
 1. Redistributions of source code must retain the above copyright notice, this
-list of conditions and the following disclaimer.
+   list of conditions and the following disclaimer.
 
 2. Redistributions in binary form must reproduce the above copyright notice,
-this list of conditions and the following disclaimer in the documentation
-and/or other materials provided with the distribution.
+   this list of conditions and the following disclaimer in the documentation
+   and/or other materials provided with the distribution.
 
 3. Neither the name of the copyright holder nor the names of its
-contributors may be used to endorse or promote products derived from
-this software without specific prior written permission.
+   contributors may be used to endorse or promote products derived from
+   this software without specific prior written permission.
 
 THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
 AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
@@ -29,10 +30,23 @@ OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-//*********************************************
-// USER WRITTEN CODE
-//*********************************************
-
-// include only to cabana_misc.h
 #pragma once
 
+#include "opp_seq.h"
+
+template <typename... T, typename... OPARG>
+void opp_par_loop(void (*kernel)(T *...), char const *name, opp_set set, opp_iterate_type iter_type,
+                 OPARG... arguments) {
+    opp_printf("opp_par_loop", "kernel %s iterate %s", name, (iter_type == OPP_ITERATE_ALL) ? "ALL" : "INJECTED");
+}
+
+template <typename... T, typename... OPARG>
+void opp_particle_move(void (*kernel)(T *...), char const *name, opp_set set, opp_map c2c_map, opp_dat p2c_map,
+                 OPARG... arguments) {
+    opp_printf("opp_particle_move", "kernel %s", name);
+}
+
+inline void opp_decl_const_impl(int dim, int size, char* data, const char* name)
+{
+    opp_printf("opp_decl_const", "name %s dim %d size %d", name, dim, size);
+}

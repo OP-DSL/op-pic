@@ -166,7 +166,7 @@ void opp_particle_move__move_deposit(
                 opp_thr_p2c = &((OPP_INT*) p2c_map->data)[n];   // TODO : remove OPP_INT* after making this into a map
                 opp_thr_c2c = &(c2c_map->map)[*opp_thr_p2c * c2c_dim];
 
-                push_particles_kernel_omp(move_flag, iter_one_flag, opp_thr_c2c, opp_thr_p2c,
+                move_deposit_kernel_omp(move_flag, iter_one_flag, opp_thr_c2c, opp_thr_p2c,
                     &((double*)arg0.data)[n * arg0.dim],                    // part_vel 
                     &((double*)arg1.data)[n * arg1.dim],                    // part_pos 
                     &((double*)arg2.data)[n * arg2.dim],                    // part_streak_mid 
@@ -360,7 +360,7 @@ void opp_loop_all__get_max_values(
 
         for (size_t n = start; n < finish; n++)
         { 
-            get_final_max_values_kernel(
+            get_max_x_values_kernel(
                 &((double*) args[0].data)[n * args[0].dim],     // cell_j  
                 &((double*) arg1_l)[1 * thr],
                 &((double*) args[2].data)[n * args[2].dim],     // cell_e  
@@ -526,7 +526,7 @@ void opp_loop_all__compute_energy(
 
         for (size_t n = start; n < finish; n++)
         { 
-            field_energy(
+            compute_energy_kernel(
                 &((OPP_INT*)  args[0].data)[n * args[0].dim],        
                 &((OPP_REAL*) args[1].data)[n * args[1].dim],       
                 (OPP_REAL*) &(arg2_l[1 * thr])

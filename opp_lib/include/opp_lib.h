@@ -157,3 +157,7 @@ void opp_upload_particle_set(opp_set particles_set, bool realloc = false);
 // cell_colors : local cell_colors dat to colour with most appropriate MPI rank
 void opp_colour_cartesian_mesh(const int ndim, std::vector<int> cell_counts, opp_dat cell_index, 
                             const opp_dat cell_colors, const int cell_ghosts = 0);
+
+#ifdef USE_MPI
+    #include <opp_mpi_core.h>
+#endif

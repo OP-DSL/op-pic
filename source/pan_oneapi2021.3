@@ -3,7 +3,7 @@
 module purge
 
 export OPP_COMPILER=intel
-export OPP_INSTALL_PATH=/home/zl/phd/OP-PIC/opp
+export OPP_INSTALL_PATH=/home/zl/phd/OP-PIC/opp_install
 
 export PARMETIS_INSTALL_PATH=/home/zl/libs/parmetis-4.0.3/
 export LD_LIBRARY_PATH=$PARMETIS_INSTALL_PATH/lib:$PARMETIS_INSTALL_PATH/metis/lib:/home/zl/libs/metis/5.1.0/lib:$LD_LIBRARY_PATH
@@ -78,3 +78,6 @@ if [ "$(hostname)" != 'demos' ]; then
   export MPICH_CC=/opt/intel/oneapi/2021.3/compiler/latest/linux/bin/intel64/icc
   export MPICH_F90=/opt/intel/oneapi/2021.3/compiler/latest/linux/bin/intel64/ifort
 fi
+
+module load python/3.9.7
+source ../opp_translator/opp_venv/bin/activate

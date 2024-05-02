@@ -1,5 +1,5 @@
 # Simulation parameters
-INT num_steps = 100
+INT num_steps = 10
 REAL init_vel = 0.0866025403784439
 INT num_part_per_cell = 750
 INT nx = 40

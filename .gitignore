@@ -1,6 +1,8 @@
 *.o
 *.so
 
+opp_venv/
+
 fempic_seq
 fempic_genseq*
 fempic_openmp*

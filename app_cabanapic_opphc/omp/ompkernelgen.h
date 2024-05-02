@@ -35,7 +35,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 
 //*************************************************************************************************
-inline void push_particles_kernel_omp(
+inline void move_deposit_kernel_omp(
     char& opp_move_flag, const bool iter_one_flag, const OPP_INT* opp_thr_c2c, OPP_INT* opp_thr_p2c, // added by code-gen
     OPP_REAL* part_vel, 
     OPP_REAL* part_pos, 

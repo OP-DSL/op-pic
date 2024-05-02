@@ -151,7 +151,7 @@ void opp_particle_move__move_deposit(
             opp_c2c = &(c2c_map->map)[*opp_p2c * c2c_dim];
             // int_hops++;
 
-            push_particles_kernel(
+            move_deposit_kernel(
                 &((OPP_REAL*)       arg0.data)[n * arg0.dim],        // part_vel 
                 &((OPP_REAL*)       arg1.data)[n * arg1.dim],        // part_pos 
                 &((OPP_REAL*)       arg2.data)[n * arg2.dim],        // part_streak_mid 
@@ -319,7 +319,7 @@ void opp_loop_all__get_max_values(
     const int set_size = set->size;
     for (int n = 0; n < set_size; n++)
     {
-        get_final_max_values_kernel(
+        get_max_x_values_kernel(
             &((const OPP_REAL*) args[0].data)[n * args[0].dim],     // cell_j  
             (OPP_REAL*)         args[1].data,
             &((const OPP_REAL*) args[2].data)[n * args[2].dim],     // cell_e  
@@ -432,7 +432,7 @@ void opp_loop_all__compute_energy(
     const int set_size = set->size;
     for (int n = 0; n < set_size; n++)
     {
-        field_energy(
+        compute_energy_kernel(
             &((const OPP_INT*)  args[0].data)[n * args[0].dim],        
             &((const OPP_REAL*) args[1].data)[n * args[1].dim],       
             (OPP_REAL*)         args[2].data

@@ -36,6 +36,8 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 // include only to cabana_misc.h
 #pragma once
 
+#include "fempic_defs.h"
+
 //*************************************************************************************************
 inline int get_global_set_sizes(opp_set set, std::vector<int>& counts_vec, std::vector<int>& ifaces_offsets) {
 
