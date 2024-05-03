@@ -36,6 +36,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //*********************************************
 
 #include <opp_lib.h>
+#include <math.h>
 
 #define NG                        1
 #define ONE                       1

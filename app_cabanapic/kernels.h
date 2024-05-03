@@ -1,7 +1,6 @@
 #pragma once
 
 #include "cabana_defs.h"
-#include "math.h"
 
 const OPP_REAL fourth         = (1.0 / 4.0);
 const OPP_REAL half           = (1.0 / 2.0);

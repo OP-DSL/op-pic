@@ -173,7 +173,7 @@ int main(int argc, char **argv)
                 opp_arg_dat(c_mask_right,                     OPP_READ));
 
             // Leap frog method
-            opp_par_loop(half_advance_b_kernel, "half_advance_b", c_set, OPP_ITERATE_ALL,
+            opp_par_loop(half_advance_b_kernel, "half_advance_b1", c_set, OPP_ITERATE_ALL,
                 opp_arg_dat(c_e, CellMap::xu_y_z, c2c_map, OPP_READ),
                 opp_arg_dat(c_e, CellMap::x_yu_z, c2c_map, OPP_READ), 
                 opp_arg_dat(c_e, CellMap::x_y_zu, c2c_map, OPP_READ), 
@@ -181,60 +181,60 @@ int main(int argc, char **argv)
                 opp_arg_dat(c_b,                           OPP_INC),
                 opp_arg_dat(c_mask_ghost,                  OPP_READ));
 
-            opp_par_loop(update_ghosts_B_kernel, "update_ghosts_B", c_set, OPP_ITERATE_ALL, 
+            opp_par_loop(update_ghosts_B_kernel, "update_ghosts_B01", c_set, OPP_ITERATE_ALL, 
                 opp_arg_dat(c_mask_ugb, OPP_READ), opp_arg_dat(c_b, OPP_READ),
                 opp_arg_dat(c_b, 0, c2cugb0_map, OPP_WRITE), opp_arg_gbl(&m0, 1, "int", OPP_READ));
-            opp_par_loop(update_ghosts_B_kernel, "update_ghosts_B", c_set, OPP_ITERATE_ALL, 
+            opp_par_loop(update_ghosts_B_kernel, "update_ghosts_B02", c_set, OPP_ITERATE_ALL, 
                 opp_arg_dat(c_mask_ugb, OPP_READ), opp_arg_dat(c_b, OPP_READ),
                 opp_arg_dat(c_b, 0, c2cugb1_map, OPP_WRITE), opp_arg_gbl(&m1, 1, "int", OPP_READ));
-            opp_par_loop(update_ghosts_B_kernel, "update_ghosts_B", c_set, OPP_ITERATE_ALL, 
+            opp_par_loop(update_ghosts_B_kernel, "update_ghosts_B03", c_set, OPP_ITERATE_ALL, 
                 opp_arg_dat(c_mask_ugb, OPP_READ), opp_arg_dat(c_b, OPP_READ),
                 opp_arg_dat(c_b, 0, c2cugb2_map, OPP_WRITE), opp_arg_gbl(&m2, 1, "int", OPP_READ));
-            opp_par_loop(update_ghosts_B_kernel, "update_ghosts_B", c_set, OPP_ITERATE_ALL, 
+            opp_par_loop(update_ghosts_B_kernel, "update_ghosts_B04", c_set, OPP_ITERATE_ALL, 
                 opp_arg_dat(c_mask_ugb, OPP_READ), opp_arg_dat(c_b, OPP_READ),
                 opp_arg_dat(c_b, 0, c2cugb3_map, OPP_WRITE), opp_arg_gbl(&m3, 1, "int", OPP_READ));
-            opp_par_loop(update_ghosts_B_kernel, "update_ghosts_B", c_set, OPP_ITERATE_ALL, 
+            opp_par_loop(update_ghosts_B_kernel, "update_ghosts_B05", c_set, OPP_ITERATE_ALL, 
                 opp_arg_dat(c_mask_ugb, OPP_READ), opp_arg_dat(c_b, OPP_READ),
                 opp_arg_dat(c_b, 0, c2cugb4_map, OPP_WRITE), opp_arg_gbl(&m4, 1, "int", OPP_READ));
-            opp_par_loop(update_ghosts_B_kernel, "update_ghosts_B", c_set, OPP_ITERATE_ALL, 
+            opp_par_loop(update_ghosts_B_kernel, "update_ghosts_B06", c_set, OPP_ITERATE_ALL, 
                 opp_arg_dat(c_mask_ugb, OPP_READ), opp_arg_dat(c_b, OPP_READ),
                 opp_arg_dat(c_b, 0, c2cugb5_map, OPP_WRITE), opp_arg_gbl(&m5, 1, "int", OPP_READ));
 
-            opp_par_loop(update_ghosts_kernel, "update_ghosts", c_set, OPP_ITERATE_ALL,
+            opp_par_loop(update_ghosts_kernel, "update_ghosts01", c_set, OPP_ITERATE_ALL,
                 opp_arg_dat(c_mask_ug, OPP_READ), opp_arg_dat(c_j, OPP_READ), opp_arg_dat(c_j, 0, c2cug0_map, OPP_INC), 
                 opp_arg_gbl(&m0, 1, "int", OPP_READ), opp_arg_gbl(&m0, 1, "int", OPP_READ));
-            opp_par_loop(update_ghosts_kernel, "update_ghosts", c_set, OPP_ITERATE_ALL, 
+            opp_par_loop(update_ghosts_kernel, "update_ghosts02", c_set, OPP_ITERATE_ALL, 
                 opp_arg_dat(c_mask_ug, OPP_READ), opp_arg_dat(c_j, OPP_READ), opp_arg_dat(c_j, 0, c2cug1_map, OPP_INC), 
                 opp_arg_gbl(&m1, 1, "int", OPP_READ), opp_arg_gbl(&m0, 1, "int", OPP_READ));
-            opp_par_loop(update_ghosts_kernel, "update_ghosts", c_set, OPP_ITERATE_ALL, 
+            opp_par_loop(update_ghosts_kernel, "update_ghosts03", c_set, OPP_ITERATE_ALL, 
                 opp_arg_dat(c_mask_ug, OPP_READ), opp_arg_dat(c_j, OPP_READ), opp_arg_dat(c_j, 0, c2cug2_map, OPP_INC), 
                 opp_arg_gbl(&m2, 1, "int", OPP_READ), opp_arg_gbl(&m1, 1, "int", OPP_READ));
-            opp_par_loop(update_ghosts_kernel, "update_ghosts", c_set, OPP_ITERATE_ALL, 
+            opp_par_loop(update_ghosts_kernel, "update_ghosts04", c_set, OPP_ITERATE_ALL, 
                 opp_arg_dat(c_mask_ug, OPP_READ), opp_arg_dat(c_j, OPP_READ), opp_arg_dat(c_j, 0, c2cug3_map, OPP_INC), 
                 opp_arg_gbl(&m3, 1, "int", OPP_READ), opp_arg_gbl(&m1, 1, "int", OPP_READ));
-            opp_par_loop(update_ghosts_kernel, "update_ghosts", c_set, OPP_ITERATE_ALL, 
+            opp_par_loop(update_ghosts_kernel, "update_ghosts05", c_set, OPP_ITERATE_ALL, 
                 opp_arg_dat(c_mask_ug, OPP_READ), opp_arg_dat(c_j, OPP_READ), opp_arg_dat(c_j, 0, c2cug4_map, OPP_INC), 
                 opp_arg_gbl(&m4, 1, "int", OPP_READ), opp_arg_gbl(&m2, 1, "int", OPP_READ));
-            opp_par_loop(update_ghosts_kernel, "update_ghosts", c_set, OPP_ITERATE_ALL, 
+            opp_par_loop(update_ghosts_kernel, "update_ghosts06", c_set, OPP_ITERATE_ALL, 
                 opp_arg_dat(c_mask_ug, OPP_READ), opp_arg_dat(c_j, OPP_READ), opp_arg_dat(c_j, 0, c2cug5_map, OPP_INC), 
                 opp_arg_gbl(&m5, 1, "int", OPP_READ), opp_arg_gbl(&m2, 1, "int", OPP_READ));
 
-            opp_par_loop(update_ghosts_B_kernel, "update_ghosts_B", c_set, OPP_ITERATE_ALL, 
+            opp_par_loop(update_ghosts_B_kernel, "update_ghosts_B07", c_set, OPP_ITERATE_ALL, 
                 opp_arg_dat(c_mask_ugb, OPP_READ), opp_arg_dat(c_j, OPP_READ),
                 opp_arg_dat(c_j, 0, c2cugb0_map, OPP_WRITE), opp_arg_gbl(&m0, 1, "int", OPP_READ));
-            opp_par_loop(update_ghosts_B_kernel, "update_ghosts_B", c_set, OPP_ITERATE_ALL, 
+            opp_par_loop(update_ghosts_B_kernel, "update_ghosts_B08", c_set, OPP_ITERATE_ALL, 
                 opp_arg_dat(c_mask_ugb, OPP_READ), opp_arg_dat(c_j, OPP_READ),
                 opp_arg_dat(c_j, 0, c2cugb1_map, OPP_WRITE), opp_arg_gbl(&m1, 1, "int", OPP_READ));
-            opp_par_loop(update_ghosts_B_kernel, "update_ghosts_B", c_set, OPP_ITERATE_ALL, 
+            opp_par_loop(update_ghosts_B_kernel, "update_ghosts_B09", c_set, OPP_ITERATE_ALL, 
                 opp_arg_dat(c_mask_ugb, OPP_READ), opp_arg_dat(c_j, OPP_READ),
                 opp_arg_dat(c_j, 0, c2cugb2_map, OPP_WRITE), opp_arg_gbl(&m2, 1, "int", OPP_READ));
-            opp_par_loop(update_ghosts_B_kernel, "update_ghosts_B", c_set, OPP_ITERATE_ALL, 
+            opp_par_loop(update_ghosts_B_kernel, "update_ghosts_B10", c_set, OPP_ITERATE_ALL, 
                 opp_arg_dat(c_mask_ugb, OPP_READ), opp_arg_dat(c_j, OPP_READ),
                 opp_arg_dat(c_j, 0, c2cugb3_map, OPP_WRITE), opp_arg_gbl(&m3, 1, "int", OPP_READ));
-            opp_par_loop(update_ghosts_B_kernel, "update_ghosts_B", c_set, OPP_ITERATE_ALL, 
+            opp_par_loop(update_ghosts_B_kernel, "update_ghosts_B11", c_set, OPP_ITERATE_ALL, 
                 opp_arg_dat(c_mask_ugb, OPP_READ), opp_arg_dat(c_j, OPP_READ),
                 opp_arg_dat(c_j, 0, c2cugb4_map, OPP_WRITE), opp_arg_gbl(&m4, 1, "int", OPP_READ));
-            opp_par_loop(update_ghosts_B_kernel, "update_ghosts_B", c_set, OPP_ITERATE_ALL, 
+            opp_par_loop(update_ghosts_B_kernel, "update_ghosts_B12", c_set, OPP_ITERATE_ALL, 
                 opp_arg_dat(c_mask_ugb, OPP_READ), opp_arg_dat(c_j, OPP_READ),
                 opp_arg_dat(c_j, 0, c2cugb5_map, OPP_WRITE), opp_arg_gbl(&m5, 1, "int", OPP_READ));
 
@@ -247,7 +247,7 @@ int main(int argc, char **argv)
                 opp_arg_dat(c_e,                           OPP_INC),
                 opp_arg_dat(c_mask_right,                  OPP_READ));
 
-            opp_par_loop(half_advance_b_kernel, "half_advance_b", c_set, OPP_ITERATE_ALL, 
+            opp_par_loop(half_advance_b_kernel, "half_advance_b2", c_set, OPP_ITERATE_ALL, 
                 opp_arg_dat(c_e, CellMap::xu_y_z, c2c_map, OPP_READ),
                 opp_arg_dat(c_e, CellMap::x_yu_z, c2c_map, OPP_READ), 
                 opp_arg_dat(c_e, CellMap::x_y_zu, c2c_map, OPP_READ), 
@@ -255,22 +255,22 @@ int main(int argc, char **argv)
                 opp_arg_dat(c_b,                           OPP_INC),
                 opp_arg_dat(c_mask_ghost,                  OPP_READ));
 
-            opp_par_loop(update_ghosts_B_kernel, "update_ghosts_B", c_set, OPP_ITERATE_ALL,
+            opp_par_loop(update_ghosts_B_kernel, "update_ghosts_B13", c_set, OPP_ITERATE_ALL,
                 opp_arg_dat(c_mask_ugb, OPP_READ), opp_arg_dat(c_b, OPP_READ),
                 opp_arg_dat(c_b, 0, c2cugb0_map, OPP_WRITE), opp_arg_gbl(&m0, 1, "int", OPP_READ));
-            opp_par_loop(update_ghosts_B_kernel, "update_ghosts_B", c_set, OPP_ITERATE_ALL, 
+            opp_par_loop(update_ghosts_B_kernel, "update_ghosts_B14", c_set, OPP_ITERATE_ALL, 
                 opp_arg_dat(c_mask_ugb, OPP_READ), opp_arg_dat(c_b, OPP_READ),
                 opp_arg_dat(c_b, 0, c2cugb1_map, OPP_WRITE), opp_arg_gbl(&m1, 1, "int", OPP_READ));
-            opp_par_loop(update_ghosts_B_kernel, "update_ghosts_B", c_set, OPP_ITERATE_ALL, 
+            opp_par_loop(update_ghosts_B_kernel, "update_ghosts_B15", c_set, OPP_ITERATE_ALL, 
                 opp_arg_dat(c_mask_ugb, OPP_READ), opp_arg_dat(c_b, OPP_READ),
                 opp_arg_dat(c_b, 0, c2cugb2_map, OPP_WRITE), opp_arg_gbl(&m2, 1, "int", OPP_READ));
-            opp_par_loop(update_ghosts_B_kernel, "update_ghosts_B", c_set, OPP_ITERATE_ALL, 
+            opp_par_loop(update_ghosts_B_kernel, "update_ghosts_B16", c_set, OPP_ITERATE_ALL, 
                 opp_arg_dat(c_mask_ugb, OPP_READ), opp_arg_dat(c_b, OPP_READ),
                 opp_arg_dat(c_b, 0, c2cugb3_map, OPP_WRITE), opp_arg_gbl(&m3, 1, "int", OPP_READ));
-            opp_par_loop(update_ghosts_B_kernel, "update_ghosts_B", c_set, OPP_ITERATE_ALL, 
+            opp_par_loop(update_ghosts_B_kernel, "update_ghosts_B17", c_set, OPP_ITERATE_ALL, 
                 opp_arg_dat(c_mask_ugb, OPP_READ), opp_arg_dat(c_b, OPP_READ),
                 opp_arg_dat(c_b, 0, c2cugb4_map, OPP_WRITE), opp_arg_gbl(&m4, 1, "int", OPP_READ));
-            opp_par_loop(update_ghosts_B_kernel, "update_ghosts_B", c_set, OPP_ITERATE_ALL, 
+            opp_par_loop(update_ghosts_B_kernel, "update_ghosts_B18", c_set, OPP_ITERATE_ALL, 
                 opp_arg_dat(c_mask_ugb, OPP_READ), opp_arg_dat(c_b, OPP_READ),
                 opp_arg_dat(c_b, 0, c2cugb5_map, OPP_WRITE), opp_arg_gbl(&m5, 1, "int", OPP_READ));
 
@@ -278,11 +278,11 @@ int main(int argc, char **argv)
             if (opp_params->get<OPP_BOOL>("print_energy"))
             {
                 OPP_REAL e_energy = 0.0, b_energy = 0.0;
-                opp_par_loop(compute_energy_kernel, "compute_energy", c_set, OPP_ITERATE_ALL, 
+                opp_par_loop(compute_energy_kernel, "compute_energy1", c_set, OPP_ITERATE_ALL, 
                     opp_arg_dat(c_mask_ghost, OPP_READ),
                     opp_arg_dat(c_e,          OPP_READ),
                     opp_arg_gbl(&e_energy, 1, "double", OPP_INC));
-                opp_par_loop(compute_energy_kernel, "compute_energy", c_set, OPP_ITERATE_ALL, 
+                opp_par_loop(compute_energy_kernel, "compute_energy2", c_set, OPP_ITERATE_ALL, 
                     opp_arg_dat(c_mask_ghost, OPP_READ),
                     opp_arg_dat(c_b,          OPP_READ),
                     opp_arg_gbl(&b_energy, 1, "double", OPP_INC));
