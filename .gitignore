@@ -46,3 +46,5 @@ neso_2D3V
 advection_gbl_op/
 advix*
 ncu*/
+app_cabanapic/
+*.pyc

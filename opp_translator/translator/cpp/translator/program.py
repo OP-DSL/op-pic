@@ -29,14 +29,14 @@ def translateProgram(source: str, program: Program, force_soa: bool) -> str:
             after = re.sub(
                 rf"{loop.kernel}\s*,\s*\"{loop.loop_name}\"\s*,\s*", "", after, count=1
             )  # TODO: This assumes that the kernel arg is on the same line as the call
-            buffer.update(loop.loc.line - lines_removed - 1, before + f"opp_par_loop_{loop.iterator_type.name}__{loop.loop_name}" + after)
+            buffer.update(loop.loc.line - lines_removed - 1, before + f"opp_par_loop_{loop.iterator_type.name}__{loop.kernel}" + after)
 
         elif loop.loop_type == OP.LoopType.MOVE_LOOP:
             before, after = buffer.get(loop.loc.line - lines_removed - 1).split("opp_particle_move", 1)
             after = re.sub(
                 rf"{loop.kernel}\s*,\s*\"{loop.loop_name}\"\s*,\s*", "", after, count=1
             )  # TODO: This assumes that the kernel arg is on the same line as the call
-            buffer.update(loop.loc.line - lines_removed - 1, before + f"opp_particle_move__{loop.loop_name}" + after)
+            buffer.update(loop.loc.line - lines_removed - 1, before + f"opp_particle_move__{loop.kernel}" + after)
 
     # 3. Update headers
     index = buffer.search(r'\s*#include\s+"opp_templates\.h"')
@@ -44,12 +44,16 @@ def translateProgram(source: str, program: Program, force_soa: bool) -> str:
     index += 2
 
     # buffer.insert(index, '#ifdef OPENACC\n#ifdef __cplusplus\nextern "C" {\n#endif\n#endif\n')
+    loop_list = []
     for loop in program.loops:
         if loop.loop_type == OP.LoopType.PAR_LOOP:
-            prototype = f'void opp_par_loop_{loop.iterator_type.name}__{loop.loop_name}(opp_set{",opp_arg" * len(loop.args)});'
+            prototype = f'void opp_par_loop_{loop.iterator_type.name}__{loop.kernel}(opp_set{",opp_arg" * len(loop.args)});'
         elif loop.loop_type == OP.LoopType.MOVE_LOOP:
-            prototype = f'void opp_particle_move__{loop.loop_name}(opp_set,opp_map,opp_dat{",opp_arg" * len(loop.args)});'
-        buffer.insert(index, prototype)
+            prototype = f'void opp_particle_move__{loop.kernel}(opp_set,opp_map,opp_dat{",opp_arg" * len(loop.args)});'
+        
+        if prototype not in loop_list:
+            loop_list.append(prototype)
+            buffer.insert(index, prototype)
 
     source = buffer.translate()
 

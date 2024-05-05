@@ -30,25 +30,26 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
 //*********************************************
-// AUTO GENERATED CODE
+// USER WRITTEN CODE
 //*********************************************
+
+#include "opp_templates.h"
+
+OPP_REAL CONST_spwt = 0;
+OPP_REAL CONST_ion_velocity = 0;
+OPP_REAL CONST_dt = 0;
+OPP_REAL CONST_plasma_den = 0;
+OPP_REAL CONST_mass = 0;
+OPP_REAL CONST_charge = 0;
+OPP_REAL CONST_wall_potential = 0;
 
 #include "fempic_misc_mesh_loader.h"
 #include "fempic_misc.h"
+#include "kernels.h"
 #include "FESolver.h"
 
-void opp_loop_all__init_boundary_pot(opp_set,opp_arg,opp_arg);
-void opp_loop_inject__inject_ions(opp_set,opp_arg,opp_arg,opp_arg,opp_arg,opp_arg,opp_arg,opp_arg,
-    opp_arg,opp_arg,opp_arg,opp_arg);
-void opp_loop_all__compute_node_charge_density(opp_set,opp_arg,opp_arg);
-void opp_loop_all__compute_electric_field(opp_set,opp_arg,opp_arg,opp_arg,opp_arg,opp_arg,opp_arg);
-void opp_loop_all__calc_pos_vel(opp_set,opp_arg,opp_arg,opp_arg);
-void opp_loop_all__deposit_charge_on_nodes(opp_set,opp_arg,opp_arg,opp_arg,opp_arg,opp_arg);
-void opp_particle_move__move(opp_set,opp_map,opp_dat,opp_arg,opp_arg,opp_arg,opp_arg);
-void opp_loop_all__get_max_values(opp_set,opp_arg,opp_arg,opp_arg,opp_arg);
-
-void init_particle_mover(const double gridSpacing, int dim, const opp_dat n_pos_dat, 
-    const opp_dat cellVolume_dat, const opp_dat cellDet_dat, const opp_dat c_gbl_id_dat);
+// void init_particle_mover(const double gridSpacing, int dim, const opp_dat n_pos_dat, 
+//     const opp_dat cellVolume_dat, const opp_dat cellDet_dat, const opp_dat c_gbl_id_dat);
 
 //*********************************************MAIN****************************************************
 int main(int argc, char **argv) 
@@ -56,20 +57,20 @@ int main(int argc, char **argv)
     opp_init(argc, argv);
 
     {
-        opp_profiler->start("Setup");
+    opp_profiler->start("Setup");
 
-        double plasma_den     = opp_params->get<OPP_REAL>("plasma_den");
-        double dt             = opp_params->get<OPP_REAL>("dt");
-        double ion_velocity   = opp_params->get<OPP_REAL>("ion_velocity");
-        double spwt           = opp_params->get<OPP_REAL>("spwt");
-        double wall_potential = opp_params->get<OPP_REAL>("wall_potential");
-        double grid_spacing   = opp_params->get<OPP_REAL>("grid_spacing");
-        double mass           = 2 * AMU;
-        double charge         = 1 * QE;
-        int max_iter          = opp_params->get<OPP_INT>("max_iter");   
-        std::string log       = "";
-        const bool print_final_log = opp_params->get<OPP_BOOL>("print_final");
-        int64_t total_part_iter = 0;
+        OPP_REAL plasma_den            = opp_params->get<OPP_REAL>("plasma_den");
+        OPP_REAL dt                    = opp_params->get<OPP_REAL>("dt");
+        OPP_REAL ion_velocity          = opp_params->get<OPP_REAL>("ion_velocity");
+        OPP_REAL spwt                  = opp_params->get<OPP_REAL>("spwt");
+        OPP_REAL wall_potential        = opp_params->get<OPP_REAL>("wall_potential");
+        OPP_REAL grid_spacing          = opp_params->get<OPP_REAL>("grid_spacing");
+        OPP_REAL mass                  = 2 * AMU;
+        OPP_REAL charge                = 1 * QE;
+        OPP_INT max_iter               = opp_params->get<OPP_INT>("max_iter");   
+        std::string log                = "";
+        const OPP_BOOL print_final_log = opp_params->get<OPP_BOOL>("print_final");
+        int64_t total_part_iter        = 0;
 
         std::shared_ptr<DataPointers> m = load_mesh();
 
@@ -132,13 +133,13 @@ int main(int argc, char **argv)
         opp_partition(std::string("EXTERNAL"), cell_set, nullptr, c_colors);
 #endif
         
-        opp_loop_all__init_boundary_pot(node_set, 
+        opp_par_loop(init_boundary_pot_kernel, "init_boundary_pot", node_set, OPP_ITERATE_ALL,
             opp_arg_dat(n_type,    OPP_READ), 
             opp_arg_dat(n_bnd_pot, OPP_WRITE));
 
         const int inject_count = init_inject_distributions(if_distrib, if_area, dp_rand);
 
-        init_particle_mover(grid_spacing, DIM, n_pos, c_volume, c_det, c_gbl_id);
+        // init_particle_mover(grid_spacing, DIM, n_pos, c_volume, c_det, c_gbl_id);
 
         std::unique_ptr<FESolver> field_solver = std::make_unique<FESolver>(c2n_map, n_type,
                                                             n_pos, n_bnd_pot, argc, argv);
@@ -147,13 +148,9 @@ int main(int argc, char **argv)
 
         opp_inc_part_count_with_distribution(particle_set, inject_count, if_distrib, false);
 
-        opp_profiler->end("Setup");
+    opp_profiler->end("Setup");
 
-#ifdef USE_MPI
-        MPI_Barrier(MPI_COMM_WORLD);
-#endif
-
-        opp_profiler->start("MainLoop");
+    opp_profiler->start("MainLoop");
         for (OPP_main_loop_iter = 0; OPP_main_loop_iter < max_iter; OPP_main_loop_iter++)
         {
             OPP_RUN_ON_ROOT(&& OPP_DBG) opp_printf("Main", "Loop %d start ***", OPP_main_loop_iter);
@@ -161,13 +158,13 @@ int main(int argc, char **argv)
             if (OPP_main_loop_iter != 0)
                 opp_inc_part_count_with_distribution(particle_set, inject_count, if_distrib, false);
 
-            int old_nparts = particle_set->size;
-            opp_loop_inject__inject_ions(particle_set,                                                                           
+            const int old_nparts = particle_set->size;
+            opp_par_loop(inject_ions_kernel, "inject_ions", particle_set, OPP_ITERATE_INJECTED,
                 opp_arg_dat(p_pos,                      OPP_WRITE),                      
                 opp_arg_dat(p_vel,                      OPP_WRITE),                      
                 opp_arg_dat(p2c_map,                    OPP_RW),
                 opp_arg_dat(p2c_map,                    OPP_RW), // TODO: remove
-                opp_arg_dat(if2c_map,          p2c_map, OPP_READ),
+                // opp_arg_dat(if2c_map,          p2c_map, OPP_READ),
                 opp_arg_dat(c_ef, 0, if2c_map, p2c_map, OPP_READ),
                 opp_arg_dat(if_u_norm,         p2c_map, OPP_READ),
                 opp_arg_dat(if_v_norm,         p2c_map, OPP_READ),
@@ -177,25 +174,25 @@ int main(int argc, char **argv)
 
             opp_reset_dat(n_charge_den, opp_zero_double16);
 
-            opp_loop_all__calc_pos_vel(particle_set,                                                                           
+            opp_par_loop(calculate_new_pos_vel_kernel, "calculate_new_pos_vel", particle_set, OPP_ITERATE_ALL,
                 opp_arg_dat(c_ef, p2c_map, OPP_READ),
                 opp_arg_dat(p_pos,         OPP_WRITE),                         
                 opp_arg_dat(p_vel,         OPP_WRITE));
 
-            opp_particle_move__move(particle_set, c2c_map, p2c_map,
+            opp_particle_move(move_kernel, "move", particle_set, c2c_map, p2c_map,
                 opp_arg_dat(p_pos,             OPP_READ),
                 opp_arg_dat(p_lc,              OPP_WRITE),
                 opp_arg_dat(c_volume, p2c_map, OPP_READ),
                 opp_arg_dat(c_det,    p2c_map, OPP_READ));
 
-            opp_loop_all__deposit_charge_on_nodes(particle_set, 
+            opp_par_loop(deposit_charge_on_nodes_kernel, "deposit_charge_on_nodes", particle_set, OPP_ITERATE_ALL,
                 opp_arg_dat(p_lc,                              OPP_READ),
                 opp_arg_dat(n_charge_den, 0, c2n_map, p2c_map, OPP_INC),
                 opp_arg_dat(n_charge_den, 1, c2n_map, p2c_map, OPP_INC),
                 opp_arg_dat(n_charge_den, 2, c2n_map, p2c_map, OPP_INC),
                 opp_arg_dat(n_charge_den, 3, c2n_map, p2c_map, OPP_INC));
 
-            opp_loop_all__compute_node_charge_density(node_set,                            
+            opp_par_loop(compute_node_charge_density_kernel, "compute_node_charge_density", node_set, OPP_ITERATE_ALL,
                 opp_arg_dat(n_charge_den,  OPP_RW), 
                 opp_arg_dat(n_volume,      OPP_READ));
 
@@ -206,7 +203,7 @@ int main(int argc, char **argv)
 
             opp_reset_dat(c_ef, opp_zero_double16); 
 
-            opp_loop_all__compute_electric_field(cell_set,                                                   
+            opp_par_loop(compute_electric_field_kernel, "compute_electric_field", cell_set, OPP_ITERATE_ALL,
                 opp_arg_dat(c_ef,                    OPP_INC), 
                 opp_arg_dat(c_sd,                    OPP_READ),
                 opp_arg_dat(n_potential, 0, c2n_map, OPP_READ),
@@ -218,7 +215,7 @@ int main(int argc, char **argv)
             {
                 OPP_REAL max_n_chg_den = 0.0, max_n_pot = 0.0;
 
-                opp_loop_all__get_max_values(node_set,
+                opp_par_loop(get_final_max_values_kernel, "get_final_max_values", node_set, OPP_ITERATE_ALL,
                     opp_arg_dat(n_charge_den, OPP_READ),
                     opp_arg_gbl(&max_n_chg_den, 1, "double", OPP_MAX),
                     opp_arg_dat(n_potential, OPP_READ),
@@ -232,7 +229,7 @@ int main(int argc, char **argv)
 
             OPP_RUN_ON_ROOT() opp_printf("Main", "ts: %d %s ****", OPP_main_loop_iter, log.c_str());
         }
-        opp_profiler->end("MainLoop");
+    opp_profiler->end("MainLoop");
 
         const int64_t global_parts_iterated = get_global_parts_iterated(total_part_iter);
         OPP_RUN_ON_ROOT()

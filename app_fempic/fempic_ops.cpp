@@ -1,3 +1,5 @@
+
+// Auto-generated at 2024-05-05 18:06:52.636618 by opp-translator
 /* 
 BSD 3-Clause License
 
@@ -33,22 +35,24 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 // AUTO GENERATED CODE
 //*********************************************
 
-#include "opp_hdf5.h"
+#include "opp_lib.h"
+
+void opp_par_loop_all__init_boundary_pot_kernel(opp_set,opp_arg,opp_arg);
+void opp_par_loop_injected__inject_ions_kernel(opp_set,opp_arg,opp_arg,opp_arg,opp_arg,opp_arg,opp_arg,opp_arg,opp_arg,opp_arg,opp_arg);
+void opp_par_loop_all__calculate_new_pos_vel_kernel(opp_set,opp_arg,opp_arg,opp_arg);
+void opp_particle_move__move_kernel(opp_set,opp_map,opp_dat,opp_arg,opp_arg,opp_arg,opp_arg);
+void opp_par_loop_all__deposit_charge_on_nodes_kernel(opp_set,opp_arg,opp_arg,opp_arg,opp_arg,opp_arg);
+void opp_par_loop_all__compute_node_charge_density_kernel(opp_set,opp_arg,opp_arg);
+void opp_par_loop_all__compute_electric_field_kernel(opp_set,opp_arg,opp_arg,opp_arg,opp_arg,opp_arg,opp_arg);
+void opp_par_loop_all__get_final_max_values_kernel(opp_set,opp_arg,opp_arg,opp_arg,opp_arg);
+
+#include "fempic_misc_mesh_loader.h"
 #include "fempic_misc.h"
+#include "kernels.h"
 #include "FESolver.h"
 
-void opp_loop_all__init_boundary_pot(opp_set,opp_arg,opp_arg);
-void opp_loop_inject__inject_ions(opp_set,opp_arg,opp_arg,opp_arg,opp_arg,opp_arg,opp_arg,opp_arg,
-    opp_arg,opp_arg,opp_arg,opp_arg);
-void opp_loop_all__compute_node_charge_density(opp_set,opp_arg,opp_arg);
-void opp_loop_all__compute_electric_field(opp_set,opp_arg,opp_arg,opp_arg,opp_arg,opp_arg,opp_arg);
-void opp_loop_all__calc_pos_vel(opp_set,opp_arg,opp_arg,opp_arg);
-void opp_loop_all__deposit_charge_on_nodes(opp_set,opp_arg,opp_arg,opp_arg,opp_arg,opp_arg);
-void opp_particle_move__move(opp_set,opp_map,opp_dat,opp_arg,opp_arg,opp_arg,opp_arg);
-void opp_loop_all__get_max_values(opp_set,opp_arg,opp_arg,opp_arg,opp_arg);
-
-void init_particle_mover(const double gridSpacing, int dim, const opp_dat n_pos_dat, 
-    const opp_dat cellVolume_dat, const opp_dat cellDet_dat, const opp_dat c_gbl_id_dat);
+// void init_particle_mover(const double gridSpacing, int dim, const opp_dat n_pos_dat, 
+//     const opp_dat cellVolume_dat, const opp_dat cellDet_dat, const opp_dat c_gbl_id_dat);
 
 //*********************************************MAIN****************************************************
 int main(int argc, char **argv) 
@@ -56,61 +60,62 @@ int main(int argc, char **argv)
     opp_init(argc, argv);
 
     {
-        opp_profiler->start("Setup");
+    opp_profiler->start("Setup");
 
-        double plasma_den     = opp_params->get<OPP_REAL>("plasma_den");
-        double dt             = opp_params->get<OPP_REAL>("dt");
-        double ion_velocity   = opp_params->get<OPP_REAL>("ion_velocity");
-        double spwt           = opp_params->get<OPP_REAL>("spwt");
-        double wall_potential = opp_params->get<OPP_REAL>("wall_potential");
-        double grid_spacing   = opp_params->get<OPP_REAL>("grid_spacing");
-        double mass           = 2 * AMU;
-        double charge         = 1 * QE;
-        int max_iter          = opp_params->get<OPP_INT>("max_iter");   
-        std::string log       = "";
-        const std::string file     = opp_params->get<OPP_STRING>("hdf_filename");
-        const bool print_final_log = opp_params->get<OPP_BOOL>("print_final");
-        int64_t total_part_iter = 0;
+        OPP_REAL plasma_den            = opp_params->get<OPP_REAL>("plasma_den");
+        OPP_REAL dt                    = opp_params->get<OPP_REAL>("dt");
+        OPP_REAL ion_velocity          = opp_params->get<OPP_REAL>("ion_velocity");
+        OPP_REAL spwt                  = opp_params->get<OPP_REAL>("spwt");
+        OPP_REAL wall_potential        = opp_params->get<OPP_REAL>("wall_potential");
+        OPP_REAL grid_spacing          = opp_params->get<OPP_REAL>("grid_spacing");
+        OPP_REAL mass                  = 2 * AMU;
+        OPP_REAL charge                = 1 * QE;
+        OPP_INT max_iter               = opp_params->get<OPP_INT>("max_iter");   
+        std::string log                = "";
+        const OPP_BOOL print_final_log = opp_params->get<OPP_BOOL>("print_final");
+        int64_t total_part_iter        = 0;
 
-        opp_set node_set       = opp_decl_set_hdf5(file.c_str(), "mesh_nodes");
-        opp_set cell_set       = opp_decl_set_hdf5(file.c_str(), "mesh_cells");
-        opp_set iface_set      = opp_decl_set_hdf5(file.c_str(), "inlet_faces_cells");
-        opp_set particle_set   = opp_decl_particle_set_hdf5(file.c_str(), "particles", cell_set); 
-        opp_set dummy_part_set = opp_decl_particle_set_hdf5(file.c_str(), "dummy particles", cell_set); 
+        std::shared_ptr<DataPointers> m = load_mesh();
 
-        opp_map c2n_map  = opp_decl_map_hdf5(cell_set,  node_set, N_PER_C,  file.c_str(), "c_v_n_map");
-        opp_map c2c_map  = opp_decl_map_hdf5(cell_set,  cell_set, NEIGHB_C, file.c_str(), "c_v_c_map"); 
-        opp_map if2c_map = opp_decl_map_hdf5(iface_set, cell_set, ONE,      file.c_str(), "if_v_c_map"); 
-        opp_map if2n_map = opp_decl_map_hdf5(iface_set, node_set, N_PER_IF, file.c_str(), "if_v_n_map");
+        opp_set node_set       = opp_decl_set(m->n_nodes, "mesh_nodes");
+        opp_set cell_set       = opp_decl_set(m->n_cells, "mesh_cells");
+        opp_set iface_set      = opp_decl_set(m->n_ifaces, "inlet_faces_cells");
+        opp_set particle_set   = opp_decl_particle_set("particles", cell_set); 
+        opp_set dummy_part_set = opp_decl_particle_set("dummy particles", cell_set); 
 
-        opp_dat c_det       = opp_decl_dat_hdf5(cell_set, ALL_DET,     DT_REAL, file.c_str(), "c_det");  
-        opp_dat c_volume    = opp_decl_dat_hdf5(cell_set, ONE,         DT_REAL, file.c_str(), "c_volume");        
-        opp_dat c_ef        = opp_decl_dat_hdf5(cell_set, DIM,         DT_REAL, file.c_str(), "c_ef");
-        opp_dat c_sd        = opp_decl_dat_hdf5(cell_set, N_PER_C*DIM, DT_REAL, file.c_str(), "c_shape_deri"); 
-        opp_dat c_gbl_id    = opp_decl_dat_hdf5(cell_set, ONE,         DT_INT,  file.c_str(), "c_gbl_id"); 
-        opp_dat c_colors    = opp_decl_dat_hdf5(cell_set, ONE,         DT_INT,  file.c_str(), "c_colors");
-        opp_dat c_centroids = opp_decl_dat_hdf5(cell_set, DIM,         DT_REAL, file.c_str(), "c_centroids");
+        opp_map c2n_map  = opp_decl_map(cell_set,  node_set, N_PER_C,  m->c_to_n, "c_v_n_map");
+        opp_map c2c_map  = opp_decl_map(cell_set,  cell_set, NEIGHB_C, m->c_to_c,  "c_v_c_map"); 
+        opp_map if2c_map = opp_decl_map(iface_set, cell_set, ONE,      m->if_to_c, "if_v_c_map"); 
+        opp_map if2n_map = opp_decl_map(iface_set, node_set, N_PER_IF, m->if_to_n, "if_v_n_map");
 
-        opp_dat n_volume     = opp_decl_dat_hdf5(node_set, ONE, DT_REAL, file.c_str(), "n_vol");        
-        opp_dat n_potential  = opp_decl_dat_hdf5(node_set, ONE, DT_REAL, file.c_str(), "n_potential");     
-        opp_dat n_charge_den = opp_decl_dat_hdf5(node_set, ONE, DT_REAL, file.c_str(), "n_charge_den");
-        opp_dat n_pos        = opp_decl_dat_hdf5(node_set, DIM, DT_REAL, file.c_str(), "n_pos");     
-        opp_dat n_type       = opp_decl_dat_hdf5(node_set, ONE, DT_INT,  file.c_str(), "n_type");
-        opp_dat n_bnd_pot    = opp_decl_dat_hdf5(node_set, ONE, DT_REAL, file.c_str(), "n_bnd_pot");
+        opp_dat c_det       = opp_decl_dat(cell_set, ALL_DET,     DT_REAL, m->c_det,      "c_det");  
+        opp_dat c_volume    = opp_decl_dat(cell_set, ONE,         DT_REAL, m->c_vol,      "c_volume");        
+        opp_dat c_ef        = opp_decl_dat(cell_set, DIM,         DT_REAL, m->c_ef,       "c_ef");
+        opp_dat c_sd        = opp_decl_dat(cell_set, N_PER_C*DIM, DT_REAL, m->c_sd,       "c_shape_deri"); 
+        opp_dat c_gbl_id    = opp_decl_dat(cell_set, ONE,         DT_INT,  m->c_id,       "c_gbl_id"); 
+        opp_dat c_colors    = opp_decl_dat(cell_set, ONE,         DT_INT,  m->c_col,      "c_colors");
+        opp_dat c_centroids = opp_decl_dat(cell_set, DIM,         DT_REAL, m->c_centroid, "c_centroids");
 
-        opp_dat if_v_norm  = opp_decl_dat_hdf5(iface_set, DIM,          DT_REAL, file.c_str(), "iface_v_norm");
-        opp_dat if_u_norm  = opp_decl_dat_hdf5(iface_set, DIM,          DT_REAL, file.c_str(), "iface_u_norm");
-        opp_dat if_norm    = opp_decl_dat_hdf5(iface_set, DIM,          DT_REAL, file.c_str(), "iface_norm");  
-        opp_dat if_area    = opp_decl_dat_hdf5(iface_set, ONE,          DT_REAL, file.c_str(), "iface_area");
-        opp_dat if_distrib = opp_decl_dat_hdf5(iface_set, ONE,          DT_INT,  file.c_str(), "iface_dist");
-        opp_dat if_n_pos   = opp_decl_dat_hdf5(iface_set, N_PER_IF*DIM, DT_REAL, file.c_str(), "iface_n_pos");
+        opp_dat n_volume     = opp_decl_dat(node_set, ONE, DT_REAL, m->n_vol,     "n_vol");        
+        opp_dat n_potential  = opp_decl_dat(node_set, ONE, DT_REAL, m->n_pot,     "n_potential");     
+        opp_dat n_charge_den = opp_decl_dat(node_set, ONE, DT_REAL, m->n_ion_den, "n_charge_den");
+        opp_dat n_pos        = opp_decl_dat(node_set, DIM, DT_REAL, m->n_pos,     "n_pos");     
+        opp_dat n_type       = opp_decl_dat(node_set, ONE, DT_INT,  m->n_type,    "n_type");
+        opp_dat n_bnd_pot    = opp_decl_dat(node_set, ONE, DT_REAL, m->n_bnd_pot, "n_bnd_pot");
 
-        opp_dat p_pos   = opp_decl_dat_hdf5(particle_set, DIM,     DT_REAL, file.c_str(), "part_position");
-        opp_dat p_vel   = opp_decl_dat_hdf5(particle_set, DIM,     DT_REAL, file.c_str(), "part_velocity");
-        opp_dat p_lc    = opp_decl_dat_hdf5(particle_set, N_PER_C, DT_REAL, file.c_str(), "part_lc");
-        opp_dat p2c_map = opp_decl_dat_hdf5(particle_set, ONE,     DT_INT,  file.c_str(), "part_mesh_rel", true);
+        opp_dat if_v_norm  = opp_decl_dat(iface_set, DIM,          DT_REAL, m->if_v_norm, "iface_v_norm");
+        opp_dat if_u_norm  = opp_decl_dat(iface_set, DIM,          DT_REAL, m->if_u_norm, "iface_u_norm");
+        opp_dat if_norm    = opp_decl_dat(iface_set, DIM,          DT_REAL, m->if_norm,   "iface_norm");  
+        opp_dat if_area    = opp_decl_dat(iface_set, ONE,          DT_REAL, m->if_area,   "iface_area");
+        opp_dat if_distrib = opp_decl_dat(iface_set, ONE,          DT_INT,  m->if_dist,   "iface_dist");
+        opp_dat if_n_pos   = opp_decl_dat(iface_set, N_PER_IF*DIM, DT_REAL, m->if_n_pos,  "iface_n_pos");
 
-        opp_dat dp_rand = opp_decl_dat_hdf5(dummy_part_set, 2, DT_REAL, file.c_str(), "dummy_part_rand");
+        opp_dat p_pos   = opp_decl_dat(particle_set, DIM,     DT_REAL, nullptr, "part_position");
+        opp_dat p_vel   = opp_decl_dat(particle_set, DIM,     DT_REAL, nullptr, "part_velocity");
+        opp_dat p_lc    = opp_decl_dat(particle_set, N_PER_C, DT_REAL, nullptr, "part_lc");
+        opp_dat p2c_map = opp_decl_dat(particle_set, ONE,     DT_INT,  nullptr, "part_mesh_rel", true);
+
+        opp_dat dp_rand = opp_decl_dat(dummy_part_set, 2, DT_REAL, nullptr, "dummy_part_rand");
 
         opp_decl_const<OPP_REAL>(ONE, &spwt,           "CONST_spwt");
         opp_decl_const<OPP_REAL>(ONE, &ion_velocity,   "CONST_ion_velocity");
@@ -119,6 +124,8 @@ int main(int argc, char **argv)
         opp_decl_const<OPP_REAL>(ONE, &mass,           "CONST_mass");
         opp_decl_const<OPP_REAL>(ONE, &charge,         "CONST_charge");
         opp_decl_const<OPP_REAL>(ONE, &wall_potential, "CONST_wall_potential");
+
+        m->DeleteValues();
 
 #ifdef USE_MPI
         fempic_color_block(c_colors, c_centroids, if_n_pos, if2n_map);
@@ -129,13 +136,13 @@ int main(int argc, char **argv)
         opp_partition(std::string("EXTERNAL"), cell_set, nullptr, c_colors);
 #endif
         
-        opp_loop_all__init_boundary_pot(node_set, 
+        opp_par_loop_all__init_boundary_pot_kernel(node_set, OPP_ITERATE_ALL,
             opp_arg_dat(n_type,    OPP_READ), 
             opp_arg_dat(n_bnd_pot, OPP_WRITE));
 
         const int inject_count = init_inject_distributions(if_distrib, if_area, dp_rand);
 
-        init_particle_mover(grid_spacing, DIM, n_pos, c_volume, c_det, c_gbl_id);
+        // init_particle_mover(grid_spacing, DIM, n_pos, c_volume, c_det, c_gbl_id);
 
         std::unique_ptr<FESolver> field_solver = std::make_unique<FESolver>(c2n_map, n_type,
                                                             n_pos, n_bnd_pot, argc, argv);
@@ -144,13 +151,9 @@ int main(int argc, char **argv)
 
         opp_inc_part_count_with_distribution(particle_set, inject_count, if_distrib, false);
 
-        opp_profiler->end("Setup");
+    opp_profiler->end("Setup");
 
-#ifdef USE_MPI
-        MPI_Barrier(MPI_COMM_WORLD);
-#endif
-
-        opp_profiler->start("MainLoop");
+    opp_profiler->start("MainLoop");
         for (OPP_main_loop_iter = 0; OPP_main_loop_iter < max_iter; OPP_main_loop_iter++)
         {
             OPP_RUN_ON_ROOT(&& OPP_DBG) opp_printf("Main", "Loop %d start ***", OPP_main_loop_iter);
@@ -158,13 +161,13 @@ int main(int argc, char **argv)
             if (OPP_main_loop_iter != 0)
                 opp_inc_part_count_with_distribution(particle_set, inject_count, if_distrib, false);
 
-            int old_nparts = particle_set->size;
-            opp_loop_inject__inject_ions(particle_set,                                                                           
+            const int old_nparts = particle_set->size;
+            opp_par_loop_injected__inject_ions_kernel(particle_set, OPP_ITERATE_INJECTED,
                 opp_arg_dat(p_pos,                      OPP_WRITE),                      
                 opp_arg_dat(p_vel,                      OPP_WRITE),                      
                 opp_arg_dat(p2c_map,                    OPP_RW),
                 opp_arg_dat(p2c_map,                    OPP_RW), // TODO: remove
-                opp_arg_dat(if2c_map,          p2c_map, OPP_READ),
+                // opp_arg_dat(if2c_map,          p2c_map, OPP_READ),
                 opp_arg_dat(c_ef, 0, if2c_map, p2c_map, OPP_READ),
                 opp_arg_dat(if_u_norm,         p2c_map, OPP_READ),
                 opp_arg_dat(if_v_norm,         p2c_map, OPP_READ),
@@ -174,25 +177,25 @@ int main(int argc, char **argv)
 
             opp_reset_dat(n_charge_den, opp_zero_double16);
 
-            opp_loop_all__calc_pos_vel(particle_set,                                                                           
+            opp_par_loop_all__calculate_new_pos_vel_kernel(particle_set, OPP_ITERATE_ALL,
                 opp_arg_dat(c_ef, p2c_map, OPP_READ),
                 opp_arg_dat(p_pos,         OPP_WRITE),                         
                 opp_arg_dat(p_vel,         OPP_WRITE));
 
-            opp_particle_move__move(particle_set, c2c_map, p2c_map,
+            opp_particle_move__move_kernel(particle_set, c2c_map, p2c_map,
                 opp_arg_dat(p_pos,             OPP_READ),
                 opp_arg_dat(p_lc,              OPP_WRITE),
                 opp_arg_dat(c_volume, p2c_map, OPP_READ),
                 opp_arg_dat(c_det,    p2c_map, OPP_READ));
 
-            opp_loop_all__deposit_charge_on_nodes(particle_set, 
+            opp_par_loop_all__deposit_charge_on_nodes_kernel(particle_set, OPP_ITERATE_ALL,
                 opp_arg_dat(p_lc,                              OPP_READ),
                 opp_arg_dat(n_charge_den, 0, c2n_map, p2c_map, OPP_INC),
                 opp_arg_dat(n_charge_den, 1, c2n_map, p2c_map, OPP_INC),
                 opp_arg_dat(n_charge_den, 2, c2n_map, p2c_map, OPP_INC),
                 opp_arg_dat(n_charge_den, 3, c2n_map, p2c_map, OPP_INC));
 
-            opp_loop_all__compute_node_charge_density(node_set,                            
+            opp_par_loop_all__compute_node_charge_density_kernel(node_set, OPP_ITERATE_ALL,
                 opp_arg_dat(n_charge_den,  OPP_RW), 
                 opp_arg_dat(n_volume,      OPP_READ));
 
@@ -203,7 +206,7 @@ int main(int argc, char **argv)
 
             opp_reset_dat(c_ef, opp_zero_double16); 
 
-            opp_loop_all__compute_electric_field(cell_set,                                                   
+            opp_par_loop_all__compute_electric_field_kernel(cell_set, OPP_ITERATE_ALL,
                 opp_arg_dat(c_ef,                    OPP_INC), 
                 opp_arg_dat(c_sd,                    OPP_READ),
                 opp_arg_dat(n_potential, 0, c2n_map, OPP_READ),
@@ -215,7 +218,7 @@ int main(int argc, char **argv)
             {
                 OPP_REAL max_n_chg_den = 0.0, max_n_pot = 0.0;
 
-                opp_loop_all__get_max_values(node_set,
+                opp_par_loop_all__get_final_max_values_kernel(node_set, OPP_ITERATE_ALL,
                     opp_arg_dat(n_charge_den, OPP_READ),
                     opp_arg_gbl(&max_n_chg_den, 1, "double", OPP_MAX),
                     opp_arg_dat(n_potential, OPP_READ),
@@ -229,7 +232,7 @@ int main(int argc, char **argv)
 
             OPP_RUN_ON_ROOT() opp_printf("Main", "ts: %d %s ****", OPP_main_loop_iter, log.c_str());
         }
-        opp_profiler->end("MainLoop");
+    opp_profiler->end("MainLoop");
 
         const int64_t global_parts_iterated = get_global_parts_iterated(total_part_iter);
         OPP_RUN_ON_ROOT()

@@ -9,6 +9,67 @@ import op as OP
 from store import Function, Location, ParseError, Program, Type
 from util import safeFind
 
+def parseSet(node: Cursor, name: str, program: Program, set_type : OP.SetType) -> None:
+
+    children = list(node.get_children())
+    if len(children) < 3:
+        raise ParseError(f'unable to parse Set, argument mismatch')
+        
+    loc = parseLocation(node) # TODO : check whether the location is correct! not required for now
+    cell_set = None
+    id = len(program.sets)
+
+    if (set_type == OP.SetType.PARTICLE):
+        cell_set = parseIdentifier(children[2])
+
+    set = OP.OppSet(id, loc, name, set_type, cell_set)
+    program.sets.append(set)
+
+    print(f'parseSet {name} -> {set}')
+
+def parseMap(node: Cursor, name: str, program: Program) -> None:
+
+    children = list(node.get_children())
+    if len(children) < 6:
+        raise ParseError(f'unable to parse Map, argument mismatch')
+    
+    loc = parseLocation(node) # TODO : check whether the location is correct! not required for now
+    from_set = parseIdentifier(children[1])
+    to_set = parseIdentifier(children[2])
+    dim = parseIntExpression(children[3])
+    id = len(program.maps)
+
+    map = OP.Map(id, name, None, dim, from_set, to_set, loc)
+    program.maps.append(map)
+
+    print(f'parseMap {name} -> {map}')
+
+def parseDat(node: Cursor, name: str, program: Program) -> None:
+
+    children = list(node.get_children())
+    if len(children) < 6:
+        raise ParseError(f'unable to parse Dat, argument mismatch')
+    
+    loc = parseLocation(node) # TODO : check whether the location is correct! not required for now
+    set = parseIdentifier(children[1])
+    dim = parseIntExpression(children[2])
+    typ = parseIdentifier(children[3])
+
+    if (str(typ) == "DT_INT"):
+        typ = "OPP_INT" # OP.Int
+    elif (str(typ) == "DT_REAL"):
+        typ = "OPP_REAL" # OP.Float
+    elif (str(typ) == "DT_BOOL"):
+        typ = "OPP_BOOL" # OP.Bool
+    else:
+        raise ParseError(f'unable to parse Dat, unknown data type {typ}')
+    
+    id = len(program.dats)
+
+    dat = OP.Dat(id, name, None, dim, typ, True, set, loc)
+    program.dats.append(dat)
+
+    print(f'parseDat {name} -> {dat}')
 
 def parseMeta(node: Cursor, program: Program) -> None:
     if node.kind == CursorKind.TYPE_REF:
@@ -16,6 +77,29 @@ def parseMeta(node: Cursor, program: Program) -> None:
 
     if node.kind == CursorKind.FUNCTION_DECL:
         parseFunction(node, program)
+
+    if node.kind == CursorKind.VAR_DECL:
+        
+        args = list(node.get_children())
+        if len(args) < 2 or args[1].kind != CursorKind.CALL_EXPR:
+            return
+
+        children = list(args[1].get_children())
+        if len(children) < 3:
+            return
+        
+        child = list(children[0].get_children())
+        if len(child) < 1:
+            return
+
+        if child[0].spelling == "opp_decl_set" or child[0].spelling == "opp_decl_set_hdf5":
+            parseSet(args[1], node.spelling, program, OP.SetType.MESH)
+        elif child[0].spelling == "opp_decl_particle_set" or child[0].spelling == "opp_decl_particle_set_hdf5":
+            parseSet(args[1], node.spelling, program, OP.SetType.PARTICLE)
+        elif child[0].spelling == "opp_decl_map" or child[0].spelling == "opp_decl_map_hdf5":
+            parseMap(args[1], node.spelling, program)
+        elif child[0].spelling == "opp_decl_dat" or child[0].spelling == "opp_decl_dat_hdf5":
+            parseDat(args[1], node.spelling, program)
 
     for child in node.get_children():
         parseMeta(child, program)
@@ -27,6 +111,8 @@ def parseTypeRef(ref_node: Cursor, program: Program) -> None:
     if node is None or Path(str(node.location.file)) != program.path:
         return
 
+    # print(f'ZAMO parseTypeRef {node.spelling}')
+    
     matching_entities = program.findEntities(node.spelling)
     for entity in matching_entities:
         if entity.ast == node:
@@ -99,18 +185,18 @@ def parseLoops(translation_unit: TranslationUnit, program: Program) -> None:
 
         if node.kind == CursorKind.MACRO_INSTANTIATION:
             macros[parseLocation(node)] = node.spelling
-            print(f'ZAM parseLoops Adding MAcros | {node.kind} {node.spelling} -- {parseLocation(node)}')
+            # print(f'ZAM parseLoops Adding MAcros | {node.kind} {node.spelling} -- {parseLocation(node)}')
             continue
         
         # print(f"ZAM parseLoops appending nodes {node.spelling}")
         nodes.append(node)
 
-    print(f'LEN MACROS {len(macros)}')
+    # print(f'LEN MACROS {len(macros)}')
     for node in nodes:
         for child in node.walk_preorder():
             if child.kind.is_unexposed():
             # if child.kind == CursorKind.CALL_EXPR:
-                print(f"ZAM parseLoops - calling parseCall node:{node.spelling} child:{child.spelling}")
+                # print(f"ZAM parseLoops - calling parseCall node:{node.spelling} child:{child.spelling}")
                 parseCall(child, macros, program)
 
 def parseUnexposedFunction(node: Cursor) -> Union[Tuple[str, List[Cursor]], None]:
@@ -149,7 +235,7 @@ def parseCall(node: Cursor, macros: Dict[Location, str], program: Program) -> No
 
     loc = parseLocation(node)
 
-    print(f"ZAM parseCall {name}")
+    # print(f"ZAM parseCall {name}")
 
     if name == "op_decl_const":
         print(f"ZAM parseCall - append const {node.type.get_num_template_arguments()}")
@@ -183,13 +269,14 @@ def parseLoop(program: Program, args: List[Cursor], loc: Location, macros: Dict[
 
     kernel = parseIdentifier(args[0])
     loop_name = args[1].spelling[1:-1]
+    iter_set = parseIdentifier(args[2])
 
     name = f"{program.path.stem}_{len(program.loops) + 1}_{kernel}"
     iterate_type = parseIterateType(args[3])
 
     print(f"ZAM parseLoop : {name} {loop_name} | {args[0].spelling} {args[0].kind} | {args[1].spelling} {args[1].kind} | {args[2].spelling} {args[2].kind} | {args[3].spelling} {args[3].kind} | {args[4].spelling} {args[4].kind}")
 
-    loop = OP.Loop(name, loc, kernel, iterate_type, loop_name)
+    loop = OP.Loop(name, loc, kernel, iter_set, iterate_type, loop_name)
 
     for node in args[4:]:
         # node = descend(descend(node))
@@ -222,12 +309,13 @@ def parseMoveLoop(program: Program, args: List[Cursor], loc: Location, macros: D
 
     kernel = parseIdentifier(args[0])
     loop_name = args[1].spelling[1:-1]
+    iter_set = parseIdentifier(args[2])
 
     name = f"{program.path.stem}_{len(program.loops) + 1}_{kernel}"
 
     print(f"ZAM parseMoveLoop : {name} {loop_name} | {args[0].spelling} {args[0].kind} | {args[1].spelling} {args[1].kind} | {args[2].spelling} {args[2].kind} | {args[3].spelling} {args[3].kind} | {args[4].spelling} {args[4].kind}")
 
-    loop = OP.Loop(name, loc, kernel, OP.IterateType.all, loop_name, OP.LoopType.MOVE_LOOP)
+    loop = OP.Loop(name, loc, kernel, iter_set, OP.IterateType.all, loop_name, OP.LoopType.MOVE_LOOP)
 
     for node in args[5:]:
         # node = descend(descend(node))
@@ -273,7 +361,7 @@ def parseArgDat(loop: OP.Loop, opt: bool, args: List[Cursor], loc: Location, mac
         # indirect mapping
         map_idx = parseIntExpression(args[1])
         map_ptr = parseIdentifier(args[2])
-    elif len(args) == 4:
+    elif len(args) == 5:
         # double indirect mappings
         map_idx = parseIntExpression(args[1])
         map_ptr = parseIdentifier(args[2])

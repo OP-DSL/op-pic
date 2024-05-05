@@ -2,11 +2,11 @@
 
 #include "cabana_defs.h"
 
-const OPP_REAL fourth         = (1.0 / 4.0);
-const OPP_REAL half           = (1.0 / 2.0);
-const OPP_REAL one            = 1.0;
-const OPP_REAL one_third      = (1.0 / 3.0);
-const OPP_REAL two_fifteenths = (2.0 / 15.0);
+#define fourth         (1.0 / 4.0)
+#define half           (1.0 / 2.0)
+#define one            1.0
+#define one_third      (1.0 / 3.0)
+#define two_fifteenths (2.0 / 15.0)
 
 //*************************************************************************************************
 inline void interpolate_mesh_fields_kernel(

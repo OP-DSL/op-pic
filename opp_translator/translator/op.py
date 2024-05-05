@@ -81,7 +81,20 @@ class LoopType(Enum):
     @staticmethod
     def names() -> List[str]:
         return [x.name for x in list(IterateType)]
-        
+
+class SetType(Enum):
+    
+    MESH = 1
+    PARTICLE = 2
+
+    @staticmethod
+    def values() -> List[int]:
+        return [x.value for x in list(SetType)]
+
+    @staticmethod
+    def names() -> List[str]:
+        return [x.name for x in list(SetType)]
+            
 @dataclass(frozen=True)
 class Int(Type):
     signed: bool
@@ -95,11 +108,20 @@ class Int(Type):
         else:
             return f"{'i' if self.signed else 'u'}{self.size}"
 
-    @classmethod
-    def int_formatter(cls, int_instance: "Int") -> str:
-        return f"Int: signed={int_instance.signed}, size={int_instance.size}"
+    def __str__(self) -> str:
+        return "OPP_INT"
+
+    # @classmethod
+    # def int_formatter(cls, int_instance: "Int") -> str:
+    #     return "OPP_INT"
+        # if int_instance.signed and int_instance.size == 32:
+        #     return "int"
+        # elif int_instance.size == 32:
+        #     return "unsigned"
+        # else:
+        #     return f"{'i' if int_instance.signed else 'u'}{int_instance.size}"
     
-Int.set_formatter(Int.int_formatter)
+# Int.set_formatter(Int.int_formatter)
 
 @dataclass(frozen=True)
 class Float(Type):
@@ -113,11 +135,20 @@ class Float(Type):
         else:
             return "f{self.size}"
 
-    @classmethod
-    def float_formatter(cls, float_instance: "Float") -> str:
-        return f"Float: size={float_instance.size}"
+    def __str__(self) -> str:
+        return "OPP_REAL"
+
+    # @classmethod
+    # def float_formatter(cls, float_instance: "Float") -> str:
+    #     return "OPP_REAL"
+        # if float_instance.size == 32:
+        #     return "float"
+        # elif float_instance.size == 64:
+        #     return "double"
+        # else:
+        #     return "f{float_instance.size}"
     
-Float.set_formatter(Float.float_formatter)
+# Float.set_formatter(Float.float_formatter)
 
 @dataclass(frozen=True)
 class Bool(Type):
@@ -126,6 +157,8 @@ class Bool(Type):
     def __repr__(self) -> str:
         return "bool"
 
+    def __str__(self) -> str:
+        return "OPP_BOOL"
 
 @dataclass(frozen=True)
 class Custom(Type):
@@ -146,16 +179,48 @@ class Const:
     def __str__(self) -> str:
         return f"Const(loc={self.loc}, ptr='{self.ptr}', dim={self.dim}, typ={self.typ})"
 
+@dataclass
+class OppSet:
+    id: int
+    loc: Location
+    name: str
+    set_type: SetType
+    cell_set: Optional[OppSet]
 
-@dataclass(frozen=True)
+    def __init__(self, id : int, loc: Location, name: str, set_type: SetType, cell_set: OppSet = None) -> None:
+        self.id = id
+        self.loc = loc
+        self.name = name
+        self.set_type = set_type
+        self.cell_set = cell_set
+    
+    def __str__(self) -> str:
+        return f"Set(id={self.id}, name='{self.name}', set_type={self.set_type}, cell_set={self.cell_set}, loc={self.loc})"
+
+@dataclass
 class Map:
     id: int
 
     ptr: str
     arg_id: int
+    dim: Optional[int]
+    from_set: Optional[OppSet]
+    to_set: Optional[OppSet]
+    loc: Optional[Location]
 
+    def __init__(self, id: int, ptr: str, arg_id: int, dim: int, from_set: OppSet, to_set: OppSet, loc: Optional[Location]) -> None:
+        self.id = id
+        self.ptr = ptr
+        self.arg_id = arg_id
+        self.loc = loc
+        self.dim = dim
+        self.from_set = from_set
+        self.to_set = to_set
+    
+    def __str__(self) -> str:
+        return f"Map(id={self.id}, ptr='{self.ptr}', dim={self.dim}, from_set={self.from_set}, to_set={self.to_set}, loc={self.loc})"
 
-@dataclass(frozen=True)
+@dataclass
 class Dat:
     id: int
 
@@ -166,9 +231,12 @@ class Dat:
     typ: Type
     soa: bool
 
+    set: Optional[OppSet]
+    loc: Optional[Location]
+
     def __str__(self) -> str:
         return (
-            f"Dat(id={self.id}, ptr='{self.ptr}', arg_id={self.arg_id}, dim={self.dim}, typ={self.typ}, soa={self.soa})"
+            f"Dat(id={self.id}, ptr='{self.ptr}', arg_id={self.arg_id}, dim={self.dim}, typ={self.typ}, soa={self.soa}, set={self.set}, loc={self.loc})"
         )
 
 
@@ -241,6 +309,7 @@ class Loop:
     loc: Location
     kernel: str
 
+    iterator_set : OppSet
     iterator_type : IterateType
     loop_type : LoopType
     loop_name : str
@@ -255,11 +324,12 @@ class Loop:
 
     fallback: bool
 
-    def __init__(self, name: str, loc: Location, kernel: str, iterator_type : IterateType, loop_name: str, loop_type = LoopType.PAR_LOOP) -> None:
+    def __init__(self, name: str, loc: Location, kernel: str, iterator_set : OppSet, iterator_type : IterateType, loop_name: str, loop_type = LoopType.PAR_LOOP) -> None:
         self.name = name
 
         self.loc = loc
         self.kernel = kernel
+        self.iterator_set = iterator_set
         self.iterator_type = iterator_type
         self.loop_type = loop_type
         self.loop_name = loop_name
@@ -294,7 +364,7 @@ class Loop:
         if dat_id is None:
             dat_id = len(self.dats)
 
-            dat = Dat(dat_id, dat_ptr, arg_id, dat_dim, dat_typ, dat_soa)
+            dat = Dat(dat_id, dat_ptr, arg_id, dat_dim, dat_typ, dat_soa, None, None)
             self.dats.append(dat)
         elif self.dats[dat_id].dim is None and dat_dim is not None:
             self.dats[dat_id] = dataclasses.replace(self.dats[dat_id], dim=dat_dim)
@@ -305,7 +375,7 @@ class Loop:
             if p2c_id is None:
                 p2c_id = len(self.dats)
 
-                p2c_dat = Dat(p2c_id, p2c_ptr, arg_id, dat_dim, dat_typ, dat_soa)
+                p2c_dat = Dat(p2c_id, p2c_ptr, arg_id, dat_dim, dat_typ, dat_soa, None, None)
                 self.dats.append(p2c_dat)
             elif self.dats[p2c_id].dim is None and dat_dim is not None:
                 self.dats[p2c_id] = dataclasses.replace(self.dats[p2c_id], dim=dat_dim)
@@ -317,7 +387,7 @@ class Loop:
             if map_id is None:
                 map_id = len(self.maps)
 
-                map_ = Map(map_id, map_ptr, arg_id)
+                map_ = Map(map_id, map_ptr, arg_id, None, None, None, None)
                 self.maps.append(map_)
 
         arg = ArgDat(arg_id, loc, access_type, opt, dat_id, map_id, map_idx, p2c_id)
@@ -350,7 +420,7 @@ class Loop:
             if map_id is None:
                 map_id = len(self.maps)
 
-                map_ = Map(map_id, map_ptr, arg_id)
+                map_ = Map(map_id, map_ptr, arg_id, None, None, None, None)
                 self.maps.append(map_)
 
         arg = ArgIdx(arg_id, loc, map_id, map_idx)
@@ -406,7 +476,7 @@ class Loop:
 
     def __str__(self) -> str:
         args = "\n    ".join([str(a) for a in self.args])
-
+        argsEx = "\n    ".join([str(a) for a in self.args_expanded])
         dat_str = "\n    ".join([str(d) for d in self.dats])
         map_str = "\n    ".join([str(m) for m in self.maps])
 
@@ -417,7 +487,7 @@ class Loop:
             map_str = f"\n    {map_str}\n"
 
         return (
-            f"Loop at {self.loc}:\n    Name: {self.name}\n    Kernel function: {self.kernel}\n\n    {args}\n"
+            f"Loop at {self.loc}:\n    Name: {self.name}\n    Kernel function: {self.kernel}\n    Iterating Set: {self.iterator_set}\n\n    args={args}\n    argsEx={argsEx}\n"
             + dat_str
             + map_str
         )
