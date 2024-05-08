@@ -76,6 +76,9 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #define ZERO_ll        0
 #define ZERO_ull       0
 #define ZERO_bool      0
+#define OPP_REAL_ZERO  0.0
+#define OPP_INT_ZERO   0
+#define OPP_BOOL_ZERO  0
 
 #define OPP_DEFAULT_GPU_THREADS_PER_BLOCK 32
 

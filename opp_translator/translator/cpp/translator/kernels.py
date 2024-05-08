@@ -39,6 +39,18 @@ def updateFunctionTypes(entities: List[Tuple[Entity, Rewriter]], replacement: Ca
         function_type_span = extentToSpan(next(entity.ast.get_tokens()).extent)
         rewriter.update(function_type_span, lambda s: replacement(s, entity))
 
+def updateMoveKernelArgs(entities: List[Tuple[Entity, Rewriter]], replacement: Callable[[str, Entity], str], kernel_name: str) -> None:
+    for entity, rewriter in filter(lambda e: isinstance(e[0], Function), entities):
+        tokens_iterator = entity.ast.get_tokens()
+        token = next(tokens_iterator)
+        for i in range(5):
+            if token is not None and token.spelling == kernel_name:
+                token = next(tokens_iterator)
+                token = next(tokens_iterator)
+                function_type_span = extentToSpan(token.extent)
+                rewriter.update(function_type_span, lambda s: replacement(s, entity))
+                break
+            token = next(tokens_iterator)
 
 def renameConsts(
     entities: List[Tuple[Entity, Rewriter]], app: Application, replacement: Callable[[str, Entity], str]
@@ -80,6 +92,7 @@ def insertStrides(
         is_vec = arg.map_idx is not None and arg.map_idx < -1
         insertStride(entity.ast, rewriter, entity.parameters[arg_idx], dat.id, is_vec, stride)
 
+    insertStride(entity.ast, rewriter, "opp_c2c", None, is_vec, stride)
 
 def insertStride(
     ast: Cursor, rewriter: Rewriter, param: str, dat_id: int, is_vec: bool, stride: Callable[[int], str]
@@ -96,8 +109,11 @@ def insertStride(
             ident, _ = next(ident.get_children()).get_children()
 
         if ident.spelling == param:
-            rewriter.update(extentToSpan(subscript.extent), lambda s: f"({s}) * {stride(dat_id)}")
-
+            if dat_id is None:
+                tmp = "c2c_map"
+            else:
+                tmp = f"dat{dat_id}"
+            rewriter.update(extentToSpan(subscript.extent), lambda s: f"({s}) * {stride(tmp)}")
 
 def writeSource(entities: List[Tuple[Entity, Rewriter]]) -> str:
     source = ""

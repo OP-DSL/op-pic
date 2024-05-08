@@ -35,13 +35,13 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "opp_templates.h"
 
-OPP_REAL CONST_spwt = 0;
-OPP_REAL CONST_ion_velocity = 0;
-OPP_REAL CONST_dt = 0;
-OPP_REAL CONST_plasma_den = 0;
-OPP_REAL CONST_mass = 0;
-OPP_REAL CONST_charge = 0;
-OPP_REAL CONST_wall_potential = 0;
+OPP_REAL CONST_spwt[1];
+OPP_REAL CONST_ion_velocity[1];
+OPP_REAL CONST_dt[1];
+OPP_REAL CONST_plasma_den[1];
+OPP_REAL CONST_mass[1];
+OPP_REAL CONST_charge[1];
+OPP_REAL CONST_wall_potential[1];
 
 #include "fempic_misc_mesh_loader.h"
 #include "fempic_misc.h"
@@ -163,8 +163,7 @@ int main(int argc, char **argv)
                 opp_arg_dat(p_pos,                      OPP_WRITE),                      
                 opp_arg_dat(p_vel,                      OPP_WRITE),                      
                 opp_arg_dat(p2c_map,                    OPP_RW),
-                opp_arg_dat(p2c_map,                    OPP_RW), // TODO: remove
-                // opp_arg_dat(if2c_map,          p2c_map, OPP_READ),
+                opp_arg_dat(if2c_map,          p2c_map, OPP_READ),
                 opp_arg_dat(c_ef, 0, if2c_map, p2c_map, OPP_READ),
                 opp_arg_dat(if_u_norm,         p2c_map, OPP_READ),
                 opp_arg_dat(if_v_norm,         p2c_map, OPP_READ),
@@ -176,7 +175,7 @@ int main(int argc, char **argv)
 
             opp_par_loop(calculate_new_pos_vel_kernel, "calculate_new_pos_vel", particle_set, OPP_ITERATE_ALL,
                 opp_arg_dat(c_ef, p2c_map, OPP_READ),
-                opp_arg_dat(p_pos,         OPP_WRITE),                         
+                opp_arg_dat(p_pos,         OPP_WRITE),
                 opp_arg_dat(p_vel,         OPP_WRITE));
 
             opp_particle_move(move_kernel, "move", particle_set, c2c_map, p2c_map,

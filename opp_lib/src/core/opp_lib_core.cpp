@@ -72,7 +72,7 @@ std::shared_ptr<BoundingBox> boundingBox;
 std::shared_ptr<CellMapper> cellMapper;
 std::shared_ptr<Comm> comm;
 std::unique_ptr<GlobalParticleMover> globalMover;
-bool useGlobalMove = true;
+bool useGlobalMove = false;
 
 //****************************************
 void opp_init_core(int argc, char **argv) 

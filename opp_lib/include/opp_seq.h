@@ -58,11 +58,11 @@ extern bool opp_move_hop_iter_one_flag;
 extern OPP_INT* opp_p2c;
 extern OPP_INT* opp_c2c;
 
-#define OPP_PARTICLE_MOVE_DONE { opp_move_status_flag = OPPX_MOVE_DONE; }
-#define OPP_PARTICLE_NEED_MOVE { opp_move_status_flag = OPPX_NEED_MOVE; }
-#define OPP_PARTICLE_NEED_REMOVE { opp_move_status_flag = OPPX_NEED_REMOVE; }
+#define OPP_PARTICLE_MOVE_DONE { opp_move_status_flag = OPP_MOVE_DONE; }
+#define OPP_PARTICLE_NEED_MOVE { opp_move_status_flag = OPP_NEED_MOVE; }
+#define OPP_PARTICLE_NEED_REMOVE { opp_move_status_flag = OPP_NEED_REMOVE; }
 #define OPP_DO_ONCE (opp_move_hop_iter_one_flag)
-#define OPP_MOVE_RESET_FLAGS { opp_move_status_flag = OPPX_MOVE_DONE; opp_move_hop_iter_one_flag = true; }
+#define OPP_MOVE_RESET_FLAGS { opp_move_status_flag = OPP_MOVE_DONE; opp_move_hop_iter_one_flag = true; }
 
 //*************************************************************************************************
 inline bool opp_check_part_move_status(const OPP_INT map0idx, const OPP_INT particle_index, int& remove_count) 

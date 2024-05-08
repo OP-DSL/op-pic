@@ -55,13 +55,13 @@ inline void calculate_injection_distribution(
 )
 {   
     /*number of real ions per sec, given prescribed density and velocity*/
-    double num_per_sec = CONST_plasma_den * CONST_ion_velocity * (*face_area);
+    double num_per_sec = CONST_plasma_den[0] * CONST_ion_velocity[0] * (*face_area);
 
     /*number of ions to generate in this time step*/
-    double num_real = num_per_sec * CONST_dt;
+    double num_real = num_per_sec * CONST_dt[0];
 
     /*fraction number of macroparticles*/
-    double fnum_mp = num_real / CONST_spwt + (*remainder);
+    double fnum_mp = num_real / CONST_spwt[0] + (*remainder);
 
     /*integer number of macroparticles*/
     int num_mp = (int)fnum_mp;
@@ -86,7 +86,7 @@ inline void init_boundary_pot_kernel(
             *n_bnd_pot = 0; 
             break;     
         case 3: // FIXED: 
-            *n_bnd_pot = -1 * CONST_wall_potential; 
+            *n_bnd_pot = -1 * CONST_wall_potential[0]; 
             break;
         default: // NORMAL or OPEN
             *n_bnd_pot = 0; /*default*/
@@ -100,7 +100,6 @@ inline void inject_ions_kernel(
     double *part_pos,
     double *part_vel,
     int *part_cell_connectivity,
-    int *part_id,
     const int *cell_id, 
     const double *cell_ef,
     const double *iface_u,
@@ -122,8 +121,8 @@ inline void inject_ions_kernel(
     {
         part_pos[i] = a * iface_u[i] + b * iface_v[i] + node_pos[i];
         
-        part_vel[i] = (iface_normal[i] * CONST_ion_velocity);
-        part_vel[i] -= CONST_charge / CONST_mass * cell_ef[i] * (0.5 * CONST_dt);
+        part_vel[i] = (iface_normal[i] * CONST_ion_velocity[0]);
+        part_vel[i] -= CONST_charge[0] / CONST_mass[0] * cell_ef[i] * (0.5 * CONST_dt[0]);
     }
 
     (*part_cell_connectivity) = (*cell_id);
@@ -135,10 +134,10 @@ inline void calculate_new_pos_vel_kernel(
     double *part_pos,
     double *part_vel ) {
 
-    const double coefficient1 = CONST_charge / CONST_mass * (CONST_dt);
+    const double coefficient1 = CONST_charge[0] / CONST_mass[0] * (CONST_dt[0]);
     for (int i = 0; i < KERNEL_DIM; i++) {
         part_vel[i] += (coefficient1 * cell_ef[i]);   
-        part_pos[i] += part_vel[i] * (CONST_dt);                
+        part_pos[i] += part_vel[i] * (CONST_dt[0]);                
     }
 }
 
@@ -174,12 +173,12 @@ inline void move_all_particles_to_cell_kernel(
 {
     if (OPP_DO_ONCE)
     {
-        const double coefficient1 = CONST_charge / CONST_mass * (CONST_dt);
+        const double coefficient1 = CONST_charge[0] / CONST_mass[0] * (CONST_dt[0]);
         for (int i = 0; i < KERNEL_DIM; i++)
             part_vel[i] += (coefficient1 * cell_ef[i]);                  
         
         for (int i = 0; i < KERNEL_DIM; i++)
-            part_pos[i] += part_vel[i] * (CONST_dt); // v = u + at
+            part_pos[i] += part_vel[i] * (CONST_dt[0]); // v = u + at
     }
 
     bool inside = true;
@@ -241,7 +240,7 @@ inline void compute_node_charge_density_kernel(
     const double *node_volume
 )
 {
-    (*node_charge_den) *= (CONST_spwt / (*node_volume));
+    (*node_charge_den) *= (CONST_spwt[0] / node_volume[0]);
 }
 
 //*************************************************************************************************
@@ -299,7 +298,7 @@ inline void isPointInCellKernel(bool& inside, const double *point_pos, double* p
 
 //*******************************************************************************
 inline void move_kernel(const double *point_pos, double* point_lc, 
-                              const double *cell_volume, const double *cell_det) {
+    const double *cell_volume, const double *cell_det) {
 
     const double coefficient2 = KERNEL_ONE_OVER_SIX / (*cell_volume);
 

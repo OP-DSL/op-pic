@@ -69,12 +69,13 @@ all: $(ALL_TARGETS)
 mklib:
 	@mkdir -p $(OBJ) $(BIN)
 
-seq_cg: mklib
-		 $(CPP) $(CPPFLAGS) -c cabana.cpp -o $(OBJ)/cabana_seq_cg.o $(ALL_INC)
+seq: mklib
+		 $(CPP) $(CPPFLAGS) -c cabana_opp.cpp -o $(OBJ)/cabana_opp_seq.o $(ALL_INC)
+	     $(CPP) $(CPPFLAGS) -c seq/opp_kernels.cpp -o $(OBJ)/opp_kernels_seq.o $(ALL_INC)
 	     $(CPP) $(CPPFLAGS) -o $(BIN)/seq \
-			$(OBJ)/cabana_seq_cg.o \
+			$(OBJ)/cabana_opp_seq.o \
+			$(OBJ)/opp_kernels_seq.o \
 			$(ALL_INC) $(ALL_LIBS) -lopp_seq
-
 omp: mklib
 	     $(CPP) $(CPPFLAGS) -fopenmp -DUSE_OMP -c cabana_op.cpp -o $(OBJ)/cabana_op_omp.o $(ALL_INC)
 	     $(CPP) $(CPPFLAGS) -fopenmp -DUSE_OMP -c omp/ompkernels.cpp -o $(OBJ)/ompkernels.o $(ALL_INC)
@@ -84,11 +85,11 @@ omp: mklib
 			$(ALL_INC) $(ALL_LIBS) -lopp_omp
 
 mpi: mklib
-		 $(MPICPP) $(CPPFLAGS) -DUSE_MPI -c cabana_op.cpp -o $(OBJ)/cabana_op.o $(ALL_INC)
-		 $(MPICPP) $(CPPFLAGS) -DUSE_MPI -c mpi/mpikernels.cpp -o $(OBJ)/mpikernels.o $(ALL_INC)
+		 $(MPICPP) $(CPPFLAGS) -DUSE_MPI -c cabana_opp.cpp -o $(OBJ)/cabana_opp_mpi.o $(ALL_INC)
+		 $(MPICPP) $(CPPFLAGS) -DUSE_MPI -c mpi/opp_kernels.cpp -o $(OBJ)/opp_kernels_mpi.o $(ALL_INC)
 	     $(MPICPP) $(CPPFLAGS) -DUSE_MPI -o $(BIN)/mpi \
-		 	$(OBJ)/cabana_op.o \
-			$(OBJ)/mpikernels.o \
+		 	$(OBJ)/cabana_opp_mpi.o \
+			$(OBJ)/opp_kernels_mpi.o \
 			$(ALL_INC) $(ALL_LIBS) -lopp_mpi
 
 mpi_hdf5: mklib
@@ -110,11 +111,11 @@ mpi_hdf5_conv: mklib
 			-lopp_mpi $(ALL_INC) $(ALL_LIBS) -lhdf5
 
 cuda: mklib
-		 $(NVCC) $(NVCCFLAGS) -c cuda/cudakernels.cu -o $(OBJ)/cudakernels.o $(ALL_INC) $(CUDA_INC)
-	     $(CPP) $(CPPFLAGS) -c cabana_op.cpp -o $(OBJ)/cabana_op_cuda.o $(ALL_INC)
+		 $(NVCC) $(NVCCFLAGS) -c cuda/opp_kernels.cu -o $(OBJ)/opp_kernels_cuda.o $(ALL_INC) $(CUDA_INC)
+		 $(CPP) $(CPPFLAGS) -c cabana_opp.cpp -o $(OBJ)/cabana_opp_cuda.o $(ALL_INC)
 	     $(CPP) $(CPPFLAGS) -o $(BIN)/cuda \
-		 	$(OBJ)/cabana_op_cuda.o \
-			$(OBJ)/cudakernels.o \
+		 	$(OBJ)/cabana_opp_cuda.o \
+			$(OBJ)/opp_kernels_cuda.o \
 			$(ALL_INC) $(CUDA_INC) $(ALL_LIBS) $(CUDA_LIB) -lopp_cuda
 
 cuda_mpi: mklib

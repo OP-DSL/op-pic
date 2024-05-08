@@ -6,7 +6,7 @@ from typing import Any, FrozenSet, List, Optional, Set
 
 from util import Findable
 from store import Application, Program
-from ops import Type, Const
+from op import Type, Const
 
 #TODO: Add documentaion (numpy style)
 class Lang(Findable):

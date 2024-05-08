@@ -10,7 +10,8 @@ import pcpp
 
 import cpp.parser
 import cpp.translator.program
-import ops
+# import ops
+import op as OP
 from language import Lang
 from store import Application, Location, ParseError, Program
 
@@ -116,10 +117,10 @@ class Cpp(Lang):
 
         return program
 
-    def translateProgram(self, program: Program, include_dirs: Set[Path], defines: List[str], app_consts: List[ops.Const], force_soa: bool = False) -> str:
+    def translateProgram(self, program: Program, include_dirs: Set[Path], defines: List[str], app_consts: List[OP.Const], force_soa: bool = False) -> str:
         return cpp.translator.program.translateProgram(program.path.read_text(), program, force_soa)
 
-    def formatType(self, typ: ops.Type) -> str:
+    def formatType(self, typ: OP.Type) -> str:
         int_types = {
             (True, 16): "short",
             (True, 32): "int",
@@ -131,19 +132,19 @@ class Cpp(Lang):
 
         float_type = {16: "half", 32: "float", 64: "double"}
 
-        if isinstance(typ, ops.Int):
+        if isinstance(typ, OP.Int):
             return int_types[(typ.signed, typ.size)]
-        elif isinstance(typ, ops.Float):
+        elif isinstance(typ, OP.Float):
             return float_type[typ.size]
-        elif isinstance(typ, ops.Bool):
+        elif isinstance(typ, OP.Bool):
             return "bool"
-        elif isinstance(typ, ops.Char):
+        elif isinstance(typ, OP.Char):
             return "char"
-        elif isinstance(typ, ops.ComplexD):
+        elif isinstance(typ, OP.ComplexD):
             return "complexd"
-        elif isinstance(typ, ops.ComplexF):
+        elif isinstance(typ, OP.ComplexF):
             return "complexf"
-        elif isinstance(typ, ops.Custom):
+        elif isinstance(typ, OP.Custom):
             return typ.name
         else:
             assert False

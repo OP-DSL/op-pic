@@ -47,7 +47,7 @@ def translateProgram(source: str, program: Program, force_soa: bool) -> str:
     loop_list = []
     for loop in program.loops:
         if loop.loop_type == OP.LoopType.PAR_LOOP:
-            prototype = f'void opp_par_loop_{loop.iterator_type.name}__{loop.kernel}(opp_set{",opp_arg" * len(loop.args)});'
+            prototype = f'void opp_par_loop_{loop.iterator_type.name}__{loop.kernel}(opp_set,opp_iterate_type{",opp_arg" * len(loop.args)});'
         elif loop.loop_type == OP.LoopType.MOVE_LOOP:
             prototype = f'void opp_particle_move__{loop.kernel}(opp_set,opp_map,opp_dat{",opp_arg" * len(loop.args)});'
         
@@ -60,5 +60,6 @@ def translateProgram(source: str, program: Program, force_soa: bool) -> str:
     # Substitude the opp_templates.h include for opp_lib.h
     source = re.sub(r'#include\s+"opp_templates\.h"', '#include "opp_lib.h"', source)
     source = re.sub(r'// USER WRITTEN CODE', '// AUTO GENERATED CODE', source)
-    
+    source = re.sub(r'#include "kernels.h"', '// #include "kenels.h" // codegen commented :  TODO: ...', source)
+
     return source

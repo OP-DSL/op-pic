@@ -68,6 +68,9 @@ class IterateType(Enum):
     @staticmethod
     def names() -> List[str]:
         return [x.name for x in list(IterateType)]
+    
+    def __str__(self) -> str:
+        return self.name
 
 class LoopType(Enum):
     
@@ -313,6 +316,8 @@ class Loop:
     iterator_type : IterateType
     loop_type : LoopType
     loop_name : str
+    p2c_map : Optional[Dat]
+    c2c_map : Optional[Map]
 
     args: List[Arg]
     args_expanded: List[Arg]
@@ -324,7 +329,7 @@ class Loop:
 
     fallback: bool
 
-    def __init__(self, name: str, loc: Location, kernel: str, iterator_set : OppSet, iterator_type : IterateType, loop_name: str, loop_type = LoopType.PAR_LOOP) -> None:
+    def __init__(self, name: str, loc: Location, kernel: str, iterator_set : OppSet, iterator_type : IterateType, loop_name: str, loop_type = LoopType.PAR_LOOP, p2c_map=None, c2c_map = None) -> None:
         self.name = name
 
         self.loc = loc
@@ -333,6 +338,8 @@ class Loop:
         self.iterator_type = iterator_type
         self.loop_type = loop_type
         self.loop_name = loop_name
+        self.p2c_map = p2c_map
+        self.c2c_map = c2c_map
 
         self.dats = []
         self.maps = []
@@ -369,16 +376,16 @@ class Loop:
         elif self.dats[dat_id].dim is None and dat_dim is not None:
             self.dats[dat_id] = dataclasses.replace(self.dats[dat_id], dim=dat_dim)
 
-        p2c_id = None
-        if p2c_ptr is not None:
-            p2c_id = findIdx(self.dats, lambda d: d.ptr == p2c_ptr)
-            if p2c_id is None:
-                p2c_id = len(self.dats)
+        # p2c_id = p2c_ptr
+        # if p2c_ptr is not None:
+        #     p2c_id = findIdx(self.dats, lambda d: d.ptr == p2c_ptr)
+        #     if p2c_id is None:
+        #         p2c_id = len(self.dats)
 
-                p2c_dat = Dat(p2c_id, p2c_ptr, arg_id, dat_dim, dat_typ, dat_soa, None, None)
-                self.dats.append(p2c_dat)
-            elif self.dats[p2c_id].dim is None and dat_dim is not None:
-                self.dats[p2c_id] = dataclasses.replace(self.dats[p2c_id], dim=dat_dim)
+        #         p2c_dat = Dat(p2c_id, p2c_ptr, arg_id, dat_dim, dat_typ, dat_soa, None, None)
+        #         self.dats.append(p2c_dat)
+        #     elif self.dats[p2c_id].dim is None and dat_dim is not None:
+        #         self.dats[p2c_id] = dataclasses.replace(self.dats[p2c_id], dim=dat_dim)
 
         map_id = None
         if map_ptr is not None:
@@ -390,7 +397,7 @@ class Loop:
                 map_ = Map(map_id, map_ptr, arg_id, None, None, None, None)
                 self.maps.append(map_)
 
-        arg = ArgDat(arg_id, loc, access_type, opt, dat_id, map_id, map_idx, p2c_id)
+        arg = ArgDat(arg_id, loc, access_type, opt, dat_id, map_id, map_idx, p2c_ptr)
         self.args.append(arg)
 
         if map_ptr is None or map_idx is None or map_idx >= 0:
@@ -487,7 +494,7 @@ class Loop:
             map_str = f"\n    {map_str}\n"
 
         return (
-            f"Loop at {self.loc}:\n    Name: {self.name}\n    Kernel function: {self.kernel}\n    Iterating Set: {self.iterator_set}\n\n    args={args}\n    argsEx={argsEx}\n"
+            f"Loop at {self.loc}:\n    Name: {self.name}\n    Kernel function: {self.kernel}\n    Iterating Set: {self.iterator_set}\n    p2c_map: {self.p2c_map}\n    c2c_map: {self.c2c_map} \n\n    args={args}\n    argsEx={argsEx}\n"
             + dat_str
             + map_str
         )

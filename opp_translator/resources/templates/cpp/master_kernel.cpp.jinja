@@ -1,8 +1,3 @@
-{% block const_decls %}
-    {% for const in app.consts() %}
-extern {{const.typ}} {{const.ptr}}{% if const.dim > 1 %}[{{const.dim}}]{% endif %};
-    {% endfor %}
-{% endblock %}
 
 {% block includes %}
 /* 
@@ -42,29 +37,28 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
     {% if user_types is not none %}
 {{user_types}}
-
     {% endif %}
 #include "{{header}}"
+{% endblock %}
 
-{%- endblock %}
+{% block const_decls %}
+{% for const in app.consts() %}
+{{const.typ}} {{const.ptr}}[{{const.dim}}];
+{% endfor %}
+{% endblock %}
 
 {%- macro const_decl_func(guard='') %}
-#ifndef MAX_CONST_SIZE
-#define MAX_CONST_SIZE 128
-#endif
-
-void opp_decl_const_impl(int dim, int size, char* data, const char* name)
-{
+void opp_decl_const_impl(int dim, int size, char* data, const char* name) {
     {{guard}}
-    {% for const in app.consts() %}
+{% for const in app.consts() %}
     if (!strcmp(name, "{{const.ptr}}")) {
         {{caller(const)}}
         return;
     }
-    {% endfor %}
+{% endfor %}
 
-    printf("error: unknown const name %s\n", name);
-    exit(1);
+    opp_printf("Error: unknown const name %s", name);
+    opp_abort("Error: unknown const name");
 }
 {% endmacro %}
 
@@ -72,9 +66,8 @@ void opp_decl_const_impl(int dim, int size, char* data, const char* name)
 {% endblock %}
 
 {% block kernel_includes %}
-
     {% for loop_name in unique_loops %}
-#include "{{loop_name}}_kernel.hpp"
+#include "{{loop_name}}_loop.hpp"
 
     {% endfor %}
 {% endblock %}

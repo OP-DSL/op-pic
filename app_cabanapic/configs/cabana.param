@@ -27,4 +27,6 @@ INT opp_gpu_direct = 0
 STRING opp_fill = Shuffle_Periodic
 INT opp_fill_period = 4
 
+BOOL opp_global_move = false
+
 STRING hdf_filename = /home/zl/phd/neso_test/OP-PIC_Configs/cabana/mesh_files/cab_48000.hdf5

@@ -10,7 +10,7 @@ from pathlib import Path
 import cpp
 from jinja_utils import env
 from language import Lang
-from ops import OpsError, Type
+from op import OpError, Type
 from scheme import Scheme
 from store import Application, ParseError
 from target import Target
@@ -29,7 +29,7 @@ def main(argv=None) -> None:
     parser.add_argument("-c", "--config", help="Target configuration", type=json.loads, default="{}")
     parser.add_argument("-soa", "--force_soa", help="Force structs of arrays", action="store_true")
 
-    parser.add_argument("--suffix", help="Add a suffix to genreated program translations", default="_ops")
+    parser.add_argument("--suffix", help="Add a suffix to genreated program translations", default="_opp")
 
     parser.add_argument("-I", help="Add to include directories", type=isDirPath, action="append", nargs=1, default=[])
     parser.add_argument("-i", help="Add to include files", type=isFilePath, action="append", nargs=1, default=[])
@@ -115,7 +115,7 @@ def main(argv=None) -> None:
     # Validation phase
     try: 
         validate(args, lang, app)
-    except OpsError as e:
+    except OpError as e:
         exit(e)
 
     # for [target] in args.target:
@@ -288,6 +288,11 @@ def isFilePath(path):
     else:
         raise ArgumentTypeError("Invalid file: {path}")
 
+def print_ast(cursor, depth=0):
+    indent = '  ' * depth
+    print(f"{indent}{cursor.kind.name}: {cursor.spelling}")
+    for child in cursor.get_children():
+        print_ast(child, depth + 1)
     
 
 if __name__ == "__main__":

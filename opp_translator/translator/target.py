@@ -32,26 +32,33 @@ class Seq(Target):
 
     def defaultConfig(self) -> Dict[str, Any]:
         return {"grouped": False, "device": 1}
+
+class Mpi(Target):
+    name = "mpi"
+    suffix = "mpi"
+    kernel_translation = False
+    config = {"grouped": False, "device": 1}
+
+    def defaultConfig(self) -> Dict[str, Any]:
+        return {"grouped": False, "device": 1}
+
+class Omp(Target):
+    name = "omp"
+    suffix = "omp"
+    kernel_translation = False
+    config = {"grouped": False, "device": 1}
+
+    def defaultConfig(self) -> Dict[str, Any]:
+        return {"grouped": False, "device": 1}
+
+class Cuda(Target):
+    name = "cuda"
+    suffix = "cuda"
+    kernel_translation = True
+    config = {"grouped": True, "device": 2, "atomics": True, "color2": False, "gbl_inc_atomic": False}
     
-# class MPIOpenMP(Target):
-#     name = "mpi_openmp"
-#     suffix = "seq"
-#     kernel_translation = False
-#     config = {
-#         "grouped" : False, 
-#         "device" : 1
-#         }
-    
-# class Cuda(Target):
-#     name = "cuda"
-#     suffix = "cuda"
-#     kernel_translation = True
-#     config = {
-#         "grouped" : True,
-#         "device" : 2,
-#         "atomics": True,
-#         "color2": False
-#         }
+    def defaultConfig(self) -> Dict[str, Any]:
+        return {"grouped": True, "device": 2, "atomics": True, "color2": False, "gbl_inc_atomic": False}
 
 # class Hip(Target):
 #     name = "hip"
@@ -103,7 +110,9 @@ class Seq(Target):
 #         }
 
 Target.register(Seq)
-# Target.register(MPIOpenMP)
+Target.register(Mpi)
+# Target.register(Omp)
+Target.register(Cuda)
 
 
 # Target.register(Cuda)

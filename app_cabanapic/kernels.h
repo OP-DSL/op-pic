@@ -171,9 +171,9 @@ inline void move_deposit_kernel(
         const OPP_REAL& dy = part_pos[Dim::y];             // Load position
         const OPP_REAL& dz = part_pos[Dim::z];             // Load position
 
-        const OPP_REAL hax  = CONST_qdt_2mc * ( ( ex + dy*dexdy ) + dz * ( dexdz + dy*d2exdydz ) );
-        const OPP_REAL hay  = CONST_qdt_2mc * ( ( ey + dz*deydz ) + dx * ( deydx + dz*d2eydzdx ) );
-        const OPP_REAL haz  = CONST_qdt_2mc * ( ( ez + dx*dezdx ) + dy * ( dezdy + dx*d2ezdxdy ) );
+        const OPP_REAL hax  = CONST_qdt_2mc[0] * ( ( ex + dy*dexdy ) + dz * ( dexdz + dy*d2exdydz ) );
+        const OPP_REAL hay  = CONST_qdt_2mc[0] * ( ( ey + dz*deydz ) + dx * ( deydx + dz*d2eydzdx ) );
+        const OPP_REAL haz  = CONST_qdt_2mc[0] * ( ( ez + dx*dezdx ) + dy * ( dezdy + dx*d2ezdxdy ) );
 
         cbx  = cbx + dx*dcbxdx;                     // Interpolate B
         cby  = cby + dy*dcbydy;
@@ -187,7 +187,7 @@ inline void move_deposit_kernel(
         uy  += hay;
         uz  += haz;
 
-        OPP_REAL v0   = CONST_qdt_2mc/sqrt(one + (ux*ux + (uy*uy + uz*uz)));
+        OPP_REAL v0   = CONST_qdt_2mc[0]/sqrt(one + (ux*ux + (uy*uy + uz*uz)));
                                                     // Boris - scalars
         OPP_REAL v1   = cbx*cbx + (cby*cby + cbz*cbz);
         OPP_REAL v2   = (v0*v0)*v1;
@@ -234,7 +234,7 @@ inline void move_deposit_kernel(
             part_pos[Dim::y] = v4;            // save new position
             part_pos[Dim::z] = v5;            // save new position
 
-            const OPP_REAL q = part_weight[0] * CONST_qsp;
+            const OPP_REAL q = part_weight[0] * CONST_qsp[0];
 
             weight_current_to_accumulator_kernel(
                 cell_acc,
@@ -299,7 +299,7 @@ inline void move_deposit_kernel(
     // the total physical charge that passed through the appropriate
     // current quadrant in a time-step
 
-    const OPP_REAL q = part_weight[0] * CONST_qsp;
+    const OPP_REAL q = part_weight[0] * CONST_qsp[0];
 
     weight_current_to_accumulator_kernel(
         cell_acc,
@@ -419,15 +419,15 @@ inline void advance_e_kernel (
 {
     if (iter_adv_e[0] == 1)
     {
-        cell0_e[Dim::x] += ( - CONST_dt_eps0 * cell0_j[Dim::x] ) + 
+        cell0_e[Dim::x] += ( - CONST_dt_eps0[0] * cell0_j[Dim::x] ) + 
             ( CONST_p[Dim::y] * (cell0_b[Dim::z] - cell_y_b[Dim::z]) - 
             CONST_p[Dim::z] * (cell0_b[Dim::y] - cell_z_b[Dim::y]) );
 
-        cell0_e[Dim::y] += ( - CONST_dt_eps0 * cell0_j[Dim::y] ) +            
+        cell0_e[Dim::y] += ( - CONST_dt_eps0[0] * cell0_j[Dim::y] ) +            
             ( CONST_p[Dim::z] * (cell0_b[Dim::x] - cell_z_b[Dim::x]) - 
             CONST_p[Dim::x] * (cell0_b[Dim::z] - cell_x_b[Dim::z]) );
 
-        cell0_e[Dim::z] += ( - CONST_dt_eps0 * cell0_j[Dim::z] ) +           
+        cell0_e[Dim::z] += ( - CONST_dt_eps0[0] * cell0_j[Dim::z] ) +           
             ( CONST_p[Dim::x] * (cell0_b[Dim::y] - cell_x_b[Dim::y]) - 
             CONST_p[Dim::y] * (cell0_b[Dim::x] - cell_y_b[Dim::x]) );
     }

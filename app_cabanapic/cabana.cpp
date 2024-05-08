@@ -35,12 +35,12 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "opp_templates.h"
 
-OPP_REAL CONST_dt;
-OPP_REAL CONST_qsp;
+OPP_REAL CONST_dt[1];
+OPP_REAL CONST_qsp[1];
 OPP_REAL CONST_cdt_d[3];
 OPP_REAL CONST_p[3];
-OPP_REAL CONST_qdt_2mc;
-OPP_REAL CONST_dt_eps0;
+OPP_REAL CONST_qdt_2mc[1];
+OPP_REAL CONST_dt_eps0[1];
 OPP_REAL CONST_acc_coef[3];
 
 #include "cabana_misc.h"

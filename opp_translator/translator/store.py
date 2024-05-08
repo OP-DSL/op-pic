@@ -9,7 +9,7 @@ from util import flatten, uniqueBy
 
 # import ops
 import op as OP
-from ops import OpsError
+from op import OpError as OpsError
 from util import ABDC, findIdx
 
 if TYPE_CHECKING:
@@ -147,24 +147,41 @@ class Program:
                 map.to_set = map_stored.to_set
                 map.loc = map_stored.loc
 
-            for dat in loop.dats:
-                print(f'ZAM enrichLoopData dat-> {dat.ptr}')    
-                dat_stored = self.dats[findIdx(self.dats, lambda d: d.ptr == dat.ptr)]           
-                dat.dim = dat_stored.dim
-                dat.typ = dat_stored.typ
-                dat.soa = dat_stored.soa
-                dat.set = dat_stored.set
-                dat.loc = dat_stored.loc
-
+            for obj in loop.dats: 
+                dat_idx = findIdx(self.dats, lambda d: d.ptr == obj.ptr)
+                if dat_idx is not None:
+                    dat_stored = self.dats[dat_idx]           
+                    obj.dim = dat_stored.dim
+                    obj.typ = dat_stored.typ
+                    obj.soa = dat_stored.soa
+                    obj.set = dat_stored.set
+                    obj.loc = dat_stored.loc
+                else:
+                    map_idx = findIdx(self.maps, lambda d: d.ptr == obj.ptr)
+                    if map_idx is not None:
+                        map_stored = self.maps[map_idx]           
+                        obj.dim = map_stored.dim
+                        obj.typ = "OPP_INT"
+                        obj.soa = True
+                        obj.set = map_stored.from_set
+                        obj.loc = map_stored.loc                        
+                    else:
+                        raise OpsError(f"enrichLoopData : {obj} is not a dat nor map")
             loop.iterator_set = self.sets[findIdx(self.sets, lambda m: m.name == loop.iterator_set)]
 
-            print(f'ZAM enrichLoopData AFTER {loop}')           
+            if loop.p2c_map is not None:
+                loop.p2c_map = self.dats[findIdx(self.dats, lambda m: m.ptr == loop.p2c_map)]
+            if loop.c2c_map is not None:
+                loop.c2c_map = self.maps[findIdx(self.maps, lambda m: m.ptr == loop.c2c_map)]
+
+            print(f'ZAM enrichLoopData AFTER {loop}')
 
 @dataclass
 class Application:
     programs: List[Program] = field(default_factory=list)
     global_dim: Optional[int] = None
-
+    external_consts: Set[str] = field(default_factory=set)
+    
     def __str__(self) -> str:
         if len(self.programs) > 0:
             programs_str = "\n".join([str(p) for p in self.programs])
@@ -192,6 +209,15 @@ class Application:
 
         return candidates
 
+    # All const ptrs including external_consts
+    def constPtrs(self) -> Set[str]:
+        ptrs = set(self.external_consts)
+
+        for program in self.programs:
+            ptrs.update(const.ptr for const in program.consts)
+
+        return ptrs
+    
     def consts(self) -> List[OP.Const]:
         consts = flatten(program.consts for program in self.programs)
         return uniqueBy(consts, lambda c: c.ptr)
@@ -227,8 +253,8 @@ class Application:
 
                 seen_const_ptrs.add(const.ptr)
 
-                if const.dim.isdigit() and int(const.dim) < 1:
-                    raise OpsError(f"Invalid const dimension: {const.dim} of const: {const.ptr}", const.loc)
+                # if const.dim.isdigit() and int(const.dim) < 1:
+                #     raise OpsError(f"Invalid const dimension: {const.dim} of const: {const.ptr}", const.loc)
 
 
     def validateLoops(self, lang: Lang) -> None:

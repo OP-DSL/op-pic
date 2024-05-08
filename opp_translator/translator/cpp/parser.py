@@ -237,16 +237,18 @@ def parseCall(node: Cursor, macros: Dict[Location, str], program: Program) -> No
 
     # print(f"ZAM parseCall {name}")
 
-    if name == "op_decl_const":
-        print(f"ZAM parseCall - append const {node.type.get_num_template_arguments()}")
+    if name == "opp_decl_const":
+        # print(f"ZAM parseCall - append const {node.type.get_template_argument_kind(2)} {len(args)}")
+        # print(f"ZAM parseCall - append constZ {args[1].type.spelling}")
+        # parseConst(args, loc)
         program.consts.append(parseConst(args, loc))
 
     elif name == "opp_par_loop":
-        print(f"ZAM parseCall - append loop")
+        # print(f"ZAM parseCall - append loop")
         program.loops.append(parseLoop(program, args, loc, macros))
 
     elif name == "opp_particle_move":
-        print(f"ZAM parseCall - append move_loop")
+        # print(f"ZAM parseCall - append move_loop")
         program.loops.append(parseMoveLoop(program, args, loc, macros))
 
 def parseConst(args: List[Cursor], loc: Location) -> OP.Const:
@@ -255,13 +257,23 @@ def parseConst(args: List[Cursor], loc: Location) -> OP.Const:
 
     # TODO dim may not be literal
     dim = parseIntExpression(args[0])
-    ptr = parseIdentifier(args[1], raw=False)
-
-    name = parseStringLit(args[2])
+    name = args[2].spelling[1:-1]
     
-    typ, _ = parseType(parseStringLit(args[1]), loc)
+    typ_str = str()
+    if "double" in args[1].type.spelling:
+        typ_str = "double"
+    elif "int" in args[1].type.spelling:
+        typ_str = "int"
+    elif "bool" in args[1].type.spelling:
+        typ_str = "bool"
+    else:
+        raise ParseError("incorrect type passed to opp_decl_const", loc)
+        
+    typ, _ = parseType(typ_str, loc)
 
-    return OP.Const(loc, ptr, dim, typ)
+    print(f"ZAM parseCall - Xappend const {dim} {name} {typ}")
+
+    return OP.Const(loc, name, dim, typ)
 
 def parseLoop(program: Program, args: List[Cursor], loc: Location, macros: Dict[Location, str]) -> OP.Loop:
     if len(args) < 4:
@@ -310,12 +322,14 @@ def parseMoveLoop(program: Program, args: List[Cursor], loc: Location, macros: D
     kernel = parseIdentifier(args[0])
     loop_name = args[1].spelling[1:-1]
     iter_set = parseIdentifier(args[2])
+    c2c_map = parseIdentifier(args[3])
+    p2c_map = parseIdentifier(args[4])
 
     name = f"{program.path.stem}_{len(program.loops) + 1}_{kernel}"
 
     print(f"ZAM parseMoveLoop : {name} {loop_name} | {args[0].spelling} {args[0].kind} | {args[1].spelling} {args[1].kind} | {args[2].spelling} {args[2].kind} | {args[3].spelling} {args[3].kind} | {args[4].spelling} {args[4].kind}")
 
-    loop = OP.Loop(name, loc, kernel, iter_set, OP.IterateType.all, loop_name, OP.LoopType.MOVE_LOOP)
+    loop = OP.Loop(name, loc, kernel, iter_set, OP.IterateType.all, loop_name, OP.LoopType.MOVE_LOOP, p2c_map, c2c_map)
 
     for node in args[5:]:
         # node = descend(descend(node))

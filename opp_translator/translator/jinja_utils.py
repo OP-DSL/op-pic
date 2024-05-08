@@ -67,12 +67,20 @@ def double_indirect(x, loop: Optional[OP.Loop] = None) -> bool:
         return True   
     return False  
 
+def double_indirect_reduc(x, loop: Optional[OP.Loop] = None) -> bool:
+    if x is not None and isinstance(x, OP.Loop):
+        for arg in x.args:
+            if isinstance(arg, OP.ArgDat) and double_indirect(arg) and arg.access_type in [OP.AccessType.INC, OP.AccessType.MAX, OP.AccessType.MIN]:
+                return True
+    return False  
+
 env.tests["injected_loop"] = lambda loop: loop.iterator_type == OP.IterateType.injected
 env.tests["particle_loop"] = lambda loop: loop.iterator_set.cell_set != None
 env.tests["direct"] = direct
 env.tests["indirect"] = indirect
 env.tests["p2c_mapped"] = p2c_mapped
 env.tests["double_indirect"] = double_indirect
+env.tests["double_indirect_reduc"] = double_indirect_reduc
 
 def soa(x, loop: Optional[OP.Loop] = None) -> bool:
     if isinstance(x, OP.ArgDat):
@@ -192,9 +200,12 @@ env.filters["inc"] = test_to_filter("inc")
 env.filters["min"] = test_to_filter("min")
 env.filters["max"] = test_to_filter("max")
 
-env.filters["reduction"] = test_to_filter("reduction")
+env.filters["read_or_write"] = test_to_filter("read_or_write")
 
-env.filters["index"] = lambda xs, x: xs.index(x)
+env.filters["reduction"] = test_to_filter("reduction")
+env.filters["min_or_max"] = test_to_filter("min_or_max")
+
+env.filters["index"] = lambda xs, x: xs.index(x) if x is not None and x in xs else -1
 
 env.filters["round_up"] = lambda x, b: b * ceil(x / b)
 

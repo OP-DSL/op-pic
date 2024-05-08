@@ -10,7 +10,7 @@ from typing import Any, Dict, List, Optional, Set, Tuple
 from jinja2 import Environment
 
 import op as OP
-import ops
+# import ops
 from language import Lang
 from store import Application, Program
 from target import Target
@@ -24,6 +24,7 @@ class Scheme(Findable):
     target: Target
 
     loop_host_template: Path
+    move_loop_host_template: Path
     master_kernel_template: Optional[Path]
 
     def __str__(self) -> str:
@@ -48,15 +49,20 @@ class Scheme(Findable):
     def genLoopHost(
         self,
         env: Environment,
-        loop: ops.Loop,
+        loop: OP.Loop,
         program: Program,
         app: Application,
         kernel_idx: int,
         config_overrides: List[Dict[str, Dict[str, Any]]],
         force_generate: bool = False,
     ) -> Optional[Tuple[str, str, bool]]:
-        template = env.get_template(str(self.loop_host_template))
-        extension = self.loop_host_template.suffixes[-2][1:]
+        
+        if loop.loop_type == OP.LoopType.PAR_LOOP:
+            template = env.get_template(str(self.loop_host_template))
+            extension = self.loop_host_template.suffixes[-2][1:]
+        else:
+            template = env.get_template(str(self.move_loop_host_template))
+            extension = self.move_loop_host_template.suffixes[-2][1:]            
         # Load the loop host template
 
         args = {
@@ -81,7 +87,7 @@ class Scheme(Findable):
 
 
         if args["kernel_func"] is None and self.fallback is None:
-            print('if args["kernel_func"] is None and self.fallback is None')
+            # print('if args["kernel_func"] is None and self.fallback is None')
             return None
 
         if self.fallback is not None:
@@ -96,11 +102,11 @@ class Scheme(Findable):
             )
 
         if args["kernel_func"] is None:
-            print('if args["kernel_func"] is None')
+            # print('if args["kernel_func"] is None')
             return (fallback_template.render(**fallback_args, variant=""), extension, True)
 
         if self.fallback is None:
-            print('if self.fallback is None:')
+            # print('if self.fallback is None:')
             return (template.render(**args, variant=""), extension, False)
 
         source = template.render(**args, variant="_main")
@@ -190,7 +196,8 @@ class Scheme(Findable):
         for loop, _ in app.loops():
             if loop.kernel not in unique_loops:
                 unique_loops.append(loop.kernel)
-                
+
+        # print(f'at GEN MASTER KERNEL {app.consts()}')
         # Generate source from the template
         return template.render(OP=OP, app=app, lang=self.lang, target=self.target, user_types=user_types, header=self.header, unique_loops=unique_loops), name
 
