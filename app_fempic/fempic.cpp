@@ -46,7 +46,7 @@ OPP_REAL CONST_wall_potential[1];
 #include "fempic_misc_mesh_loader.h"
 #include "fempic_misc.h"
 #include "kernels.h"
-#include "FESolver.h"
+#include "field_solver.h"
 
 // void init_particle_mover(const double gridSpacing, int dim, const opp_dat n_pos_dat, 
 //     const opp_dat cellVolume_dat, const opp_dat cellDet_dat, const opp_dat c_gbl_id_dat);
@@ -67,7 +67,7 @@ int main(int argc, char **argv)
         OPP_REAL grid_spacing          = opp_params->get<OPP_REAL>("grid_spacing");
         OPP_REAL mass                  = 2 * AMU;
         OPP_REAL charge                = 1 * QE;
-        OPP_INT max_iter               = opp_params->get<OPP_INT>("max_iter");   
+        OPP_INT max_iter               = opp_params->get<OPP_INT>("num_steps");   
         std::string log                = "";
         const OPP_BOOL print_final_log = opp_params->get<OPP_BOOL>("print_final");
         int64_t total_part_iter        = 0;

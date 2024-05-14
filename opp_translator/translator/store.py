@@ -136,10 +136,17 @@ class Program:
         return outString
 
     def enrichLoopData(self) -> None:
-        
         for loop in self.loops:
-            print(f'ZAM enrichLoopData BEFORE {loop}')
-
+            for arg in loop.args:
+                if isinstance(arg, OP.ArgDat):
+                    stored_dat_id = findIdx(self.dats, lambda m: m.ptr == loop.dats[arg.dat_id].ptr) 
+                    if stored_dat_id is None:
+                        stored_map_id = findIdx(self.maps, lambda m: m.ptr == loop.dats[arg.dat_id].ptr) 
+                        if stored_map_id is not None:
+                            arg.flag = False
+                        else:
+                            raise OpsError(f"enrichLoopData : {arg} is not a dat nor map")
+        for loop in self.loops:
             for map in loop.maps:
                 map_stored = self.maps[findIdx(self.maps, lambda m: m.ptr == map.ptr)]         
                 map.dim = map_stored.dim
@@ -164,17 +171,15 @@ class Program:
                         obj.typ = "OPP_INT"
                         obj.soa = True
                         obj.set = map_stored.from_set
-                        obj.loc = map_stored.loc                        
+                        obj.loc = map_stored.loc    
+                        obj.flag = False                 
                     else:
                         raise OpsError(f"enrichLoopData : {obj} is not a dat nor map")
             loop.iterator_set = self.sets[findIdx(self.sets, lambda m: m.name == loop.iterator_set)]
-
             if loop.p2c_map is not None:
                 loop.p2c_map = self.dats[findIdx(self.dats, lambda m: m.ptr == loop.p2c_map)]
             if loop.c2c_map is not None:
                 loop.c2c_map = self.maps[findIdx(self.maps, lambda m: m.ptr == loop.c2c_map)]
-
-            print(f'ZAM enrichLoopData AFTER {loop}')
 
 @dataclass
 class Application:

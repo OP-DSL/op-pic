@@ -8,6 +8,22 @@
 #define one_third      (1.0 / 3.0)
 #define two_fifteenths (2.0 / 15.0)
 
+#define CALC_J(X,Y,Z)  \
+    v4 = (*q)*u##X;    \
+    v1 = v4*d##Y;      \
+    v0 = v4-v1;        \
+    v1 += v4;          \
+    v4 = one+d##Z;     \
+    v2 = v0*v4;        \
+    v3 = v1*v4;        \
+    v4 = one-d##Z;     \
+    v0 *= v4;          \
+    v1 *= v4;          \
+    v0 += v5;          \
+    v1 -= v5;          \
+    v2 -= v5;          \
+    v3 += v5;       
+
 //*************************************************************************************************
 inline void interpolate_mesh_fields_kernel(
     const OPP_REAL* cell0_e,   
@@ -91,50 +107,32 @@ inline void clear_accumulator_fields_kernel(
 
 //*************************************************************************************************
 inline void weight_current_to_accumulator_kernel(
-        OPP_REAL* cell0_acc,
+        OPP_REAL* cell_acc,
         const OPP_REAL* q,
         const OPP_REAL& ux, const OPP_REAL& uy, const OPP_REAL& uz,
         const OPP_REAL& dx, const OPP_REAL& dy, const OPP_REAL& dz)
 {
     OPP_REAL v0 = 0.0f, v1 = 0.0f, v2 = 0.0f, v3 = 0.0f, v4 = 0.0f, v5 = 0.0f;
 
-    v5 = (*q) * ux * uy * uz * one_third;              // Compute correction
- 
-    #define CALC_J(X,Y,Z)                                           \
-    v4  = (*q)*u##X;   /* v2 = q ux                            */   \
-    v1  = v4*d##Y;     /* v1 = q ux dy                         */   \
-    v0  = v4-v1;       /* v0 = q ux (1-dy)                     */   \
-    v1 += v4;          /* v1 = q ux (1+dy)                     */   \
-    v4  = one+d##Z;    /* v4 = 1+dz                            */   \
-    v2  = v0*v4;       /* v2 = q ux (1-dy)(1+dz)               */   \
-    v3  = v1*v4;       /* v3 = q ux (1+dy)(1+dz)               */   \
-    v4  = one-d##Z;    /* v4 = 1-dz                            */   \
-    v0 *= v4;          /* v0 = q ux (1-dy)(1-dz)               */   \
-    v1 *= v4;          /* v1 = q ux (1+dy)(1-dz)               */   \
-    v0 += v5;          /* v0 = q ux [ (1-dy)(1-dz) + uy*uz/3 ] */   \
-    v1 -= v5;          /* v1 = q ux [ (1+dy)(1-dz) - uy*uz/3 ] */   \
-    v2 -= v5;          /* v2 = q ux [ (1-dy)(1+dz) - uy*uz/3 ] */   \
-    v3 += v5;          /* v3 = q ux [ (1+dy)(1+dz) + uy*uz/3 ] */
+    v5 = (*q) * ux * uy * uz * one_third;
 
     CALC_J( x,y,z );
-    cell0_acc[CellAcc::jfx + 0] += v0; 
-    cell0_acc[CellAcc::jfx + 1] += v1; 
-    cell0_acc[CellAcc::jfx + 2] += v2; 
-    cell0_acc[CellAcc::jfx + 3] += v3; 
+    cell_acc[CellAcc::jfx + 0] += v0; 
+    cell_acc[CellAcc::jfx + 1] += v1; 
+    cell_acc[CellAcc::jfx + 2] += v2; 
+    cell_acc[CellAcc::jfx + 3] += v3; 
 
     CALC_J( y,z,x );
-    cell0_acc[CellAcc::jfy + 0] += v0; 
-    cell0_acc[CellAcc::jfy + 1] += v1; 
-    cell0_acc[CellAcc::jfy + 2] += v2; 
-    cell0_acc[CellAcc::jfy + 3] += v3; 
+    cell_acc[CellAcc::jfy + 0] += v0; 
+    cell_acc[CellAcc::jfy + 1] += v1; 
+    cell_acc[CellAcc::jfy + 2] += v2; 
+    cell_acc[CellAcc::jfy + 3] += v3; 
 
     CALC_J( z,x,y );
-    cell0_acc[CellAcc::jfz + 0] += v0; 
-    cell0_acc[CellAcc::jfz + 1] += v1; 
-    cell0_acc[CellAcc::jfz + 2] += v2; 
-    cell0_acc[CellAcc::jfz + 3] += v3; 
-
-    #undef CALC_J
+    cell_acc[CellAcc::jfz + 0] += v0; 
+    cell_acc[CellAcc::jfz + 1] += v1; 
+    cell_acc[CellAcc::jfz + 2] += v2; 
+    cell_acc[CellAcc::jfz + 3] += v3; 
 }
 
 //*************************************************************************************************
@@ -255,7 +253,7 @@ inline void move_deposit_kernel(
 
     OPP_REAL s_dir[3];
     OPP_REAL v0, v1, v2, v3; 
-    size_t axis, face;
+    int axis, face;
 
     OPP_REAL s_midx = part_pos[Dim::x]; // Old positions
     OPP_REAL s_midy = part_pos[Dim::y]; // Old positions

@@ -236,20 +236,21 @@ class Dat:
 
     set: Optional[OppSet]
     loc: Optional[Location]
+    flag = True
 
     def __str__(self) -> str:
         return (
-            f"Dat(id={self.id}, ptr='{self.ptr}', arg_id={self.arg_id}, dim={self.dim}, typ={self.typ}, soa={self.soa}, set={self.set}, loc={self.loc})"
+            f"Dat(id={self.id}, ptr='{self.ptr}', arg_id={self.arg_id}, dim={self.dim}, typ={self.typ}, soa={self.soa}, set={self.set}, loc={self.loc}, flag={self.flag}))"
         )
 
 
-@dataclass(frozen=True)
+@dataclass
 class Arg(ABDC):
     id: int
     loc: Location
 
 
-@dataclass(frozen=True)
+@dataclass
 class ArgDat(Arg):
     access_type: AccessType
     opt: bool
@@ -259,15 +260,16 @@ class ArgDat(Arg):
     map_id: Optional[int]
     map_idx: Optional[int]
     p2c_id: Optional[int]
+    flag = True
 
     def __str__(self) -> str:
         return (
             f"ArgDat(id={self.id}, loc={self.loc}, access_type={str(self.access_type) + ',':17} opt={self.opt}, "
-            f"dat_id={self.dat_id}, map_id={self.map_id}, map_idx={self.map_idx}, p2c_id={self.p2c_id})"
+            f"dat_id={self.dat_id}, map_id={self.map_id}, map_idx={self.map_idx}, p2c_id={self.p2c_id}, flag={self.flag})"
         )
 
 
-@dataclass(frozen=True)
+@dataclass
 class ArgGbl(Arg):
     access_type: AccessType
     opt: bool
@@ -284,7 +286,7 @@ class ArgGbl(Arg):
         )
 
 
-@dataclass(frozen=True)
+@dataclass
 class ArgIdx(Arg):
     map_id: Optional[int]
     map_idx: Optional[int]
@@ -293,7 +295,7 @@ class ArgIdx(Arg):
         return f"ArgIdx(id={self.id}, loc={self.loc}, map_id={self.map_id}, map_idx={self.map_idx})"
 
 
-@dataclass(frozen=True)
+@dataclass
 class ArgInfo(Arg):
     ptr: str
 

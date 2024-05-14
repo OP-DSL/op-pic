@@ -149,10 +149,10 @@ inline void deposit_charge_on_nodes_kernel(
     double *node_charge_den2,
     double *node_charge_den3) {
 
-    (*node_charge_den0) += part_lc[0];
-    (*node_charge_den1) += part_lc[1];
-    (*node_charge_den2) += part_lc[2];
-    (*node_charge_den3) += part_lc[3];
+    node_charge_den0[0] += part_lc[0];
+    node_charge_den1[0] += part_lc[1];
+    node_charge_den2[0] += part_lc[2];
+    node_charge_den3[0] += part_lc[3];
 }
 
 //*************************************************************************************************
@@ -297,8 +297,10 @@ inline void isPointInCellKernel(bool& inside, const double *point_pos, double* p
 }
 
 //*******************************************************************************
-inline void move_kernel(const double *point_pos, double* point_lc, 
-    const double *cell_volume, const double *cell_det) {
+inline void move_kernel(
+    const double *point_pos, double* point_lc, 
+    const double *cell_volume, const double *cell_det
+) {
 
     const double coefficient2 = KERNEL_ONE_OVER_SIX / (*cell_volume);
 

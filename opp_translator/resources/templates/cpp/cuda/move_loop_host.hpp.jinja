@@ -98,10 +98,10 @@ __device__ inline bool opp_part_check_status_cuda(char& move_flag, bool& iter_on
 
 {% macro map_lookup(arg, kernel_idx = '') -%}
 {%- if arg is double_indirect -%}
-map{{arg.map_id}}[opp_k{{kernel_idx}}_map{{lh.map(arg).id}}_stride_d * {{arg.map_idx}} + opp_p2c[0]]
+map{{arg.map_id}}[opp_k{{kernel_idx}}_map{{lh.map(arg).id}}_stride_d * {{arg.map_idx}} + p2c]
     {{-(" * %d" % lh.dat(arg).dim) if lh.dat(arg) is not soa}}
 {%- elif arg is p2c_mapped -%}
-opp_p2c[0]
+p2c
     {{-(" * %d" % lh.dat(arg).dim) if lh.dat(arg) is not soa}}
 {%- else -%}
 map{{arg.map_id}}[opp_k{{kernel_idx}}_map{{lh.map(arg).id}}_stride_d * {{arg.map_idx}} + n]
@@ -137,9 +137,9 @@ gbl{{arg.id}}
                 {%- endif -%}
             {%- else -%}
                 {%- if arg is double_indirect -%}
-            {%- set offset = " + map%s[opp_p2c[0] + opp_k%d_map%d_stride_d * %d]" % (arg.map_id, kernel_idx, arg.map_id, arg.map_idx) -%}
+            {%- set offset = " + map%s[p2c + opp_k%d_map%d_stride_d * %d]" % (arg.map_id, kernel_idx, arg.map_id, arg.map_idx) -%}
                 {%- elif arg is p2c_mapped -%}
-            {%- set offset = " + opp_p2c[0]" -%}
+            {%- set offset = " + p2c" -%}
                 {%- elif arg is indirect -%}
             {%- set offset = " + map%s[n + opp_k%d_map%d_stride_d * %d]" % (arg.map_id, kernel_idx, lh.map(arg).id, arg.map_idx) -%}
                 {%- endif -%}
@@ -222,18 +222,22 @@ __global__ void opp_dev_{{lh.kernel}}(
             {% else %}
         {{lh.dat(arg).typ}} arg{{arg.id}}_{{arg.map_idx}}_local[{{lh.dat(arg).dim}}];
             {% endif %}
-        for (int d = 0; {{opt_cuda_cond_comp(arg)}}d < {{lh.dat(arg).dim}}; ++d)
-            {% if arg is p2c_mapped and not double_indirect %}
-            arg{{arg.id}}_p2c_local[d] = {{lh.dat(arg).typ}}_ZERO;
-            {% else %}
-            arg{{arg.id}}_{{arg.map_idx}}_local[d] = {{lh.dat(arg).typ}}_ZERO;
-            {% endif %}
 
         {% endfor %}
         do
         {
-            const OPP_INT* opp_c2c = c2c_map + p2c_map[0];
+            const OPP_INT p2c = opp_p2c[0]; // get the value here, since the kernel might change it
+            const OPP_INT* opp_c2c = c2c_map + p2c;           
 
+        {% for arg in lh.args_expanded|indirect|reduction if config.atomics %}
+            for (int d = 0; {{opt_cuda_cond_comp(arg)}}d < {{lh.dat(arg).dim}}; ++d)
+            {% if arg is p2c_mapped and not double_indirect %}
+                arg{{arg.id}}_p2c_local[d] = {{lh.dat(arg).typ}}_ZERO;
+            {% else %}
+                arg{{arg.id}}_{{arg.map_idx}}_local[d] = {{lh.dat(arg).typ}}_ZERO;
+            {% endif %}
+
+        {% endfor %}
             opp_k{{kernel_idx}}::{{lh.kernel}}(
                 move_flag, iter_one_flag, opp_c2c, opp_p2c,
                 {% for arg in lh.args %}
@@ -241,18 +245,17 @@ __global__ void opp_dev_{{lh.kernel}}(
                 {% endfor %}          
             );
 
+        {% for arg in lh.args_expanded|indirect|reduction if config.atomics %}
+            for (int d = 0; {{opt_cuda_cond_comp(arg)}}d < {{lh.dat(arg).dim}}; ++d)
+            {% if arg is p2c_mapped and not double_indirect %}
+                atomicAdd(dat{{arg.dat_id}} + {{map_lookup(arg, kernel_idx)}} + (d{{stride_cuda(arg)}}), arg{{arg.id}}_p2c_local[d]);
+            {% else %}
+                atomicAdd(dat{{arg.dat_id}} + {{map_lookup(arg, kernel_idx)}} + (d{{stride_cuda(arg)}}), arg{{arg.id}}_{{arg.map_idx}}_local[d]); // TODO: this looks incorrect
+            {% endif %}        
+        {% endfor %}
         } while (opp_k{{kernel_idx}}::opp_part_check_status_cuda(move_flag, iter_one_flag, opp_p2c, n, 
             *particle_remove_count, particle_remove_indices, move_particle_indices, 
             move_cell_indices, move_count));        
-        {% for arg in lh.args_expanded|indirect|reduction if config.atomics %}
-
-        for (int d = 0; {{opt_cuda_cond_comp(arg)}}d < {{lh.dat(arg).dim}}; ++d)
-            {% if arg is p2c_mapped and not double_indirect %}
-            atomicAdd(dat{{arg.dat_id}} + {{map_lookup(arg, kernel_idx)}} + (d{{stride_cuda(arg)}}), arg{{arg.id}}_p2c_local[d]);
-            {% else %}
-            atomicAdd(dat{{arg.dat_id}} + {{map_lookup(arg, kernel_idx)}} + (d{{stride_cuda(arg)}}), arg{{arg.id}}_{{arg.map_idx}}_local[d]); // TODO: this looks incorrect
-            {% endif %}        
-        {% endfor %}
     }
     {% for arg in lh.args|gbl|reduction %}
 
@@ -446,7 +449,7 @@ opp_dev_{{lh.kernel}}<<<num_blocks, block_size
 
 {% block host_loop %}
     {% if lh.args|gbl|reduction|length <= 0 %}
-        num_blocks = (OPP_iter_end - OPP_iter_start - 1) / num_blocks + 1;
+        num_blocks = (OPP_iter_end - OPP_iter_start - 1) / block_size + 1;
     {% endif %}
 
         {{kernel_call("(reduction_size * block_size)",

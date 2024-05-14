@@ -55,69 +55,22 @@ class Cuda(Target):
     name = "cuda"
     suffix = "cuda"
     kernel_translation = True
-    config = {"grouped": True, "device": 2, "atomics": True, "color2": False, "gbl_inc_atomic": False}
+    config = {"grouped": True, "device": 2, "atomics": True, "seg_red": True, "color2": False, "gbl_inc_atomic": False}
     
     def defaultConfig(self) -> Dict[str, Any]:
-        return {"grouped": True, "device": 2, "atomics": True, "color2": False, "gbl_inc_atomic": False}
+        return {"grouped": True, "device": 2, "atomics": True, "seg_red": True, "color2": False, "gbl_inc_atomic": False}
 
-# class Hip(Target):
-#     name = "hip"
-#     kernel_translation = True
-#     config = {
-#         "grouped" : True,
-#         "device" : 3,
-#         "atomics": True,
-#         "color2": False
-#         }
-
-# class OpenMPOffload(Target):
-#     name = "openmp_offload"
-#     kernel_translation = True
-#     config = {
-#         "grouped" : True,
-#         "device" : 4,
-#         "atomics": True,
-#         "color2": False
-#         }
-
-#class OpenACC(Target):
-#    name = "openacc"
-#    kernel_translation = True
-#    config = {
-#        "grouped" : True,
-#        "device" : 5,
-#        "atomics": True,
-#        "color2": False
-#        }
-
-# class Sycl(Target):
-#     name = "sycl"
-#     kernel_translation = True
-#     config = {
-#         "grouped" : True,
-#         "device" : 6,
-#         "atomics": True,
-#         "color2": False
-#         }
-
-# class HLS(Target):
-#     name = "hls"
-#     kernel_translation = True
-#     config = {
-#         "grouped" : False,
-#         "SLR_count" : 1,
-#         "device" : 7
-#         }
+class Hip(Target):
+    name = "hip"
+    suffix = "hip"
+    kernel_translation = True
+    config = {"grouped": True, "device": 2, "atomics": True, "seg_red": True, "color2": False, "gbl_inc_atomic": False}
+    
+    def defaultConfig(self) -> Dict[str, Any]:
+        return {"grouped": True, "device": 2, "atomics": True, "seg_red": True, "color2": False, "gbl_inc_atomic": False}
 
 Target.register(Seq)
 Target.register(Mpi)
 # Target.register(Omp)
 Target.register(Cuda)
-
-
-# Target.register(Cuda)
-# Target.register(Hip)
-# Target.register(OpenMPOffload)
-# #Target.register(OpenACC)
-# Target.register(Sycl)
-# Target.register(HLS)
+Target.register(Hip)

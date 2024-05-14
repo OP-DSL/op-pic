@@ -119,27 +119,27 @@ cuda: mklib
 			$(ALL_INC) $(CUDA_INC) $(ALL_LIBS) $(CUDA_LIB) -lopp_cuda
 
 cuda_mpi: mklib
-		 $(NVCC) $(NVCCFLAGS) -DUSE_MPI -c cuda/cudakernels.cu -o $(OBJ)/cudakernels_mpi.o $(ALL_INC) $(CUDA_INC)
-	     $(MPICPP) $(CPPFLAGS) -DUSE_MPI -c cabana_op.cpp -o $(OBJ)/cabana_op_cuda_mpi.o $(ALL_INC)
+		 $(NVCC) $(NVCCFLAGS) -DUSE_MPI -c cuda/opp_kernels.cu -o $(OBJ)/opp_kernels_cuda_mpi.o $(ALL_INC) $(CUDA_INC)
+	     $(MPICPP) $(CPPFLAGS) -DUSE_MPI -c cabana_opp.cpp -o $(OBJ)/cabana_opp_cuda_mpi.o $(ALL_INC)
 	     $(MPICPP) $(CPPFLAGS) -DUSE_MPI -o $(BIN)/cuda_mpi \
-			$(OBJ)/cabana_op_cuda_mpi.o \
-			$(OBJ)/cudakernels_mpi.o \
+			$(OBJ)/cabana_opp_cuda_mpi.o \
+			$(OBJ)/opp_kernels_cuda_mpi.o \
 			$(ALL_INC) $(CUDA_INC) $(ALL_LIBS) $(CUDA_LIB) -lopp_cuda_mpi
 
 hip: mklib
-		 $(HIPCC) $(HIPCCFLAGS) -c hip/hipkernels.cpp -o $(OBJ)/hipkernels.o $(ALL_INC) $(HIP_INC)
-	     $(HIPCC) $(HIPCCFLAGS) -c cabana_op.cpp -o $(OBJ)/cabana_op_hip.o $(ALL_INC)
+		 $(HIPCC) $(HIPCCFLAGS) -c hip/opp_kernels.cpp -o $(OBJ)/opp_kernels_hip.o $(ALL_INC) $(HIP_INC)
+	     $(HIPCC) $(HIPCCFLAGS) -c cabana_opp.cpp -o $(OBJ)/cabana_opp_hip.o $(ALL_INC)
 	     $(HIPCC) -o $(BIN)/hip \
-			$(OBJ)/cabana_op_hip.o \
-			$(OBJ)/hipkernels.o \
+			$(OBJ)/cabana_opp_hip.o \
+			$(OBJ)/opp_kernels_hip.o \
 			$(ALL_LIBS) $(HIP_LIB) -lopp_hip
 
 hip_mpi: mklib
-		 $(HIPCC) $(HIPCCFLAGS) -DUSE_MPI -c hip/hipkernels.cpp -o $(OBJ)/hipkernels_mpi.o $(ALL_INC) $(HIP_INC)
-	     $(HIPCC) $(HIPCCFLAGS) -DUSE_MPI -c cabana_op.cpp -o $(OBJ)/cabana_op_hip_mpi.o $(ALL_INC)
+		 $(HIPCC) $(HIPCCFLAGS) -DUSE_MPI -c hip/opp_kernels.cpp -o $(OBJ)/opp_kernels_hip_mpi.o $(ALL_INC) $(HIP_INC)
+	     $(HIPCC) $(HIPCCFLAGS) -DUSE_MPI -c cabana_opp.cpp -o $(OBJ)/cabana_opp_hip_mpi.o $(ALL_INC)
 	     $(HIPCC) -DUSE_MPI -o $(BIN)/hip_mpi \
-			$(OBJ)/cabana_op_hip_mpi.o \
-			$(OBJ)/hipkernels_mpi.o \
+			$(OBJ)/cabana_opp_hip_mpi.o \
+			$(OBJ)/opp_kernels_hip_mpi.o \
 			$(ALL_LIBS) $(HIP_LIB) -lopp_hip_mpi -lmpi
 
 clean: 

@@ -57,6 +57,12 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #define OPP_GPU_THREADS_PER_BLOCK 32
 
+#define OPP_PARTICLE_MOVE_DONE { m.move_status = OPP_MOVE_DONE; }
+#define OPP_PARTICLE_NEED_MOVE { m.move_status = OPP_NEED_MOVE; }
+#define OPP_PARTICLE_NEED_REMOVE { m.move_status = OPP_NEED_REMOVE; }
+#define OPP_DO_ONCE (m.iteration_one)
+#define OPP_MOVE_RESET_FLAGS { m.move_status = OPP_MOVE_DONE; m.iteration_one = true; }
+
 extern int* opp_saved_mesh_relation_d;
 extern size_t opp_saved_mesh_relation_size;
 extern thrust::device_vector<int> cellIdx_dv;
@@ -85,6 +91,7 @@ extern std::map<int, thrust::device_vector<char>> recv_data;
 
 // arrays for global constants and reductions
 extern char *OPP_reduct_h, *OPP_reduct_d;
+extern char *OPP_consts_h, *OPP_consts_d;
 
 //*************************************************************************************************
 
@@ -162,6 +169,12 @@ void opp_reallocReductArrays(int reduct_bytes);
 void opp_mvReductArraysToDevice(int reduct_bytes);
 
 void opp_mvReductArraysToHost(int reduct_bytes);
+
+void opp_reallocConstArrays(int consts_bytes);
+
+void opp_mvConstArraysToDevice(int consts_bytes);
+
+void opp_mvConstArraysToHost(int consts_bytes);
 
 template <opp_access reduction, class T>
 __inline__ __device__ void opp_reduction(volatile T *dat_g, T dat_l) 

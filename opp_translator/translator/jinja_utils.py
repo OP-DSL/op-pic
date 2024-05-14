@@ -74,6 +74,32 @@ def double_indirect_reduc(x, loop: Optional[OP.Loop] = None) -> bool:
                 return True
     return False  
 
+def indirect_reduction(x, loop: OP.Loop, check_all: Optional[bool] = False) -> bool:
+    if direct(x, loop):
+        return False
+    
+    if not check_all:
+        arg = loop.args[x.arg_id]
+        assert isinstance(arg, OP.ArgDat)
+        if arg.access_type in [OP.AccessType.INC,OP.AccessType.MIN,OP.AccessType.MAX]:
+            return True
+    return False
+
+def sr_both_direct_and_indirect_reduction(x, loop: OP.Loop) -> bool:
+    assert isinstance(x, OP.Dat)
+    assert isinstance(loop, OP.Loop)
+
+    direct_mapped = False
+    indir_reduc_mapped = False
+
+    for arg in loop.args:
+        if isinstance(arg, OP.ArgDat) and arg.dat_id == x.id:
+            if arg.access_type in [OP.AccessType.INC,OP.AccessType.MIN,OP.AccessType.MAX]:
+                indir_reduc_mapped = True
+            else:
+                 direct_mapped = True
+    return indir_reduc_mapped and direct_mapped
+
 env.tests["injected_loop"] = lambda loop: loop.iterator_type == OP.IterateType.injected
 env.tests["particle_loop"] = lambda loop: loop.iterator_set.cell_set != None
 env.tests["direct"] = direct
@@ -81,6 +107,10 @@ env.tests["indirect"] = indirect
 env.tests["p2c_mapped"] = p2c_mapped
 env.tests["double_indirect"] = double_indirect
 env.tests["double_indirect_reduc"] = double_indirect_reduc
+env.tests["indirect_reduction"] = indirect_reduction
+env.tests["sr_both_direct_and_indirect_reduction"] = sr_both_direct_and_indirect_reduction
+
+env.tests["map_not_dat"] = lambda dat: dat.flag == False
 
 def soa(x, loop: Optional[OP.Loop] = None) -> bool:
     if isinstance(x, OP.ArgDat):
@@ -136,6 +166,18 @@ env.tests["reduction"] = lambda arg, loop=None: hasattr(arg, "access_type") and 
     OP.AccessType.MAX,
 ]
 
+def sr_not_already_mapped(arg, loop: Optional[OP.Loop] = None) -> bool:
+    if isinstance(arg, OP.ArgDat):
+        assert loop is not None
+        dat = loop.dats[arg.dat_id]
+        for a in loop.args:
+            if isinstance(a, OP.ArgDat) and a.dat_id == dat.id and a.id < arg.id and a.access_type in [OP.AccessType.INC,OP.AccessType.MIN,OP.AccessType.MAX]:
+                return False
+        return True       
+    return False   
+
+env.tests["sr_not_already_mapped"] = sr_not_already_mapped
+env.tests["same_iter_set_dat"] = lambda x, loop: x.set == loop.iterator_set.name
 
 def read_in(dat: OP.Dat, loop: OP.Loop) -> bool:
     for arg in loop.args:
@@ -179,6 +221,8 @@ def test_to_filter(filter_, key=unpack):
 
 env.filters["direct"] = test_to_filter("direct")
 env.filters["indirect"] = test_to_filter("indirect")
+env.filters["sr_not_already_mapped"] = test_to_filter("sr_not_already_mapped")
+env.filters["same_iter_set_dat"] = test_to_filter("same_iter_set_dat")
 
 env.filters["soa"] = test_to_filter("soa")
 

@@ -25,7 +25,7 @@ def parseSet(node: Cursor, name: str, program: Program, set_type : OP.SetType) -
     set = OP.OppSet(id, loc, name, set_type, cell_set)
     program.sets.append(set)
 
-    print(f'parseSet {name} -> {set}')
+    # print(f'parseSet {name} -> {set}')
 
 def parseMap(node: Cursor, name: str, program: Program) -> None:
 
@@ -42,7 +42,7 @@ def parseMap(node: Cursor, name: str, program: Program) -> None:
     map = OP.Map(id, name, None, dim, from_set, to_set, loc)
     program.maps.append(map)
 
-    print(f'parseMap {name} -> {map}')
+    # print(f'parseMap {name} -> {map}')
 
 def parseDat(node: Cursor, name: str, program: Program) -> None:
 
@@ -69,7 +69,7 @@ def parseDat(node: Cursor, name: str, program: Program) -> None:
     dat = OP.Dat(id, name, None, dim, typ, True, set, loc)
     program.dats.append(dat)
 
-    print(f'parseDat {name} -> {dat}')
+    # print(f'parseDat {name} -> {dat}')
 
 def parseMeta(node: Cursor, program: Program) -> None:
     if node.kind == CursorKind.TYPE_REF:
@@ -271,7 +271,7 @@ def parseConst(args: List[Cursor], loc: Location) -> OP.Const:
         
     typ, _ = parseType(typ_str, loc)
 
-    print(f"ZAM parseCall - Xappend const {dim} {name} {typ}")
+    # print(f"ZAM parseCall - Xappend const {dim} {name} {typ}")
 
     return OP.Const(loc, name, dim, typ)
 
@@ -286,7 +286,7 @@ def parseLoop(program: Program, args: List[Cursor], loc: Location, macros: Dict[
     name = f"{program.path.stem}_{len(program.loops) + 1}_{kernel}"
     iterate_type = parseIterateType(args[3])
 
-    print(f"ZAM parseLoop : {name} {loop_name} | {args[0].spelling} {args[0].kind} | {args[1].spelling} {args[1].kind} | {args[2].spelling} {args[2].kind} | {args[3].spelling} {args[3].kind} | {args[4].spelling} {args[4].kind}")
+    # print(f"ZAM parseLoop : {name} {loop_name} | {args[0].spelling} {args[0].kind} | {args[1].spelling} {args[1].kind} | {args[2].spelling} {args[2].kind} | {args[3].spelling} {args[3].kind} | {args[4].spelling} {args[4].kind}")
 
     loop = OP.Loop(name, loc, kernel, iter_set, iterate_type, loop_name)
 
@@ -297,9 +297,9 @@ def parseLoop(program: Program, args: List[Cursor], loc: Location, macros: Dict[
         arg_loc = parseLocation(node)
         arg_args = list(node.get_arguments())
 
-        print(f'ZAM node.spelling {node.spelling} node.kind {node.kind} arg_loc {arg_loc}')
-        for arg in arg_args:
-            print(f'ZAM opp_arg_dat args -> name {arg.spelling} kind {arg.kind}')
+        # print(f'ZAM node.spelling {node.spelling} node.kind {node.kind} arg_loc {arg_loc}')
+        # for arg in arg_args:
+        #     print(f'ZAM opp_arg_dat args -> name {arg.spelling} kind {arg.kind}')
 
         if name == "op_arg_idx":
             parseArgIdx(loop, arg_args, arg_loc, macros)
@@ -327,7 +327,7 @@ def parseMoveLoop(program: Program, args: List[Cursor], loc: Location, macros: D
 
     name = f"{program.path.stem}_{len(program.loops) + 1}_{kernel}"
 
-    print(f"ZAM parseMoveLoop : {name} {loop_name} | {args[0].spelling} {args[0].kind} | {args[1].spelling} {args[1].kind} | {args[2].spelling} {args[2].kind} | {args[3].spelling} {args[3].kind} | {args[4].spelling} {args[4].kind}")
+    # print(f"ZAM parseMoveLoop : {name} {loop_name} | {args[0].spelling} {args[0].kind} | {args[1].spelling} {args[1].kind} | {args[2].spelling} {args[2].kind} | {args[3].spelling} {args[3].kind} | {args[4].spelling} {args[4].kind}")
 
     loop = OP.Loop(name, loc, kernel, iter_set, OP.IterateType.all, loop_name, OP.LoopType.MOVE_LOOP, p2c_map, c2c_map)
 
@@ -338,9 +338,9 @@ def parseMoveLoop(program: Program, args: List[Cursor], loc: Location, macros: D
         arg_loc = parseLocation(node)
         arg_args = list(node.get_arguments())
 
-        print(f'ZAM parseMoveLoop node.spelling {node.spelling} node.kind {node.kind} arg_loc {arg_loc}')
-        for arg in arg_args:
-            print(f'ZAM parseMoveLoop args -> name {arg.spelling} kind {arg.kind}')
+        # print(f'ZAM parseMoveLoop node.spelling {node.spelling} node.kind {node.kind} arg_loc {arg_loc}')
+        # for arg in arg_args:
+        #     print(f'ZAM parseMoveLoop args -> name {arg.spelling} kind {arg.kind}')
 
         if name == "op_arg_idx":
             parseArgIdx(loop, arg_args, arg_loc, macros)
@@ -381,7 +381,7 @@ def parseArgDat(loop: OP.Loop, opt: bool, args: List[Cursor], loc: Location, mac
         map_ptr = parseIdentifier(args[2])
         p2c_ptr = parseIdentifier(args[3])
 
-    print(f'ZAM parseArgDat Len {len(args)} | {loc} | {dat_ptr} {map_idx} {map_ptr} {p2c_ptr} {access_type}')
+    # print(f'ZAM parseArgDat Len {len(args)} | {loc} | {dat_ptr} {map_idx} {map_ptr} {p2c_ptr} {access_type}')
 
     loop.addArgDat(loc, dat_ptr, map_ptr, map_idx, p2c_ptr, access_type)
 
@@ -396,7 +396,7 @@ def parseArgGbl(loop: OP.Loop, opt: bool, args: List[Cursor], loc: Location, mac
 
     access_type = parseAccessType(args[3], loc, macros)
 
-    print(f'ZAM parseArgGbl Len {len(args)} | {loc} | {ptr} {dim} {access_type}')
+    # print(f'ZAM parseArgGbl Len {len(args)} | {loc} | {ptr} {dim} {access_type}')
 
     loop.addArgGbl(loc, ptr, dim, typ, access_type, opt)
 
@@ -459,7 +459,7 @@ def parseStringLit(node: Cursor) -> str:
 
 def parseAccessType(node: Cursor, loc: Location, macros: Dict[Location, str]) -> OP.AccessType:
     access_type_raw = parseIntExpression(node)
-    print(f'ZAM parseAccessType : {node.spelling}')
+    # print(f'ZAM parseAccessType : {node.spelling}')
 
     if access_type_raw not in OP.AccessType.values():
         raise ParseError(

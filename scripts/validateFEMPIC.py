@@ -1,8 +1,8 @@
-precision = float(1e-15)
+precision = float(1e-17)
 printErrors = False
 
-filePath1 = "/ext-home/zl/phd/OP-PIC/fempic_new/files/"
-filePath2 = "/ext-home/zl/phd/OP-PIC/fempic_new/files/"
+filePath1 = "/home/zl/phd/OP-PIC/app_cabanapic/files/"
+filePath2 = "/home/zl/phd/OP-PIC/app_cabanapic/files/"
 
 # F_1_c_cell_electric_field_acomp.dat  F_1_s_cell_electric_field_acomp.dat          1e-6 this should be the problem
 # F_1_c_cell_electric_field.dat        F_1_s_cell_electric_field.dat                1e-25
@@ -21,46 +21,46 @@ filePath2 = "/ext-home/zl/phd/OP-PIC/fempic_new/files/"
 # F_1_c_cell_volume_am.dat             F_1_s_cell_volume_am.dat                     1e-25    
 # F_1_c_cell_determinants_am.dat       F_1_s_cell_determinants_am.dat               1e-25          
 
-iter = 42
+iter = 11
 
 fileNames1 = [
-    f'F_{iter}_c_part_position_biiii.dat',
-    f'F_{iter}_c_part_position_bi.dat',  
-    f'F_{iter}_c_cell_electric_field_bi.dat',
-    f'F_{iter}_c_part_mesh_relation_bi.dat',
-    f'F_{iter}_c_part_position_bm.dat',
-    f'F_{iter}_c_part_velocity_bm.dat',
-    f'F_{iter}_c_part_mesh_relation_bm.dat',
-    f'F_{iter}_c_node_charge_density_bm.dat',
-    f'F_{iter}_c_part_position_am.dat',
-    f'F_{iter}_c_part_velocity_am.dat',
-    f'F_{iter}_c_part_mesh_relation_am.dat',
-    f'F_{iter}_c_node_charge_density_am.dat',
-    f'F_{iter}_c_part_lc_am.dat',
-    f'F_{iter}_c_node_charge_density_acomp.dat',
-    f'F_{iter}_c_node_potential_acomp.dat',
-    f'F_{iter}_c_cell_electric_field.dat',
-    f'F_{iter}_c_cell_electric_field_acomp.dat',
+    f'F_{iter}_s_c_acc.dat',
+    # f'F_{iter}_c_part_position_bi.dat',  
+    # f'F_{iter}_c_cell_electric_field_bi.dat',
+    # f'F_{iter}_c_part_mesh_relation_bi.dat',
+    # f'F_{iter}_c_part_position_bm.dat',
+    # f'F_{iter}_c_part_velocity_bm.dat',
+    # f'F_{iter}_c_part_mesh_relation_bm.dat',
+    # f'F_{iter}_c_node_charge_density_bm.dat',
+    # f'F_{iter}_c_part_position_am.dat',
+    # f'F_{iter}_c_part_velocity_am.dat',
+    # f'F_{iter}_c_part_mesh_relation_am.dat',
+    # f'F_{iter}_c_node_charge_density_am.dat',
+    # f'F_{iter}_c_part_lc_am.dat',
+    # f'F_{iter}_c_node_charge_density_acomp.dat',
+    # f'F_{iter}_c_node_potential_acomp.dat',
+    # f'F_{iter}_c_cell_electric_field.dat',
+    # f'F_{iter}_c_cell_electric_field_acomp.dat',
     ]
 
 fileNames2 = [
-    f'F_{iter}_s_part_position_biiii.dat',
-    f'F_{iter}_s_part_position_bi.dat',  
-    f'F_{iter}_s_cell_electric_field_bi.dat',
-    f'F_{iter}_s_part_mesh_relation_bi.dat',
-    f'F_{iter}_s_part_position_bm.dat',
-    f'F_{iter}_s_part_velocity_bm.dat',
-    f'F_{iter}_s_part_mesh_relation_bm.dat',
-    f'F_{iter}_s_node_charge_density_bm.dat',
-    f'F_{iter}_s_part_position_am.dat',
-    f'F_{iter}_s_part_velocity_am.dat',
-    f'F_{iter}_s_part_mesh_relation_am.dat',
-    f'F_{iter}_s_node_charge_density_am.dat',
-    f'F_{iter}_s_part_lc_am.dat',
-    f'F_{iter}_s_node_charge_density_acomp.dat',
-    f'F_{iter}_s_node_potential_acomp.dat',
-    f'F_{iter}_s_cell_electric_field.dat',
-    f'F_{iter}_s_cell_electric_field_acomp.dat',
+    f'F_{iter}_c_c_acc.dat',
+    # f'F_{iter}_s_part_position_bi.dat',  
+    # f'F_{iter}_s_cell_electric_field_bi.dat',
+    # f'F_{iter}_s_part_mesh_relation_bi.dat',
+    # f'F_{iter}_s_part_position_bm.dat',
+    # f'F_{iter}_s_part_velocity_bm.dat',
+    # f'F_{iter}_s_part_mesh_relation_bm.dat',
+    # f'F_{iter}_s_node_charge_density_bm.dat',
+    # f'F_{iter}_s_part_position_am.dat',
+    # f'F_{iter}_s_part_velocity_am.dat',
+    # f'F_{iter}_s_part_mesh_relation_am.dat',
+    # f'F_{iter}_s_node_charge_density_am.dat',
+    # f'F_{iter}_s_part_lc_am.dat',
+    # f'F_{iter}_s_node_charge_density_acomp.dat',
+    # f'F_{iter}_s_node_potential_acomp.dat',
+    # f'F_{iter}_s_cell_electric_field.dat',
+    # f'F_{iter}_s_cell_electric_field_acomp.dat',
     ]
 
 import csv
@@ -99,10 +99,13 @@ for i in range(len(fileNames1)):
     maxDiff = 0.0
     lineErrorCount = 0
 
-    for i in range(len(file1)):
+    for i in range(1, len(file1)):
         lineCounter += 1
         line1 = file1[i]
         line2 = file2[i]
+
+        if line1[0] == 'import_exec_below':
+            break
 
         lineError = False
         diff = 0.0

@@ -89,9 +89,9 @@ def main(argv=None) -> None:
     if len(args.target) == 0:
         args.target = [[target_name] for target_name in target_names]
 
-    for [target] in args.target:
-        target = Target.find(target)
-        print(f'4 target {target}')
+    # for [target] in args.target:
+    #     target = Target.find(target)
+    #     print(f'4 target {target}')
 
     try:
         app = parse(args, lang)
@@ -153,7 +153,7 @@ def main(argv=None) -> None:
     for [target] in args.target:
         target = Target.find(target)
 
-        print(f'3 target {target}')
+        # print(f'3 target {target}')
 
         # Applying user defined configs to the target config
         for key in target.config:

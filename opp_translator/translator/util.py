@@ -176,7 +176,7 @@ class Findable(ABC):
         pass
 
 
-@dataclass(frozen=True)
+@dataclass
 class ABDC(ABC):
     def __new__(cls, *args, **kwargs):
         if cls == ABDC or cls.__bases__[0] == ABDC:
