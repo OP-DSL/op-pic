@@ -169,7 +169,7 @@ int main(int argc, char **argv)
                 opp_arg_dat(if_v_norm,         p2c_map, OPP_READ),
                 opp_arg_dat(if_norm,           p2c_map, OPP_READ),
                 opp_arg_dat(if_n_pos,          p2c_map, OPP_READ),
-                opp_arg_dat(dp_rand,                    OPP_READ));
+                opp_arg_dat(dp_rand,                    OPP_READ, false)); // offset=false flag will iterate this from begining
 
             opp_reset_dat(n_charge_den, opp_zero_double16);
 

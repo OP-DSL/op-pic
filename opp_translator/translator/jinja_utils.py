@@ -166,7 +166,7 @@ env.tests["reduction"] = lambda arg, loop=None: hasattr(arg, "access_type") and 
     OP.AccessType.MAX,
 ]
 
-def sr_not_already_mapped(arg, loop: Optional[OP.Loop] = None) -> bool:
+def not_already_mapped(arg, loop: Optional[OP.Loop] = None) -> bool:
     if isinstance(arg, OP.ArgDat):
         assert loop is not None
         dat = loop.dats[arg.dat_id]
@@ -176,8 +176,21 @@ def sr_not_already_mapped(arg, loop: Optional[OP.Loop] = None) -> bool:
         return True       
     return False   
 
-env.tests["sr_not_already_mapped"] = sr_not_already_mapped
-env.tests["same_iter_set_dat"] = lambda x, loop: x.set == loop.iterator_set.name
+def same_iter_set_dat(x, loop: OP.Loop) -> bool:
+    if isinstance(x, OP.Dat):
+        return x.set == loop.iterator_set.name
+    elif isinstance(x, OP.ArgDat):
+        dat = loop.dats[x.dat_id]
+        assert dat is not None
+        return dat.set == loop.iterator_set.name
+    return False
+
+def not_same_iter_set_dat(x, loop: OP.Loop) -> bool:
+    return not same_iter_set_dat(x, loop)
+
+env.tests["not_already_mapped"] = not_already_mapped
+env.tests["same_iter_set_dat"] = same_iter_set_dat
+env.tests["not_same_iter_set_dat"] = not_same_iter_set_dat
 
 def read_in(dat: OP.Dat, loop: OP.Loop) -> bool:
     for arg in loop.args:
@@ -221,8 +234,9 @@ def test_to_filter(filter_, key=unpack):
 
 env.filters["direct"] = test_to_filter("direct")
 env.filters["indirect"] = test_to_filter("indirect")
-env.filters["sr_not_already_mapped"] = test_to_filter("sr_not_already_mapped")
+env.filters["not_already_mapped"] = test_to_filter("not_already_mapped")
 env.filters["same_iter_set_dat"] = test_to_filter("same_iter_set_dat")
+env.filters["not_same_iter_set_dat"] = test_to_filter("not_same_iter_set_dat")
 
 env.filters["soa"] = test_to_filter("soa")
 

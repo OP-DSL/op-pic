@@ -91,9 +91,14 @@ class CppOmp(Scheme):
             raise ParseError(f"unable to find kernel: {loop.kernel}")
 
         extracted_entities = ctk.extractDependencies(kernel_entities, app)
+
+        if loop.loop_type == OP.LoopType.MOVE_LOOP:
+            ctk.updateMoveKernelArgs(extracted_entities, 
+                lambda typ, _: f"char& opp_move_status_flag, const bool opp_move_hop_iter_one_flag, // Added by code-gen\n    const OPP_INT* opp_c2c, OPP_INT* opp_p2c, // Added by code-gen\n    {typ}", loop.kernel)
+
         return ctk.writeSource(extracted_entities)
 
-# Scheme.register(CppOmp)
+Scheme.register(CppOmp)
 
 class CppCuda(Scheme):
     lang = Lang.find("cpp")

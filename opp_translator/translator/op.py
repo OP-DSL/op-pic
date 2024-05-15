@@ -260,12 +260,13 @@ class ArgDat(Arg):
     map_id: Optional[int]
     map_idx: Optional[int]
     p2c_id: Optional[int]
+    offset: bool
     flag = True
 
     def __str__(self) -> str:
         return (
             f"ArgDat(id={self.id}, loc={self.loc}, access_type={str(self.access_type) + ',':17} opt={self.opt}, "
-            f"dat_id={self.dat_id}, map_id={self.map_id}, map_idx={self.map_idx}, p2c_id={self.p2c_id}, flag={self.flag})"
+            f"dat_id={self.dat_id}, map_id={self.map_id}, map_idx={self.map_idx}, p2c_id={self.p2c_id}, flag={self.flag}, offset={self.offset})"
         )
 
 
@@ -361,6 +362,7 @@ class Loop:
         map_idx: Optional[int],
         p2c_ptr: Optional[str],
         access_type: AccessType,
+        offset: bool,
         opt: bool = False,
     ) -> None:
         arg_id = len(self.args)
@@ -399,7 +401,7 @@ class Loop:
                 map_ = Map(map_id, map_ptr, arg_id, None, None, None, None)
                 self.maps.append(map_)
 
-        arg = ArgDat(arg_id, loc, access_type, opt, dat_id, map_id, map_idx, p2c_ptr)
+        arg = ArgDat(arg_id, loc, access_type, opt, dat_id, map_id, map_idx, p2c_ptr, offset)
         self.args.append(arg)
 
         if map_ptr is None or map_idx is None or map_idx >= 0:
@@ -496,7 +498,7 @@ class Loop:
             map_str = f"\n    {map_str}\n"
 
         return (
-            f"Loop at {self.loc}:\n    Name: {self.name}\n    Kernel function: {self.kernel}\n    Iterating Set: {self.iterator_set}\n    p2c_map: {self.p2c_map}\n    c2c_map: {self.c2c_map} \n\n    args={args}\n    argsEx={argsEx}\n"
+            f"Loop at {self.loc}:\n    Name: {self.name}\n    Kernel function: {self.kernel}\n    Iterating Set: {self.iterator_set}\n    p2c_map: {self.p2c_map}\n    c2c_map: {self.c2c_map} \n\n    args:\n    {args}\n    argsEx:\n    {argsEx}\n"
             + dat_str
             + map_str
         )

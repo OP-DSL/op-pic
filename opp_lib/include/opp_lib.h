@@ -60,16 +60,16 @@ opp_dat opp_decl_mesh_dat(opp_set set, int dim, opp_data_type dtype, void *data,
 opp_map opp_decl_map_txt(opp_set from, opp_set to, int dim, const char* file_name, char const *name);
 opp_dat opp_decl_dat_txt(opp_set set, int dim, opp_data_type dtype, const char* file_name, char const *name);
 
-opp_arg opp_arg_dat(opp_dat dat, int idx, opp_map map, int dim, const char *typ, opp_dat p2c_map, opp_access acc);
-opp_arg opp_arg_dat(opp_dat dat, int idx, opp_map map, opp_dat p2c_map, opp_access acc);
-opp_arg opp_arg_dat(opp_dat dat, int idx, opp_map map, opp_access acc);
-opp_arg opp_arg_dat(opp_dat dat, opp_dat p2c_map, opp_access acc);
-opp_arg opp_arg_dat(opp_dat dat, opp_access acc);
+opp_arg opp_arg_dat(opp_dat dat, int idx, opp_map map, int dim, const char *typ, opp_dat p2c_map, opp_access acc, bool offset = true);
+opp_arg opp_arg_dat(opp_dat dat, int idx, opp_map map, opp_dat p2c_map, opp_access acc, bool offset = true);
+opp_arg opp_arg_dat(opp_dat dat, int idx, opp_map map, opp_access acc, bool offset = true);
+opp_arg opp_arg_dat(opp_dat dat, opp_dat p2c_map, opp_access acc, bool offset = true);
+opp_arg opp_arg_dat(opp_dat dat, opp_access acc, bool offset = true);
 
-opp_arg opp_arg_dat(opp_map data_map, opp_access acc);
-opp_arg opp_arg_dat(opp_map data_map, opp_dat p2c_map, opp_access acc);
-opp_arg opp_arg_dat(opp_map data_map, int idx, opp_map map, opp_access acc);
-opp_arg opp_arg_dat(opp_map data_map, int idx, opp_map map, opp_dat p2c_map, opp_access acc);
+opp_arg opp_arg_dat(opp_map data_map, opp_access acc, bool offset = true);
+opp_arg opp_arg_dat(opp_map data_map, opp_dat p2c_map, opp_access acc, bool offset = true);
+opp_arg opp_arg_dat(opp_map data_map, int idx, opp_map map, opp_access acc, bool offset = true);
+opp_arg opp_arg_dat(opp_map data_map, int idx, opp_map map, opp_dat p2c_map, opp_access acc, bool offset = true);
 
 // template <class T> opp_arg opp_arg_gbl(T *data, int dim, char const *typ, opp_access acc);
 opp_arg opp_arg_gbl(double *data, int dim, char const *typ, opp_access acc);

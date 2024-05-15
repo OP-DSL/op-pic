@@ -8,7 +8,7 @@
         {%- set cast = lh.dat(arg).typ -%}
     
         {%- if arg is direct -%}
-            {%- if lh is injected_loop -%}
+            {%- if lh is injected_loop and arg.offset -%}
             {%- set offset = "(inj_start + n)" -%}
             {%- else -%}
             {%- set offset = "n" -%}

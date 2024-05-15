@@ -71,6 +71,6 @@ class Hip(Target):
 
 Target.register(Seq)
 Target.register(Mpi)
-# Target.register(Omp)
+Target.register(Omp)
 Target.register(Cuda)
 Target.register(Hip)

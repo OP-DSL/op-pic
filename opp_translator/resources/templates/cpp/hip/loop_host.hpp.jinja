@@ -99,7 +99,7 @@ gbl{{arg.id}}
         {%- set cast = lh.dat(arg).typ -%}
         
         {%- if arg is direct -%}
-            {%- if lh is injected_loop -%}
+            {%- if lh is injected_loop and arg.offset -%}
             {%- set offset = " + (inj_start + n)" -%}
             {%- else -%}
             {%- set offset = " + n" -%}
@@ -145,7 +145,7 @@ OPP_INT opp_k{{kernel_idx}}_sr_set_stride = -1;
 __constant__ OPP_INT opp_k{{kernel_idx}}_sr_set_stride_d;
 {% endif%}
 
-{% for arg in lh.args|dat|indirect|reduction|sr_not_already_mapped(lh) if config.seg_red %}
+{% for arg in lh.args|dat|indirect|reduction|not_already_mapped(lh) if config.seg_red %}
 thrust::device_vector<OPP_INT> sr_dat{{lh.dat(arg).id}}_keys_dv;
 thrust::device_vector<{{lh.dat(arg).typ}}> sr_dat{{lh.dat(arg).id}}_values_dv;
 {% endfor %}
@@ -571,7 +571,7 @@ opp_dev_sr_{{lh.kernel}}<<<num_blocks, block_size{{-(", %s" % shared_size) if lh
                 cutilSafeCall(hipMemcpyToSymbol(HIP_SYMBOL(opp_k{{kernel_idx}}_sr_set_stride_d), &opp_k{{kernel_idx}}_sr_set_stride, sizeof(OPP_INT)));
             }
 
-        {% for arg in lh.args|dat|indirect|reduction|sr_not_already_mapped(lh) %}
+        {% for arg in lh.args|dat|indirect|reduction|not_already_mapped(lh) %}
             size_t operating_size_dat{{arg.dat_id}} = 0, resize_size_dat{{arg.dat_id}} = 0;
         {% endfor %}
 
@@ -580,12 +580,12 @@ opp_dev_sr_{{lh.kernel}}<<<num_blocks, block_size{{-(", %s" % shared_size) if lh
             resize_size_dat{{arg.dat_id}} += (size_t)(args[{{arg.id}}].dat->dim);
         {% endfor %}
 
-        {% for arg in lh.args|dat|indirect|reduction|sr_not_already_mapped(lh) %}
+        {% for arg in lh.args|dat|indirect|reduction|not_already_mapped(lh) %}
             operating_size_dat{{arg.dat_id}} *= (size_t)(set->size);
             resize_size_dat{{arg.dat_id}} *= (size_t)(set->set_capacity);
         {% endfor %}
 
-        {% for arg in lh.args|dat|indirect|reduction|sr_not_already_mapped(lh) %}
+        {% for arg in lh.args|dat|indirect|reduction|not_already_mapped(lh) %}
             if (resize_size_dat{{arg.dat_id}} > sr_dat{{arg.dat_id}}_keys_dv.size()) { // resize only if current vector is small        
                 sr_dat{{arg.dat_id}}_keys_dv.resize(resize_size_dat{{arg.dat_id}}, 0);
                 sr_dat{{arg.dat_id}}_values_dv.resize(resize_size_dat{{arg.dat_id}}, 0);
@@ -599,7 +599,7 @@ opp_dev_sr_{{lh.kernel}}<<<num_blocks, block_size{{-(", %s" % shared_size) if lh
             cutilSafeCall(hipDeviceSynchronize());
             opp_profiler->end("SR_CrKeyVal");
 
-        {% for arg in lh.args|dat|indirect|reduction|sr_not_already_mapped(lh) %}
+        {% for arg in lh.args|dat|indirect|reduction|not_already_mapped(lh) %}
             // Sort by keys to bring the identical keys together
             opp_profiler->start("SR_SortByKey");
             thrust::sort_by_key(sr_dat{{arg.dat_id}}_keys_dv.begin(), sr_dat{{arg.dat_id}}_keys_dv.begin() + operating_size_dat{{arg.dat_id}}, 

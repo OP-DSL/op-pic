@@ -358,32 +358,36 @@ def parseMoveLoop(program: Program, args: List[Cursor], loc: Location, macros: D
 
 def parseArgDat(loop: OP.Loop, opt: bool, args: List[Cursor], loc: Location, macros: Dict[Location, str]) -> None:
     
-    if len(args) < 2 or len(args) > 5:
+    if len(args) < 2 or len(args) > 6:
         raise ParseError("incorrect number of args passed to opp_arg_dat", loc)
 
     dat_ptr = parseIdentifier(args[0])
-    access_type = parseAccessType(args[len(args)-1], loc, macros)
+    access_type = parseAccessType(args[len(args)-2], loc, macros)
+    
+    offset = True
+    if args[len(args)-1].kind == CursorKind.CXX_BOOL_LITERAL_EXPR:
+        offset = parseBoolExpression(args[len(args)-1])
 
     map_idx = -1
     map_ptr = None
     p2c_ptr = None
 
-    if len(args) == 3:
+    if len(args) == 4:
         # map from particle to cell index
         p2c_ptr = parseIdentifier(args[1])
-    elif len(args) == 4:
+    elif len(args) == 5:
         # indirect mapping
         map_idx = parseIntExpression(args[1])
         map_ptr = parseIdentifier(args[2])
-    elif len(args) == 5:
+    elif len(args) == 6:
         # double indirect mappings
         map_idx = parseIntExpression(args[1])
         map_ptr = parseIdentifier(args[2])
         p2c_ptr = parseIdentifier(args[3])
 
-    # print(f'ZAM parseArgDat Len {len(args)} | {loc} | {dat_ptr} {map_idx} {map_ptr} {p2c_ptr} {access_type}')
+    # print(f'ZAM parseArgDat Len {len(args)} | {loc} | {dat_ptr} {map_idx} {map_ptr} {p2c_ptr} {access_type} | {offset} | {args[len(args)-1].kind}')
 
-    loop.addArgDat(loc, dat_ptr, map_ptr, map_idx, p2c_ptr, access_type)
+    loop.addArgDat(loc, dat_ptr, map_ptr, map_idx, p2c_ptr, access_type, offset)
 
 
 def parseArgGbl(loop: OP.Loop, opt: bool, args: List[Cursor], loc: Location, macros: Dict[Location, str]) -> None:
@@ -456,6 +460,15 @@ def parseStringLit(node: Cursor) -> str:
 
     return node.spelling[1:-1]
 
+def parseBoolExpression(node: Cursor) -> bool:
+    if node.kind != CursorKind.CXX_BOOL_LITERAL_EXPR:
+        raise ParseError("expected boolean expression", parseLocation(node))
+
+    eval_result = clang_internal.lib.clang_Cursor_Evaluate(node)
+    val = clang_internal.lib.clang_EvalResult_getAsInt(eval_result) != 0
+    clang_internal.lib.clang_EvalResult_dispose(eval_result)
+
+    return val
 
 def parseAccessType(node: Cursor, loc: Location, macros: Dict[Location, str]) -> OP.AccessType:
     access_type_raw = parseIntExpression(node)
