@@ -77,11 +77,11 @@ seq: mklib
 			$(OBJ)/opp_kernels_seq.o \
 			$(ALL_INC) $(ALL_LIBS) -lopp_seq
 omp: mklib
-	     $(CPP) $(CPPFLAGS) -fopenmp -DUSE_OMP -c cabana_op.cpp -o $(OBJ)/cabana_op_omp.o $(ALL_INC)
-	     $(CPP) $(CPPFLAGS) -fopenmp -DUSE_OMP -c omp/ompkernels.cpp -o $(OBJ)/ompkernels.o $(ALL_INC)
+	     $(CPP) $(CPPFLAGS) -fopenmp -DUSE_OMP -c cabana_opp.cpp -o $(OBJ)/cabana_opp_omp.o $(ALL_INC)
+	     $(CPP) $(CPPFLAGS) -fopenmp -DUSE_OMP -c omp/opp_kernels.cpp -o $(OBJ)/opp_kernels_omp.o $(ALL_INC)
 	     $(CPP) $(CPPFLAGS) -fopenmp -o $(BIN)/omp \
-			$(OBJ)/cabana_op_omp.o \
-			$(OBJ)/ompkernels.o \
+			$(OBJ)/cabana_opp_omp.o \
+			$(OBJ)/opp_kernels_omp.o \
 			$(ALL_INC) $(ALL_LIBS) -lopp_omp
 
 mpi: mklib
