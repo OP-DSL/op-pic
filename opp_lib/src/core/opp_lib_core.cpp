@@ -1290,13 +1290,13 @@ void opp_set_dirtybit_grouped(int nargs, opp_arg *args, DeviceType device)
 #define BOUNDING_TOLERENCE 1e-12
 
 //*******************************************************************************
-BoundingBox::BoundingBox(int dim, opp_point minCoordinate, opp_point maxCoordinate, const std::shared_ptr<Comm> comm) :
+BoundingBox::BoundingBox(int dim, opp_point minCoordinate, opp_point maxCoordinate) :
     dim(dim) {
 
     this->boundingBox[0] = minCoordinate;
     this->boundingBox[1] = maxCoordinate;
 
-    generateGlobalBoundingBox(0, comm);
+    generateGlobalBoundingBox(0);
 
     if (OPP_DBG)
         opp_printf("Local BoundingBox [provided]", "Min[%2.6lE %2.6lE %2.6lE] Max[%2.6lE %2.6lE %2.6lE]", 
@@ -1307,7 +1307,7 @@ BoundingBox::BoundingBox(int dim, opp_point minCoordinate, opp_point maxCoordina
 
 // For now, only 3D is implemented
 //*******************************************************************************
-BoundingBox::BoundingBox(const opp_dat node_pos_dat, int dim, const std::shared_ptr<Comm> comm) :
+BoundingBox::BoundingBox(const opp_dat node_pos_dat, int dim) :
     dim(dim) {
     
     if (dim != 3 && dim != 2) {
@@ -1352,7 +1352,7 @@ BoundingBox::BoundingBox(const opp_dat node_pos_dat, int dim, const std::shared_
     this->boundingBox[0] = minCoordinate;
     this->boundingBox[1] = maxCoordinate;
 
-    generateGlobalBoundingBox(node_count, comm);
+    generateGlobalBoundingBox(node_count);
 
     if (OPP_DBG)
         opp_printf("Local BoundingBox [computed]", "Min[%2.6lE %2.6lE %2.6lE] Max[%2.6lE %2.6lE %2.6lE]", 
@@ -1361,17 +1361,17 @@ BoundingBox::BoundingBox(const opp_dat node_pos_dat, int dim, const std::shared_
 }
 
 //*******************************************************************************
-void BoundingBox::generateGlobalBoundingBox(int count, const std::shared_ptr<Comm> comm) {
+void BoundingBox::generateGlobalBoundingBox(int count) {
 
 #ifdef USE_MPI
 
     const double* localMin = reinterpret_cast<const double*>(&(this->boundingBox[0]));
     double* globalMin = reinterpret_cast<double*>(&(this->globalBoundingBox[0]));    
-    MPI_Allreduce(localMin, globalMin, dim, MPI_DOUBLE, MPI_MIN, comm->comm_parent);
+    MPI_Allreduce(localMin, globalMin, dim, MPI_DOUBLE, MPI_MIN, MPI_COMM_WORLD);
 
     const double* localMax = reinterpret_cast<const double*>(&(this->boundingBox[1]));
     double* globalMax = reinterpret_cast<double*>(&(this->globalBoundingBox[1]));    
-    MPI_Allreduce(localMax, globalMax, dim, MPI_DOUBLE, MPI_MAX, comm->comm_parent);
+    MPI_Allreduce(localMax, globalMax, dim, MPI_DOUBLE, MPI_MAX, MPI_COMM_WORLD);
 
     // This is to avoid min and max corrdinates to not have MAX_REAL and MIN_REAL when current rank has no work
     if (count == 0) {

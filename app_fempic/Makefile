@@ -94,6 +94,9 @@ all: $(ALL_TARGETS)
 mklib:
 	@mkdir -p $(OBJ) $(BIN)
 
+hc: mklib
+	     $(CPP) $(CPPFLAGS) -c fempic_opp.cpp -o $(OBJ)/fempic_opp_hc.o $(ALL_INC)
+
 seq: mklib
 	     $(CPP) $(CPPFLAGS) -c fempic_opp.cpp -o $(OBJ)/fempic_opp_seq.o $(ALL_INC)
 		 $(CPP) $(CPPFLAGS) -c seq/opp_kernels.cpp -o $(OBJ)/opp_kernels_seq.o $(ALL_INC)
@@ -103,6 +106,7 @@ seq: mklib
 			$(OBJ)/opp_kernels_seq.o \
 			$(OBJ)/field_solver_cpu_seq.o \
 			$(ALL_INC) $(ALL_LIBS) -lopp_seq
+
 omp: mklib
 		 $(CPP) $(CPPFLAGS) -fopenmp -DUSE_OMP -c omp/opp_kernels.cpp -o $(OBJ)/opp_kernels_omp.o $(ALL_INC)
 	     $(CPP) $(CPPFLAGS) -fopenmp -DUSE_OMP -c fempic_opp.cpp -o $(OBJ)/fempic_opp_omp.o $(ALL_INC)

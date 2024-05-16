@@ -4,6 +4,29 @@ from store import Program
 from util import SourceBuffer
 import op as OP
 
+def populate_arg(arg, mlh: OP.Loop) -> str:
+    id1 = ""
+    id2 = ""
+    id3 = ""
+    if isinstance(arg, OP.ArgDat):
+        if arg.p2c_id is not None:
+            id3 = f"{arg.p2c_id}, "
+        if arg.map_id is not None:
+            id2 = f"{mlh.map(arg).ptr}, "
+        if arg.map_idx >= 0:
+            id1 = f"{arg.map_idx}, "
+        arg_str = f"opp_arg_dat({mlh.dat(arg).ptr}, {id1}{id2}{id3}OPP_{arg.access_type.name})"
+    elif isinstance(arg, OP.ArgGbl):
+        arg_str = f'opp_arg_gbl({arg.ptr}, {arg.dim}, "{arg.typ.__repr__()}", OPP_{arg.access_type.name})'
+    return arg_str
+
+def get_dh_init_args(move_loop : OP.Loop):
+    if move_loop is None:
+        return ""
+    dh_args = ", " + move_loop.c2c_map.ptr + ", " + move_loop.p2c_map.ptr + ",\n\t\t\t"
+    dh_args += ",\n\t\t\t".join(populate_arg(arg, move_loop) for arg in move_loop.args)
+    return dh_args
+
 # Augment source program to use generated kernel hosts
 def translateProgram(source: str, program: Program, force_soa: bool) -> str:
     buffer = SourceBuffer(source)
@@ -45,20 +68,37 @@ def translateProgram(source: str, program: Program, force_soa: bool) -> str:
 
     # buffer.insert(index, '#ifdef OPENACC\n#ifdef __cplusplus\nextern "C" {\n#endif\n#endif\n')
     loop_list = []
+    move_loop = None
     for loop in program.loops:
         if loop.loop_type == OP.LoopType.PAR_LOOP:
             prototype = f'void opp_par_loop_{loop.iterator_type.name}__{loop.kernel}(opp_set,opp_iterate_type{",opp_arg" * len(loop.args)});'
         elif loop.loop_type == OP.LoopType.MOVE_LOOP:
             prototype = f'void opp_particle_move__{loop.kernel}(opp_set,opp_map,opp_dat{",opp_arg" * len(loop.args)});'
-        
+            move_loop = loop
+
         if prototype not in loop_list:
             loop_list.append(prototype)
             buffer.insert(index, prototype)
 
+    pattern = r"opp_init_direct_hop\([^)]*\)"
+    dh_api_match = re.search(pattern, source)
+
+    if dh_api_match:
+        prototype = f'void opp_init_direct_hop_cg(double,int,const opp_dat,const opp::BoundingBox&,opp_map,opp_dat{",opp_arg" * len(move_loop.args)});'
+        buffer.insert(index, prototype)
+        index += 1
+        move_loop.dh_loop_required = True
+
     source = buffer.translate()
 
+    # Substitude dh init dats and arguments
+    if dh_api_match:
+        source = re.sub(r'opp_init_direct_hop\(([^)]*)\);', \
+                    r'opp_init_direct_hop_cg(\g<1>{});'.format(get_dh_init_args(move_loop)), source)
+    
     # Substitude the opp_templates.h include for opp_lib.h
     source = re.sub(r'#include\s+"opp_templates\.h"', '#include "opp_lib.h"', source)
+
     source = re.sub(r'// USER WRITTEN CODE', '// AUTO GENERATED CODE', source)
     source = re.sub(r'#include "kernels.h"', '// #include "kenels.h" // codegen commented :  TODO: ...', source)
 

@@ -518,7 +518,7 @@ void init_particle_mover(const double gridSpacing, int dim, const opp_dat node_p
 
     if (useGlobalMove) {
         
-        boundingBox = std::make_shared<BoundingBox>(node_pos_dat, dim, comm);
+        boundingBox = std::make_shared<BoundingBox>(node_pos_dat, dim);
 
         cellMapper = std::make_shared<CellMapper>(boundingBox, gridSpacing, comm);
 

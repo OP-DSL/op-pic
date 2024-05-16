@@ -50,3 +50,8 @@ inline void opp_decl_const_impl(int dim, int size, char* data, const char* name)
 {
     opp_printf("opp_decl_const", "name %s dim %d size %d", name, dim, size);
 }
+
+inline void opp_init_direct_hop(double grid_spacing, int dim, const opp_dat c_gbl_id, const opp::BoundingBox& bounding_box)
+{
+    opp_printf("opp_init_direct_hop", "grid_spacing %lf dim %d c_gbl_id %s", grid_spacing, dim, c_gbl_id->name);
+}

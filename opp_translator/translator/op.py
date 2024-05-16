@@ -331,7 +331,8 @@ class Loop:
     consts: Set[str]
 
     fallback: bool
-
+    dh_loop_required = False
+    
     def __init__(self, name: str, loc: Location, kernel: str, iterator_set : OppSet, iterator_type : IterateType, loop_name: str, loop_type = LoopType.PAR_LOOP, p2c_map=None, c2c_map = None) -> None:
         self.name = name
 

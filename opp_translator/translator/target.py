@@ -28,46 +28,46 @@ class Seq(Target):
     name = "seq"
     suffix = "seq"
     kernel_translation = False
-    config = {"grouped": False, "device": 1}
+    config = {"grouped": False, "device": 1, "omp": False}
 
     def defaultConfig(self) -> Dict[str, Any]:
-        return {"grouped": False, "device": 1}
+        return {"grouped": False, "device": 1, "omp": False}
 
 class Mpi(Target):
     name = "mpi"
     suffix = "mpi"
     kernel_translation = False
-    config = {"grouped": False, "device": 1}
+    config = {"grouped": False, "device": 1, "omp": False}
 
     def defaultConfig(self) -> Dict[str, Any]:
-        return {"grouped": False, "device": 1}
+        return {"grouped": False, "device": 1, "omp": False}
 
 class Omp(Target):
     name = "omp"
     suffix = "omp"
     kernel_translation = False
-    config = {"grouped": False, "device": 1}
+    config = {"grouped": False, "device": 1, "omp": True}
 
     def defaultConfig(self) -> Dict[str, Any]:
-        return {"grouped": False, "device": 1}
+        return {"grouped": False, "device": 1, "omp": True}
 
 class Cuda(Target):
     name = "cuda"
     suffix = "cuda"
     kernel_translation = True
-    config = {"grouped": True, "device": 2, "atomics": True, "seg_red": True, "color2": False, "gbl_inc_atomic": False}
+    config = {"grouped": True, "device": 2, "atomics": True, "seg_red": True, "color2": False, "gbl_inc_atomic": False, "omp": False}
     
     def defaultConfig(self) -> Dict[str, Any]:
-        return {"grouped": True, "device": 2, "atomics": True, "seg_red": True, "color2": False, "gbl_inc_atomic": False}
+        return {"grouped": True, "device": 2, "atomics": True, "seg_red": True, "color2": False, "gbl_inc_atomic": False, "omp": False}
 
 class Hip(Target):
     name = "hip"
     suffix = "hip"
     kernel_translation = True
-    config = {"grouped": True, "device": 2, "atomics": True, "seg_red": True, "color2": False, "gbl_inc_atomic": False}
+    config = {"grouped": True, "device": 2, "atomics": True, "seg_red": True, "color2": False, "gbl_inc_atomic": False, "omp": False}
     
     def defaultConfig(self) -> Dict[str, Any]:
-        return {"grouped": True, "device": 2, "atomics": True, "seg_red": True, "color2": False, "gbl_inc_atomic": False}
+        return {"grouped": True, "device": 2, "atomics": True, "seg_red": True, "color2": False, "gbl_inc_atomic": False, "omp": False}
 
 Target.register(Seq)
 Target.register(Mpi)

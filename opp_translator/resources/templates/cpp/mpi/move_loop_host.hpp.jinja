@@ -1,4 +1,5 @@
 {% extends "cpp/loop_host.hpp.jinja" %}
+{% import "cpp/move_loop_dh_init_host.hpp.jinja" as dh %}
 
 {%- macro arg_to_pointer(arg) %}
     {%- if arg is gbl %}
@@ -203,4 +204,10 @@ void opp_particle_move__{{lh.kernel}}(opp_set set, opp_map c2c_map, opp_dat p2c_
     opp_set_dirtybit(nargs, args);
 
 {{super()}}
+{% endblock %}
+
+{% block dh_init_wrapper %}
+{% if lh.dh_loop_required %}
+{{ dh.init_dh(lh,kernel_idx,config.omp) }}
+{% endif %}
 {% endblock %}

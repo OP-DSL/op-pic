@@ -48,9 +48,6 @@ OPP_REAL CONST_wall_potential[1];
 #include "kernels.h"
 #include "field_solver.h"
 
-// void init_particle_mover(const double gridSpacing, int dim, const opp_dat n_pos_dat, 
-//     const opp_dat cellVolume_dat, const opp_dat cellDet_dat, const opp_dat c_gbl_id_dat);
-
 //*********************************************MAIN****************************************************
 int main(int argc, char **argv) 
 {
@@ -129,7 +126,6 @@ int main(int argc, char **argv)
 
         // opp_partition(std::string("PARMETIS_KWAY"), cell_set, c2n_map);
         // opp_partition(std::string("PARMETIS_GEOM"), iface_set, nullptr, if_n_pos);
-        // opp_partition(std::string("EXTERNAL"), node_set, nullptr, node_colors);
         opp_partition(std::string("EXTERNAL"), cell_set, nullptr, c_colors);
 #endif
         
@@ -139,14 +135,14 @@ int main(int argc, char **argv)
 
         const int inject_count = init_inject_distributions(if_distrib, if_area, dp_rand);
 
-        // init_particle_mover(grid_spacing, DIM, n_pos, c_volume, c_det, c_gbl_id);
-
-        std::unique_ptr<FESolver> field_solver = std::make_unique<FESolver>(c2n_map, n_type,
-                                                            n_pos, n_bnd_pot, argc, argv);
-            
-        field_solver->enrich_cell_shape_deriv(c_sd);
-
         opp_inc_part_count_with_distribution(particle_set, inject_count, if_distrib, false);
+
+        // these two lines are only required if we plan to use direct_hop
+        opp::BoundingBox bounding_box = opp::BoundingBox(n_pos, DIM);
+        opp_init_direct_hop(grid_spacing, DIM, c_gbl_id, bounding_box);
+
+        auto field_solver = std::make_unique<FESolver>(c2n_map, n_type, n_pos, n_bnd_pot, argc, argv);
+        field_solver->enrich_cell_shape_deriv(c_sd);
 
     opp_profiler->end("Setup");
 

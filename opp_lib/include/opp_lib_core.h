@@ -439,8 +439,8 @@ namespace opp {
     class BoundingBox {
 
     public:
-        BoundingBox(int dim, opp_point minCoordinate, opp_point maxCoordinate, const std::shared_ptr<Comm> comm = nullptr);
-        BoundingBox(const opp_dat node_pos_dat, int dim, const std::shared_ptr<Comm> comm = nullptr);
+        BoundingBox(int dim, opp_point minCoordinate, opp_point maxCoordinate);
+        BoundingBox(const opp_dat node_pos_dat, int dim);
         ~BoundingBox();
 
         const opp_point& getLocalMin() const;
@@ -452,7 +452,7 @@ namespace opp {
         inline int getDim() const { return dim; }
 
     private:
-        void generateGlobalBoundingBox(int count, const std::shared_ptr<Comm> comm);
+        void generateGlobalBoundingBox(int count);
         int dim = 0;
 
         std::array<opp_point,2> boundingBox; // index 0 is min, index 1 is max

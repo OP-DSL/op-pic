@@ -548,12 +548,12 @@ void opp_loop_all__compute_electric_field(
 
 
 //*************************************************************************************************
-inline void generateStructMeshToGlobalCellMappings(opp_set cells_set, const opp_dat global_cell_id_dat, 
+inline void generate_dh_mappings(opp_set cells_set, const opp_dat global_cell_id_dat, 
         const opp_dat cellVolume_dat, const opp_dat cellDet_dat) { 
 
     // if (OPP_DBG) 
     if (OPP_rank == 0)            
-        opp_printf("FUNC", "generateStructMeshToGlobalCellMappings cells [%s] start global grid dimensions %d %d %d",
+        opp_printf("FUNC", "generate_dh_mappings cells [%s] start global grid dimensions %d %d %d",
             cells_set->name, cellMapper->globalGridDims.x, cellMapper->globalGridDims.y, cellMapper->globalGridDims.z);
 
     const int cellSetSizeIncHalo = cells_set->size + cells_set->exec_size + cells_set->nonexec_size;
@@ -724,14 +724,14 @@ inline void generateStructMeshToGlobalCellMappings(opp_set cells_set, const opp_
 
     // if (OPP_DBG) 
     if (OPP_rank == 0)
-        opp_printf("FUNC", "generateStructMeshToGlobalCellMappings end");
+        opp_printf("FUNC", "generate_dh_mappings end");
 }
 
 
 
 
 //*******************************************************************************
-void init_particle_mover(const double gridSpacing, int dim, const opp_dat node_pos_dat, 
+void init_particle_mover(const double gridSpacing, const int dim, const opp_dat node_pos_dat, 
     const opp_dat cellVolume_dat, const opp_dat cellDet_dat, const opp_dat global_cell_id_dat) {
     
     opp_profiler->start("SetupMover");
@@ -744,11 +744,11 @@ void init_particle_mover(const double gridSpacing, int dim, const opp_dat node_p
         comm = std::make_shared<Comm>(MPI_COMM_WORLD);
         globalMover = std::make_unique<GlobalParticleMover>(comm->comm_parent);
 #endif
-        boundingBox = std::make_shared<BoundingBox>(node_pos_dat, dim, comm);
+        boundingBox = std::make_shared<BoundingBox>(node_pos_dat, dim);
 
         cellMapper = std::make_shared<CellMapper>(boundingBox, gridSpacing, comm);
 
-        generateStructMeshToGlobalCellMappings(cellVolume_dat->set, global_cell_id_dat, 
+        generate_dh_mappings(cellVolume_dat->set, global_cell_id_dat, 
             cellVolume_dat, cellDet_dat);
     }
 
