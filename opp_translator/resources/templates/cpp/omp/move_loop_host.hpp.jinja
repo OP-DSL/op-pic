@@ -37,7 +37,7 @@
 {%- endmacro -%}
 
 {% block host_prologue %}
-void opp_particle_move__{{lh.kernel}}(opp_set set, opp_map c2c_map, opp_dat p2c_map,
+void opp_particle_move__{{lh.kernel}}(opp_set set, opp_map c2c_map, opp_map p2c_map,
     {% for arg in lh.args %}
     opp_arg arg{{arg.id}}{{"," if not loop.last}} // {% if arg is dat %}{{lh.dat(arg).ptr}} {% endif -%} | OPP_{{arg.access_type.name}}
     {% endfor %}
@@ -55,8 +55,10 @@ void opp_particle_move__{{lh.kernel}}(opp_set set, opp_map c2c_map, opp_dat p2c_
     {% for arg in lh.args %}
     args[{{loop.index0}}] = {{arg_dat_redef(arg) if lh.args[arg.id] is vec else "arg%d" % arg.id}};
     {% endfor %}
-    args[{{lh.args|length}}] = opp_arg_dat(p2c_map, OPP_RW); // required to make dirty or should manually make it dirty
+    args[{{lh.args|length}}] = opp_arg_dat(p2c_map->p2c_dat, OPP_RW); // required to make dirty or should manually make it dirty
 
+    OPP_mesh_relation_data = (OPP_INT*)p2c_map->p2c_dat->data;
+    
     opp_mpi_halo_exchanges{{"_grouped" if config.grouped-}}
         (set, nargs, args{{(", %d" % config.device) if config.grouped}});
 
@@ -81,7 +83,7 @@ void opp_particle_move__{{lh.kernel}}(opp_set set, opp_map c2c_map, opp_dat p2c_
         , {{lh.dat(arg).typ}}* arg{{arg.id}}_thread_data
     {%- endfor -%}) {
 
-        OPP_INT *opp_p2c = (OPP_INT*)p2c_map->data + n;
+        OPP_INT *opp_p2c = OPP_mesh_relation_data + n;
 
         if (opp_p2c[0] == MAX_CELL_INDEX) {
             return;
@@ -124,7 +126,7 @@ void opp_particle_move__{{lh.kernel}}(opp_set set, opp_map c2c_map, opp_dat p2c_
 
             for (size_t i = start; i < finish; i++)
             {
-                OPP_INT* opp_p2c = &((OPP_INT*) p2c_map->data)[i];
+                OPP_INT* opp_p2c = OPP_mesh_relation_data + i;
                 // TODO: we assume pos is in arg 0, Change this!
                 const opp_point* point = (const opp_point*)&(((OPP_REAL*)args[0].data)[i * {{lh.dat(lh.args[0]).dim}}]); 
 

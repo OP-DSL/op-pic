@@ -92,7 +92,8 @@ int main(int argc, char **argv)
         opp_dat p_vel        = opp_decl_dat(p_set, DIM, DT_REAL, nullptr, "p_vel");    
         opp_dat p_streak_mid = opp_decl_dat(p_set, DIM, DT_REAL, nullptr, "p_streak_mid");
         opp_dat p_weight     = opp_decl_dat(p_set, ONE, DT_REAL, nullptr, "p_weight");
-        opp_dat p2c_map      = opp_decl_dat(p_set, ONE, DT_INT,  nullptr, "p2c_map", true);
+
+        opp_map p2c_map      = opp_decl_map(p_set, c_set, 1, nullptr, "p2c_map");
 
         OPP_REAL cdt_d[DIM]    = { deck.cdt_dx, deck.cdt_dy, deck.cdt_dz };
         OPP_INT c_per_dim[DIM] = { deck.nx, deck.ny, deck.nz };

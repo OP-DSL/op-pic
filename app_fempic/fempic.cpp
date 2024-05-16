@@ -104,11 +104,12 @@ int main(int argc, char **argv)
         opp_dat if_distrib = opp_decl_dat(iface_set, ONE,          DT_INT,  m->if_dist,   "iface_dist");
         opp_dat if_n_pos   = opp_decl_dat(iface_set, N_PER_IF*DIM, DT_REAL, m->if_n_pos,  "iface_n_pos");
 
-        opp_dat p_pos   = opp_decl_dat(particle_set, DIM,     DT_REAL, nullptr, "part_position");
-        opp_dat p_vel   = opp_decl_dat(particle_set, DIM,     DT_REAL, nullptr, "part_velocity");
-        opp_dat p_lc    = opp_decl_dat(particle_set, N_PER_C, DT_REAL, nullptr, "part_lc");
-        opp_dat p2c_map = opp_decl_dat(particle_set, ONE,     DT_INT,  nullptr, "part_mesh_rel", true);
+        opp_dat p_pos   = opp_decl_dat(particle_set, DIM,     DT_REAL, nullptr, "p_position");
+        opp_dat p_vel   = opp_decl_dat(particle_set, DIM,     DT_REAL, nullptr, "p_velocity");
+        opp_dat p_lc    = opp_decl_dat(particle_set, N_PER_C, DT_REAL, nullptr, "p_lc");
 
+        opp_map p2c_map = opp_decl_map(particle_set, cell_set, ONE, nullptr, "p2c_map");
+        
         opp_dat dp_rand = opp_decl_dat(dummy_part_set, 2, DT_REAL, nullptr, "dummy_part_rand");
 
         opp_decl_const<OPP_REAL>(ONE, &spwt,           "CONST_spwt");

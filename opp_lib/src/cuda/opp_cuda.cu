@@ -248,7 +248,15 @@ opp_map opp_decl_map(opp_set from, opp_set to, int dim, int *imap, char const *n
 {
     opp_map map = opp_decl_map_core(from, to, dim, imap, name);
 
-    opp_upload_map(map, true);
+    if (from->is_particle)
+    {
+        opp_create_device_arrays(map->p2c_dat);
+        opp_upload_dat(map->p2c_dat);
+    }
+    else
+    {
+        opp_upload_map(map, true);
+    }
 
     return map;
 }
@@ -314,27 +322,27 @@ opp_arg opp_arg_dat(opp_dat dat, int idx, opp_map map, int dim, const char *typ,
     if (dat == nullptr) opp_abort("dat is NULL at opp_arg_dat1");
     return opp_arg_dat_core(dat, idx, map, dat->dim, dat->type, nullptr, acc);
 }
-opp_arg opp_arg_dat(opp_dat dat, int idx, opp_map map, int dim, const char *typ, opp_dat p2c_map, opp_access acc, bool offset)
+opp_arg opp_arg_dat(opp_dat dat, int idx, opp_map map, int dim, const char *typ, opp_map p2c_map, opp_access acc, bool offset)
 {
     if (dat == nullptr) opp_abort("dat is NULL at opp_arg_dat2");
-    return opp_arg_dat_core(dat, idx, map, dat->dim, dat->type, p2c_map, acc);
+    return opp_arg_dat_core(dat, idx, map, dat->dim, dat->type, p2c_map->p2c_dat, acc);
 }
 
 //****************************************
-opp_arg opp_arg_dat(opp_dat dat, int idx, opp_map map, opp_dat p2c_map, opp_access acc, bool offset)
+opp_arg opp_arg_dat(opp_dat dat, int idx, opp_map map, opp_map p2c_map, opp_access acc, bool offset)
 {
     if (dat == nullptr) opp_abort("dat is NULL at opp_arg_dat3");
-    return opp_arg_dat_core(dat, idx, map, dat->dim, dat->type, p2c_map, acc);
+    return opp_arg_dat_core(dat, idx, map, dat->dim, dat->type, p2c_map->p2c_dat, acc);
 }
 opp_arg opp_arg_dat(opp_dat dat, int idx, opp_map map, opp_access acc, bool offset)
 {
     if (dat == nullptr) opp_abort("dat is NULL at opp_arg_dat4");
     return opp_arg_dat_core(dat, idx, map, dat->dim, dat->type, nullptr, acc);
 }
-opp_arg opp_arg_dat(opp_dat dat, opp_dat p2c_map, opp_access acc, bool offset)
+opp_arg opp_arg_dat(opp_dat dat, opp_map p2c_map, opp_access acc, bool offset)
 {
     if (dat == nullptr) opp_abort("dat is NULL at opp_arg_dat5");
-    return opp_arg_dat_core(dat, -1, NULL, dat->dim, dat->type, p2c_map, acc);
+    return opp_arg_dat_core(dat, -1, NULL, dat->dim, dat->type, p2c_map->p2c_dat, acc);
 }
 opp_arg opp_arg_dat(opp_dat dat, opp_access acc, bool offset)
 {
@@ -346,23 +354,36 @@ opp_arg opp_arg_dat(opp_dat dat, opp_access acc, bool offset)
 opp_arg opp_arg_dat(opp_map data_map, opp_access acc, bool offset)
 {
     if (data_map == nullptr) opp_abort("dat is NULL at opp_arg_dat7");
+    if (data_map->from->is_particle)
+        return opp_arg_dat_core(data_map->p2c_dat, -1, nullptr, 
+                data_map->p2c_dat->dim, data_map->p2c_dat->type, nullptr, acc);
     return opp_arg_dat_core(data_map, -1, nullptr, nullptr, acc);
 }
-opp_arg opp_arg_dat(opp_map data_map, opp_dat p2c_map, opp_access acc, bool offset)
+opp_arg opp_arg_dat(opp_map data_map, opp_map p2c_map, opp_access acc, bool offset)
 {
     if (data_map == nullptr) opp_abort("dat is NULL at opp_arg_dat8");
-    return opp_arg_dat_core(data_map, -1, nullptr, p2c_map, acc);
+    if (data_map->from->is_particle)
+        return opp_arg_dat_core(data_map->p2c_dat, -1, nullptr, 
+            data_map->p2c_dat->dim, data_map->p2c_dat->type, p2c_map->p2c_dat, acc);
+    return opp_arg_dat_core(data_map, -1, nullptr, p2c_map->p2c_dat, acc);
 }
 opp_arg opp_arg_dat(opp_map data_map, int idx, opp_map map, opp_access acc, bool offset)
 {
     if (data_map == nullptr) opp_abort("dat is NULL at opp_arg_dat9");
+    if (data_map->from->is_particle)
+        return opp_arg_dat_core(data_map->p2c_dat, idx, map, 
+            data_map->p2c_dat->dim, data_map->p2c_dat->type, nullptr, acc);
     return opp_arg_dat_core(data_map, idx, map, nullptr, acc);
 }
-opp_arg opp_arg_dat(opp_map data_map, int idx, opp_map map, opp_dat p2c_map, opp_access acc, bool offset)
+opp_arg opp_arg_dat(opp_map data_map, int idx, opp_map map, opp_map p2c_map, opp_access acc, bool offset)
 {
     if (data_map == nullptr) opp_abort("dat is NULL at opp_arg_dat10");
-    return opp_arg_dat_core(data_map, idx, map, p2c_map, acc);
+    if (data_map->from->is_particle)
+        return opp_arg_dat_core(data_map->p2c_dat, idx, map, 
+            data_map->p2c_dat->dim, data_map->p2c_dat->type, p2c_map->p2c_dat, acc);
+    return opp_arg_dat_core(data_map, idx, map, p2c_map->p2c_dat, acc);
 }
+
 
 //****************************************
 // template <class T> opp_arg opp_arg_gbl(T *data, int dim, char const *typ, opp_access acc);

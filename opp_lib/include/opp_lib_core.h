@@ -236,6 +236,7 @@ struct opp_map_core {
     int *map_d;                 /* device array defining pointer */
     char const *name;           /* name of pointer */
     int user_managed;           /* indicates whether the user is managing memory */
+    opp_dat p2c_dat;
 };
 
 struct opp_dat_core {
@@ -264,6 +265,8 @@ struct opp_dat_core {
 
     THRUST_INT *thrust_int_sort;
     THRUST_REAL *thrust_real_sort;
+
+    opp_map p2c_map;
 };
 
 //*************************************************************************************************

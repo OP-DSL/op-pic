@@ -44,7 +44,7 @@ void opp_loop_all__compute_node_charge_density(opp_set,opp_arg,opp_arg);
 void opp_loop_all__compute_electric_field(opp_set,opp_arg,opp_arg,opp_arg,opp_arg,opp_arg,opp_arg);
 void opp_loop_all__calc_pos_vel(opp_set,opp_arg,opp_arg,opp_arg);
 void opp_loop_all__deposit_charge_on_nodes(opp_set,opp_arg,opp_arg,opp_arg,opp_arg,opp_arg);
-void opp_particle_move__move(opp_set,opp_map,opp_dat,opp_arg,opp_arg,opp_arg,opp_arg);
+void opp_particle_move__move(opp_set,opp_map,opp_map,opp_arg,opp_arg,opp_arg,opp_arg);
 void opp_loop_all__get_max_values(opp_set,opp_arg,opp_arg,opp_arg,opp_arg);
 
 void init_particle_mover(const double gridSpacing, int dim, const opp_dat n_pos_dat, 
@@ -109,7 +109,8 @@ int main(int argc, char **argv)
         opp_dat p_pos   = opp_decl_dat(particle_set, DIM,     DT_REAL, nullptr, "part_position");
         opp_dat p_vel   = opp_decl_dat(particle_set, DIM,     DT_REAL, nullptr, "part_velocity");
         opp_dat p_lc    = opp_decl_dat(particle_set, N_PER_C, DT_REAL, nullptr, "part_lc");
-        opp_dat p2c_map = opp_decl_dat(particle_set, ONE,     DT_INT,  nullptr, "part_mesh_rel", true);
+
+        opp_map p2c_map = opp_decl_map(particle_set, cell_set, ONE, nullptr, "p2c_map");
 
         opp_dat dp_rand = opp_decl_dat(dummy_part_set, 2, DT_REAL, nullptr, "dummy_part_rand");
 

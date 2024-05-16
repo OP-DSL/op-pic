@@ -70,7 +70,7 @@ FESolver::FESolver(
 
     // TODO : DO NOT CALCULATE SOLUTION FOR IMPORT NON EXEC, the owning rank will do that
     for (int i = 0; i < n_nodes_set; i++) 
-        if (((int*)n_type_dat->data)[i] == NORMAL || ((int*)n_type_dat->data)[i] == OPEN) 
+        if (opp_get_data<OPP_INT>(n_type_dat)[i] == NORMAL || opp_get_data<OPP_INT>(n_type_dat)[i] == OPEN) 
             neq++;
 
     node_to_eq_map = new int[n_nodes_inc_halo];
@@ -157,7 +157,7 @@ void FESolver::init_node_to_eq_map(opp_dat n_type_dat) // relation from node ind
     for (int n = 0; n < n_nodes_inc_halo; n++)
     {
         if (n < n_nodes_set && 
-            (((int*)n_type_dat->data)[n] == NORMAL || ((int*)n_type_dat->data)[n] == OPEN))
+            (opp_get_data<OPP_INT>(n_type_dat)[n] == NORMAL || opp_get_data<OPP_INT>(n_type_dat)[n] == OPEN))
         {
             node_to_eq_map[n]=P;
             P++;
@@ -325,7 +325,7 @@ void FESolver::preAssembly(opp_map c2n_map, opp_dat n_bnd_pot)
             {
                 // This can reach import halos
                 int node_idx = c2n_map->map[e * c2n_map->dim + b]; 
-                double gb = ((double*)n_bnd_pot->data)[node_idx];
+                double gb = opp_get_data<OPP_REAL>(n_bnd_pot)[node_idx];
                 fg-=ke[a][b]*gb;
             }
 
@@ -750,13 +750,13 @@ void FESolver::enrich_cell_shape_deriv(opp_dat cell_shape_deriv)
     {
         for (int nodeCon = 0; nodeCon < N_PER_C; nodeCon++)
         {
-            ((double*)cell_shape_deriv->data)[cellID * (N_PER_C*DIM) + nodeCon * DIM + 0 ] = 
+            opp_get_data<OPP_REAL>(cell_shape_deriv)[cellID * (N_PER_C*DIM) + nodeCon * DIM + 0 ] = 
                 (NX[cellID][nodeCon][0] / SCALLING);
             
-            ((double*)cell_shape_deriv->data)[cellID * (N_PER_C*DIM) + nodeCon * DIM + 1 ] = 
+            opp_get_data<OPP_REAL>(cell_shape_deriv)[cellID * (N_PER_C*DIM) + nodeCon * DIM + 1 ] = 
                 (NX[cellID][nodeCon][1] / SCALLING);
             
-            ((double*)cell_shape_deriv->data)[cellID * (N_PER_C*DIM) + nodeCon * DIM + 2 ] = 
+            opp_get_data<OPP_REAL>(cell_shape_deriv)[cellID * (N_PER_C*DIM) + nodeCon * DIM + 2 ] = 
                 (NX[cellID][nodeCon][2] / SCALLING);
         }
     }
@@ -869,7 +869,7 @@ void FESolver::computeNX(opp_dat n_pos, opp_map c2n_map)
         for (int a=0;a<4;a++) 
         {
             /*node positions*/
-            double *pos = &((double*)n_pos->data)[map0idx[a] * n_pos->dim]; 
+            double *pos = opp_get_data<OPP_REAL>(n_pos) + (map0idx[a] * n_pos->dim); 
             for (int d=0;d<3;d++) 
                 x[a][d] = pos[d];
         }

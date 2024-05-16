@@ -272,7 +272,7 @@ __global__ void opp_dev_{{lh.kernel}}(
 {% endblock %}
 
 {% block host_prologue %}
-void opp_particle_move__{{lh.kernel}}(opp_set set, opp_map c2c_map, opp_dat p2c_map,
+void opp_particle_move__{{lh.kernel}}(opp_set set, opp_map c2c_map, opp_map p2c_map,
     {% for arg in lh.args %}
     opp_arg arg{{arg.id}}{{"," if not loop.last}}   // {% if arg is dat %}{{lh.dat(arg).ptr}} {% endif -%} | OPP_{{arg.access_type.name}}
     {% endfor %}
@@ -288,7 +288,7 @@ void opp_particle_move__{{lh.kernel}}(opp_set set, opp_map c2c_map, opp_dat p2c_
     {% for arg in lh.args %}
     args[{{loop.index0}}] = {{arg_dat_redef(arg) if lh.args[arg.id] is vec else "arg%d" % arg.id}};
     {% endfor %}
-    args[{{lh.args|length}}] = opp_arg_dat(p2c_map, OPP_RW); // required to make dirty or should manually make it dirty
+    args[{{lh.args|length}}] = opp_arg_dat(p2c_map->p2c_dat, OPP_RW); // required to make dirty or should manually make it dirty
 
     const int iter_size = opp_mpi_halo_exchanges_grouped(set, nargs, args, Device_GPU);
     {% if lh is double_indirect_reduc %}
@@ -500,4 +500,19 @@ opp_dev_{{lh.kernel}}<<<num_blocks, block_size
 #endif
     {% endif %} 
 {{super()}}
+{% endblock %}
+
+{% block dh_init_wrapper %}
+{% if lh.dh_loop_required %}
+void opp_init_direct_hop_cg(double grid_spacing, int dim, const opp_dat c_gbl_id, const opp::BoundingBox& b_box, 
+    opp_map c2c_map, opp_map p2c_map,
+    {% for arg in lh.args %}
+    opp_arg arg{{arg.id}}{{"," if not loop.last}} // {% if arg is dat %}{{lh.dat(arg).ptr}} {% endif -%} | OPP_{{arg.access_type.name}}
+    {% endfor %}
+) {
+    opp_profiler->start("Setup_Mover");
+    
+    opp_profiler->end("Setup_Mover");
+}
+{% endif %}
 {% endblock %}

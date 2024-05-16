@@ -239,10 +239,9 @@ opp_map opp_decl_map_core(opp_set from, opp_set to, int dim, int *imap, char con
         exit(-1);
     }
 
-    if (from->is_particle || to->is_particle) 
+    if (to->is_particle) 
     {
-        opp_printf("opp_decl_map", 
-            "Error -- cannot have mappings between a dynamic (particle) set [%s to %s]", 
+        opp_printf("opp_decl_map", "Error -- cannot have mappings to a dynamic (particle) set [%s to %s]", 
             from->name, to->name);
         exit(-1);
     }
@@ -265,8 +264,24 @@ opp_map opp_decl_map_core(opp_set from, opp_set to, int dim, int *imap, char con
     map->map_d        = NULL;
     map->name         = copy_str(name);
     map->user_managed = 1;
+    map->p2c_dat      = NULL;
 
-    opp_maps.push_back(map);
+    if (!from->is_particle)
+    {
+        opp_maps.push_back(map);
+    }
+    else
+    {
+        map->p2c_dat = opp_decl_particle_dat_core(from, dim, "int", sizeof(OPP_INT), (char*)map->map, name, true);
+
+        if (map->p2c_dat->data != NULL) 
+        {
+            opp_host_free(map->map);
+        }
+        map->map = NULL;
+        map->p2c_dat->p2c_map = map;
+    }
+    
     return map;
 }
 
@@ -321,6 +336,7 @@ opp_dat opp_decl_dat_core(opp_set set, int dim, char const *type, int size, char
     dat->thrust_real        = NULL;
     dat->thrust_int_sort    = NULL;
     dat->thrust_real_sort   = NULL;
+    dat->p2c_map            = NULL;
 
     set->particle_size += dat->size;
 

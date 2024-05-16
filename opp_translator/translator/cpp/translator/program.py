@@ -73,7 +73,7 @@ def translateProgram(source: str, program: Program, force_soa: bool) -> str:
         if loop.loop_type == OP.LoopType.PAR_LOOP:
             prototype = f'void opp_par_loop_{loop.iterator_type.name}__{loop.kernel}(opp_set,opp_iterate_type{",opp_arg" * len(loop.args)});'
         elif loop.loop_type == OP.LoopType.MOVE_LOOP:
-            prototype = f'void opp_particle_move__{loop.kernel}(opp_set,opp_map,opp_dat{",opp_arg" * len(loop.args)});'
+            prototype = f'void opp_particle_move__{loop.kernel}(opp_set,opp_map,opp_map{",opp_arg" * len(loop.args)});'
             move_loop = loop
 
         if prototype not in loop_list:
@@ -84,7 +84,7 @@ def translateProgram(source: str, program: Program, force_soa: bool) -> str:
     dh_api_match = re.search(pattern, source)
 
     if dh_api_match:
-        prototype = f'void opp_init_direct_hop_cg(double,int,const opp_dat,const opp::BoundingBox&,opp_map,opp_dat{",opp_arg" * len(move_loop.args)});'
+        prototype = f'void opp_init_direct_hop_cg(double,int,const opp_dat,const opp::BoundingBox&,opp_map,opp_map{",opp_arg" * len(move_loop.args)});'
         buffer.insert(index, prototype)
         index += 1
         move_loop.dh_loop_required = True

@@ -58,7 +58,7 @@ void enrich_particles_two_stream(const Deck& deck, const OPP_INT cell_count,
  * @return (void)
  */
 void init_particles(const Deck& deck,  opp_dat part_pos, opp_dat part_vel, opp_dat part_streak_mid,
-                    opp_dat part_weight, opp_dat part_mesh_rel, opp_dat cell_pos_ll, opp_dat cell_cgid, opp_dat cell_ghost) 
+                    opp_dat part_weight, opp_map part_mesh_rel, opp_dat cell_pos_ll, opp_dat cell_cgid, opp_dat cell_ghost) 
 {
     OPP_RUN_ON_ROOT() opp_printf("Setup", "Init particles START");
 
@@ -95,13 +95,13 @@ void init_particles(const Deck& deck,  opp_dat part_pos, opp_dat part_vel, opp_d
     opp_increase_particle_count(part_pos->set, rank_npart);
 
     if (opp_params->get<OPP_STRING>("part_enrich") == "two_stream")
-        enrich_particles_two_stream(deck, all_cell_count, (OPP_REAL*)part_pos->data, (OPP_REAL*)part_vel->data, 
-            (OPP_REAL*)part_streak_mid->data, (OPP_INT*)part_mesh_rel->data,
-            (OPP_REAL*)part_weight->data, (OPP_INT*)cell_cgid->data, (OPP_INT*)cell_ghost->data);
+        enrich_particles_two_stream(deck, all_cell_count, opp_get_data<OPP_REAL>(part_pos), 
+            opp_get_data<OPP_REAL>(part_vel), opp_get_data<OPP_REAL>(part_streak_mid), opp_get_data(part_mesh_rel),
+            opp_get_data<OPP_REAL>(part_weight), opp_get_data<OPP_INT>(cell_cgid), opp_get_data<OPP_INT>(cell_ghost));
     else
-        enrich_particles_random(deck, all_cell_count, (OPP_REAL*)part_pos->data, (OPP_REAL*)part_vel->data, 
-            (OPP_REAL*)part_streak_mid->data, (OPP_INT*)part_mesh_rel->data,
-            (OPP_REAL*)part_weight->data, (OPP_REAL*)cell_pos_ll->data, rank_part_start, (OPP_INT*)cell_ghost->data);
+        enrich_particles_random(deck, all_cell_count, opp_get_data<OPP_REAL>(part_pos), opp_get_data<OPP_REAL>(part_vel), 
+            opp_get_data<OPP_REAL>(part_streak_mid), opp_get_data(part_mesh_rel), opp_get_data<OPP_REAL>(part_weight), 
+            opp_get_data<OPP_REAL>(cell_pos_ll), rank_part_start, opp_get_data<OPP_INT>(cell_ghost));
 
     OPP_RUN_ON_ROOT() opp_printf("Setup", "Init particles Uploading Start");
 

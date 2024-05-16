@@ -539,7 +539,7 @@ void init_particle_mover(const double gridSpacing, int dim, const opp_dat node_p
 
 //*******************************************************************************
 void opp_particle_move__move(
-    opp_set set, opp_map c2c_map, opp_dat p2c_map,
+    opp_set set, opp_map c2c_map, opp_map p2c_map,
     opp_arg arg0, // part_position,   
     opp_arg arg1, // part_lc,       
     opp_arg arg2, // cell_volume, 
@@ -558,7 +558,7 @@ void opp_particle_move__move(
     args[1] = arg1;
     args[2] = arg2;
     args[3] = arg3;
-    args[4] = opp_arg_dat(p2c_map, OPP_RW); // required to make dirty
+    args[4] = opp_arg_dat(p2c_map->p2c_dat, OPP_RW); // required to make dirty
 
     const int args0_dim = args[0].dim;
     const int args1_dim = args[1].dim;
@@ -566,10 +566,12 @@ void opp_particle_move__move(
     const int args3_dim = args[3].dim;
     const int c2c_dim   = c2c_map->dim;
 
+    OPP_mesh_relation_data = (OPP_INT*)p2c_map->p2c_dat->data;
+
     // lambda function for multi hop particle movement
     auto multihop_mover = [&](const int i) {
 
-        opp_p2c = &((OPP_INT*) p2c_map->data)[i];   // TODO : remove OPP_INT* after making this into a map
+        opp_p2c = &(OPP_mesh_relation_data)[i];   // TODO : remove OPP_INT* after making this into a map
 
         if (*opp_p2c == MAX_CELL_INDEX) {
             return;
@@ -601,7 +603,7 @@ void opp_particle_move__move(
         const int end = OPP_iter_end;
         for (int i = start; i < end; i++) {   
             
-            opp_p2c = &((OPP_INT*) p2c_map->data)[i];   // TODO : remove OPP_INT* after making this into a map
+            opp_p2c = &(OPP_mesh_relation_data)[i];   // TODO : remove OPP_INT* after making this into a map
             const opp_point* point = (const opp_point*)&(((OPP_REAL*)args[0].data)[i * args[0].dim]);
 
             // check for global move, and if satisfy global move criteria, then remove the particle from current rank

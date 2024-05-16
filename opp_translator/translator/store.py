@@ -146,6 +146,12 @@ class Program:
                             arg.flag = False
                         else:
                             raise OpsError(f"enrichLoopData : {arg} is not a dat nor map")
+        # for loop in self.loops:
+        #     print(loop)
+        # for loop in self.dats:
+        #     print(loop)          
+        # for loop in self.maps:
+        #     print(loop) 
         for loop in self.loops:
             for map in loop.maps:
                 map_stored = self.maps[findIdx(self.maps, lambda m: m.ptr == map.ptr)]         
@@ -177,7 +183,7 @@ class Program:
                         raise OpsError(f"enrichLoopData : {obj} is not a dat nor map")
             loop.iterator_set = self.sets[findIdx(self.sets, lambda m: m.name == loop.iterator_set)]
             if loop.p2c_map is not None:
-                loop.p2c_map = self.dats[findIdx(self.dats, lambda m: m.ptr == loop.p2c_map)]
+                loop.p2c_map = self.maps[findIdx(self.maps, lambda m: m.ptr == loop.p2c_map)]
             if loop.c2c_map is not None:
                 loop.c2c_map = self.maps[findIdx(self.maps, lambda m: m.ptr == loop.c2c_map)]
 
