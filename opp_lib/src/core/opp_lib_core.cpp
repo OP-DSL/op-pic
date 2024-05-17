@@ -1067,6 +1067,12 @@ void opp_dump_dat_core(opp_dat data)
 //****************************************
 void opp_print_map_to_txtfile_core(opp_map map, const char *file_name_prefix, const char *file_name_suffix)
 { 
+    if (map->from->is_particle)
+    {
+        opp_print_dat_to_txtfile_core(map->p2c_dat, file_name_prefix, file_name_suffix);
+        return;
+    }
+
     opp_profiler->start("PrintFile");
 
     const std::string file_name = std::string("files/") + file_name_prefix + "_" + file_name_suffix; 
@@ -1610,7 +1616,7 @@ opp_point CellMapper::getCentroidOfBox(const opp_point& coordinate) {
 
 //*******************************************************************************
 // Returns the global cell index
-size_t CellMapper::findStructuredCellIndex(const opp_point& position) { 
+size_t CellMapper::findStructuredCellIndex3D(const opp_point& position) { 
 
     // Perform the calculations in higher precision (double)
     double xDiff = position.x - this->minGlbCoordinate.x;

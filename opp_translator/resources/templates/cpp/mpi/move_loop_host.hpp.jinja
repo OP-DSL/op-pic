@@ -101,6 +101,7 @@ void opp_particle_move__{{lh.kernel}}(opp_set set, opp_map c2c_map, opp_map p2c_
     // ----------------------------------------------------------------------------
     opp_init_particle_move(set, 0, nullptr);
 
+{% if lh.dh_loop_required %}
     if (useGlobalMove) {
         
         globalMover->initGlobalMove();
@@ -117,7 +118,7 @@ void opp_particle_move__{{lh.kernel}}(opp_set set, opp_map c2c_map, opp_map p2c_
             const opp_point* point = (const opp_point*)&(((OPP_REAL*)args[0].data)[i * {{lh.dat(lh.args[0]).dim}}]); 
 
             // check for global move, and if satisfy global move criteria, then remove the particle from current rank
-            if (opp_part_checkForGlobalMove(set, *point, i, opp_p2c[0])) {
+            if (opp_part_checkForGlobalMove{{lh.dat(lh.args[0]).dim}}D(set, *point, i, opp_p2c[0])) {
                 
                 set->particle_remove_count++;
                 continue;  
@@ -128,6 +129,7 @@ void opp_particle_move__{{lh.kernel}}(opp_set set, opp_map c2c_map, opp_map p2c_
 
         globalMover->communicate(set);
     }
+{% endif %}
 
     opp_profiler->start("Mv_AllMv0");
 
@@ -145,6 +147,7 @@ void opp_particle_move__{{lh.kernel}}(opp_set set, opp_map c2c_map, opp_map p2c_
 
     opp_profiler->end("Mv_AllMv0");
 
+{% if lh.dh_loop_required %}
     // ----------------------------------------------------------------------------
     // finalize the global move routine and iterate over newly added particles and check whether they need neighbour comm
     if (useGlobalMove && globalMover->finalize(set) > 0) {
@@ -169,6 +172,7 @@ void opp_particle_move__{{lh.kernel}}(opp_set set, opp_map c2c_map, opp_map p2c_
 
         opp_profiler->end("GblMv_AllMv");
     }
+{% endif %}
 
     // ----------------------------------------------------------------------------
     // Do neighbour communication and if atleast one particle is received by the currect rank, 
@@ -200,7 +204,7 @@ void opp_particle_move__{{lh.kernel}}(opp_set set, opp_map c2c_map, opp_map p2c_
         opp_mpi_halo_wait_all(nargs, args);
     {% endif %}
     {% for arg in lh.args|gbl|reduction %}
-    opp_mpi_reduce_double(&args[{{arg.id}}], ({{arg.typ}} *)args[{{arg.id}}].data);
+    opp_mpi_reduce(&args[{{arg.id}}], ({{arg.typ}} *)args[{{arg.id}}].data);
     {% endfor %}
 
     opp_set_dirtybit(nargs, args);

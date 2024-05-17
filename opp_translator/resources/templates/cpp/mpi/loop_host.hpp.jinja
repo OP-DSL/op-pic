@@ -147,7 +147,7 @@ void opp_par_loop_{{lh.iterator_type}}__{{lh.kernel}}(opp_set set, opp_iterate_t
         opp_mpi_halo_wait_all(nargs, args);
     {% endif %}
     {% for arg in lh.args|gbl|reduction %}
-    opp_mpi_reduce_double(&args[{{arg.id}}], ({{arg.typ}} *)args[{{arg.id}}].data);
+    opp_mpi_reduce(&args[{{arg.id}}], ({{arg.typ}} *)args[{{arg.id}}].data);
     {% endfor %}
     {% if lh is double_indirect_reduc %}
     opp_exchange_double_indirect_reductions(nargs, args);

@@ -58,7 +58,7 @@ void opp_particle_move__{{lh.kernel}}(opp_set set, opp_map c2c_map, opp_map p2c_
     args[{{lh.args|length}}] = opp_arg_dat(p2c_map->p2c_dat, OPP_RW); // required to make dirty or should manually make it dirty
 
     OPP_mesh_relation_data = (OPP_INT*)p2c_map->p2c_dat->data;
-    
+
     opp_mpi_halo_exchanges{{"_grouped" if config.grouped-}}
         (set, nargs, args{{(", %d" % config.device) if config.grouped}});
 
@@ -110,6 +110,7 @@ void opp_particle_move__{{lh.kernel}}(opp_set set, opp_map c2c_map, opp_map p2c_
     // ----------------------------------------------------------------------------
     opp_init_particle_move(set, 0, nullptr);
 
+{% if lh.dh_loop_required %}
 #ifdef USE_MPI 
     if (useGlobalMove) { // For now Global Move will not work with MPI
         
@@ -131,7 +132,7 @@ void opp_particle_move__{{lh.kernel}}(opp_set set, opp_map c2c_map, opp_map p2c_
                 const opp_point* point = (const opp_point*)&(((OPP_REAL*)args[0].data)[i * {{lh.dat(lh.args[0]).dim}}]); 
 
                 // check for global move, and if satisfy global move criteria, then remove the particle from current rank
-                if (opp_part_checkForGlobalMove(set, *point, i, opp_p2c[0])) { 
+                if (opp_part_checkForGlobalMove{{lh.dat(lh.args[0]).dim}}D(set, *point, i, opp_p2c[0])) { 
                     
                     set->particle_remove_count++;
                     continue;  
@@ -144,6 +145,7 @@ void opp_particle_move__{{lh.kernel}}(opp_set set, opp_map c2c_map, opp_map p2c_
         globalMover->communicate(set);
     }
 #endif
+{% endif %}
 
     opp_profiler->start("Mv_AllMv0");
 
@@ -174,6 +176,7 @@ void opp_particle_move__{{lh.kernel}}(opp_set set, opp_map c2c_map, opp_map p2c_
 
     opp_profiler->end("Mv_AllMv0");
 
+{% if lh.dh_loop_required %}
 #ifdef USE_MPI 
     // ----------------------------------------------------------------------------
     // finalize the global move routine and iterate over newly added particles and check whether they need neighbour comm
@@ -214,6 +217,7 @@ void opp_particle_move__{{lh.kernel}}(opp_set set, opp_map c2c_map, opp_map p2c_
         opp_profiler->end("GblMv_AllMv");
     }
 #endif
+{% endif %}
 
     // ----------------------------------------------------------------------------
     // Do neighbour communication and if atleast one particle is received by the currect rank, 
@@ -259,7 +263,7 @@ void opp_particle_move__{{lh.kernel}}(opp_set set, opp_map c2c_map, opp_map p2c_
     {% endfor %}
     {% for arg in lh.args|gbl|reduction %}
 #ifdef USE_MPI 
-    opp_mpi_reduce_double(&args[{{arg.id}}], ({{arg.typ}} *)args[{{arg.id}}].data);
+    opp_mpi_reduce(&args[{{arg.id}}], ({{arg.typ}} *)args[{{arg.id}}].data);
 #endif
     {% endfor %}
 

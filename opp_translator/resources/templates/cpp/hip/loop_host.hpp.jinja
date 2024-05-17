@@ -195,9 +195,13 @@ __global__ void opp_dev_{{lh.kernel}}(
         );
     }
     {% else %}
+        {% if lh.args|gbl|reduction|length > 0 %}
+    for (int n = thread_id; n < (end - start); n += blockDim.x * gridDim.x) {
+        {% else %}
     if (thread_id + start < end) {
 
         const int n = {{"thread_id + start" if config.atomics else "col_reord[thread_id + start]"}};
+        {% endif %}
         {% if lh is p2c_mapped %}
         
             {% if lh is injected_loop %}

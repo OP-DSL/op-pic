@@ -39,6 +39,9 @@ def direct(x, loop: Optional[OP.Loop] = None) -> bool:
                 direct = False
         return direct
 
+    if isinstance(x, (OP.ArgGbl)):
+        return True
+        
     return False
 
 def indirect(x, loop: Optional[OP.Loop] = None) -> bool:

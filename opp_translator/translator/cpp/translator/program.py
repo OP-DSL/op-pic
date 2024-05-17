@@ -100,6 +100,6 @@ def translateProgram(source: str, program: Program, force_soa: bool) -> str:
     source = re.sub(r'#include\s+"opp_templates\.h"', '#include "opp_lib.h"', source)
 
     source = re.sub(r'// USER WRITTEN CODE', '// AUTO GENERATED CODE', source)
-    source = re.sub(r'#include "kernels.h"', '// #include "kenels.h" // codegen commented :  TODO: ...', source)
+    source = re.sub(r'#include "kernels.h"', '// #include "kenels.h" // codegen commented...', source)
 
     return source

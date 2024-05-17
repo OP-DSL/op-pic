@@ -487,7 +487,7 @@ namespace opp {
 
         opp_point getCentroidOfBox(const opp_point& coordinate);
         size_t findStructuredCellIndex2D(const opp_point& position);
-        size_t findStructuredCellIndex(const opp_point& position);
+        size_t findStructuredCellIndex3D(const opp_point& position);
         int findClosestCellIndex(const size_t& structCellIdx);
         int findClosestCellRank(const size_t& structCellIdx);
         void reduceInterNodeMappings(int callID);

@@ -88,11 +88,9 @@ inline bool opp_check_part_move_status(const OPP_INT map0idx, const OPP_INT part
 
 //*******************************************************************************
 // returns true, if the current particle needs to be removed from the rank
-inline bool opp_part_checkForGlobalMove(opp_set set, const opp_point& point, const int partIndex, int& cellIdx) {
+inline bool opp_part_checkForGlobalMove_util(opp_set set, const opp_point& point, const int partIndex, int& cellIdx,
+    const size_t structCellIdx) {
 
-    // Since SEQ use global indices, we can simply use findClosestGlobalCellIndex
-    const size_t structCellIdx = cellMapper->findStructuredCellIndex(point);
-    
     if (structCellIdx == MAX_CELL_INDEX) { // This happens when point is out of the unstructured mesh
         if (OPP_DBG)
             opp_printf("move", 
@@ -109,4 +107,18 @@ inline bool opp_part_checkForGlobalMove(opp_set set, const opp_point& point, con
     }
 
     return false;
+}
+
+//*******************************************************************************
+// returns true, if the current particle needs to be removed from the rank
+inline bool opp_part_checkForGlobalMove2D(opp_set set, const opp_point& point, const int partIndex, int& cellIdx) {
+    const size_t structCellIdx = cellMapper->findStructuredCellIndex2D(point);
+    return opp_part_checkForGlobalMove_util(set, point, partIndex, cellIdx, structCellIdx);
+}
+
+//*******************************************************************************
+// returns true, if the current particle needs to be removed from the rank
+inline bool opp_part_checkForGlobalMove3D(opp_set set, const opp_point& point, const int partIndex, int& cellIdx) {
+    const size_t structCellIdx = cellMapper->findStructuredCellIndex3D(point);
+    return opp_part_checkForGlobalMove_util(set, point, partIndex, cellIdx, structCellIdx);
 }

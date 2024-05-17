@@ -95,6 +95,7 @@ void opp_particle_move__{{lh.kernel}}(opp_set set, opp_map c2c_map, opp_map p2c_
     // ----------------------------------------------------------------------------
     opp_init_particle_move(set, 0, nullptr);
 
+{% if lh.dh_loop_required %}
     if (useGlobalMove) {
         
         opp_profiler->start("GblMv_Move");
@@ -109,7 +110,7 @@ void opp_particle_move__{{lh.kernel}}(opp_set set, opp_map c2c_map, opp_map p2c_
             const opp_point* point = (const opp_point*)&(((OPP_REAL*)args[0].data)[i * {{lh.dat(lh.args[0]).dim}}]); 
 
             // check for global move, and if satisfy global move criteria, then remove the particle from current rank
-            if (opp_part_checkForGlobalMove(set, *point, i, opp_p2c[0])) {
+            if (opp_part_checkForGlobalMove{{lh.dat(lh.args[0]).dim}}D(set, *point, i, opp_p2c[0])) {
                 
                 set->particle_remove_count++;
                 continue;  
@@ -118,6 +119,7 @@ void opp_particle_move__{{lh.kernel}}(opp_set set, opp_map c2c_map, opp_map p2c_
 
         opp_profiler->end("GblMv_Move");
     }
+{% endif %}
 
     // ----------------------------------------------------------------------------
     // check whether all particles not marked for global comm is within cell, 

@@ -162,7 +162,7 @@ void opp_par_loop_{{lh.iterator_type}}__{{lh.kernel}}(opp_set set, opp_iterate_t
             (({{arg.typ}}*)args[{{arg.id}}].data)[d] = {{arg.access_type.name}}((({{arg.typ}} *)args[{{arg.id}}].data)[d], arg{{arg.id}}_l[{{arg.dim}} * thr + d]);
         {% endif %}
 #ifdef USE_MPI 
-    opp_mpi_reduce_double(&args[{{arg.id}}], ({{arg.typ}} *)args[{{arg.id}}].data);
+    opp_mpi_reduce(&args[{{arg.id}}], ({{arg.typ}} *)args[{{arg.id}}].data);
 #endif
     {% endfor %}
     {% if lh is double_indirect_reduc %}
