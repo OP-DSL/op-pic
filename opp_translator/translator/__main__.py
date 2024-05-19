@@ -19,7 +19,7 @@ from util import getVersion, safeFind
 def main(argv=None) -> None:
 
     #Build arg parser
-    parser = ArgumentParser(prog="ops-translator")
+    parser = ArgumentParser(prog="opp-translator")
 
     #argument declariations
     parser.add_argument("-V", "--version", help="Version", action="version", version=getVersion()) #this needs version tag
@@ -35,7 +35,7 @@ def main(argv=None) -> None:
     parser.add_argument("-i", help="Add to include files", type=isFilePath, action="append", nargs=1, default=[])
     parser.add_argument("-D", help="Add to preprocessor defines", action="append", nargs=1, default=[])
 
-    parser.add_argument("--file_paths", help="Input OPS sources", type=isFilePath, nargs="+")
+    parser.add_argument("--file_paths", help="Input OPP sources", type=isFilePath, nargs="+")
 
     target_names = [target.name for target in Target.all()] #TODO: implement Target Findable class
     parser.add_argument("-t", "--target", help="Code-gereration target", type=str, action="append", nargs=1, choices=target_names, default=[])
@@ -43,7 +43,7 @@ def main(argv=None) -> None:
     #invoking arg parser
     args = parser.parse_args(argv)
 
-    if os.environ.get("OPS_AUTO_SOA") is not None:
+    if os.environ.get("OPP_AUTO_SOA") is not None:
         args.force_soa = True
 
     file_parents = [Path(file_path).parent for file_path in args.file_paths]
@@ -55,7 +55,7 @@ def main(argv=None) -> None:
     for [target] in args.target:
         print(f'1 target {Target.find(target)}')
 
-    #checking includes of OPS
+    #checking includes of OPP
     if os.environ.get("OPP_INSTALL_PATH") is not None:
         ops_install_path = Path(os.environ.get("OPP_INSTALL_PATH"))
         args.I = [[str(ops_install_path/"include")]] + args.I

@@ -338,6 +338,13 @@ void generateHaloExchangeInfo(opp_set iter_set, int nargs, opp_arg *args, Device
             changeDatFlags(args[n], device, direct_loop);
         }
     }
+
+    if (OPP_DBG && OPP_rank == OPP_ROOT) {
+        for (int i = 0; i < haloExInfo.size(); i++) {
+            auto& a = haloExInfo[i];
+            opp_printf("HaloExInfo", "\t\targ[%d] skip[%d] download[%d] HaloEx[%d] upload[%d]", i, a.skip, a.download, a.HaloEx, a.upload);
+        }
+    }
 }
 
 

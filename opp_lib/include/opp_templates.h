@@ -41,7 +41,7 @@ void opp_par_loop(void (*kernel)(T *...), char const *name, opp_set set, opp_ite
 }
 
 template <typename... T, typename... OPARG>
-void opp_particle_move(void (*kernel)(T *...), char const *name, opp_set set, opp_map c2c_map, opp_dat p2c_map,
+void opp_particle_move(void (*kernel)(T *...), char const *name, opp_set set, opp_map c2c_map, opp_map p2c_map,
                  OPARG... arguments) {
     opp_printf("opp_particle_move", "kernel %s", name);
 }

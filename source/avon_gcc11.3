@@ -7,9 +7,10 @@ module load HDF5/1.12.2
 module load PETSc/3.20.4
 
 export OPP_COMPILER=gcc
-export OPP_INSTALL_PATH=/home/dcs/csrcnj/phd/OP-PIC/opp
-
-export OPP_PATH=/home/dcs/csrcnj/phd/OP-PIC/opp_lib
+export OPP=/home/dcs/csrcnj/phd/OP-PIC
+export OPP_INSTALL_PATH=$OPP/opp_install
+export OPP_TRANSLATOR=$OPP/opp_translator/translator
+export OPP_PATH=$OPP/OP-PIC/opp_lib
 
 export MPI_INSTALL_PATH=/scrtp/avon/eb/software/OpenMPI/4.1.4-GCC-11.3.0
 export MPICH_CXX=/scrtp/avon/eb/software/GCCcore/11.3.0/bin/g++

@@ -136,6 +136,14 @@ class Program:
         return outString
 
     def enrichLoopData(self) -> None:
+        # for loop in self.loops:
+        #     print(loop)
+        # for loop in self.sets:
+        #     print(loop) 
+        # for loop in self.dats:
+        #     print(loop)          
+        # for loop in self.maps:
+        #     print(loop) 
         for loop in self.loops:
             for arg in loop.args:
                 if isinstance(arg, OP.ArgDat):
@@ -146,12 +154,6 @@ class Program:
                             arg.flag = False
                         else:
                             raise OpsError(f"enrichLoopData : {arg} is not a dat nor map")
-        # for loop in self.loops:
-        #     print(loop)
-        # for loop in self.dats:
-        #     print(loop)          
-        # for loop in self.maps:
-        #     print(loop) 
         for loop in self.loops:
             for map in loop.maps:
                 map_stored = self.maps[findIdx(self.maps, lambda m: m.ptr == map.ptr)]         
@@ -182,10 +184,14 @@ class Program:
                     else:
                         raise OpsError(f"enrichLoopData : {obj} is not a dat nor map")
             loop.iterator_set = self.sets[findIdx(self.sets, lambda m: m.name == loop.iterator_set)]
-            if loop.p2c_map is not None:
+            if loop.p2c_map not in [None, "nullptr", "NULL"] :
                 loop.p2c_map = self.maps[findIdx(self.maps, lambda m: m.ptr == loop.p2c_map)]
-            if loop.c2c_map is not None:
+            elif loop.loop_type == OP.LoopType.MOVE_LOOP:
+                raise OpsError(f"enrichLoopData : {loop.name} require a valid p2c map")
+            if loop.c2c_map not in [None, "nullptr", "NULL"] :
                 loop.c2c_map = self.maps[findIdx(self.maps, lambda m: m.ptr == loop.c2c_map)]
+            elif loop.loop_type == OP.LoopType.MOVE_LOOP:
+                raise OpsError(f"enrichLoopData : {loop.name} require a valid c2c map")
 
 @dataclass
 class Application:

@@ -174,10 +174,8 @@ __global__ void opp_dev_{{lh.kernel}}(
     {% for dat in lh.dats %}
     {{"const " if dat is read_in(lh)}}{{dat.typ}} *__restrict__ dat{{dat.id}},     // {{dat.ptr}}
     {% endfor %}
-    {% if lh is p2c_mapped %}
     OPP_INT *__restrict__ p2c_map,
     const OPP_INT *__restrict__ c2c_map,
-    {% endif %}
     {% for map in lh.maps %}
     const OPP_INT *__restrict__ map{{map.id}},     // {{map.ptr}}
     {% endfor %}
