@@ -1,18 +1,18 @@
-# OP-PIC FemPIC
+# OP-PIC FemPIC (Already code generated for reference)
 
 **This folder contain both user written code and OP-PIC code generated code.**
 
 All the user written code will have the below comment;
 
-//*********************************************<br>
-// USER WRITTEN CODE<br>
-//*********************************************
+`// *********************************************`<br> 
+`// USER WRITTEN CODE                            `<br> 
+`// *********************************************`
 
 The code-generator has added the below comment to all the generated code; 
 
-//*********************************************<br>
-// AUTO GENERATED CODE<br>
-//*********************************************
+`// *********************************************`<br>
+`// AUTO GENERATED CODE                          `<br>
+`// *********************************************`
 
 If code-generator is invoked in this folder, the available generated code will be replaced with the newly generated code (May generate the same if `fempic.cpp`|`fempic_hdf5.cpp` or `kernels.h` is not changed)
 
@@ -70,7 +70,7 @@ Once the platform specific target files are generated, use the provided `MakeFil
  * `make hip_mpi_hdf5`
 
 ### Configuration
-An example configuration file is provided in `OP-PIC/app_fempic/configs` folder.
+An example configuration file is provided in `OP-PIC/app_fempic_cg/configs` folder.
 
 This file can be used to change the application configurations such as number of steps in the main iterating loop (`num_steps`), domain mesh file (`global_mesh, inlet_mesh, wall_mesh` or `hdf_filename`) and other parameters such as `plasma_den`, `dt`. 
 

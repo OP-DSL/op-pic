@@ -4,15 +4,15 @@
 
 All the user written code will have the below comment;
 
-//*********************************************<br>
+// *********************************************<br>
 // USER WRITTEN CODE<br>
-//*********************************************
+// *********************************************
 
 The code-generator has added the below comment to all the generated code; 
 
-//*********************************************<br>
+// *********************************************<br>
 // AUTO GENERATED CODE<br>
-//*********************************************
+// *********************************************
 
 If code-generator is invoked in this folder, the available generated code will be replaced with the newly generated code (May generate the same if `cabana.cpp` or `kernels.h` is not changed)
 
