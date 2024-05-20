@@ -23,9 +23,9 @@ It has 3 DOFs per cell and 3 DOFs per particle.
 
 Here, we have implemented the application with OP-PIC, using unstructured-mesh mappings solving the same physics as the original.
 
-** The MPI based user code is currently being developed. i.e. Distributed memory mesh and particle distribution, MPI partitioning scheme, make the tri-diagonal solver to use the halo updated data need to be implemented.**
+**The MPI based user code is currently being developed. i.e. Distributed memory mesh and particle distribution, MPI partitioning scheme, make the tri-diagonal solver to use the halo updated data need to be implemented.**
 
-** For now, `seq`, `omp`, `cuda` and `hip` shared memory versions are functional.**
+**For now, `seq`, `omp`, `cuda` and `hip` shared memory versions are functional.**
 
 ## Structure
  * `simpic.cpp` : The main file containing OP-PIC API calls. 
