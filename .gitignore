@@ -46,5 +46,13 @@ neso_2D3V
 advection_gbl_op/
 advix*
 ncu*/
-app_cabanapic/
+
+app_cabanapic/seq/
+app_cabanapic/omp/
+app_cabanapic/mpi/
+app_cabanapic/cuda/
+app_cabanapic/hip/
+app_cabanapic/files/
+app_cabanapic/cabana_opp.cpp
+
 *.pyc

@@ -1,6 +1,18 @@
-# OP-PIC CabanaPIC
+# OP-PIC CabanaPIC (Already code generated for reference)
 
-**This folder contain fully user written code, ready for code generation.**
+**This folder contain both user written code and OP-PIC code generated code.**
+
+All the user written code will have the below comment;
+//*********************************************
+// USER WRITTEN CODE
+//*********************************************
+
+The code-generator has added the below comment to all the generated code; 
+//*********************************************
+// AUTO GENERATED CODE
+//*********************************************
+
+If code-generator is invoked in this folder, the available generated code will be replaced with the newly generated code (May generate the same if `cabana.cpp` or `kernels.h` is not changed)
 
 ##
 CabanaPIC is a 3D electromagnetic, two stream PIC code, where particles move in a duct (cuboid) with cuboid cells.
@@ -10,14 +22,14 @@ It was originally developed as part of the Exascale Computing Project, Co-design
 Here, we have implemented the application with OP-PIC, using unstructured-mesh mappings solving the same physics as the original.
 
 ## Structure
- * `cabana.cpp` : The main file containing OP-PIC API calls. 
- * `kernels.h` : The user written elemental kernel functions.
- * `cabana_defs.h` : The defines and the structure used to hold data till OP-PIC is initialized.
- * `cabana_misc.h` : Miscellaneous functions including particle initialization (enrichment prior simulation).
- * `cabana_misc_mesh_color.h` : This include a user defined partitioning scheme (Only used in MPI builds).
- * `cabana_misc_mesh_loader.h` : Mesh creating code, used prior OP-PIC DSL initializing. 
+ * `cabana.cpp`: The main file containing OP-PIC API calls. 
+ * `kernels.h`: The user written elemental kernel functions.
+ * `cabana_defs.h`: The defines and the structure used to hold data till OP-PIC is initialized.
+ * `cabana_misc.h`: Miscellaneous functions including particle initialization (enrichment prior simulation).
+ * `cabana_misc_mesh_color.h`: This include a user defined partitioning scheme (Only used in MPI builds).
+ * `cabana_misc_mesh_loader.h`: Mesh creating code, used prior OP-PIC DSL initializing. 
 
-## Code Generation
+## Code Generation (Already Generated)
 Code generation can be done by invoking the below command.
 
 `python3 $OPP_TRANSLATOR -v -I$OPP_PATH/include/ --file_paths cabana.cpp`
@@ -25,7 +37,6 @@ Code generation can be done by invoking the below command.
 Once the code-generator is invoked, a `cabana_opp.cpp` file and `seq`, `omp`, `mpi`, `cuda` and `hip` folders, including `opp_kernels.<cpp|cu>` and a loop kernel header file per unique `opp_par_loop` or `opp_particle_move` loop will get generated.
 
 ## Compile
-
 Once the platform specific target files are generated, use the provided `MakeFile` to compile the application.
  * `make seq`
  * `make omp`

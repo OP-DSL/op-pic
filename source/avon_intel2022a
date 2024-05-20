@@ -10,7 +10,7 @@ export OPP_COMPILER=intel
 export OPP=/home/dcs/csrcnj/phd/OP-PIC
 export OPP_INSTALL_PATH=$OPP/opp_install
 export OPP_TRANSLATOR=$OPP/opp_translator/translator
-export OPP_PATH=$OPP/OP-PIC/opp_lib
+export OPP_PATH=$OPP/opp_lib
 
 export MPI_INSTALL_PATH=/scrtp/avon/eb/software/impi/2021.6.0-intel-compilers-2022.1.0/mpi/2021.6.0
 export MPICH_CXX=/scrtp/avon/eb/software/intel-compilers/2022.1.0/compiler/2022.1.0/linux/bin/intel64/icpc

@@ -1,6 +1,6 @@
-# OPP Code Generator
+# OP-PIC Code Generator
 
-OP-PIC follows the automatic code-generation techniques and technologies in OP2 and OPS for generating on-node/distributed-memory parallelizations. 
+OP-PIC follows the automatic code-generation techniques and technologies in [OP2](https://github.com/OP-DSL/OP2-Common) and [OPS](https://github.com/OP-DSL/OPS/) for generating on-node/distributed-memory parallelizations. 
 
 ![OP-PIC Application Development lifecycle](opp_dev_lifecycle.png)
 
