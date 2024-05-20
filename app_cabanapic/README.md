@@ -36,7 +36,7 @@ Once the platform specific target files are generated, use the provided `MakeFil
  * `make hip_mpi`
 
 ## Configuration
-An example configuration file is provided in `OP-PIC/cabanapic/configs` folder.
+An example configuration file is provided in `OP-PIC/app_cabanapic/configs` folder.
 
 This file can be used to change the application configurations such as number of steps in the main iterating loop (`num_steps`), domain mesh size (`nx, ny, nz`) and other parameters included in the original CabanaPIC application. 
 

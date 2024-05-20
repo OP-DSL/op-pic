@@ -1,0 +1,481 @@
+OP-PIC[0][0] - Running on MPI with 48 ranks
+OP-PIC[0][0] - ---------------------------------------------
+
+SIMULATION PARAMETERS
+---------------------
+    cluster = block (STRING)
+    fesolver_method = petsc (STRING)
+    global_mesh = /ext-home/zl/phd/box_mesh_gen/48000/mesh.dat (STRING)
+    hdf_filename = /ext-home/zl/phd/neso_test/OP-PIC_Configs/fempic/mesh_files/box_48000.hdf5 (STRING)
+    inlet_mesh = /ext-home/zl/phd/box_mesh_gen/48000/inlet.dat (STRING)
+    opp_fill = Shuffle_Periodic (STRING)
+    plasma_species = Duterium (STRING)
+    rand_file = /ext-home/zl/phd/box_mesh_gen/random_100k.dat (STRING)
+    wall_mesh = /ext-home/zl/phd/box_mesh_gen/48000/wall.dat (STRING)
+    max_iter = 250 (INT)
+    opp_fill_period = 4 (INT)
+    opp_gpu_direct = 0 (INT)
+    opp_threads_per_block = 512 (INT)
+    dt = 1e-12 (REAL)
+    electron_temperature = 2e+08 (REAL)
+    grid_spacing = 2.5e-05 (REAL)
+    ion_velocity = 1e+08 (REAL)
+    opp_allocation_multiple = 11 (REAL)
+    plasma_den = 1e+17 (REAL)
+    spwt = 200 (REAL)
+    wall_potential = 1e+07 (REAL)
+    check_max_values = 1 (BOOL)
+    invert_normals = 0 (BOOL)
+    opp_auto_sort = 0 (BOOL)
+    opp_global_move = 0 (BOOL)
+    opp_profile_all = 0 (BOOL)
+    print_final = 1 (BOOL)
+    use_reg_red = 0 (BOOL)
+---------------------
+
+LoadVolumeMesh
+Read Nodes at 0
+Read Cells at 0
+Read Cells at 10000
+Read Cells at 20000
+Read Cells at 30000
+Read Cells at 40000
+Compute tetra at 0
+Compute tetra 2 at 0
+Compute tetra 3 at 0
+LoadSurfaceMesh
+Read Surface Mesh at 0
+Compute inlet cells at 0
+LoadSurfaceMesh
+Read Surface Mesh at 0
+MESH INFORMATION
+----------------
+  Number of nodes          = 8851
+  Number of elements       = 48000
+  Number of inlet faces    = 800
+
+  Simulation region: 0.004m x 0.004m x 0.002m
+  Average edge length: 0m
+
+LoadMesh nodes 8851 cells 48000 ifaces 800
+LoadMesh CreateMeshArrays DONE
+LoadMesh Mesh Nodes at 0
+LoadMesh Mesh Nodes Loaded
+LoadMesh Mesh Cells at 0
+LoadMesh Mesh Cells at 10000
+LoadMesh Mesh Cells at 20000
+LoadMesh Mesh Cells at 30000
+LoadMesh Mesh Cells at 40000
+LoadMesh Mesh Cells Loaded
+LoadMesh Mesh inlet faces Loaded
+Main[0][0] - Global counts - Nodes[8851] Cells[48000] IFaces[800]
+CENTROID_GRID[0][0] - SIZE x=20 y=20
+partition_all[0][0] - Sets partitioned = 5
+opp_partition_external[0][0] - Max total random partitioning time = 0.018837
+opp_partition()[0][0] - (size|ieh|inh) 	 - mesh_nodes	 - mesh_cells	 - inlet_faces_cells	 - particles	 - dummy particles
+opp_partition()[0][0] - RANK [0]	- 292|0|222	- 1080|893|253	- 18|18|0	- 0|0|0	- 0|0|0
+opp_partition()[0][0] - RANK [1]	- 270|0|253	- 1080|892|312	- 18|18|0	- 0|0|0	- 0|0|0
+opp_partition()[0][0] - RANK [2]	- 201|0|412	- 1080|983|608	- 18|17|0	- 0|0|0	- 0|0|0
+opp_partition()[0][0] - RANK [3]	- 189|0|442	- 1080|1160|670	- 18|20|0	- 0|0|0	- 0|0|0
+opp_partition()[0][0] - RANK [4]	- 200|0|464	- 1080|1160|685	- 18|20|0	- 0|0|0	- 0|0|0
+opp_partition()[0][0] - RANK [5]	- 189|0|442	- 1080|1160|670	- 18|20|0	- 0|0|0	- 0|0|0
+opp_partition()[0][0] - RANK [6]	- 200|0|463	- 1080|1159|685	- 18|20|0	- 0|0|0	- 0|0|0
+opp_partition()[0][0] - RANK [7]	- 189|0|442	- 1080|1160|670	- 18|20|0	- 0|0|0	- 0|0|0
+opp_partition()[0][0] - RANK [8]	- 200|0|463	- 1080|1159|687	- 18|20|0	- 0|0|0	- 0|0|0
+opp_partition()[0][0] - RANK [9]	- 189|0|442	- 1080|1160|670	- 18|20|0	- 0|0|0	- 0|0|0
+opp_partition()[0][0] - RANK [10]	- 189|0|442	- 1080|1160|670	- 18|20|0	- 0|0|0	- 0|0|0
+opp_partition()[0][0] - RANK [11]	- 200|0|455	- 1080|1142|670	- 18|20|0	- 0|0|0	- 0|0|0
+opp_partition()[0][0] - RANK [12]	- 189|0|442	- 1080|1160|670	- 18|20|0	- 0|0|0	- 0|0|0
+opp_partition()[0][0] - RANK [13]	- 200|0|455	- 1080|1142|668	- 18|20|0	- 0|0|0	- 0|0|0
+opp_partition()[0][0] - RANK [14]	- 189|0|442	- 1080|1160|670	- 18|20|0	- 0|0|0	- 0|0|0
+opp_partition()[0][0] - RANK [15]	- 199|0|463	- 1080|1155|687	- 18|20|0	- 0|0|0	- 0|0|0
+opp_partition()[0][0] - RANK [16]	- 168|0|400	- 960|1040|608	- 16|18|0	- 0|0|0	- 0|0|0
+opp_partition()[0][0] - RANK [17]	- 179|0|389	- 960|1059|566	- 16|19|0	- 0|0|0	- 0|0|0
+opp_partition()[0][0] - RANK [18]	- 179|0|380	- 960|1041|549	- 16|18|0	- 0|0|0	- 0|0|0
+opp_partition()[0][0] - RANK [19]	- 168|0|400	- 960|1040|608	- 16|18|0	- 0|0|0	- 0|0|0
+opp_partition()[0][0] - RANK [20]	- 168|0|411	- 960|940|627	- 16|15|0	- 0|0|0	- 0|0|0
+opp_partition()[0][0] - RANK [21]	- 168|0|400	- 960|1040|608	- 16|18|0	- 0|0|0	- 0|0|0
+opp_partition()[0][0] - RANK [22]	- 179|0|389	- 960|1059|566	- 16|19|0	- 0|0|0	- 0|0|0
+opp_partition()[0][0] - RANK [23]	- 179|0|380	- 960|1041|549	- 16|18|0	- 0|0|0	- 0|0|0
+opp_partition()[0][0] - RANK [24]	- 168|0|400	- 960|1040|608	- 16|18|0	- 0|0|0	- 0|0|0
+opp_partition()[0][0] - RANK [25]	- 168|0|411	- 960|940|627	- 16|15|0	- 0|0|0	- 0|0|0
+opp_partition()[0][0] - RANK [26]	- 168|0|400	- 960|1040|608	- 16|18|0	- 0|0|0	- 0|0|0
+opp_partition()[0][0] - RANK [27]	- 179|0|389	- 960|1059|566	- 16|19|0	- 0|0|0	- 0|0|0
+opp_partition()[0][0] - RANK [28]	- 179|0|380	- 960|1041|549	- 16|18|0	- 0|0|0	- 0|0|0
+opp_partition()[0][0] - RANK [29]	- 168|0|400	- 960|1040|608	- 16|18|0	- 0|0|0	- 0|0|0
+opp_partition()[0][0] - RANK [30]	- 168|0|411	- 960|940|627	- 16|15|0	- 0|0|0	- 0|0|0
+opp_partition()[0][0] - RANK [31]	- 168|0|400	- 960|1040|608	- 16|18|0	- 0|0|0	- 0|0|0
+opp_partition()[0][0] - RANK [32]	- 179|0|389	- 960|1059|566	- 16|19|0	- 0|0|0	- 0|0|0
+opp_partition()[0][0] - RANK [33]	- 179|0|380	- 960|1041|549	- 16|18|0	- 0|0|0	- 0|0|0
+opp_partition()[0][0] - RANK [34]	- 168|0|400	- 960|1040|608	- 16|18|0	- 0|0|0	- 0|0|0
+opp_partition()[0][0] - RANK [35]	- 168|0|411	- 960|940|627	- 16|15|0	- 0|0|0	- 0|0|0
+opp_partition()[0][0] - RANK [36]	- 168|0|400	- 960|1040|608	- 16|18|0	- 0|0|0	- 0|0|0
+opp_partition()[0][0] - RANK [37]	- 179|0|389	- 960|1059|566	- 16|19|0	- 0|0|0	- 0|0|0
+opp_partition()[0][0] - RANK [38]	- 179|0|380	- 960|1041|549	- 16|18|0	- 0|0|0	- 0|0|0
+opp_partition()[0][0] - RANK [39]	- 168|0|400	- 960|1040|608	- 16|18|0	- 0|0|0	- 0|0|0
+opp_partition()[0][0] - RANK [40]	- 168|0|411	- 960|940|627	- 16|15|0	- 0|0|0	- 0|0|0
+opp_partition()[0][0] - RANK [41]	- 168|0|400	- 960|1040|608	- 16|18|0	- 0|0|0	- 0|0|0
+opp_partition()[0][0] - RANK [42]	- 179|0|389	- 960|1059|566	- 16|19|0	- 0|0|0	- 0|0|0
+opp_partition()[0][0] - RANK [43]	- 179|0|380	- 960|1041|549	- 16|18|0	- 0|0|0	- 0|0|0
+opp_partition()[0][0] - RANK [44]	- 168|0|400	- 960|1040|608	- 16|18|0	- 0|0|0	- 0|0|0
+opp_partition()[0][0] - RANK [45]	- 172|0|328	- 960|595|522	- 16|10|0	- 0|0|0	- 0|0|0
+opp_partition()[0][0] - RANK [46]	- 185|0|233	- 960|365|398	- 16|5|0	- 0|0|0	- 0|0|0
+opp_partition()[0][0] - RANK [47]	- 205|0|210	- 960|379|357	- 16|3|0	- 0|0|0	- 0|0|0
+Main[0][0] - ts: 0 	 np: 399848 (799696 added, 399848 removed)	 max den: 3.7259735951953040000000000E+16 max |phi|: 2.3027773847E+04 max_comm_iteration: 0 ****
+Main[0][1] - ts: 1 	 np: 798836 (799696 added, 400708 removed)	 max den: 8.5253679984459360000000000E+16 max |phi|: 4.7838526145E+04 max_comm_iteration: 1 ****
+Main[0][2] - ts: 2 	 np: 1196105 (799696 added, 402427 removed)	 max den: 9.6543214525223200000000000E+16 max |phi|: 7.1315169091E+04 max_comm_iteration: 1 ****
+Main[0][3] - ts: 3 	 np: 1589769 (799696 added, 406032 removed)	 max den: 9.6530988839543984000000000E+16 max |phi|: 9.4654820562E+04 max_comm_iteration: 1 ****
+Main[0][4] - ts: 4 	 np: 1979481 (799696 added, 409984 removed)	 max den: 9.6546865143509200000000000E+16 max |phi|: 1.1793844501E+05 max_comm_iteration: 1 ****
+Main[0][5] - ts: 5 	 np: 2363568 (799696 added, 415609 removed)	 max den: 9.6562400884847888000000000E+16 max |phi|: 1.4120946841E+05 max_comm_iteration: 1 ****
+Main[0][6] - ts: 6 	 np: 2741535 (799696 added, 421729 removed)	 max den: 9.6577896354259328000000000E+16 max |phi|: 1.6447704890E+05 max_comm_iteration: 1 ****
+Main[0][7] - ts: 7 	 np: 3114036 (799696 added, 427195 removed)	 max den: 9.6546393490416960000000000E+16 max |phi|: 1.8774375237E+05 max_comm_iteration: 1 ****
+Main[0][8] - ts: 8 	 np: 3481050 (799696 added, 432682 removed)	 max den: 9.6561861601313728000000000E+16 max |phi|: 2.1101022692E+05 max_comm_iteration: 1 ****
+Main[0][9] - ts: 9 	 np: 3841745 (799696 added, 439001 removed)	 max den: 9.6537671663730896000000000E+16 max |phi|: 2.3427664222E+05 max_comm_iteration: 1 ****
+Main[0][10] - ts: 10 	 np: 4195028 (799696 added, 446413 removed)	 max den: 9.6546747150643440000000000E+16 max |phi|: 2.5754304215E+05 max_comm_iteration: 1 ****
+Main[0][11] - ts: 11 	 np: 4541449 (799696 added, 453275 removed)	 max den: 9.6562171684708432000000000E+16 max |phi|: 2.8080943808E+05 max_comm_iteration: 1 ****
+Main[0][12] - ts: 12 	 np: 4882384 (799696 added, 458761 removed)	 max den: 9.6577592219641856000000000E+16 max |phi|: 3.0407583299E+05 max_comm_iteration: 1 ****
+Main[0][13] - ts: 13 	 np: 5220104 (799696 added, 461976 removed)	 max den: 9.6593012750322384000000000E+16 max |phi|: 3.2734222762E+05 max_comm_iteration: 1 ****
+Main[0][14] - ts: 14 	 np: 5553856 (799696 added, 465944 removed)	 max den: 9.6549895796456448000000000E+16 max |phi|: 3.5060862219E+05 max_comm_iteration: 1 ****
+Main[0][15] - ts: 15 	 np: 5883555 (799696 added, 469997 removed)	 max den: 9.6529237908931344000000000E+16 max |phi|: 3.7387501674E+05 max_comm_iteration: 1 ****
+Main[0][16] - ts: 16 	 np: 6210248 (799696 added, 473003 removed)	 max den: 9.6544628977531152000000000E+16 max |phi|: 3.9714141128E+05 max_comm_iteration: 1 ****
+Main[0][17] - ts: 17 	 np: 6533487 (799696 added, 476457 removed)	 max den: 9.6560033820670608000000000E+16 max |phi|: 4.2040780582E+05 max_comm_iteration: 1 ****
+Main[0][18] - ts: 18 	 np: 6856694 (799696 added, 476489 removed)	 max den: 9.6538916114450208000000000E+16 max |phi|: 4.4367420036E+05 max_comm_iteration: 1 ****
+Main[0][19] - ts: 19 	 np: 7179923 (799696 added, 476467 removed)	 max den: 9.6554349269621984000000000E+16 max |phi|: 4.6694059490E+05 max_comm_iteration: 1 ****
+Main[0][20] - ts: 20 	 np: 7179352 (799696 added, 800267 removed)	 max den: 9.6523692218453456000000000E+16 max |phi|: 4.9020698944E+05 max_comm_iteration: 1 ****
+Main[0][21] - ts: 21 	 np: 7178488 (799696 added, 800560 removed)	 max den: 9.6539104330326128000000000E+16 max |phi|: 5.1347338398E+05 max_comm_iteration: 1 ****
+Main[0][22] - ts: 22 	 np: 7177887 (799696 added, 800297 removed)	 max den: 9.6554516442198608000000000E+16 max |phi|: 5.3673977853E+05 max_comm_iteration: 1 ****
+Main[0][23] - ts: 23 	 np: 7177168 (799696 added, 800415 removed)	 max den: 9.6567007977730064000000000E+16 max |phi|: 5.6000617307E+05 max_comm_iteration: 1 ****
+Main[0][24] - ts: 24 	 np: 7176494 (799696 added, 800370 removed)	 max den: 9.6531997992600016000000000E+16 max |phi|: 5.8327256761E+05 max_comm_iteration: 1 ****
+Main[0][25] - ts: 25 	 np: 7175685 (799696 added, 800505 removed)	 max den: 9.6547401687153024000000000E+16 max |phi|: 6.0653896215E+05 max_comm_iteration: 1 ****
+Main[0][26] - ts: 26 	 np: 7175081 (799696 added, 800300 removed)	 max den: 9.6562805381706000000000000E+16 max |phi|: 6.2980535669E+05 max_comm_iteration: 1 ****
+Main[0][27] - ts: 27 	 np: 7174439 (799696 added, 800338 removed)	 max den: 9.6578209076259424000000000E+16 max |phi|: 6.5307175123E+05 max_comm_iteration: 1 ****
+Main[0][28] - ts: 28 	 np: 7173895 (799696 added, 800240 removed)	 max den: 9.6593610696673360000000000E+16 max |phi|: 6.7633814577E+05 max_comm_iteration: 1 ****
+Main[0][29] - ts: 29 	 np: 7173254 (799696 added, 800337 removed)	 max den: 9.6609010182566800000000000E+16 max |phi|: 6.9960454031E+05 max_comm_iteration: 1 ****
+Main[0][30] - ts: 30 	 np: 7172778 (799696 added, 800172 removed)	 max den: 9.6624409668459872000000000E+16 max |phi|: 7.2287093485E+05 max_comm_iteration: 1 ****
+Main[0][31] - ts: 31 	 np: 7172095 (799696 added, 800379 removed)	 max den: 9.6624027506719776000000000E+16 max |phi|: 7.4613732940E+05 max_comm_iteration: 1 ****
+Main[0][32] - ts: 32 	 np: 7171423 (799696 added, 800368 removed)	 max den: 9.6639418575293680000000000E+16 max |phi|: 7.6940372394E+05 max_comm_iteration: 1 ****
+Main[0][33] - ts: 33 	 np: 7170737 (799696 added, 800382 removed)	 max den: 9.6511347304961680000000000E+16 max |phi|: 7.9267011848E+05 max_comm_iteration: 1 ****
+Main[0][34] - ts: 34 	 np: 7170060 (799696 added, 800373 removed)	 max den: 9.6526699634068768000000000E+16 max |phi|: 8.1593651302E+05 max_comm_iteration: 1 ****
+Main[0][35] - ts: 35 	 np: 7169577 (799696 added, 800179 removed)	 max den: 9.6542061242024752000000000E+16 max |phi|: 8.3920290756E+05 max_comm_iteration: 1 ****
+Main[0][36] - ts: 36 	 np: 7168913 (799696 added, 800360 removed)	 max den: 9.6507332138705424000000000E+16 max |phi|: 8.6246930210E+05 max_comm_iteration: 1 ****
+Main[0][37] - ts: 37 	 np: 7168358 (799696 added, 800251 removed)	 max den: 9.6522672703362832000000000E+16 max |phi|: 8.8573569664E+05 max_comm_iteration: 1 ****
+Main[0][38] - ts: 38 	 np: 7167735 (799696 added, 800319 removed)	 max den: 9.6538013268020144000000000E+16 max |phi|: 9.0900209118E+05 max_comm_iteration: 1 ****
+Main[0][39] - ts: 39 	 np: 7167060 (799696 added, 800371 removed)	 max den: 9.6553353832677408000000000E+16 max |phi|: 9.3226848572E+05 max_comm_iteration: 1 ****
+Main[0][40] - ts: 40 	 np: 7166427 (799696 added, 800329 removed)	 max den: 9.6523632061026960000000000E+16 max |phi|: 9.5553488027E+05 max_comm_iteration: 1 ****
+Main[0][41] - ts: 41 	 np: 7165749 (799696 added, 800374 removed)	 max den: 9.6538951582385728000000000E+16 max |phi|: 9.7880127481E+05 max_comm_iteration: 1 ****
+Main[0][42] - ts: 42 	 np: 7165021 (799696 added, 800424 removed)	 max den: 9.6467604434883792000000000E+16 max |phi|: 1.0020676693E+06 max_comm_iteration: 1 ****
+Main[0][43] - ts: 43 	 np: 7164167 (799696 added, 800550 removed)	 max den: 9.6482922060594768000000000E+16 max |phi|: 1.0253340639E+06 max_comm_iteration: 1 ****
+Main[0][44] - ts: 44 	 np: 7163430 (799696 added, 800433 removed)	 max den: 9.6498254207933200000000000E+16 max |phi|: 1.0486004584E+06 max_comm_iteration: 1 ****
+Main[0][45] - ts: 45 	 np: 7162741 (799696 added, 800385 removed)	 max den: 9.6513586355271088000000000E+16 max |phi|: 1.0718668530E+06 max_comm_iteration: 1 ****
+Main[0][46] - ts: 46 	 np: 7162055 (799696 added, 800382 removed)	 max den: 9.6422833672713856000000000E+16 max |phi|: 1.0951332475E+06 max_comm_iteration: 1 ****
+Main[0][47] - ts: 47 	 np: 7161480 (799696 added, 800271 removed)	 max den: 9.6438144776753008000000000E+16 max |phi|: 1.1183996421E+06 max_comm_iteration: 1 ****
+Main[0][48] - ts: 48 	 np: 7160853 (799696 added, 800323 removed)	 max den: 9.6453463435484880000000000E+16 max |phi|: 1.1416660366E+06 max_comm_iteration: 1 ****
+Main[0][49] - ts: 49 	 np: 7160265 (799696 added, 800284 removed)	 max den: 9.6468795582822816000000000E+16 max |phi|: 1.1649324311E+06 max_comm_iteration: 1 ****
+Main[0][50] - ts: 50 	 np: 7159640 (799696 added, 800321 removed)	 max den: 9.6484127730160896000000000E+16 max |phi|: 1.1881988257E+06 max_comm_iteration: 1 ****
+Main[0][51] - ts: 51 	 np: 7159259 (799696 added, 800077 removed)	 max den: 9.6459210747129792000000000E+16 max |phi|: 1.2114652202E+06 max_comm_iteration: 1 ****
+Main[0][52] - ts: 52 	 np: 7158819 (799696 added, 800136 removed)	 max den: 9.6474521851169552000000000E+16 max |phi|: 1.2347316148E+06 max_comm_iteration: 1 ****
+Main[0][53] - ts: 53 	 np: 7158379 (799696 added, 800136 removed)	 max den: 9.6448858573171616000000000E+16 max |phi|: 1.2579980093E+06 max_comm_iteration: 1 ****
+Main[0][54] - ts: 54 	 np: 7157794 (799696 added, 800281 removed)	 max den: 9.6464163248838032000000000E+16 max |phi|: 1.2812644038E+06 max_comm_iteration: 1 ****
+Main[0][55] - ts: 55 	 np: 7157131 (799696 added, 800359 removed)	 max den: 9.6479474352877440000000000E+16 max |phi|: 1.3045307984E+06 max_comm_iteration: 1 ****
+Main[0][56] - ts: 56 	 np: 7156578 (799696 added, 800249 removed)	 max den: 9.6494785456916800000000000E+16 max |phi|: 1.3277971929E+06 max_comm_iteration: 1 ****
+Main[0][57] - ts: 57 	 np: 7156026 (799696 added, 800248 removed)	 max den: 9.6408168208054640000000000E+16 max |phi|: 1.3510635875E+06 max_comm_iteration: 1 ****
+Main[0][58] - ts: 58 	 np: 7155299 (799696 added, 800423 removed)	 max den: 9.6423470894774768000000000E+16 max |phi|: 1.3743299820E+06 max_comm_iteration: 1 ****
+Main[0][59] - ts: 59 	 np: 7154841 (799696 added, 800154 removed)	 max den: 9.6438782210105088000000000E+16 max |phi|: 1.3975963765E+06 max_comm_iteration: 1 ****
+Main[0][60] - ts: 60 	 np: 7154350 (799696 added, 800187 removed)	 max den: 9.6454105940123488000000000E+16 max |phi|: 1.4208627711E+06 max_comm_iteration: 1 ****
+Main[0][61] - ts: 61 	 np: 7153654 (799696 added, 800392 removed)	 max den: 9.6469429670142176000000000E+16 max |phi|: 1.4441291656E+06 max_comm_iteration: 1 ****
+Main[0][62] - ts: 62 	 np: 7153047 (799696 added, 800303 removed)	 max den: 9.6484753400160752000000000E+16 max |phi|: 1.4673955602E+06 max_comm_iteration: 1 ****
+Main[0][63] - ts: 63 	 np: 7152406 (799696 added, 800337 removed)	 max den: 9.6496137182050112000000000E+16 max |phi|: 1.4906619547E+06 max_comm_iteration: 1 ****
+Main[0][64] - ts: 64 	 np: 7151764 (799696 added, 800338 removed)	 max den: 9.6511452494749008000000000E+16 max |phi|: 1.5139283493E+06 max_comm_iteration: 1 ****
+Main[0][65] - ts: 65 	 np: 7151269 (799696 added, 800191 removed)	 max den: 9.6483738548022848000000000E+16 max |phi|: 1.5371947438E+06 max_comm_iteration: 1 ****
+Main[0][66] - ts: 66 	 np: 7150755 (799696 added, 800210 removed)	 max den: 9.6499032817423264000000000E+16 max |phi|: 1.5604611383E+06 max_comm_iteration: 1 ****
+Main[0][67] - ts: 67 	 np: 7150060 (799696 added, 800391 removed)	 max den: 9.6514327086823888000000000E+16 max |phi|: 1.5837275329E+06 max_comm_iteration: 1 ****
+Main[0][68] - ts: 68 	 np: 7149258 (799696 added, 800498 removed)	 max den: 9.6529626424546064000000000E+16 max |phi|: 1.6069939274E+06 max_comm_iteration: 1 ****
+Main[0][69] - ts: 69 	 np: 7148767 (799696 added, 800187 removed)	 max den: 9.6428680456562400000000000E+16 max |phi|: 1.6302603220E+06 max_comm_iteration: 1 ****
+Main[0][70] - ts: 70 	 np: 7148130 (799696 added, 800333 removed)	 max den: 9.6390655610262320000000000E+16 max |phi|: 1.6535267165E+06 max_comm_iteration: 1 ****
+Main[0][71] - ts: 71 	 np: 7147505 (799696 added, 800321 removed)	 max den: 9.6405920419044880000000000E+16 max |phi|: 1.6767931110E+06 max_comm_iteration: 1 ****
+Main[0][72] - ts: 72 	 np: 7146958 (799696 added, 800243 removed)	 max den: 9.6421185227827200000000000E+16 max |phi|: 1.7000595056E+06 max_comm_iteration: 1 ****
+Main[0][73] - ts: 73 	 np: 7146442 (799696 added, 800212 removed)	 max den: 9.6436462101588448000000000E+16 max |phi|: 1.7233259001E+06 max_comm_iteration: 1 ****
+Main[0][74] - ts: 74 	 np: 7145948 (799696 added, 800190 removed)	 max den: 9.6451768996968208000000000E+16 max |phi|: 1.7465922947E+06 max_comm_iteration: 1 ****
+Main[0][75] - ts: 75 	 np: 7145512 (799696 added, 800132 removed)	 max den: 9.6467075892347984000000000E+16 max |phi|: 1.7698586892E+06 max_comm_iteration: 1 ****
+Main[0][76] - ts: 76 	 np: 7144968 (799696 added, 800240 removed)	 max den: 9.6482380417335296000000000E+16 max |phi|: 1.7931250837E+06 max_comm_iteration: 1 ****
+Main[0][77] - ts: 77 	 np: 7144378 (799696 added, 800286 removed)	 max den: 9.6497683104055504000000000E+16 max |phi|: 1.8163914783E+06 max_comm_iteration: 1 ****
+Main[0][78] - ts: 78 	 np: 7143992 (799696 added, 800082 removed)	 max den: 9.6480356629051344000000000E+16 max |phi|: 1.8396578728E+06 max_comm_iteration: 1 ****
+Main[0][79] - ts: 79 	 np: 7143521 (799696 added, 800167 removed)	 max den: 9.6495659315771360000000000E+16 max |phi|: 1.8629242674E+06 max_comm_iteration: 1 ****
+Main[0][80] - ts: 80 	 np: 7142878 (799696 added, 800339 removed)	 max den: 9.6447272965191536000000000E+16 max |phi|: 1.8861906619E+06 max_comm_iteration: 1 ****
+Main[0][81] - ts: 81 	 np: 7142366 (799696 added, 800208 removed)	 max den: 9.6462570410343296000000000E+16 max |phi|: 1.9094570565E+06 max_comm_iteration: 1 ****
+Main[0][82] - ts: 82 	 np: 7141871 (799696 added, 800191 removed)	 max den: 9.6477864679743888000000000E+16 max |phi|: 1.9327234510E+06 max_comm_iteration: 1 ****
+Main[0][83] - ts: 83 	 np: 7141473 (799696 added, 800094 removed)	 max den: 9.6493158949144528000000000E+16 max |phi|: 1.9559898455E+06 max_comm_iteration: 1 ****
+Main[0][84] - ts: 84 	 np: 7140863 (799696 added, 800306 removed)	 max den: 9.6508468898257264000000000E+16 max |phi|: 1.9792562401E+06 max_comm_iteration: 1 ****
+Main[0][85] - ts: 85 	 np: 7140309 (799696 added, 800250 removed)	 max den: 9.6523784210956288000000000E+16 max |phi|: 2.0025226346E+06 max_comm_iteration: 1 ****
+Main[0][86] - ts: 86 	 np: 7139668 (799696 added, 800337 removed)	 max den: 9.6539099523655744000000000E+16 max |phi|: 2.0257890292E+06 max_comm_iteration: 1 ****
+Main[0][87] - ts: 87 	 np: 7139028 (799696 added, 800336 removed)	 max den: 9.6554414836354704000000000E+16 max |phi|: 2.0490554237E+06 max_comm_iteration: 1 ****
+Main[0][88] - ts: 88 	 np: 7138595 (799696 added, 800129 removed)	 max den: 9.6494112894828928000000000E+16 max |phi|: 2.0723218182E+06 max_comm_iteration: 1 ****
+Main[0][89] - ts: 89 	 np: 7138208 (799696 added, 800083 removed)	 max den: 9.6509428363405664000000000E+16 max |phi|: 2.0955882128E+06 max_comm_iteration: 1 ****
+Main[0][90] - ts: 90 	 np: 7137775 (799696 added, 800129 removed)	 max den: 9.6524756302084144000000000E+16 max |phi|: 2.1188546073E+06 max_comm_iteration: 1 ****
+Main[0][91] - ts: 91 	 np: 7137213 (799696 added, 800258 removed)	 max den: 9.6540084240762416000000000E+16 max |phi|: 2.1421210019E+06 max_comm_iteration: 1 ****
+Main[0][92] - ts: 92 	 np: 7136802 (799696 added, 800107 removed)	 max den: 9.6555417544916592000000000E+16 max |phi|: 2.1653873964E+06 max_comm_iteration: 1 ****
+Main[0][93] - ts: 93 	 np: 7136264 (799696 added, 800234 removed)	 max den: 9.6570780785231024000000000E+16 max |phi|: 2.1886537909E+06 max_comm_iteration: 1 ****
+Main[0][94] - ts: 94 	 np: 7135866 (799696 added, 800094 removed)	 max den: 9.6586171853805184000000000E+16 max |phi|: 2.2119201855E+06 max_comm_iteration: 1 ****
+Main[0][95] - ts: 95 	 np: 7135466 (799696 added, 800096 removed)	 max den: 9.6601562922379264000000000E+16 max |phi|: 2.2351865800E+06 max_comm_iteration: 1 ****
+Main[0][96] - ts: 96 	 np: 7135100 (799696 added, 800062 removed)	 max den: 9.6546902529912656000000000E+16 max |phi|: 2.2584529746E+06 max_comm_iteration: 1 ****
+Main[0][97] - ts: 97 	 np: 7134682 (799696 added, 800114 removed)	 max den: 9.6552943208074736000000000E+16 max |phi|: 2.2817193691E+06 max_comm_iteration: 1 ****
+Main[0][98] - ts: 98 	 np: 7134134 (799696 added, 800244 removed)	 max den: 9.6568329634992096000000000E+16 max |phi|: 2.3049857637E+06 max_comm_iteration: 1 ****
+Main[0][99] - ts: 99 	 np: 7133605 (799696 added, 800225 removed)	 max den: 9.6549459909901120000000000E+16 max |phi|: 2.3282521582E+06 max_comm_iteration: 1 ****
+Main[0][100] - ts: 100 	 np: 7133016 (799696 added, 800285 removed)	 max den: 9.6564856166566592000000000E+16 max |phi|: 2.3515185527E+06 max_comm_iteration: 1 ****
+Main[0][101] - ts: 101 	 np: 7132452 (799696 added, 800260 removed)	 max den: 9.6572245896253248000000000E+16 max |phi|: 2.3747849473E+06 max_comm_iteration: 1 ****
+Main[0][102] - ts: 102 	 np: 7132016 (799696 added, 800132 removed)	 max den: 9.6587649590806480000000000E+16 max |phi|: 2.3980513418E+06 max_comm_iteration: 1 ****
+Main[0][103] - ts: 103 	 np: 7131477 (799696 added, 800235 removed)	 max den: 9.6603053285359696000000000E+16 max |phi|: 2.4213177364E+06 max_comm_iteration: 1 ****
+Main[0][104] - ts: 104 	 np: 7130909 (799696 added, 800264 removed)	 max den: 9.6607378254192384000000000E+16 max |phi|: 2.4445841309E+06 max_comm_iteration: 1 ****
+Main[0][105] - ts: 105 	 np: 7130456 (799696 added, 800149 removed)	 max den: 9.6622781948745584000000000E+16 max |phi|: 2.4678505254E+06 max_comm_iteration: 1 ****
+Main[0][106] - ts: 106 	 np: 7130099 (799696 added, 800053 removed)	 max den: 9.6592070843838880000000000E+16 max |phi|: 2.4911169200E+06 max_comm_iteration: 1 ****
+Main[0][107] - ts: 107 	 np: 7129695 (799696 added, 800100 removed)	 max den: 9.6397099205514592000000000E+16 max |phi|: 2.5143833145E+06 max_comm_iteration: 1 ****
+Main[0][108] - ts: 108 	 np: 7128995 (799696 added, 800396 removed)	 max den: 9.6378019306889552000000000E+16 max |phi|: 2.5376497091E+06 max_comm_iteration: 1 ****
+Main[0][109] - ts: 109 	 np: 7128684 (799696 added, 800007 removed)	 max den: 9.6393406166803888000000000E+16 max |phi|: 2.5609161036E+06 max_comm_iteration: 1 ****
+Main[0][110] - ts: 110 	 np: 7128009 (799696 added, 800371 removed)	 max den: 9.6408793026717984000000000E+16 max |phi|: 2.5841824981E+06 max_comm_iteration: 1 ****
+Main[0][111] - ts: 111 	 np: 7127682 (799696 added, 800023 removed)	 max den: 9.6424179886632560000000000E+16 max |phi|: 2.6074488927E+06 max_comm_iteration: 1 ****
+Main[0][112] - ts: 112 	 np: 7127078 (799696 added, 800300 removed)	 max den: 9.6389313936319568000000000E+16 max |phi|: 2.6307152872E+06 max_comm_iteration: 1 ****
+Main[0][113] - ts: 113 	 np: 7126748 (799696 added, 800026 removed)	 max den: 9.6391257716704608000000000E+16 max |phi|: 2.6539816818E+06 max_comm_iteration: 1 ****
+Main[0][114] - ts: 114 	 np: 7126315 (799696 added, 800129 removed)	 max den: 9.6406620720293968000000000E+16 max |phi|: 2.6772480763E+06 max_comm_iteration: 1 ****
+Main[0][115] - ts: 115 	 np: 7125801 (799696 added, 800210 removed)	 max den: 9.6421982328250160000000000E+16 max |phi|: 2.7005144709E+06 max_comm_iteration: 1 ****
+Main[0][116] - ts: 116 	 np: 7125250 (799696 added, 800247 removed)	 max den: 9.6436530825820816000000000E+16 max |phi|: 2.7237808654E+06 max_comm_iteration: 1 ****
+Main[0][117] - ts: 117 	 np: 7124686 (799696 added, 800260 removed)	 max den: 9.6451871390478304000000000E+16 max |phi|: 2.7470472599E+06 max_comm_iteration: 1 ****
+Main[0][118] - ts: 118 	 np: 7124262 (799696 added, 800120 removed)	 max den: 9.6467228640370352000000000E+16 max |phi|: 2.7703136545E+06 max_comm_iteration: 1 ****
+Main[0][119] - ts: 119 	 np: 7123968 (799696 added, 799990 removed)	 max den: 9.6420568879048096000000000E+16 max |phi|: 2.7935800490E+06 max_comm_iteration: 1 ****
+Main[0][120] - ts: 120 	 np: 7123492 (799696 added, 800172 removed)	 max den: 9.6435930606140816000000000E+16 max |phi|: 2.8168464436E+06 max_comm_iteration: 1 ****
+Main[0][121] - ts: 121 	 np: 7122966 (799696 added, 800222 removed)	 max den: 9.6451336839271168000000000E+16 max |phi|: 2.8401128381E+06 max_comm_iteration: 1 ****
+Main[0][122] - ts: 122 	 np: 7122642 (799696 added, 800020 removed)	 max den: 9.6381286237374368000000000E+16 max |phi|: 2.8633792326E+06 max_comm_iteration: 1 ****
+Main[0][123] - ts: 123 	 np: 7122149 (799696 added, 800189 removed)	 max den: 9.6396689931927552000000000E+16 max |phi|: 2.8866456272E+06 max_comm_iteration: 1 ****
+Main[0][124] - ts: 124 	 np: 7121694 (799696 added, 800151 removed)	 max den: 9.6364959554807888000000000E+16 max |phi|: 2.9099120217E+06 max_comm_iteration: 1 ****
+Main[0][125] - ts: 125 	 np: 7121293 (799696 added, 800097 removed)	 max den: 9.6380354832041680000000000E+16 max |phi|: 2.9331784163E+06 max_comm_iteration: 1 ****
+Main[0][126] - ts: 126 	 np: 7120718 (799696 added, 800271 removed)	 max den: 9.6334339498741360000000000E+16 max |phi|: 2.9564448108E+06 max_comm_iteration: 1 ****
+Main[0][127] - ts: 127 	 np: 7120208 (799696 added, 800206 removed)	 max den: 9.6349692689377760000000000E+16 max |phi|: 2.9797112053E+06 max_comm_iteration: 1 ****
+Main[0][128] - ts: 128 	 np: 7119697 (799696 added, 800207 removed)	 max den: 9.6365045880014480000000000E+16 max |phi|: 3.0029775999E+06 max_comm_iteration: 1 ****
+Main[0][129] - ts: 129 	 np: 7119282 (799696 added, 800111 removed)	 max den: 9.6380399070651088000000000E+16 max |phi|: 3.0262439944E+06 max_comm_iteration: 1 ****
+Main[0][130] - ts: 130 	 np: 7118850 (799696 added, 800128 removed)	 max den: 9.6395752261287520000000000E+16 max |phi|: 3.0495103890E+06 max_comm_iteration: 1 ****
+Main[0][131] - ts: 131 	 np: 7118318 (799696 added, 800228 removed)	 max den: 9.6411122761633968000000000E+16 max |phi|: 3.0727767835E+06 max_comm_iteration: 1 ****
+Main[0][132] - ts: 132 	 np: 7117622 (799696 added, 800392 removed)	 max den: 9.6399339770951344000000000E+16 max |phi|: 3.0960431780E+06 max_comm_iteration: 1 ****
+Main[0][133] - ts: 133 	 np: 7117201 (799696 added, 800117 removed)	 max den: 9.6414709655321376000000000E+16 max |phi|: 3.1193095726E+06 max_comm_iteration: 1 ****
+Main[0][134] - ts: 134 	 np: 7116707 (799696 added, 800190 removed)	 max den: 9.6430096515235600000000000E+16 max |phi|: 3.1425759671E+06 max_comm_iteration: 1 ****
+Main[0][135] - ts: 135 	 np: 7116126 (799696 added, 800277 removed)	 max den: 9.6354330106511408000000000E+16 max |phi|: 3.1658423617E+06 max_comm_iteration: 1 ****
+Main[0][136] - ts: 136 	 np: 7115781 (799696 added, 800041 removed)	 max den: 9.6306295504866784000000000E+16 max |phi|: 3.1891087562E+06 max_comm_iteration: 1 ****
+Main[0][137] - ts: 137 	 np: 7115311 (799696 added, 800166 removed)	 max den: 9.6194537163885200000000000E+16 max |phi|: 3.2123751508E+06 max_comm_iteration: 1 ****
+Main[0][138] - ts: 138 	 np: 7114763 (799696 added, 800244 removed)	 max den: 9.6193164336986080000000000E+16 max |phi|: 3.2356415453E+06 max_comm_iteration: 1 ****
+Main[0][139] - ts: 139 	 np: 7114267 (799696 added, 800192 removed)	 max den: 9.6097872649948272000000000E+16 max |phi|: 3.2589079398E+06 max_comm_iteration: 1 ****
+Main[0][140] - ts: 140 	 np: 7113889 (799696 added, 800074 removed)	 max den: 9.6113259509862784000000000E+16 max |phi|: 3.2821743344E+06 max_comm_iteration: 1 ****
+Main[0][141] - ts: 141 	 np: 7113530 (799696 added, 800055 removed)	 max den: 9.6128646369777104000000000E+16 max |phi|: 3.3054407289E+06 max_comm_iteration: 1 ****
+Main[0][142] - ts: 142 	 np: 7112881 (799696 added, 800345 removed)	 max den: 9.6144033229691408000000000E+16 max |phi|: 3.3287071235E+06 max_comm_iteration: 1 ****
+Main[0][143] - ts: 143 	 np: 7112365 (799696 added, 800212 removed)	 max den: 9.6159420089605520000000000E+16 max |phi|: 3.3519735180E+06 max_comm_iteration: 1 ****
+Main[0][144] - ts: 144 	 np: 7112004 (799696 added, 800057 removed)	 max den: 9.6174806949519856000000000E+16 max |phi|: 3.3752399125E+06 max_comm_iteration: 1 ****
+Main[0][145] - ts: 145 	 np: 7111523 (799696 added, 800177 removed)	 max den: 9.6190193809434256000000000E+16 max |phi|: 3.3985063071E+06 max_comm_iteration: 1 ****
+Main[0][146] - ts: 146 	 np: 7111130 (799696 added, 800089 removed)	 max den: 9.6139853705820256000000000E+16 max |phi|: 3.4217727016E+06 max_comm_iteration: 1 ****
+Main[0][147] - ts: 147 	 np: 7110488 (799696 added, 800338 removed)	 max den: 9.6155219522435888000000000E+16 max |phi|: 3.4450390962E+06 max_comm_iteration: 1 ****
+Main[0][148] - ts: 148 	 np: 7109795 (799696 added, 800389 removed)	 max den: 9.6170585339051568000000000E+16 max |phi|: 3.4683054907E+06 max_comm_iteration: 1 ****
+Main[0][149] - ts: 149 	 np: 7109285 (799696 added, 800206 removed)	 max den: 9.6143093234696368000000000E+16 max |phi|: 3.4915718852E+06 max_comm_iteration: 1 ****
+Main[0][150] - ts: 150 	 np: 7108712 (799696 added, 800269 removed)	 max den: 9.6158438008013504000000000E+16 max |phi|: 3.5148382798E+06 max_comm_iteration: 1 ****
+Main[0][151] - ts: 151 	 np: 7108175 (799696 added, 800233 removed)	 max den: 9.6173789581081680000000000E+16 max |phi|: 3.5381046743E+06 max_comm_iteration: 1 ****
+Main[0][152] - ts: 152 	 np: 7107825 (799696 added, 800046 removed)	 max den: 9.6087662222824704000000000E+16 max |phi|: 3.5613710689E+06 max_comm_iteration: 1 ****
+Main[0][153] - ts: 153 	 np: 7107440 (799696 added, 800081 removed)	 max den: 9.6102976941636768000000000E+16 max |phi|: 3.5846374634E+06 max_comm_iteration: 1 ****
+Main[0][154] - ts: 154 	 np: 7106936 (799696 added, 800200 removed)	 max den: 9.6118300671655152000000000E+16 max |phi|: 3.6079038580E+06 max_comm_iteration: 1 ****
+Main[0][155] - ts: 155 	 np: 7106467 (799696 added, 800165 removed)	 max den: 9.6133628617891264000000000E+16 max |phi|: 3.6311702525E+06 max_comm_iteration: 1 ****
+Main[0][156] - ts: 156 	 np: 7106048 (799696 added, 800115 removed)	 max den: 9.6108918484483248000000000E+16 max |phi|: 3.6544366470E+06 max_comm_iteration: 1 ****
+Main[0][157] - ts: 157 	 np: 7105652 (799696 added, 800092 removed)	 max den: 9.6124254840481200000000000E+16 max |phi|: 3.6777030416E+06 max_comm_iteration: 1 ****
+Main[0][158] - ts: 158 	 np: 7105358 (799696 added, 799990 removed)	 max den: 9.6098285503902576000000000E+16 max |phi|: 3.7009694361E+06 max_comm_iteration: 1 ****
+Main[0][159] - ts: 159 	 np: 7104934 (799696 added, 800120 removed)	 max den: 9.6053533237451632000000000E+16 max |phi|: 3.7242358307E+06 max_comm_iteration: 1 ****
+Main[0][160] - ts: 160 	 np: 7104499 (799696 added, 800131 removed)	 max den: 9.6049533712020304000000000E+16 max |phi|: 3.7475022252E+06 max_comm_iteration: 1 ****
+Main[0][161] - ts: 161 	 np: 7103932 (799696 added, 800263 removed)	 max den: 9.6004690861825264000000000E+16 max |phi|: 3.7707686197E+06 max_comm_iteration: 1 ****
+Main[0][162] - ts: 162 	 np: 7103607 (799696 added, 800021 removed)	 max den: 9.6019951461948112000000000E+16 max |phi|: 3.7940350143E+06 max_comm_iteration: 1 ****
+Main[0][163] - ts: 163 	 np: 7103006 (799696 added, 800297 removed)	 max den: 9.6035212062071104000000000E+16 max |phi|: 3.8173014088E+06 max_comm_iteration: 1 ****
+Main[0][164] - ts: 164 	 np: 7102573 (799696 added, 800129 removed)	 max den: 9.6050472662193728000000000E+16 max |phi|: 3.8405678034E+06 max_comm_iteration: 1 ****
+Main[0][165] - ts: 165 	 np: 7102120 (799696 added, 800149 removed)	 max den: 9.6045729059912848000000000E+16 max |phi|: 3.8638341979E+06 max_comm_iteration: 1 ****
+Main[0][166] - ts: 166 	 np: 7101668 (799696 added, 800148 removed)	 max den: 9.6024707867119488000000000E+16 max |phi|: 3.8871005924E+06 max_comm_iteration: 1 ****
+Main[0][167] - ts: 167 	 np: 7101350 (799696 added, 800014 removed)	 max den: 9.6039939006624304000000000E+16 max |phi|: 3.9103669870E+06 max_comm_iteration: 1 ****
+Main[0][168] - ts: 168 	 np: 7100905 (799696 added, 800141 removed)	 max den: 9.6055170146129120000000000E+16 max |phi|: 3.9336333815E+06 max_comm_iteration: 1 ****
+Main[0][169] - ts: 169 	 np: 7100400 (799696 added, 800201 removed)	 max den: 9.6070401285633904000000000E+16 max |phi|: 3.9568997761E+06 max_comm_iteration: 1 ****
+Main[0][170] - ts: 170 	 np: 7100225 (799696 added, 799871 removed)	 max den: 9.6085632425138864000000000E+16 max |phi|: 3.9801661706E+06 max_comm_iteration: 1 ****
+Main[0][171] - ts: 171 	 np: 7099828 (799696 added, 800093 removed)	 max den: 9.6100863564643808000000000E+16 max |phi|: 4.0034325652E+06 max_comm_iteration: 1 ****
+Main[0][172] - ts: 172 	 np: 7099319 (799696 added, 800205 removed)	 max den: 9.6116094704148576000000000E+16 max |phi|: 4.0266989597E+06 max_comm_iteration: 1 ****
+Main[0][173] - ts: 173 	 np: 7098864 (799696 added, 800151 removed)	 max den: 9.6077349910205760000000000E+16 max |phi|: 4.0499653542E+06 max_comm_iteration: 1 ****
+Main[0][174] - ts: 174 	 np: 7098503 (799696 added, 800057 removed)	 max den: 9.6041978117494912000000000E+16 max |phi|: 4.0732317488E+06 max_comm_iteration: 1 ****
+Main[0][175] - ts: 175 	 np: 7097994 (799696 added, 800205 removed)	 max den: 9.6057192422360848000000000E+16 max |phi|: 4.0964981433E+06 max_comm_iteration: 1 ****
+Main[0][176] - ts: 176 	 np: 7097470 (799696 added, 800220 removed)	 max den: 9.6072411961279728000000000E+16 max |phi|: 4.1197645379E+06 max_comm_iteration: 1 ****
+Main[0][177] - ts: 177 	 np: 7097147 (799696 added, 800019 removed)	 max den: 9.6041298880179056000000000E+16 max |phi|: 4.1430309324E+06 max_comm_iteration: 1 ****
+Main[0][178] - ts: 178 	 np: 7096880 (799696 added, 799963 removed)	 max den: 9.6056513185045280000000000E+16 max |phi|: 4.1662973269E+06 max_comm_iteration: 1 ****
+Main[0][179] - ts: 179 	 np: 7096405 (799696 added, 800171 removed)	 max den: 9.6071727489911072000000000E+16 max |phi|: 4.1895637215E+06 max_comm_iteration: 1 ****
+Main[0][180] - ts: 180 	 np: 7096050 (799696 added, 800051 removed)	 max den: 9.6086941794777104000000000E+16 max |phi|: 4.2128301160E+06 max_comm_iteration: 1 ****
+Main[0][181] - ts: 181 	 np: 7095759 (799696 added, 799987 removed)	 max den: 9.6102182646057776000000000E+16 max |phi|: 4.2360965106E+06 max_comm_iteration: 1 ****
+Main[0][182] - ts: 182 	 np: 7095162 (799696 added, 800293 removed)	 max den: 9.6117439037521216000000000E+16 max |phi|: 4.2593629051E+06 max_comm_iteration: 1 ****
+Main[0][183] - ts: 183 	 np: 7094771 (799696 added, 800087 removed)	 max den: 9.6132699974515728000000000E+16 max |phi|: 4.2826292996E+06 max_comm_iteration: 1 ****
+Main[0][184] - ts: 184 	 np: 7094052 (799696 added, 800415 removed)	 max den: 9.6147977409277616000000000E+16 max |phi|: 4.3058956942E+06 max_comm_iteration: 1 ****
+Main[0][185] - ts: 185 	 np: 7093794 (799696 added, 799954 removed)	 max den: 9.6125299360152384000000000E+16 max |phi|: 4.3291620887E+06 max_comm_iteration: 1 ****
+Main[0][186] - ts: 186 	 np: 7093454 (799696 added, 800036 removed)	 max den: 9.6140568377594864000000000E+16 max |phi|: 4.3524284833E+06 max_comm_iteration: 1 ****
+Main[0][187] - ts: 187 	 np: 7093005 (799696 added, 800145 removed)	 max den: 9.6155851090857888000000000E+16 max |phi|: 4.3756948778E+06 max_comm_iteration: 1 ****
+Main[0][188] - ts: 188 	 np: 7092606 (799696 added, 800095 removed)	 max den: 9.6171141151598832000000000E+16 max |phi|: 4.3989612724E+06 max_comm_iteration: 1 ****
+Main[0][189] - ts: 189 	 np: 7092282 (799696 added, 800020 removed)	 max den: 9.6186446656999200000000000E+16 max |phi|: 4.4222276669E+06 max_comm_iteration: 1 ****
+Main[0][190] - ts: 190 	 np: 7091848 (799696 added, 800130 removed)	 max den: 9.6201757761038512000000000E+16 max |phi|: 4.4454940614E+06 max_comm_iteration: 1 ****
+Main[0][191] - ts: 191 	 np: 7091666 (799696 added, 799878 removed)	 max den: 9.6217068865078032000000000E+16 max |phi|: 4.4687604560E+06 max_comm_iteration: 1 ****
+Main[0][192] - ts: 192 	 np: 7091446 (799696 added, 799916 removed)	 max den: 9.6232379969117456000000000E+16 max |phi|: 4.4920268505E+06 max_comm_iteration: 1 ****
+Main[0][193] - ts: 193 	 np: 7091180 (799696 added, 799962 removed)	 max den: 9.6247691073156912000000000E+16 max |phi|: 4.5152932451E+06 max_comm_iteration: 1 ****
+Main[0][194] - ts: 194 	 np: 7090962 (799696 added, 799914 removed)	 max den: 9.6142020291424304000000000E+16 max |phi|: 4.5385596396E+06 max_comm_iteration: 1 ****
+Main[0][195] - ts: 195 	 np: 7090616 (799696 added, 800042 removed)	 max den: 9.6157322978144496000000000E+16 max |phi|: 4.5618260341E+06 max_comm_iteration: 1 ****
+Main[0][196] - ts: 196 	 np: 7090245 (799696 added, 800067 removed)	 max den: 9.6172639616715744000000000E+16 max |phi|: 4.5850924287E+06 max_comm_iteration: 1 ****
+Main[0][197] - ts: 197 	 np: 7089962 (799696 added, 799979 removed)	 max den: 9.6188013059702352000000000E+16 max |phi|: 4.6083588232E+06 max_comm_iteration: 1 ****
+Main[0][198] - ts: 198 	 np: 7089732 (799696 added, 799926 removed)	 max den: 9.6203420492317184000000000E+16 max |phi|: 4.6316252178E+06 max_comm_iteration: 1 ****
+Main[0][199] - ts: 199 	 np: 7089317 (799696 added, 800111 removed)	 max den: 9.6218828395530416000000000E+16 max |phi|: 4.6548916123E+06 max_comm_iteration: 1 ****
+Main[0][200] - ts: 200 	 np: 7088889 (799696 added, 800124 removed)	 max den: 9.6234236298743152000000000E+16 max |phi|: 4.6781580068E+06 max_comm_iteration: 1 ****
+Main[0][201] - ts: 201 	 np: 7088523 (799696 added, 800062 removed)	 max den: 9.6167249124630272000000000E+16 max |phi|: 4.7014244014E+06 max_comm_iteration: 1 ****
+Main[0][202] - ts: 202 	 np: 7088216 (799696 added, 800003 removed)	 max den: 9.6182648610523520000000000E+16 max |phi|: 4.7246907959E+06 max_comm_iteration: 1 ****
+Main[0][203] - ts: 203 	 np: 7087898 (799696 added, 800014 removed)	 max den: 9.6198048096417232000000000E+16 max |phi|: 4.7479571905E+06 max_comm_iteration: 1 ****
+Main[0][204] - ts: 204 	 np: 7087462 (799696 added, 800132 removed)	 max den: 9.6213447582310704000000000E+16 max |phi|: 4.7712235850E+06 max_comm_iteration: 1 ****
+Main[0][205] - ts: 205 	 np: 7087058 (799696 added, 800100 removed)	 max den: 9.6228867832154688000000000E+16 max |phi|: 4.7944899796E+06 max_comm_iteration: 1 ****
+Main[0][206] - ts: 206 	 np: 7086772 (799696 added, 799982 removed)	 max den: 9.6186723642741040000000000E+16 max |phi|: 4.8177563741E+06 max_comm_iteration: 1 ****
+Main[0][207] - ts: 207 	 np: 7086399 (799696 added, 800069 removed)	 max den: 9.6202162088160288000000000E+16 max |phi|: 4.8410227686E+06 max_comm_iteration: 1 ****
+Main[0][208] - ts: 208 	 np: 7086149 (799696 added, 799946 removed)	 max den: 9.6217600125826176000000000E+16 max |phi|: 4.8642891632E+06 max_comm_iteration: 1 ****
+Main[0][209] - ts: 209 	 np: 7085806 (799696 added, 800039 removed)	 max den: 9.6210717407122208000000000E+16 max |phi|: 4.8875555577E+06 max_comm_iteration: 1 ****
+Main[0][210] - ts: 210 	 np: 7085573 (799696 added, 799929 removed)	 max den: 9.6226139272513216000000000E+16 max |phi|: 4.9108219523E+06 max_comm_iteration: 1 ****
+Main[0][211] - ts: 211 	 np: 7085250 (799696 added, 800019 removed)	 max den: 9.6241576636344096000000000E+16 max |phi|: 4.9340883468E+06 max_comm_iteration: 1 ****
+Main[0][212] - ts: 212 	 np: 7084886 (799696 added, 800060 removed)	 max den: 9.6220348694848960000000000E+16 max |phi|: 4.9573547413E+06 max_comm_iteration: 1 ****
+Main[0][213] - ts: 213 	 np: 7084545 (799696 added, 800037 removed)	 max den: 9.6235760806721712000000000E+16 max |phi|: 4.9806211359E+06 max_comm_iteration: 1 ****
+Main[0][214] - ts: 214 	 np: 7084052 (799696 added, 800189 removed)	 max den: 9.6207850867369312000000000E+16 max |phi|: 5.0038875304E+06 max_comm_iteration: 1 ****
+Main[0][215] - ts: 215 	 np: 7083724 (799696 added, 800024 removed)	 max den: 9.6157951500154304000000000E+16 max |phi|: 5.0271539250E+06 max_comm_iteration: 1 ****
+Main[0][216] - ts: 216 	 np: 7083399 (799696 added, 800021 removed)	 max den: 9.6173334151408912000000000E+16 max |phi|: 5.0504203195E+06 max_comm_iteration: 1 ****
+Main[0][217] - ts: 217 	 np: 7083041 (799696 added, 800054 removed)	 max den: 9.1917849077272368000000000E+16 max |phi|: 5.0736867140E+06 max_comm_iteration: 1 ****
+Main[0][218] - ts: 218 	 np: 7082696 (799696 added, 800041 removed)	 max den: 9.1924995381466640000000000E+16 max |phi|: 5.0969531086E+06 max_comm_iteration: 1 ****
+Main[0][219] - ts: 219 	 np: 7082181 (799696 added, 800211 removed)	 max den: 9.1815540599162800000000000E+16 max |phi|: 5.1202195031E+06 max_comm_iteration: 1 ****
+Main[0][220] - ts: 220 	 np: 7081790 (799696 added, 800087 removed)	 max den: 9.1822665860058784000000000E+16 max |phi|: 5.1434858977E+06 max_comm_iteration: 1 ****
+Main[0][221] - ts: 221 	 np: 7081368 (799696 added, 800118 removed)	 max den: 9.1829791120954576000000000E+16 max |phi|: 5.1667522922E+06 max_comm_iteration: 1 ****
+Main[0][222] - ts: 222 	 np: 7080908 (799696 added, 800156 removed)	 max den: 9.1836915686845360000000000E+16 max |phi|: 5.1900186868E+06 max_comm_iteration: 1 ****
+Main[0][223] - ts: 223 	 np: 7080620 (799696 added, 799984 removed)	 max den: 9.1844038354514304000000000E+16 max |phi|: 5.2132850813E+06 max_comm_iteration: 1 ****
+Main[0][224] - ts: 224 	 np: 7080340 (799696 added, 799976 removed)	 max den: 9.1851163615410208000000000E+16 max |phi|: 5.2365514758E+06 max_comm_iteration: 1 ****
+Main[0][225] - ts: 225 	 np: 7080032 (799696 added, 800004 removed)	 max den: 9.1754926786853808000000000E+16 max |phi|: 5.2598178704E+06 max_comm_iteration: 1 ****
+Main[0][226] - ts: 226 	 np: 7079679 (799696 added, 800049 removed)	 max den: 9.1762043630430144000000000E+16 max |phi|: 5.2830842649E+06 max_comm_iteration: 1 ****
+Main[0][227] - ts: 227 	 np: 7079357 (799696 added, 800018 removed)	 max den: 9.1769160474006256000000000E+16 max |phi|: 5.3063506595E+06 max_comm_iteration: 1 ****
+Main[0][228] - ts: 228 	 np: 7078844 (799696 added, 800209 removed)	 max den: 9.1776277317582720000000000E+16 max |phi|: 5.3296170540E+06 max_comm_iteration: 1 ****
+Main[0][229] - ts: 229 	 np: 7078563 (799696 added, 799977 removed)	 max den: 9.1783394161159120000000000E+16 max |phi|: 5.3528834485E+06 max_comm_iteration: 1 ****
+Main[0][230] - ts: 230 	 np: 7078127 (799696 added, 800132 removed)	 max den: 9.1676008763910912000000000E+16 max |phi|: 5.3761498431E+06 max_comm_iteration: 1 ****
+Main[0][231] - ts: 231 	 np: 7077822 (799696 added, 800001 removed)	 max den: 9.1683118567955424000000000E+16 max |phi|: 5.3994162376E+06 max_comm_iteration: 1 ****
+Main[0][232] - ts: 232 	 np: 7077423 (799696 added, 800095 removed)	 max den: 9.1690230843686848000000000E+16 max |phi|: 5.4226826322E+06 max_comm_iteration: 1 ****
+Main[0][233] - ts: 233 	 np: 7077116 (799696 added, 800003 removed)	 max den: 9.1616147960207408000000000E+16 max |phi|: 5.4459490267E+06 max_comm_iteration: 1 ****
+Main[0][234] - ts: 234 	 np: 7076832 (799696 added, 799980 removed)	 max den: 9.1623247969144912000000000E+16 max |phi|: 5.4692154212E+06 max_comm_iteration: 1 ****
+Main[0][235] - ts: 235 	 np: 7076523 (799696 added, 800005 removed)	 max den: 9.1630347978082288000000000E+16 max |phi|: 5.4924818158E+06 max_comm_iteration: 1 ****
+Main[0][236] - ts: 236 	 np: 7076316 (799696 added, 799903 removed)	 max den: 9.1637447987019792000000000E+16 max |phi|: 5.5157482103E+06 max_comm_iteration: 1 ****
+Main[0][237] - ts: 237 	 np: 7075922 (799696 added, 800090 removed)	 max den: 9.1644547995957232000000000E+16 max |phi|: 5.5390146049E+06 max_comm_iteration: 1 ****
+Main[0][238] - ts: 238 	 np: 7075635 (799696 added, 799983 removed)	 max den: 9.1651648004894784000000000E+16 max |phi|: 5.5622809994E+06 max_comm_iteration: 1 ****
+Main[0][239] - ts: 239 	 np: 7075522 (799696 added, 799809 removed)	 max den: 9.1658748013832224000000000E+16 max |phi|: 5.5855473940E+06 max_comm_iteration: 1 ****
+Main[0][240] - ts: 240 	 np: 7075222 (799696 added, 799996 removed)	 max den: 9.1665848022769472000000000E+16 max |phi|: 5.6088137885E+06 max_comm_iteration: 1 ****
+Main[0][241] - ts: 241 	 np: 7074958 (799696 added, 799960 removed)	 max den: 9.1672948031707136000000000E+16 max |phi|: 5.6320801830E+06 max_comm_iteration: 1 ****
+Main[0][242] - ts: 242 	 np: 7074688 (799696 added, 799966 removed)	 max den: 9.1672862518869200000000000E+16 max |phi|: 5.6553465776E+06 max_comm_iteration: 1 ****
+Main[0][243] - ts: 243 	 np: 7074200 (799696 added, 800184 removed)	 max den: 9.1569174790690352000000000E+16 max |phi|: 5.6786129721E+06 max_comm_iteration: 1 ****
+Main[0][244] - ts: 244 	 np: 7073890 (799696 added, 800006 removed)	 max den: 9.1568896412239712000000000E+16 max |phi|: 5.7018793667E+06 max_comm_iteration: 1 ****
+Main[0][245] - ts: 245 	 np: 7073599 (799696 added, 799987 removed)	 max den: 9.1525271948948544000000000E+16 max |phi|: 5.7251457612E+06 max_comm_iteration: 1 ****
+Main[0][246] - ts: 246 	 np: 7073311 (799696 added, 799984 removed)	 max den: 9.1467138310361040000000000E+16 max |phi|: 5.7484121557E+06 max_comm_iteration: 1 ****
+Main[0][247] - ts: 247 	 np: 7073025 (799696 added, 799982 removed)	 max den: 9.1474204650020752000000000E+16 max |phi|: 5.7716785503E+06 max_comm_iteration: 1 ****
+Main[0][248] - ts: 248 	 np: 7072696 (799696 added, 800025 removed)	 max den: 9.1481270989680224000000000E+16 max |phi|: 5.7949449448E+06 max_comm_iteration: 1 ****
+Main[0][249] - ts: 249 	 np: 7072644 (799696 added, 799748 removed)	 max den: 9.1377126072719360000000000E+16 max |phi|: 5.8182113394E+06 max_comm_iteration: 1 ****
+Main[0][250] - total particles= 15717472
+Main[0][250] - Main loop completed after 250 iterations with 1715969201 particle iterations ****
+Main[25][250] - total particles= 33043271
+Main[29][250] - total particles= 38470380
+Main[30][250] - total particles= 33058703
+Main[31][250] - total particles= 38465571
+Main[32][250] - total particles= 36060566
+Main[33][250] - total particles= 35473325
+Main[34][250] - total particles= 38470380
+Main[35][250] - total particles= 33058698
+Main[36][250] - total particles= 38465560
+Main[37][250] - total particles= 36060556
+Main[38][250] - total particles= 35443471
+Main[39][250] - total particles= 38441532
+Main[40][250] - total particles= 33045637
+Main[41][250] - total particles= 38465552
+Main[42][250] - total particles= 36060546
+Main[43][250] - total particles= 34202398
+Main[44][250] - total particles= 37018878
+Main[45][250] - total particles= 25519676
+Main[46][250] - total particles= 21461789
+Main[47][250] - total particles= 20624384
+Main[1][250] - total particles= 15640393
+Main[2][250] - total particles= 33788289
+Main[3][250] - total particles= 43280252
+Main[4][250] - total particles= 37832268
+Main[5][250] - total particles= 43275570
+Main[6][250] - total particles= 37868699
+Main[7][250] - total particles= 43275568
+Main[8][250] - total particles= 37868704
+Main[9][250] - total particles= 43270753
+Main[10][250] - total particles= 43122156
+Main[11][250] - total particles= 37997055
+Main[12][250] - total particles= 43246722
+Main[13][250] - total particles= 37855644
+Main[14][250] - total particles= 43280379
+Main[15][250] - total particles= 37868696
+Main[16][250] - total particles= 38465560
+Main[17][250] - total particles= 36060556
+Main[18][250] - total particles= 35443471
+Main[19][250] - total particles= 38441532
+Main[20][250] - total particles= 33045643
+Main[21][250] - total particles= 38465571
+Main[22][250] - total particles= 36060564
+Main[23][250] - total particles= 35473313
+Main[24][250] - total particles= 38470368
+Main[26][250] - total particles= 38441530
+Main[27][250] - total particles= 36028276
+Main[28][250] - total particles= 35473324
+Rank [FINAL]--------------------------------------------------------
+'Profile'                'Count'	'TotalTime'	'AverageTime'	'MeshTransferSize'	'MeshCommunicationTime'	'ParticleTransferSize'	'ParticleTransferCount'	'ParticleCommunicationTime'
+0 0 CalcPosVel          	250   	0.9056740850	0.7901939867	0	0.00123081	0	0	0
+0 0 CalcPosVel_Kernel   	250   	0.9040226000	0.7883719589	0	0	0	0	0
+0 0 ComputeEF_Kernel    	250   	0.0064059890	0.0057542240	0	0	0	0	0
+0 0 ComputeElectricField	250   	0.0130689100	0.0118267041	3.7968e+07	0.00572532	0	0	0
+0 0 ComputeNChargeDen_Ke	250   	0.0003677120	0.0002921353	0	0	0	0	0
+0 0 ComputeNodeChargeDen	250   	0.0013443420	0.0011903507	0	0.000447888	0	0	0
+0 0 ComputePhi          	250   	0.3521011990	0.3306462843	0	0	0	0	0
+0 0 DepCharge           	250   	0.3385255690	0.3189567994	3.7968e+07	0.189993	0	0	0
+0 0 DepCharge_Kernel    	250   	0.3284276700	0.2835129831	0	0	0	0	0
+0 0 EnrichCellShapeDeriv	1     	0.0004277010	0.0003315826	7.41763e+06	0.000354402	0	0	0
+0 0 FSolve_d            	250   	0.0003376560	0.0002859580	0	0	0	0	0
+0 0 FSolve_f1           	250   	0.0653973520	0.0477869025	0	0	0	0	0
+0 0 FSolve_halo         	250   	0.0265530230	0.0085741184	3.7968e+07	0.0261516	0	0	0
+0 0 FSolve_j            	250   	0.1580905450	0.1568654961	0	0	0	0	0
+0 0 FSolve_ksp          	250   	0.1086832830	0.1085568825	0	0	0	0	0
+0 0 FSolve_npot         	250   	0.0004503790	0.0002932746	0	0	0	0	0
+0 0 GblMv_AllMv         	0     	0.0000000000	0.0000000000	0	0	0	0	0
+0 0 GblMv_Move          	0     	0.0000000000	0.0000000000	0	0	0	0	0
+0 0 GetMax              	250   	0.0097202810	0.0067395229	0	0.000346634	0	0	0
+0 0 GetMax__Kernel      	250   	0.0004626360	0.0003326871	0	0	0	0	0
+0 0 GlbToLocal          	0     	0.0000000000	0.0000000000	0	0	0	0	0
+0 0 IncPartCountWithDist	250   	0.0210736840	0.0184373088	0	0	0	0	0
+0 0 InitBndPot          	1     	0.0000055470	0.0000048460	0	3.053e-06	0	0	0
+0 0 InjectIons          	250   	0.1430943540	0.1248855527	4.61748e+08	0.016581	0	0	0
+0 0 InjectIons_Kernel   	250   	0.1265258510	0.1095009658	0	0	0	0	0
+0 0 MainLoop            	1     	4.9573927300	4.9573757283	0	0	0	0	0
+0 0 Move                	250   	3.6971342090	3.3384282327	0	0	0	0	0
+0 0 Move_Kernel         	499   	2.6854610350	2.3078667689	0	0	0	0	0
+0 0 Mv_AllMv0           	250   	2.6786276700	2.2976532660	0	0	0	0	0
+0 0 Mv_AllMv1           	249   	0.0181249640	0.0111560328	0	0	0	0	0
+0 0 Mv_AllMv2           	0     	0.0000000000	0.0000000000	0	0	0	0	0
+0 0 Mv_AllMv3           	0     	0.0000000000	0.0000000000	0	0	0	0	0
+0 0 Mv_AllMv4           	0     	0.0000000000	0.0000000000	0	0	0	0	0
+0 0 Mv_Exchange         	998   	0.0251086710	0.0157728320	0	0	1.31461e+09	15650173	1.97704
+0 0 Mv_Finalize         	499   	2.4397904260	1.0285249758	0	0	0	0	0
+0 0 Mv_Pack             	499   	0.0525291530	0.0342978785	0	0	0	0	0
+0 0 Mv_Unpack           	249   	0.0054610970	0.0036149282	0	0	0	0	0
+0 0 Mv_WaitAll          	249   	0.0022293530	0.0009410341	0	0	0	0	0.00209966
+0 0 Mv_WaitDone0        	250   	0.6394333360	0.3366238574	0	0	0	0	0.639044
+0 0 Mv_WaitDone1        	249   	0.0480807260	0.0248336239	0	0	0	0	0.0479309
+0 0 Mv_WaitDone2        	0     	0.0000000000	0.0000000000	0	0	0	0	0
+0 0 Mv_WaitDone3        	0     	0.0000000000	0.0000000000	0	0	0	0	0
+0 0 Mv_WaitDone4        	0     	0.0000000000	0.0000000000	0	0	0	0	0
+0 0 Mv_WaitExCnt0       	250   	1.9607016210	0.2654699958	0	0	0	0	0
+0 0 Mv_WaitExCnt1       	249   	0.0175783820	0.0085682665	0	0	0	0	0
+0 0 Mv_WaitExCnt2       	0     	0.0000000000	0.0000000000	0	0	0	0	0
+0 0 Mv_WaitExCnt3       	0     	0.0000000000	0.0000000000	0	0	0	0	0
+0 0 Mv_WaitExCnt4       	0     	0.0000000000	0.0000000000	0	0	0	0	0
+0 0 Mv_WaitExRecv0      	249   	0.0016097940	0.0003888219	0	0	0	0	0
+0 0 Mv_WaitExRecv1      	0     	0.0000000000	0.0000000000	0	0	0	0	0
+0 0 Mv_WaitExRecv2      	0     	0.0000000000	0.0000000000	0	0	0	0	0
+0 0 Mv_WaitExRecv3      	0     	0.0000000000	0.0000000000	0	0	0	0	0
+0 0 Mv_WaitExRecv4      	0     	0.0000000000	0.0000000000	0	0	0	0	0
+0 0 Setup               	1     	0.2896314010	0.2886781773	0	0	0	0	0
+0 0 SetupMover          	1     	0.0000197070	0.0000095664	0	0	0	0	0
+0 0 genColsForPart      	1     	0.0064174270	0.0046212481	0	0	0	0	0
+0 0 opp_partition       	1     	0.0258234220	0.0242152591	0	0	0	0	0

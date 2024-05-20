@@ -3,13 +3,15 @@
 **This folder contain both user written code and OP-PIC code generated code.**
 
 All the user written code will have the below comment;
-//*********************************************
-// USER WRITTEN CODE
+
+//*********************************************<br>
+// USER WRITTEN CODE<br>
 //*********************************************
 
 The code-generator has added the below comment to all the generated code; 
-//*********************************************
-// AUTO GENERATED CODE
+
+//*********************************************<br>
+// AUTO GENERATED CODE<br>
 //*********************************************
 
 If code-generator is invoked in this folder, the available generated code will be replaced with the newly generated code (May generate the same if `cabana.cpp` or `kernels.h` is not changed)
@@ -47,7 +49,7 @@ Once the platform specific target files are generated, use the provided `MakeFil
  * `make hip_mpi`
 
 ## Configuration
-An example configuration file is provided in `OP-PIC/cabanapic/configs` folder.
+An example configuration file is provided in `OP-PIC/app_cabanapic_cg/configs` folder.
 
 This file can be used to change the application configurations such as number of steps in the main iterating loop (`num_steps`), domain mesh size (`nx, ny, nz`) and other parameters included in the original CabanaPIC application. 
 

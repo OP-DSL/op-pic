@@ -5,7 +5,7 @@ This repository contains the implementation of the code translation tools and ru
  * `opp_lib`: The C/C++ OP-PIC run-time libraries.
  * `opp_translator`: The Python code translator for C/C++.
  * `app_<app_name>`: Example applications that demonstrate use of the API ready to be code-generated.
- * `app_<app_name>_cg`: Copy of the example applications that are already code generated. 
+ * `app_<app_name>_cg`: Copy of the example applications that are already being code generated. 
  * `source`: Some example source files used during implementation
  * `batch`: Some example slurm batch files used during implementation
 
