@@ -21,3 +21,6 @@ export LD_LIBRARY_PATH=$PETSC_INSTALL_PATH/lib:$LD_LIBRARY_PATH
 # # uncomment these if using hipcc
 # export HIPCC_COMPILE_FLAGS_APPEND="--offload-arch=gfx90a $(CC --cray-print-opts=cflags)"
 # export HIPCC_LINK_FLAGS_APPEND=$(CC --cray-print-opts=libs)
+
+module load Python/3.10.4
+source $OPP/opp_translator/opp_venv/bin/activate

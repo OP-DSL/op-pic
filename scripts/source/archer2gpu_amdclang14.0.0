@@ -27,3 +27,6 @@ export HDF5_PATH=/opt/cray/pe/hdf5/1.12.2.1
 # HIPCCFLAGS = -std=c++17 -D__HIP_PLATFORM_AMD__ --offload-arch=gfx90a -munsafe-fp-atomics -DUSE_THRUST
 # ALL_INC    += -I$(OPPIC_PATH)/include -I${CRAY_MPICH_DIR}/include -L${CRAY_MPICH_DIR}/lib ${PE_MPICH_GTL_DIR_amd_gfx90a} -I$(PETSC_INSTALL_PATH)/include -I${HDF5_PATH}/include
 # ALL_LIBS   += -L$(OPPIC_PATH)/lib -lmpi ${PE_MPICH_GTL_LIBS_amd_gfx90a} -L$(PETSC_INSTALL_PATH)/lib -lpetsc -I${HDF5_PATH}/lib
+
+module load Python/3.10.4
+source $OPP/opp_translator/opp_venv/bin/activate

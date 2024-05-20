@@ -52,8 +52,9 @@ inline int init_inject_distributions(opp_dat if_dist_dat, opp_dat if_area_dat,
     int total_inject_count = 0, max_inject_count_per_face = 0;
     double remainder = 0.0;
 
-    opp_printf("init_inject_distributions", "plasma_den=%2.15lE dt=%2.25lE ion_velocity=%2.15lE spwt=%2.15lE", 
-        plasma_den, dt, ion_velocity, spwt);
+    if (OPP_DBG) 
+        opp_printf("init_inject_distributions", "plasma_den=%2.15lE dt=%2.25lE ion_velocity=%2.15lE spwt=%2.15lE", 
+            plasma_den, dt, ion_velocity, spwt);
 
     // find the number of particles to be injected through each inlet face and 
     // get the max injected particle count per face

@@ -7,7 +7,7 @@ STRING plasma_species = Duterium
 REAL spwt = 2e2
 
 # Simulation parameters
-INT max_iter = 250
+INT num_steps = 250
 REAL dt       = 1e-12
 STRING fesolver_method = petsc
 BOOL check_max_values = true
