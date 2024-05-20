@@ -6,8 +6,9 @@ This repository contains the implementation of the code translation tools and ru
  * `opp_translator`: The Python code translator for C/C++.
  * `app_<app_name>`: Example applications that demonstrate use of the API ready to be code-generated.
  * `app_<app_name>_cg`: Copy of the example applications that are already being code generated. 
- * `source`: Some example source files used during implementation
- * `batch`: Some example slurm batch files used during implementation
+ * `scripts/source`: Some example source files used during implementation
+ * `scripts/batch`: Some example slurm batch files used during implementation
+ * `handcoded`: Some hand-coded application code, written prior code generation
 
 ## Dependencies
 OP-PIC has a variety of toolchain dependencies that you will likely be able to obtain from your package manager or programming environment:
@@ -24,7 +25,7 @@ In addition, there are a few optional library dependencies that you will likely 
  * (Optional) [ParMETIS](http://glaros.dtc.umn.edu/gkhome/metis/parmetis/overview): Can be used for MPI mesh partitioning. Build *with* 32-bit indicies (`-DIDXSIZE32`) and *without* `-DSCOTCH_PTHREAD`. Specify ParMETIS via the environment variable `PARMETIS_INSTALL_PATH`.
 
 ## Compile OP-PIC library bindings
- * Source the compiler and other environment variables (some example source files can be found at `OP-PIC/source` directory).
+ * Source the compiler and other environment variables (some example source files can be found at `OP-PIC/scripts/source` directory).
  * Change directory to `OP-PIC/opp_lib`.
  * Compile the required platform specific backend library using make commands (e.g. `make cuda_mpi`).
 

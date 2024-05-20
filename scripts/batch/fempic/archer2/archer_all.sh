@@ -1,0 +1,10 @@
+
+sbatch archer_fempic_mpi_1.sh
+sbatch archer_fempic_mpi_2.sh
+sbatch archer_fempic_mpi_4.sh
+sbatch archer_fempic_mpi_8.sh
+sbatch archer_fempic_mpi_16.sh
+sbatch archer_fempic_mpi_32.sh
+sbatch archer_fempic_mpi_64.sh
+sbatch archer_fempic_mpi_128.sh
+sbatch archer_fempic_mpi_256.sh

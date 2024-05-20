@@ -1,0 +1,22 @@
+#!/bin/bash
+
+module purge
+
+module load gcc/12.2 
+module load openmpi/4.0.5 
+module load cuda/12.0.1 
+module load openblas/0.3.10 
+module load hdf5/1.10.7
+
+export NVCCFLAGS_ADD='-gencode arch=compute_70,code=sm_70'
+
+export OPP=/users/csrcnl/phd/OP-PIC
+export OPP_INSTALL_PATH=$OPP/opp_install
+export OPP_TRANSLATOR=$OPP/opp_translator/translator
+export OPP_PATH=$OPP/opp_lib
+
+export PETSC_INSTALL_PATH=/users/csrcnl/lib_install/petsc-3.20.1_rel
+export LD_LIBRARY_PATH=$PETSC_INSTALL_PATH/lib:$LD_LIBRARY_PATH
+
+alias nv='nvidia-smi -l 1'
+
