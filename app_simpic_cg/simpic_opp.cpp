@@ -1,3 +1,5 @@
+
+// Auto-generated at 2024-05-20 14:11:43.571824 by opp-translator
 /* 
 BSD 3-Clause License
 
@@ -30,25 +32,18 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
 //*********************************************
-// USER WRITTEN CODE
+// AUTO GENERATED CODE
 //*********************************************
 
-#include "opp_templates.h"
+#include "opp_lib.h"
 
-OPP_REAL CONST_lhs_voltage[1];
-OPP_REAL CONST_L[1];
-OPP_REAL CONST_xl[1];
-OPP_REAL CONST_xr[1];
-OPP_REAL CONST_dx[1];
-OPP_REAL CONST_qm[1];
-OPP_REAL CONST_dt[1];
-OPP_REAL CONST_qscale[1];
-OPP_INT CONST_neighbour_cell[2];
-OPP_INT CONST_rank[1];
-OPP_INT CONST_comm_size[1];
+void opp_par_loop_all__weight_f2p_kernel(opp_set,opp_iterate_type,opp_arg,opp_arg,opp_arg,opp_arg);
+void opp_particle_move__move_kernel(opp_set,opp_map,opp_map,opp_arg,opp_arg,opp_arg);
+void opp_par_loop_all__weight_p2f_kernel(opp_set,opp_iterate_type,opp_arg,opp_arg,opp_arg);
+void opp_par_loop_all__sum_laplace_kernel(opp_set,opp_iterate_type,opp_arg,opp_arg);
 
 #include "simpic_defs.h"
-#include "kernels.h"
+// #include "kenels.h" // codegen commented...
 
 //*********************************************MAIN****************************************************
 int main(int argc, char* argv[]) 
@@ -103,7 +98,7 @@ int main(int argc, char* argv[])
         for (OPP_main_loop_iter = 0; OPP_main_loop_iter < ntimesteps; ++OPP_main_loop_iter)
         {
             // STEP 1 - Weight mesh field values to particle positions ************************************
-            opp_par_loop(weight_f2p_kernel, "weight_f2p_kernel", parts_set, OPP_ITERATE_ALL,
+            opp_par_loop_all__weight_f2p_kernel(parts_set, OPP_ITERATE_ALL,
                 opp_arg_dat(n_field_e, 0, c2n_map, p2c_map, OPP_READ),  // lhs n_field_e
                 opp_arg_dat(n_field_e, 1, c2n_map, p2c_map, OPP_READ),  // rhs n_field_e  
                 opp_arg_dat(p_pos_x,                        OPP_READ),    
@@ -111,7 +106,7 @@ int main(int argc, char* argv[])
             );
 
             // STEP 2 - Move the particles with the influence of the fields *******************************
-            opp_particle_move(move_kernel, "move", parts_set, c2c_map, p2c_map,
+            opp_particle_move__move_kernel(parts_set, c2c_map, p2c_map,
                 opp_arg_dat(p_field_e, OPP_READ),
                 opp_arg_dat(p_vel_x,   OPP_RW),
                 opp_arg_dat(p_pos_x,   OPP_RW)
@@ -120,7 +115,7 @@ int main(int argc, char* argv[])
             // STEP 3 - Gather the contribution from particle movement to the mesh ************************
             opp_reset_dat(n_field_j, (char*)opp_zero_double16);
 
-            opp_par_loop(weight_p2f_kernel, "weight_p2f_kernel", parts_set, OPP_ITERATE_ALL,
+            opp_par_loop_all__weight_p2f_kernel(parts_set, OPP_ITERATE_ALL,
                 opp_arg_dat(n_field_j, 0, c2n_map, p2c_map, OPP_INC),  // lhs n_field_j
                 opp_arg_dat(n_field_j, 1, c2n_map, p2c_map, OPP_INC),  // rhs n_field_j
                 opp_arg_dat(p_pos_x,                        OPP_READ)  
@@ -131,7 +126,7 @@ int main(int argc, char* argv[])
                 opp_arg_dat(n_field_j, OPP_RW),
                 opp_arg_dat(n_field_p, OPP_RW)
             );
-            opp_par_loop(sum_laplace_kernel, "sum_laplace_kernel", nodes_set, OPP_ITERATE_ALL,
+            opp_par_loop_all__sum_laplace_kernel(nodes_set, OPP_ITERATE_ALL,
                 opp_arg_dat(n_xlocal,  OPP_READ),
                 opp_arg_dat(n_field_p, OPP_RW)
             );
