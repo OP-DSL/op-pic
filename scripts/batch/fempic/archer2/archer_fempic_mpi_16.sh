@@ -27,7 +27,7 @@ export LD_LIBRARY_PATH=$PETSC_INSTALL_PATH/lib:$LD_LIBRARY_PATH
 runFolder=$PWD"/MPI_"$SLURM_JOB_NUM_NODES"_"$(date +"D_%Y_%m_%d_T_%I_%M_%S")
 echo "Creating running folder -> " $runFolder
 
-binpath='/work/e723/e723/csrcnj/phd/OP-PIC/fempic_mpi/bin/'
+binpath='/work/e723/e723/csrcnj/phd/OP-PIC/app_fempic/bin/'
 binary=$binpath'mpi_hdf5'
 echo "Using Binary -> " $binary
 

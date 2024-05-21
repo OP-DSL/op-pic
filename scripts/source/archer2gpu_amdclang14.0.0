@@ -9,6 +9,8 @@ module load rocm
 module load craype-accel-amd-gfx90a
 module load craype-x86-milan
 
+export CC_COMPILER=CC
+export MPI_COMPILER=CC
 export HIP_COMPILER=CC
 export HIPCCFLAGS_ADD="-x hip --offload-arch=gfx90a" 
 
@@ -20,13 +22,13 @@ export OPP_PATH=$OPP/opp_lib
 export PETSC_INSTALL_PATH=/work/e723/e723/csrcnj/lib_install/petsc-3.20.0_Milan
 export LD_LIBRARY_PATH=$PETSC_INSTALL_PATH/lib:$LD_LIBRARY_PATH
 
-export HDF5_PATH=/opt/cray/pe/hdf5-parallel/1.12.2.1
-export HDF5_PATH=/opt/cray/pe/hdf5/1.12.2.1
+export HDF5_INSTALL_PATH=/opt/cray/pe/hdf5-parallel/1.12.2.1
+export HDF5_INSTALL_PATH=/opt/cray/pe/hdf5/1.12.2.1
 
 # srun --gpus=1 --time=00:59:00 --partition=gpu --qos=gpu-shd --account=e723-neptune --pty /bin/bash
 # HIPCCFLAGS = -std=c++17 -D__HIP_PLATFORM_AMD__ --offload-arch=gfx90a -munsafe-fp-atomics -DUSE_THRUST
 # ALL_INC    += -I$(OPPIC_PATH)/include -I${CRAY_MPICH_DIR}/include -L${CRAY_MPICH_DIR}/lib ${PE_MPICH_GTL_DIR_amd_gfx90a} -I$(PETSC_INSTALL_PATH)/include -I${HDF5_PATH}/include
 # ALL_LIBS   += -L$(OPPIC_PATH)/lib -lmpi ${PE_MPICH_GTL_LIBS_amd_gfx90a} -L$(PETSC_INSTALL_PATH)/lib -lpetsc -I${HDF5_PATH}/lib
 
-module load Python/3.10.4
+module load cray-python/3.9.13.1
 source $OPP/opp_translator/opp_venv/bin/activate

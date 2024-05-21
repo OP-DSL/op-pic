@@ -24,7 +24,7 @@ BOOL invert_normals = false
 
 BOOL opp_auto_sort          = false
 REAL opp_allocation_multiple = 11
-INT opp_threads_per_block   = 512
+INT opp_threads_per_block   = 1024
 
 BOOL opp_profile_all        = false
 INT opp_gpu_direct = 0
