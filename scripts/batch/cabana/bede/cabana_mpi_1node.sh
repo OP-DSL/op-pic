@@ -13,13 +13,10 @@ echo "Start date and time: $(date +"%Y-%m-%d %H:%M:%S")"
 runFolder=$PWD"/MPI_1_"$(date +"D_%Y_%m_%d_T_%I_%M_%S")
 echo "Creating running folder" $runFolder
 
-binary="/users/csrcnl/phd/OP-PIC/cabana_mpi/bin/cuda_mpi"
+binary="/users/csrcnl/phd/OP-PIC/app_cabanapic/bin/cuda_mpi"
 echo "Using Binary" $binary
 
 module load gcc/12.2 openmpi/4.0.5 cuda/12.0.1
-
-# module purge
-# module load intel/2022a
 
 # export OMP_PLACES=cores
 # export OMP_PROC_BIND=close

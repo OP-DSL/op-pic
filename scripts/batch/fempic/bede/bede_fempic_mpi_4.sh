@@ -24,7 +24,7 @@ export LD_LIBRARY_PATH=/users/csrcnl/lib_install/petsc-3.20.1_rel/lib:$LD_LIBRAR
 runFolder=$PWD"/CUDA_4NODE_"$(date +"D_%Y_%m_%d_T_%I_%M_%S")
 echo "Creating running folder -> " $runFolder
 
-binary='/users/csrcnl/phd/OP-PIC/fempic_mpi/bin/cuda_mpi_hdf5'
+binary='/users/csrcnl/phd/OP-PIC/app_fempic/bin/cuda_mpi_hdf5'
 echo "Using Binary -> " $binary
 
 hdfOriginalFolder=/users/csrcnl/phd/box_mesh_gen/hdf5N
