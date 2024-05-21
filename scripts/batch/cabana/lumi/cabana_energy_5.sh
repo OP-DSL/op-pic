@@ -1,13 +1,13 @@
 #!/bin/bash
 
-#SBATCH --job-name=cab_32            # Job name
-#SBATCH --output=cab_32.o%j          # Name of stdout output file
-#SBATCH --error=cab_32.e%j           # Name of stderr error file
+#SBATCH --job-name=cab_5energy             # Job name
+#SBATCH --output=cab_5energy.o%j           # Name of stdout output file
+#SBATCH --error=cab_5energy.e%j            # Name of stderr error file
 #SBATCH --partition=standard-g    # Partition (queue) name
-#SBATCH --nodes=32                   # Total number of nodes 
+#SBATCH --nodes=5                    # Total number of nodes 
 #SBATCH --ntasks-per-node=8          # 8 MPI ranks per node, 16 total (2x8)
 #SBATCH --gpus-per-node=8            # Allocate one gpu per MPI rank
-#SBATCH --time=0-02:00:00            # Run time (d-hh:mm:ss)
+#SBATCH --time=0-01:00:00            # Run time (d-hh:mm:ss)
 ##SBATCH --mail-type=all             # Send email at begin and end of job
 #SBATCH --account=project_465001068  # Project for billing
 ##SBATCH --mail-user=username@domain.com
@@ -23,10 +23,6 @@ echo "Creating running folder -> " $runFolder
 binpath=/users/lantraza/phd/OP-PIC/app_cabanapic/bin
 binary=$binpath"/hip_mpi"
 echo "Using Binary -> " $binary
-
-configFile="cabana.param"
-file=/users/lantraza/phd/OP-PIC/scripts/batch/cabana/lumi/$configFile
-echo "Config file -> " $file
 
 cd $binpath
 echo "********************************************************"
@@ -54,7 +50,7 @@ num_nodes=$SLURM_JOB_NUM_NODES
 gpus=8
 
 for config in 750 1500; do
-    for run in 1 2 3 4; do
+    for run in 1 2 3; do
 
         (( totalGPUs=$gpus*$SLURM_JOB_NUM_NODES ))
         echo $file $config
@@ -68,7 +64,7 @@ for config in 750 1500; do
         cp $file $folder
         currentfilename=$folder/$configFile
         
-        (( rnz=$totalGPUs*60 ))
+        (( rnz=32*60 ))
         sed -i "s/INT nz = 30/INT nz = ${rnz}/" ${currentfilename}
         sed -i "s/INT num_part_per_cell = 1500/INT num_part_per_cell = ${config}/" ${currentfilename}
         sed -i "s/STRING cluster = pencil/STRING cluster = block/" ${currentfilename}
@@ -90,7 +86,7 @@ done
 #         cp $file $folder
 #         currentfilename=$folder/$configFile
 
-#         sed -i "s/INT nz = 30/INT nz = 7680/" ${currentfilename}
+#         sed -i "s/INT nz = 30/INT nz = 960/" ${currentfilename}
 #         sed -i "s/INT num_part_per_cell = 1500/INT num_part_per_cell = ${config}/" ${currentfilename}
 #         sed -i "s/STRING cluster = pencil/STRING cluster = cart/" ${currentfilename}
 #         bede-mpirun --bede-par 1ppg $binary $currentfilename  | tee $folder/log_N${num_nodes}_Cart_D${config}_R${run}.log;
@@ -111,7 +107,7 @@ done
 #         cp $file $folder
 #         currentfilename=$folder/$configFile
 
-#         sed -i "s/INT nz = 30/INT nz = 7680/" ${currentfilename}
+#         sed -i "s/INT nz = 30/INT nz = 960/" ${currentfilename}
 #         sed -i "s/INT num_part_per_cell = 1500/INT num_part_per_cell = ${config}/" ${currentfilename}
 #         bede-mpirun --bede-par 1ppg $binary $currentfilename  | tee $folder/log_N${num_nodes}_Pencil_D${config}_R${run}.log;
 #     done

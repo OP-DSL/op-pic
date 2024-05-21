@@ -1,13 +1,13 @@
 #!/bin/bash
 
-#SBATCH --job-name=cab_32            # Job name
-#SBATCH --output=cab_32.o%j          # Name of stdout output file
-#SBATCH --error=cab_32.e%j           # Name of stderr error file
+#SBATCH --job-name=cab_64            # Job name
+#SBATCH --output=cab_64.o%j          # Name of stdout output file
+#SBATCH --error=cab_64.e%j           # Name of stderr error file
 #SBATCH --partition=standard-g    # Partition (queue) name
-#SBATCH --nodes=32                   # Total number of nodes 
+#SBATCH --nodes=64                   # Total number of nodes 
 #SBATCH --ntasks-per-node=8          # 8 MPI ranks per node, 16 total (2x8)
 #SBATCH --gpus-per-node=8            # Allocate one gpu per MPI rank
-#SBATCH --time=0-02:00:00            # Run time (d-hh:mm:ss)
+#SBATCH --time=0-01:00:00            # Run time (d-hh:mm:ss)
 ##SBATCH --mail-type=all             # Send email at begin and end of job
 #SBATCH --account=project_465001068  # Project for billing
 ##SBATCH --mail-user=username@domain.com
@@ -53,8 +53,8 @@ num_nodes=$SLURM_JOB_NUM_NODES
 
 gpus=8
 
-for config in 750 1500; do
-    for run in 1 2 3 4; do
+for config in 750 1500 3000; do
+    for run in 1 2 3; do
 
         (( totalGPUs=$gpus*$SLURM_JOB_NUM_NODES ))
         echo $file $config

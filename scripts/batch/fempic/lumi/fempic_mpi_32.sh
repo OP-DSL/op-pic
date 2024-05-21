@@ -1,12 +1,12 @@
 #!/bin/bash -l
-#SBATCH --job-name=fem_8             # Job name
-#SBATCH --output=fem_8.o%j           # Name of stdout output file
-#SBATCH --error=fem_8.e%j            # Name of stderr error file
+#SBATCH --job-name=fem_32            # Job name
+#SBATCH --output=fem_32.o%j          # Name of stdout output file
+#SBATCH --error=fem_32.e%j           # Name of stderr error file
 #SBATCH --partition=standard-g    # Partition (queue) name
-#SBATCH --nodes=8                    # Total number of nodes 
+#SBATCH --nodes=32                   # Total number of nodes 
 #SBATCH --ntasks-per-node=8          # 8 MPI ranks per node, 16 total (2x8)
 #SBATCH --gpus-per-node=8            # Allocate one gpu per MPI rank
-#SBATCH --time=0-05:00:00            # Run time (d-hh:mm:ss)
+#SBATCH --time=0-01:30:00            # Run time (d-hh:mm:ss)
 ##SBATCH --mail-type=all             # Send email at begin and end of job
 #SBATCH --account=project_465001068  # Project for billing
 ##SBATCH --mail-user=username@domain.com
@@ -57,8 +57,8 @@ num_nodes=$SLURM_JOB_NUM_NODES
 configFile="box_fempic.param"
 file=$PWD'/'$configFile
 
-for run in 1 2 3 4; do
-    for config in 1536000 3072000; do
+for run in 1; do
+    for config in 12288000; do
             
         folder=$runFolder/$config"_mpi"
         (( totalGPUs=8*$SLURM_JOB_NUM_NODES ))

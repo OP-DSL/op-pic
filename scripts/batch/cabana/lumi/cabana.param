@@ -18,7 +18,7 @@ STRING cluster = pencil
 # System parameters
 BOOL opp_auto_sort          = false
 REAL opp_allocation_multiple = 1.1
-INT opp_threads_per_block   = 128
+INT opp_threads_per_block   = 1024
 BOOL opp_profile_all        = false
 BOOL print_final   = true
 INT opp_gpu_direct = 0
@@ -26,3 +26,6 @@ INT opp_gpu_direct = 0
 # HoleFill_All Sort_All Shuffle_All Sort_Periodic Shuffle_Periodic
 STRING opp_fill = HoleFill_All
 INT opp_fill_period = 4
+
+BOOL opp_global_move = false
+BOOL use_reg_red = false

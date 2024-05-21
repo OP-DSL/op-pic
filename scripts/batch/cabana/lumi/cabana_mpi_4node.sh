@@ -3,7 +3,7 @@
 #SBATCH --job-name=cab_4             # Job name
 #SBATCH --output=cab_4.o%j           # Name of stdout output file
 #SBATCH --error=cab_4.e%j            # Name of stderr error file
-#SBATCH --partition=ju-standard-g    # Partition (queue) name
+#SBATCH --partition=standard-g    # Partition (queue) name
 #SBATCH --nodes=4                    # Total number of nodes 
 #SBATCH --ntasks-per-node=8          # 8 MPI ranks per node, 16 total (2x8)
 #SBATCH --gpus-per-node=8            # Allocate one gpu per MPI rank
@@ -20,9 +20,13 @@ echo "Creating running folder" $runFolder
 runFolder=$PWD"/MPI_N"${SLURM_JOB_NUM_NODES}"_SR"${use_seg_red}"_"$(date +"D_%Y_%m_%d_T_%I_%M_%S")
 echo "Creating running folder -> " $runFolder
 
-binpath=/users/lantraza/phd/OP-PIC/cabana_mpi/bin
+binpath=/users/lantraza/phd/OP-PIC/app_cabanapic/bin
 binary=$binpath"/hip_mpi"
 echo "Using Binary -> " $binary
+
+configFile="cabana.param"
+file=/users/lantraza/phd/OP-PIC/scripts/batch/cabana/lumi/$configFile
+echo "Config file -> " $file
 
 cd $binpath
 echo "********************************************************"
@@ -46,9 +50,6 @@ module load cray-hdf5-parallel
 module load SCOTCH/6.1.3-cpeCray-23.09
 
 num_nodes=$SLURM_JOB_NUM_NODES
-
-configFile="cabana.param"
-file=$PWD/$configFile
 
 gpus=8
 

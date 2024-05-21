@@ -1,25 +1,17 @@
 #!/bin/bash -l
-#SBATCH --job-name=fem_8             # Job name
-#SBATCH --output=fem_8.o%j           # Name of stdout output file
-#SBATCH --error=fem_8.e%j            # Name of stderr error file
+#SBATCH --job-name=fem_5             # Job name
+#SBATCH --output=fem_energy5.o%j           # Name of stdout output file
+#SBATCH --error=fem_energy5.e%j            # Name of stderr error file
 #SBATCH --partition=standard-g    # Partition (queue) name
-#SBATCH --nodes=8                    # Total number of nodes 
+#SBATCH --nodes=5                    # Total number of nodes 
 #SBATCH --ntasks-per-node=8          # 8 MPI ranks per node, 16 total (2x8)
 #SBATCH --gpus-per-node=8            # Allocate one gpu per MPI rank
-#SBATCH --time=0-05:00:00            # Run time (d-hh:mm:ss)
+#SBATCH --time=0-00:30:00            # Run time (d-hh:mm:ss)
 ##SBATCH --mail-type=all             # Send email at begin and end of job
 #SBATCH --account=project_465001068  # Project for billing
 ##SBATCH --mail-user=username@domain.com
 
 echo "Start date and time: $(date +"%Y-%m-%d %H:%M:%S")"
-
-if [ $# -eq 0 ]; then
-    echo "Usage: $0 <use_segmented_reduction::integer>"
-    exit 1
-fi
-
-use_seg_red=$1
-echo "Using Segmented reductions =" $use_seg_red
 
 export OMP_NUM_THREADS=1
 export OMP_PLACES=cores
@@ -35,7 +27,7 @@ module load SCOTCH/6.1.3-cpeCray-23.09
 
 export LD_LIBRARY_PATH=/users/lantraza/phd/lib_install/petsc-3.20.5/lib:$LD_LIBRARY_PATH
 
-runFolder=$PWD"/MPI_N"${SLURM_JOB_NUM_NODES}"_SR"${use_seg_red}"_"$(date +"D_%Y_%m_%d_T_%I_%M_%S")
+runFolder=$PWD"/MPI_N"${SLURM_JOB_NUM_NODES}"_"$(date +"D_%Y_%m_%d_T_%I_%M_%S")
 echo "Creating running folder -> " $runFolder
 
 binpath=/users/lantraza/phd/OP-PIC/app_fempic/bin
@@ -57,8 +49,8 @@ num_nodes=$SLURM_JOB_NUM_NODES
 configFile="box_fempic.param"
 file=$PWD'/'$configFile
 
-for run in 1 2 3 4; do
-    for config in 1536000 3072000; do
+for run in 1 2 3; do
+    for config in 1536000; do
             
         folder=$runFolder/$config"_mpi"
         (( totalGPUs=8*$SLURM_JOB_NUM_NODES ))
@@ -79,17 +71,14 @@ for run in 1 2 3 4; do
         escaped_folder="${folder//\//\\/}"
         sed -i "s/STRING hdf_filename = <path_to_hdf5_mesh_file>/STRING hdf_filename = ${escaped_folder}\/box_${config}.hdf5/" ${currentfilename}
         sed -i "s/STRING rand_file    = <path_to_hdf5_mesh_file>/STRING rand_file    = ${escaped_folder}\/random_100k.dat/" ${currentfilename}
-        if [ "$use_seg_red" -eq 1 ]; then
-            sed -i "s/BOOL use_reg_red = false/BOOL use_reg_red = true/" ${currentfilename}
-        fi
 
         # ---------------------       
-        echo "RUNNING -> 1e18 On "$totalGPUs" GPUs"
-        srun --cpu-bind=${CPU_BIND} ${binary} ${currentfilename} | tee $folder/log_N${num_nodes}_G${totalGPUs}_C${config}_D10_SR${use_seg_red}_R${run}.log;
+        echo "RUNNING -> 1e18 On "$totalGPUs" GPUs with unsafe atomics"
+        srun --cpu-bind=${CPU_BIND} ${binary} ${currentfilename} | tee $folder/log_N${num_nodes}_G${totalGPUs}_C${config}_D10_UA_R${run}.log;
 
-        sed -i "s/REAL plasma_den     = 1e18/REAL plasma_den     = 1.3e18/" ${currentfilename}
-        echo "RUNNING -> 1.3e18 On "$totalGPUs" GPUs"
-        srun --cpu-bind=${CPU_BIND} ${binary} ${currentfilename} | tee $folder/log_N${num_nodes}_G${totalGPUs}_C${config}_D13_SR${use_seg_red}_R${run}.log;
+        sed -i "s/BOOL use_reg_red = false/BOOL use_reg_red = true/" ${currentfilename}
+        echo "RUNNING -> 1e18 On "$totalGPUs" GPUs with seg red"
+        srun --cpu-bind=${CPU_BIND} ${binary} ${currentfilename} | tee $folder/log_N${num_nodes}_G${totalGPUs}_C${config}_D10_SR_R${run}.log;
         # ---------------------
 
         echo 'Remove /box_'$config'.hdf5 and random_100k.dat'

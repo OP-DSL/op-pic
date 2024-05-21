@@ -3,7 +3,7 @@
 #SBATCH --job-name=fem_1             # Job name
 #SBATCH --output=fem_1.o%j           # Name of stdout output file
 #SBATCH --error=fem_1.e%j            # Name of stderr error file
-#SBATCH --partition=ju-standard-g    # Partition (queue) name
+#SBATCH --partition=standard-g    # Partition (queue) name
 #SBATCH --nodes=1                    # Total number of nodes 
 #SBATCH --ntasks-per-node=8          # 8 MPI ranks per node, 16 total (2x8)
 #SBATCH --gpus-per-node=8            # Allocate one gpu per MPI rank
@@ -39,7 +39,7 @@ export LD_LIBRARY_PATH=/users/lantraza/phd/lib_install/petsc-3.20.5/lib:$LD_LIBR
 runFolder=$PWD"/MPI_N"${SLURM_JOB_NUM_NODES}"_SR"${use_seg_red}"_"$(date +"D_%Y_%m_%d_T_%I_%M_%S")
 echo "Creating running folder -> " $runFolder
 
-binpath=/users/lantraza/phd/OP-PIC/fempic_mpi/bin
+binpath=/users/lantraza/phd/OP-PIC/app_fempic/bin
 binary=$binpath"/hip_mpi_hdf5"
 echo "Using Binary -> " $binary
 
