@@ -13,6 +13,16 @@ Here, we have implemented the application with OP-PIC, using unstructured-mesh m
 
 **For now, `seq`, `omp`, `cuda` and `hip` shared memory versions are functional.**
 
+### Reasons for not being able to implement MPI
+*The original SimPIC MPI code does not seem to give the exact same answer compared to its serial versions.*
+
+* Only the particles within the current MPI rank provide contributions to the mesh. If communicated, the contribution to the received rank is not computed!
+https://bitbucket.org/lecad-peg/simpic/src/ab6a92dea645ee39747aff214884a51a14802f76/mpi/simpic.cpp#lines-96
+* When communicating fields, left most and right most `phiarray` values are sent to all the MPI ranks (not only to the adjoining neighbour rank) using `MPI_Allgather` and once the communication is done, the edge `phiarray` values of all MPI ranks are added to all the `phiarray` values of the current rank.
+https://bitbucket.org/lecad-peg/simpic/src/ab6a92dea645ee39747aff214884a51a14802f76/mpi/fields.cpp#lines-130
+
+*Both these issues will make the shared memory serial and distributed memory runs deviate even if we use the same number of particles per cell and the same total number of particles and mesh elements per simulation*
+
 ## Structure
  * `simpic.cpp` : The main file containing OP-PIC API calls. 
  * `kernels.h` : The user written elemental kernel functions.
