@@ -1,5 +1,5 @@
 
-// Auto-generated at 2024-05-20 11:43:24.481974 by opp-translator
+// Auto-generated at 2024-05-27 11:54:26.023476 by opp-translator
 /* 
 BSD 3-Clause License
 
@@ -44,6 +44,7 @@ void opp_particle_move__move_kernel(opp_set,opp_map,opp_map,opp_arg,opp_arg,opp_
 void opp_par_loop_all__deposit_charge_on_nodes_kernel(opp_set,opp_iterate_type,opp_arg,opp_arg,opp_arg,opp_arg,opp_arg);
 void opp_par_loop_all__compute_node_charge_density_kernel(opp_set,opp_iterate_type,opp_arg,opp_arg);
 void opp_par_loop_all__compute_electric_field_kernel(opp_set,opp_iterate_type,opp_arg,opp_arg,opp_arg,opp_arg,opp_arg,opp_arg);
+void opp_par_loop_all__get_max_cef_kernel(opp_set,opp_iterate_type,opp_arg,opp_arg);
 void opp_par_loop_all__get_final_max_values_kernel(opp_set,opp_iterate_type,opp_arg,opp_arg,opp_arg,opp_arg);
 void opp_init_direct_hop_cg(double,int,const opp_dat,const opp::BoundingBox&,opp_map,opp_map,opp_arg,opp_arg,opp_arg,opp_arg);
 
@@ -214,16 +215,19 @@ int main(int argc, char **argv)
 
             if (print_final_log)
             {
-                OPP_REAL max_n_chg_den = 0.0, max_n_pot = 0.0;
+                OPP_REAL max_n_chg_den = 0.0, max_n_pot = 0.0, max_c_ef = 0.0;
 
+                opp_par_loop_all__get_max_cef_kernel(cell_set, OPP_ITERATE_ALL,
+                    opp_arg_dat(c_ef, OPP_READ),
+                    opp_arg_gbl(&max_c_ef, 1, "double", OPP_MAX));
                 opp_par_loop_all__get_final_max_values_kernel(node_set, OPP_ITERATE_ALL,
                     opp_arg_dat(n_charge_den, OPP_READ),
                     opp_arg_gbl(&max_n_chg_den, 1, "double", OPP_MAX),
                     opp_arg_dat(n_potential, OPP_READ),
                     opp_arg_gbl(&max_n_pot, 1, "double", OPP_MAX));
 
-                log = get_global_level_log(max_n_chg_den, max_n_pot, particle_set->size, 
-                    inject_count, (old_nparts - particle_set->size));
+                log = get_global_level_log(max_c_ef, max_n_pot, particle_set->size, inject_count, 
+                    (old_nparts - particle_set->size));
             }
 
             total_part_iter += particle_set->size;  
