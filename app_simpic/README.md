@@ -13,7 +13,6 @@ Here, we have implemented the application with OP-PIC, using unstructured-mesh m
 
 **For now, `seq`, `omp`, `cuda` and `hip` shared memory versions are functional.**
 
-### Reasons for not being able to implement MPI
 *The original SimPIC MPI code does not seem to give the exact same answer compared to its serial versions.*
 
 * Only the particles within the current MPI rank provide contributions to the mesh. If communicated, the contribution to the received rank is not computed!
