@@ -1,0 +1,178 @@
+{% extends "cpp/loop_host.hpp.jinja" %}
+
+{%- macro arg_to_pointer(arg) %}
+    {%- if arg is gbl and arg is reduction %}
+arg{{arg.id}}_l + ({{arg.dim}} * thr)
+    {%- elif arg is gbl %}
+        {%- set cast = arg.typ -%}
+({{cast}} *)args[{{arg.id}}].data
+    {%- else -%}
+        {%- set cast = lh.dat(arg).typ -%}
+    
+        {%- if arg is direct -%}
+            {%- if lh is injected_loop and arg.offset -%}
+            {%- set offset = "(inj_start + n)" -%}
+            {%- else -%}
+            {%- set offset = "n" -%}
+            {%- endif -%}
+        {%- elif arg is double_indirect -%}
+            {%- set offset = "map%s[%d]" % (arg.map_id, arg.map_idx) -%}
+        {%- elif arg is p2c_mapped -%}
+            {%- set offset = "opp_p2c[0]" -%}
+        {%- elif arg is indirect -%}
+            {%- set offset = "map%s[%d]" % (arg.map_id, arg.map_idx) -%}
+        {%- endif -%}
+
+        {%- if arg is not gbl %}
+            {%- set offset = " + (%s * %d)" % (offset, lh.dat(arg).dim) %}
+        {%- endif -%}
+
+        {%- if lh is indirect and arg is gbl and arg is reduction %}
+arg{{arg.id}}_local
+        {%- elif lh is indirect and arg is dat and arg is reduction and lh.dat(arg) is not same_iter_set_dat(lh) %}
+arg{{lh.dat(arg).arg_id}}_dat_thread_data{{offset}}
+        {%- else -%}
+({{"const " if arg.access_type == OP.AccessType.READ}}{{cast}} *)args[{{arg.id}}].data{{offset}}
+        {%- endif -%}
+    {%- endif -%}
+{%- endmacro -%}
+
+{% block host_prologue %}
+void opp_par_loop_{{lh.iterator_type}}__{{lh.kernel}}(opp_set set, opp_iterate_type, 
+    {% for arg in lh.args %}
+    opp_arg arg{{arg.id}}{{"," if not loop.last}} // {% if arg is dat %}{{lh.dat(arg).ptr}} {% endif -%} | OPP_{{arg.access_type.name}}
+    {% endfor %}
+) 
+{
+    const int nargs = {{lh.args|length}};
+    opp_arg args[nargs];
+
+    {% for arg in lh.args %}
+    args[{{loop.index0}}] = {{arg_dat_redef(arg) if lh.args[arg.id] is vec else "arg%d" % arg.id}};
+    {% endfor %}
+
+    opp_profiler->start("{{lh.kernel}}");
+
+    if (OPP_DBG) opp_printf("APP", "opp_par_loop_{{lh.iterator_type}}__{{lh.kernel}} set_size %d", set->size);
+
+    const int nthreads = omp_get_max_threads(); 
+
+    {% if lh is injected_loop %}
+    opp_mpi_halo_exchanges{{"_grouped" if config.grouped-}}
+        (set, nargs, args{{(", %d" % config.device) if config.grouped}});
+        {% if lh is double_indirect_reduc %}
+#ifdef USE_MPI 
+    opp_init_double_indirect_reductions(nargs, args);
+#endif
+        {% endif %} 
+    opp_mpi_halo_wait_all{{"_grouped" if config.grouped-}}
+        (nargs, args{{", 1" if config.grouped}});
+
+    const int iter_size = set->diff; 
+    const int inj_start = (set->size - set->diff);  
+    {% else %}
+    const int iter_size = opp_mpi_halo_exchanges{{"_grouped" if config.grouped-}}
+        (set, nargs, args{{(", %d" % config.device) if config.grouped}});
+        {% if lh is double_indirect_reduc %}
+#ifdef USE_MPI 
+    opp_init_double_indirect_reductions(nargs, args);
+#endif
+        {% endif %} 
+    opp_mpi_halo_wait_all{{"_grouped" if config.grouped-}}
+        (nargs, args{{", 1" if config.grouped}});    
+    {% endif %}
+    {% if lh is p2c_mapped %}
+    OPP_mesh_relation_data = ((OPP_INT *)set->mesh_relation_dat->data); 
+    {% endif %}
+    {% for arg in lh.args|gbl|reduction %}
+
+    {{arg.typ}} arg{{arg.id}}_l[nthreads * {{arg.dim}}];
+    for (int thr = 0; thr < nthreads; thr++)
+        for (int d = 0; d < {{arg.dim}}; d++)
+            arg{{arg.id}}_l[{{arg.dim}} * thr + d] = {{arg.typ}}_ZERO;
+
+    {% endfor %}
+    {% for arg in lh.args|gbl|reduction if lh is indirect and arg is not inc %}
+    memcpy(arg{{arg.id}}_local, arg{{idx}}.data, {{arg.dim}} * sizeof({{arg.typ}}));{{"\n" if loop.last}}
+    {% endfor %}
+    {% for arg in lh.args|dat|reduction|not_already_mapped(lh)|not_same_iter_set_dat(lh) if lh is indirect %}
+
+    opp_create_thread_level_data<{{lh.dat(arg).typ}}>(args[{{arg.id}}], 0);
+    {% endfor %}  
+    
+{% endblock %}
+
+{% block host_loop %}  
+    {% if lh is direct and lh.args|gbl|reduction|length == 0 %}
+    #pragma omp parallel for
+    for (int n = 0; n < iter_size; ++n) 
+    {
+        {
+    {% else %} 
+    #pragma omp parallel for 
+    for (int thr = 0; thr < nthreads; thr++)
+    {
+        const size_t start  = (iter_size * thr) / nthreads;
+        const size_t finish = (iter_size * (thr+1)) / nthreads;
+        {% for arg in lh.args|dat|reduction|not_already_mapped(lh)|not_same_iter_set_dat(lh) if lh is indirect %}
+
+        {{lh.dat(arg).typ}}* arg{{arg.id}}_dat_thread_data = ({{lh.dat(arg).typ}} *)((*(args[{{arg.id}}].dat->thread_data))[thr]);
+        {% endfor %}      
+        for (size_t n = start; n < finish; n++)
+        { 
+    {% endif %}
+    {% if lh is indirect %}
+        {% if lh is p2c_mapped %}
+            {% if lh is injected_loop %}
+            OPP_INT* opp_p2c = OPP_mesh_relation_data + inj_start + n;
+            {% else %}
+            OPP_INT* opp_p2c = OPP_mesh_relation_data + n;
+            {% endif %}
+        {% endif %}
+        {% for map in lh.maps %}
+            {%- if map is not p2c_mapped(lh) -%}
+            {%- set offset = "n" -%}
+            {%- else -%}
+            {%- set offset = "opp_p2c[0]" -%}
+            {% endif %}
+            const OPP_INT *map{{map.id}} = args[{{map.arg_id}}].map_data + ({{ offset }} * {{map.dim}});
+        {% endfor %}   
+    {% endif %}
+            opp_k{{kernel_idx}}::{{lh.kernel}}(
+    {% for arg in lh.args %}
+                {{arg_to_pointer(arg)}}{{"," if not loop.last}}
+    {% endfor %}
+            );
+        }
+    }
+{% endblock %}
+
+{% block host_epilogue %}
+    {% for arg in lh.args|dat|reduction|not_already_mapped(lh)|not_same_iter_set_dat(lh) if lh is indirect %}
+    
+    opp_reduce_thread_level_data<{{lh.dat(arg).typ}}>(args[{{arg.id}}]);
+    {% endfor %}
+    {% for arg in lh.args|gbl|reduction %}
+    
+    for (int thr = 0; thr < nthreads; thr++) 
+        for (int d = 0; d < {{arg.dim}}; d++)
+        {% if arg is inc %}
+            (({{arg.typ}}*)args[{{arg.id}}].data)[d] += (arg{{arg.id}}_l[{{arg.dim}} * thr + d]);
+        {% else %}
+            (({{arg.typ}}*)args[{{arg.id}}].data)[d] = {{arg.access_type.name}}((({{arg.typ}} *)args[{{arg.id}}].data)[d], arg{{arg.id}}_l[{{arg.dim}} * thr + d]);
+        {% endif %}
+#ifdef USE_MPI 
+    opp_mpi_reduce(&args[{{arg.id}}], ({{arg.typ}} *)args[{{arg.id}}].data);
+#endif
+    {% endfor %}
+    {% if lh is double_indirect_reduc %}
+
+#ifdef USE_MPI     
+    opp_exchange_double_indirect_reductions(nargs, args);
+    opp_complete_double_indirect_reductions(nargs, args);
+#endif
+    {% endif %} 
+    opp_set_dirtybit(nargs, args);
+
+{{super()}}
+{% endblock %}

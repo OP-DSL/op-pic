@@ -1,0 +1,148 @@
+{% extends "cpp/loop_host.hpp.jinja" %}
+{% import "cpp/move_loop_dh_init_host.hpp.jinja" as dh %}
+
+{%- macro arg_to_pointer(arg) %}
+    {%- if arg is gbl %}
+        {%- set cast = arg.typ -%}
+        ({{cast}} *)args[{{arg.id}}].data
+    {%- else -%}
+        {%- set cast = lh.dat(arg).typ -%}
+    
+        {%- if arg is direct -%}
+            {%- if lh is injected_loop -%}
+            {%- set offset = "(inj_start + n)" -%}
+            {%- else -%}
+            {%- set offset = "n" -%}
+            {%- endif -%}
+        {%- elif arg is double_indirect -%}
+            {%- set offset = "map%s[%d]" % (arg.map_id, arg.map_idx) -%}
+        {%- elif arg is p2c_mapped -%}
+            {%- set offset = "opp_p2c[0]" -%}
+        {%- elif arg is indirect -%}
+            {%- set offset = "map%s[%d]" % (arg.map_id, arg.map_idx) -%}
+        {%- endif -%}
+
+        {%- if arg is not gbl %}
+            {%- set offset = " + (%s * %d)" % (offset, lh.dat(arg).dim) %}
+        {%- endif -%}
+
+        {%- if lh is indirect and arg is gbl and arg is reduction %}
+            arg{{arg.id}}_local
+        {%- else -%}
+            ({{"const " if arg.access_type == OP.AccessType.READ}}{{cast}} *)args[{{arg.id}}].data{{offset}}
+        {%- endif -%}
+    {%- endif -%}
+{%- endmacro -%}
+
+{% block host_prologue %}
+void opp_particle_move__{{lh.kernel}}(opp_set set, opp_map c2c_map, opp_map p2c_map,
+    {% for arg in lh.args %}
+    opp_arg arg{{arg.id}}{{"," if not loop.last}} // {% if arg is dat %}{{lh.dat(arg).ptr}} {% endif -%} | OPP_{{arg.access_type.name}}
+    {% endfor %}
+) 
+{
+    if (OPP_DBG) opp_printf("APP", "opp_particle_move__{{lh.kernel}} set_size %d", set->size);
+
+    opp_profiler->start("{{lh.kernel}}");
+
+    const int nargs = {{lh.args|length + 1}};
+    opp_arg args[nargs];
+
+    {% for arg in lh.args %}
+    args[{{loop.index0}}] = {{arg_dat_redef(arg) if lh.args[arg.id] is vec else "arg%d" % arg.id}};
+    {% endfor %}
+    args[{{lh.args|length}}] = opp_arg_dat(p2c_map->p2c_dat, OPP_RW); // required to make dirty or should manually make it dirty
+
+    OPP_mesh_relation_data = (OPP_INT*)p2c_map->p2c_dat->data;
+
+    {% for arg in lh.args|gbl|reduction if lh is indirect %}
+    {{arg.typ}} arg{{arg.id}}_local[{{arg.dim}}] = {0};{{"\n" if loop.last}}
+    {% endfor %}
+    {% for arg in lh.args|gbl|reduction if lh is indirect and arg is not inc %}
+    memcpy(arg{{arg.id}}_local, arg{{idx}}.data, {{arg.dim}} * sizeof({{arg.typ}}));{{"\n" if loop.last}}
+    {% endfor %}
+{% endblock %}
+
+{% block host_loop %}
+    // lambda function for multi hop particle movement
+    auto multihop_mover = [&](const int n) {
+
+        opp_p2c = OPP_mesh_relation_data + n;
+
+        if (opp_p2c[0] == MAX_CELL_INDEX) {
+            return;
+        }
+
+        opp_move_status_flag = OPPX_MOVE_DONE; 
+        opp_move_hop_iter_one_flag = true;
+
+        do {
+            opp_c2c = &((c2c_map->map)[opp_p2c[0] * {{lh.c2c_map.dim}}]);
+
+            opp_k{{kernel_idx}}::{{lh.kernel}}(
+            {% for arg in lh.args %}
+            {% if arg is not vec %}
+                {{arg_to_pointer(arg)}}{{"," if not loop.last}}
+            {% else %}
+                arg{{arg.id}}_vec{{"," if not loop.last}}
+            {% endif %}
+            {% endfor %}
+            );
+
+        } while (opp_check_part_move_status(opp_p2c[0], n, set->particle_remove_count));
+    };
+
+    // ----------------------------------------------------------------------------
+    opp_init_particle_move(set, 0, nullptr);
+
+{% if lh.dh_loop_required %}
+    if (useGlobalMove) {
+        
+        opp_profiler->start("GblMv_Move");
+
+        // check whether particles needs to be moved over global move routine
+        const int start = OPP_iter_start;
+        const int end = OPP_iter_end;
+        for (int i = start; i < end; i++) {       
+
+            opp_p2c = OPP_mesh_relation_data + i;
+            // TODO: we assume pos is in arg 0, Change this!
+            const opp_point* point = (const opp_point*)&(((OPP_REAL*)args[0].data)[i * {{lh.dat(lh.args[0]).dim}}]); 
+
+            // check for global move, and if satisfy global move criteria, then remove the particle from current rank
+            if (opp_part_checkForGlobalMove{{lh.dat(lh.args[0]).dim}}D(set, *point, i, opp_p2c[0])) {
+                
+                set->particle_remove_count++;
+                continue;  
+            }
+        }
+
+        opp_profiler->end("GblMv_Move");
+    }
+{% endif %}
+
+    // ----------------------------------------------------------------------------
+    // check whether all particles not marked for global comm is within cell, 
+    // and if not mark to move between cells within the MPI rank, mark for neighbour comm
+    opp_profiler->start("{{lh.kernel}}_only");
+    const int start1 = OPP_iter_start;
+    const int end1 = OPP_iter_end;
+    for (int i = start1; i < end1; i++) { 
+        
+        multihop_mover(i);
+    }
+    opp_profiler->end("{{lh.kernel}}_only");
+
+    opp_finalize_particle_move(set);
+{% endblock %}
+
+{% block host_epilogue %}
+
+{{super()}}
+{% endblock %}
+
+{% block dh_init_wrapper %}
+{% if lh.dh_loop_required %}
+{{ dh.init_dh(lh,kernel_idx,config.omp) }}
+{% endif %}
+{% endblock %}

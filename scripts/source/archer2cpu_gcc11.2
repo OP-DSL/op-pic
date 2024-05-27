@@ -1,0 +1,18 @@
+#!/bin/bash
+
+module load PrgEnv-gnu
+module load cray-hdf5-parallel
+
+export CC_COMPILER=CC
+export MPI_COMPILER=CC
+
+export OPP=/work/e723/e723/csrcnj/phd/OP-PIC
+export OPP_INSTALL_PATH=$OPP/opp_install
+export OPP_TRANSLATOR=$OPP/opp_translator/translator
+export OPP_PATH=$OPP/opp_lib
+
+export PETSC_INSTALL_PATH=/work/e723/e723/csrcnj/lib_install/petsc-3.20.0
+export LD_LIBRARY_PATH=$PETSC_INSTALL_PATH/lib:$LD_LIBRARY_PATH
+
+module load cray-python/3.9.13.1
+source $OPP/opp_translator/opp_venv/bin/activate

@@ -1,0 +1,159 @@
+{% extends "cpp/loop_host.hpp.jinja" %}
+
+{%- macro arg_to_pointer(arg) %}
+    {%- if arg is gbl %}
+        {%- set cast = arg.typ -%}
+        ({{cast}} *)args[{{arg.id}}].data
+    {%- else -%}
+        {%- set cast = lh.dat(arg).typ -%}
+    
+        {%- if arg is direct -%}
+            {%- if lh is injected_loop and arg.offset -%}
+            {%- set offset = "(inj_start + n)" -%}
+            {%- else -%}
+            {%- set offset = "n" -%}
+            {%- endif -%}
+        {%- elif arg is double_indirect -%}
+            {%- set offset = "map%s[%d]" % (arg.map_id, arg.map_idx) -%}
+        {%- elif arg is p2c_mapped -%}
+            {%- set offset = "opp_p2c[0]" -%}
+        {%- elif arg is indirect -%}
+            {%- set offset = "map%s[%d]" % (arg.map_id, arg.map_idx) -%}
+        {%- endif -%}
+
+        {%- if arg is not gbl %}
+            {%- set offset = " + (%s * %d)" % (offset, lh.dat(arg).dim) %}
+        {%- endif -%}
+
+        {%- if lh is indirect and arg is gbl and arg is reduction %}
+            arg{{arg.id}}_local
+        {%- else -%}
+            ({{"const " if arg.access_type == OP.AccessType.READ}}{{cast}} *)args[{{arg.id}}].data{{offset}}
+        {%- endif -%}
+    {%- endif -%}
+{%- endmacro -%}
+
+{% block host_prologue %}
+void opp_par_loop_{{lh.iterator_type}}__{{lh.kernel}}(opp_set set, opp_iterate_type, 
+    {% for arg in lh.args %}
+    opp_arg arg{{arg.id}}{{"," if not loop.last}} // {% if arg is dat %}{{lh.dat(arg).ptr}} {% endif -%} | OPP_{{arg.access_type.name}}
+    {% endfor %}
+) 
+{
+    const int nargs = {{lh.args|length}};
+    opp_arg args[nargs];
+
+    {% for arg in lh.args %}
+    args[{{loop.index0}}] = {{arg_dat_redef(arg) if lh.args[arg.id] is vec else "arg%d" % arg.id}};
+    {% endfor %}
+
+    opp_profiler->start("{{lh.kernel}}");
+
+    if (OPP_DBG) opp_printf("APP", "opp_par_loop_{{lh.iterator_type}}__{{lh.kernel}} set_size %d", set->size);
+
+    {% if lh is injected_loop %}
+    opp_mpi_halo_exchanges{{"_grouped" if config.grouped-}}
+        (set, nargs, args{{(", %d" % config.device) if config.grouped}});
+    {% if lh is double_indirect_reduc %}
+    opp_init_double_indirect_reductions(nargs, args);
+    {% endif %} 
+    opp_mpi_halo_wait_all{{"_grouped" if config.grouped-}}
+        (nargs, args{{", 1" if config.grouped}});
+
+    const int iter_size = set->diff; 
+    const int inj_start = (set->size - set->diff);  
+    {% else %}
+    const int iter_size = opp_mpi_halo_exchanges{{"_grouped" if config.grouped-}}
+        (set, nargs, args{{(", %d" % config.device) if config.grouped}});
+    {% if lh is double_indirect_reduc %}
+    opp_init_double_indirect_reductions(nargs, args);
+    {%- endif -%} 
+    {% if lh is particle_loop %}
+
+    opp_mpi_halo_wait_all{{"_grouped" if config.grouped-}}
+        (nargs, args{{", 1" if config.grouped}});    
+    {% endif %} 
+    {% endif %}
+    {% if lh is p2c_mapped %}
+    OPP_mesh_relation_data = ((OPP_INT *)set->mesh_relation_dat->data); 
+    {% endif %}
+    {% for arg in lh.args|gbl|reduction if lh is indirect %}
+    {{arg.typ}} arg{{arg.id}}_local[{{arg.dim}}] = {0};{{"\n" if loop.last}}
+    {% endfor %}
+    {% for arg in lh.args|gbl|reduction if lh is indirect and arg is not inc %}
+    memcpy(arg{{arg.id}}_local, arg{{idx}}.data, {{arg.dim}} * sizeof({{arg.typ}}));{{"\n" if loop.last}}
+    {% endfor %}
+{% endblock %}
+
+{% block host_loop %}
+    for (int n = 0; n < iter_size; ++n) 
+    {
+    {% if lh is not particle_loop %}
+        if (n == set->core_size)
+            opp_mpi_halo_wait_all{{"_grouped" if config.grouped-}}
+                (nargs, args{{", 1" if config.grouped}});
+
+    {% endif %}
+    {% if lh is indirect %}
+        {% if lh is p2c_mapped %}
+        {% if lh is injected_loop %}
+        opp_p2c = OPP_mesh_relation_data + inj_start + n;
+        {% else %}
+        opp_p2c = OPP_mesh_relation_data + n;
+        {% endif %}
+        {% endif %}
+        {% for map in lh.maps %}
+        {%- if map is not p2c_mapped(lh) -%}
+            {%- set offset = "n" -%}
+        {%- else -%}
+            {%- set offset = "opp_p2c[0]" -%}
+        {%endif %}
+        const OPP_INT *map{{map.id}} = args[{{map.arg_id}}].map_data + ({{ offset }} * {{map.dim}});
+        {% endfor %}   
+    {% endif %}
+    {% for arg in lh.args|vec %}
+        {{"const " if arg.access_type == OP.AccessType.READ}}{{lh.dat(arg).typ}} *args{{arg.id}}_vec[] = {
+        {% for arg_expanded in lh.args if arg_expanded.id == arg.id %}
+            {{arg_to_pointer(arg_expanded)}}{{"," if not loop.last}}
+        {% endfor %}
+        };
+
+    {% endfor %}
+    {% if lh is indirect and lh.args|gbl|reduction|length > 0 %}
+        if (n == set->size) {
+        {% for arg in lh.args|gbl|reduction %}
+            memcpy(arg{{arg.id}}.data, arg{{arg.id}}_local, {{arg.dim}} * sizeof({{arg.typ}}));
+        {% endfor %}
+        }
+
+    {% endif %}
+        opp_k{{kernel_idx}}::{{lh.kernel}}(
+    {% for arg in lh.args %}
+        {% if arg is not vec %}
+            {{arg_to_pointer(arg)}}{{"," if not loop.last}}
+        {% else %}
+            arg{{arg.id}}_vec{{"," if not loop.last}}
+        {% endif %}
+    {% endfor %}
+        );
+    {#
+    #}
+    }
+{% endblock %}
+
+{% block host_epilogue %}
+    {% if lh is not particle_loop -%} {# TODO: is this indirect check necessary? #}
+    if (iter_size == 0 || iter_size == set->core_size)
+        opp_mpi_halo_wait_all(nargs, args);
+    {% endif %}
+    {% for arg in lh.args|gbl|reduction %}
+    opp_mpi_reduce(&args[{{arg.id}}], ({{arg.typ}} *)args[{{arg.id}}].data);
+    {% endfor %}
+    {% if lh is double_indirect_reduc %}
+    opp_exchange_double_indirect_reductions(nargs, args);
+    opp_complete_double_indirect_reductions(nargs, args);
+    {% endif %} 
+    opp_set_dirtybit(nargs, args);
+
+{{super()}}
+{% endblock %}

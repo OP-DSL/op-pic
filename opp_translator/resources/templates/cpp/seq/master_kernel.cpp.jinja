@@ -1,0 +1,7 @@
+{% extends "cpp/master_kernel.cpp.jinja" %}
+
+{% block const_decl_func %}
+    {% call(const) const_decl_func("") %}
+std::memcpy(&{{const.ptr}}, data, (size*dim));
+    {%- endcall %}
+{% endblock %}
