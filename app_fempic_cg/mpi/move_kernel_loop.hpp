@@ -349,8 +349,8 @@ inline void gen_dh_structured_mesh(opp_set set, const opp_dat c_gbl_id, opp_map 
         cellMapper->lockWindows();
         int avail_gbl_cid = cellMapper->structMeshToCellMapping[index]; 
         if ((most_suitable_gbl_cid != MAX_CELL_INDEX) && (most_suitable_gbl_cid < avail_gbl_cid) && 
-                    (most_suitable_cid < set->size)) {          
-            cellMapper->enrichStructuredMesh(index, most_suitable_gbl_cid, OPP_rank);       
+                    (most_suitable_cid < set->size)) {        
+            cellMapper->enrichStructuredMesh(index, most_suitable_gbl_cid, OPP_rank);      
         }
         cellMapper->unlockWindows();
     }

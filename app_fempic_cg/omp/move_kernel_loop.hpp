@@ -117,11 +117,13 @@ void opp_particle_move__move_kernel(opp_set set, opp_map c2c_map, opp_map p2c_ma
 
     // ----------------------------------------------------------------------------
     opp_init_particle_move(set, 0, nullptr);
+    const int total_count = OPP_iter_end - OPP_iter_start;
 
-#ifdef USE_MPI 
     if (useGlobalMove) { // For now Global Move will not work with MPI
-        
+
+#ifdef USE_MPI         
         globalMover->initGlobalMove();
+#endif
 
         opp_profiler->start("GblMv_Move");
 
@@ -129,8 +131,8 @@ void opp_particle_move__move_kernel(opp_set set, opp_map c2c_map, opp_map p2c_ma
         #pragma omp parallel for
         for (int thr = 0; thr < nthreads; thr++)
         {
-            const size_t start  = ((size_t)size * thr) / nthreads;
-            const size_t finish = ((size_t)size * (thr+1)) / nthreads;
+            const size_t start  = ((size_t)total_count * thr) / nthreads;
+            const size_t finish = ((size_t)total_count * (thr+1)) / nthreads;
 
             for (size_t i = start; i < finish; i++)
             {
@@ -139,9 +141,9 @@ void opp_particle_move__move_kernel(opp_set set, opp_map c2c_map, opp_map p2c_ma
                 const opp_point* point = (const opp_point*)&(((OPP_REAL*)args[0].data)[i * 3]); 
 
                 // check for global move, and if satisfy global move criteria, then remove the particle from current rank
-                if (opp_part_checkForGlobalMove3D(set, *point, i, opp_p2c[0])) { 
+                if (opp_part_checkForGlobalMove3D(set, *point, i, opp_p2c[0], thr)) { 
                     
-                    set->particle_remove_count++;
+                    part_remove_count_per_thr[thr] += 1;
                     continue;  
                 }
             }
@@ -149,9 +151,11 @@ void opp_particle_move__move_kernel(opp_set set, opp_map c2c_map, opp_map p2c_ma
 
         opp_profiler->end("GblMv_Move");
 
+#ifdef USE_MPI 
+        opp_gather_gbl_move_indices();
         globalMover->communicate(set);
-    }
 #endif
+    }
 
     opp_profiler->start("Mv_AllMv0");
 
@@ -159,7 +163,6 @@ void opp_particle_move__move_kernel(opp_set set, opp_map c2c_map, opp_map p2c_ma
     // check whether all particles not marked for global comm is within cell, 
     // and if not mark to move between cells within the MPI rank, mark for neighbour comm
     opp_profiler->start("move_kernel_only");
-    const int total_count = OPP_iter_end - OPP_iter_start;
     #pragma omp parallel for
     for (int thr = 0; thr < nthreads; thr++)
     {
@@ -300,7 +303,7 @@ inline void gen_dh_structured_mesh(opp_set set, const opp_dat c_gbl_id, opp_map 
     opp_profiler->start("Setup_Mover_s1");
     double x = 0.0, y = 0.0, z = 0.0;
     
-    #pragma omp parallel for
+    #pragma omp parallel for private(x, y, z)
     for (int dz = cellMapper->localGridStart.z; dz < cellMapper->localGridEnd.z; dz++) {       
         z = min_glb_coords.z + dz * cellMapper->gridSpacing;        
         for (int dy = cellMapper->localGridStart.y; dy < cellMapper->localGridEnd.y; dy++) {            
@@ -359,8 +362,18 @@ inline void gen_dh_structured_mesh(opp_set set, const opp_dat c_gbl_id, opp_map 
     for (const auto& pair : removed_coords)
         removed_coords_keys.push_back(pair.first);
 
+    std::vector<std::vector<std::pair<int, int>>> tmp_add_per_thr;
+    tmp_add_per_thr.resize(OPP_nthreads);
+
     #pragma omp parallel for
-    for (size_t i = 0; i < removed_coords_keys.size(); ++i) {
+    for (int thr = 0; thr < OPP_nthreads; thr++)
+    {
+        const size_t start  = (removed_coords_keys.size() * thr) / OPP_nthreads;
+        const size_t finish = (removed_coords_keys.size() * (thr+1)) / OPP_nthreads;
+      
+        for (size_t i = start; i < finish; i++)
+        {
+
         const size_t index = removed_coords_keys[i];
         opp_point& p = removed_coords[index];
         double &x = p.x, &y = p.y, &z = p.z;
@@ -394,14 +407,20 @@ inline void gen_dh_structured_mesh(opp_set set, const opp_dat c_gbl_id, opp_map 
         }    
 
         // Allow neighbours to write on-behalf of the current rank, to reduce issues
-        cellMapper->lockWindows();
         int avail_gbl_cid = cellMapper->structMeshToCellMapping[index]; 
         if ((most_suitable_gbl_cid != MAX_CELL_INDEX) && (most_suitable_gbl_cid < avail_gbl_cid) && 
-                    (most_suitable_cid < set->size)) {          
-            cellMapper->enrichStructuredMesh(index, most_suitable_gbl_cid, OPP_rank);       
+                    (most_suitable_cid < set->size)) {            tmp_add_per_thr[thr].push_back(std::make_pair(index, most_suitable_gbl_cid));      
         }
-        cellMapper->unlockWindows();
+        }
     }
+    
+    cellMapper->lockWindows();
+    for (auto& thread_vec : tmp_add_per_thr) {
+        for (auto& thread_data : thread_vec) {       
+            cellMapper->enrichStructuredMesh(thread_data.first, thread_data.second, OPP_rank);   
+        }
+    }
+    cellMapper->unlockWindows();
     opp_profiler->end("Setup_Mover_s3");
 
     // Step 4 : For MPI, get the inter-node values reduced to the structured mesh

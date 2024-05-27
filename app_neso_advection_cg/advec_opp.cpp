@@ -1,5 +1,5 @@
 
-// Auto-generated at 2024-05-20 13:43:42.797840 by opp-translator
+// Auto-generated at 2024-05-27 13:53:22.778598 by opp-translator
 /* 
 BSD 3-Clause License
 
@@ -129,8 +129,10 @@ int main(int argc, char **argv)
                 log += str(OPP_max_comm_iteration, "max_comm_iteration: %d");
             }
 
+            const int64_t glb_parts = get_global_parts_iterated(part_set->size);
             OPP_RUN_ON_ROOT()
-                opp_printf("Main", "ts: %d parts: %d | %s ****", OPP_main_loop_iter, part_set->size, log.c_str());       
+                opp_printf("Main", "ts: %d parts: %d | %s ****", OPP_main_loop_iter, 
+                    glb_parts, log.c_str());           
         }
     opp_profiler->end("MainLoop");
         

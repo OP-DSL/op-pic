@@ -1075,7 +1075,7 @@ void GlobalParticleMover::communicate(opp_set set) {
         int64_t recvSize = (this->h_recv_rank_npart[rankx] * set->particle_size);
 
         // opp_printf("Communicate", "Expected to recv %d bytes from rank %d, buffer size %zu", 
-        //     sendSize, recvRank, partRecvBufferPerRank.size());
+        //     recvSize, recvRank, partRecvBufferPerRank.size());
 
         CHECK(MPI_Irecv(&(partRecvBufferPerRank[0]), recvSize, MPI_CHAR, recvRank, 43, 
                 this->comm, &this->h_recv_requests[rankx]));

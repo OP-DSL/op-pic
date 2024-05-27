@@ -92,6 +92,14 @@ mpi: mklib
 			$(OBJ)/opp_kernels_mpi.o \
 			$(ALL_INC) $(ALL_LIBS) -lopp_mpi
 
+omp_mpi: mklib
+	     $(MPICPP) $(CPPFLAGS) -DUSE_MPI -fopenmp -DUSE_OMP -c cabana_opp.cpp -o $(OBJ)/cabana_opp_omp_mpi.o $(ALL_INC)
+	     $(MPICPP) $(CPPFLAGS) -DUSE_MPI -fopenmp -DUSE_OMP -c omp/opp_kernels.cpp -o $(OBJ)/opp_kernels_omp_mpi.o $(ALL_INC)
+	     $(MPICPP) $(CPPFLAGS) -DUSE_MPI -fopenmp -o $(BIN)/omp_mpi \
+			$(OBJ)/cabana_opp_omp_mpi.o \
+			$(OBJ)/opp_kernels_omp_mpi.o \
+			$(ALL_INC) $(ALL_LIBS) -lopp_omp_mpi
+
 mpi_hdf5: mklib
 		 $(MPICPP) $(CPPFLAGS) -DUSE_MPI -c cabana_op_hdf5.cpp -o $(OBJ)/cabana_op_hdf5.o $(ALL_INC)
 		 $(MPICPP) $(CPPFLAGS) -DUSE_MPI -c mpi/mpikernels.cpp -o $(OBJ)/mpikernels.o $(ALL_INC)

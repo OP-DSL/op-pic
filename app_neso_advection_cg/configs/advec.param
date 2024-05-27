@@ -1,7 +1,7 @@
 # Simulation parameters
 INT num_steps = 250 
-INT nx = 128
-INT ny = 128
+INT nx = 256
+INT ny = 256
 REAL dt = 0.5
 REAL cell_width = 0.5
 INT npart_per_cell = 1000
