@@ -95,14 +95,22 @@ seq: mklib
 	     $(CPP) $(CPPFLAGS) -c $(SRC)/core/opp_util.cpp -o $(OBJ)/opp_util.o $(OPP_INC) $(PETSC_INC)
 		 $(CPP) $(CPPFLAGS) -c $(SRC)/core/opp_params.cpp -o $(OBJ)/opp_params.o $(OPP_INC) $(PETSC_INC)
 	     $(CPP) $(CPPFLAGS) -c $(SRC)/seq/opp_seq.cpp -o $(OBJ)/opp_seq.o $(OPP_INC) $(PETSC_INC)
-	     ar -r $(LIB)/libopp_seq.a $(OBJ)/opp_lib_core.o $(OBJ)/opp_util.o $(OBJ)/opp_params.o $(OBJ)/opp_seq.o
+	     ar -r $(LIB)/libopp_seq.a \
+		 	$(OBJ)/opp_lib_core.o \
+			$(OBJ)/opp_util.o \
+			$(OBJ)/opp_params.o \
+			$(OBJ)/opp_seq.o
 
 omp: mklib
 	     $(CPP) $(CPPFLAGS) -fopenmp -c $(SRC)/core/opp_lib_core.cpp -o $(OBJ)/opp_lib_core.o $(OPP_INC) $(PETSC_INC)
 	     $(CPP) $(CPPFLAGS) -fopenmp -c $(SRC)/core/opp_util.cpp -o $(OBJ)/opp_util.o $(OPP_INC) $(PETSC_INC)
 		 $(CPP) $(CPPFLAGS) -fopenmp -c $(SRC)/core/opp_params.cpp -o $(OBJ)/opp_params.o $(OPP_INC) $(PETSC_INC)
 	     $(CPP) $(CPPFLAGS) -fopenmp -c $(SRC)/omp/opp_omp.cpp -o $(OBJ)/opp_omp.o $(OPP_INC) $(PETSC_INC)
-	     ar -r $(LIB)/libopp_omp.a $(OBJ)/opp_lib_core.o $(OBJ)/opp_util.o $(OBJ)/opp_params.o $(OBJ)/opp_omp.o
+	     ar -r $(LIB)/libopp_omp.a \
+		 	$(OBJ)/opp_lib_core.o \
+			$(OBJ)/opp_util.o \
+			$(OBJ)/opp_params.o \
+			$(OBJ)/opp_omp.o
 
 cuda: mklib
 	     $(CPP) $(CPPFLAGS) -DUSE_THRUST -c $(SRC)/core/opp_lib_core.cpp -o $(OBJ)/opp_lib_core.o $(OPP_INC) $(PETSC_INC) $(CUDA_INC)
@@ -225,7 +233,18 @@ omp_mpi: mklib
 		 $(MPICPP) $(CPPFLAGS) -fopenmp -DUSE_MPI -c $(SRC)/mpi/opp_mpi_particle_comm.cpp -o $(OBJ)/opp_mpi_particle_comm.o $(OPP_INC) $(PETSC_INC)
 		 $(MPICPP) $(CPPFLAGS) -fopenmp -DUSE_MPI -c $(SRC)/mpi/opp_mpi_double_ind_reducs.cpp -o $(OBJ)/opp_mpi_double_ind_reducs.o $(OPP_INC) $(PETSC_INC)
 		 $(MPICPP) $(CPPFLAGS) -fopenmp -DUSE_MPI -c $(SRC)/mpi/opp_mpi_utils.cpp -o $(OBJ)/opp_mpi_utils.o $(OPP_INC) $(PETSC_INC)
-	     ar -r $(LIB)/libopp_omp_mpi.a $(OBJ)/opp_lib_core.o $(OBJ)/opp_util.o $(OBJ)/opp_params.o $(OBJ)/opp_omp.o $(OBJ)/opp_mpi_halo.o $(OBJ)/opp_mpi_halo_core.o $(OBJ)/opp_mpi_partition.o $(OBJ)/opp_mpi_core.o $(OBJ)/opp_mpi_particle_comm.o $(OBJ)/opp_mpi_double_ind_reducs.o $(OBJ)/opp_mpi_utils.o
+	     ar -r $(LIB)/libopp_omp_mpi.a \
+		 	$(OBJ)/opp_lib_core.o \
+			$(OBJ)/opp_util.o \
+			$(OBJ)/opp_params.o \
+			$(OBJ)/opp_omp.o \
+			$(OBJ)/opp_mpi_halo.o \
+			$(OBJ)/opp_mpi_halo_core.o \
+			$(OBJ)/opp_mpi_partition.o \
+			$(OBJ)/opp_mpi_core.o \
+			$(OBJ)/opp_mpi_particle_comm.o \
+			$(OBJ)/opp_mpi_double_ind_reducs.o \
+			$(OBJ)/opp_mpi_utils.o
 
 clean: 
 	     rm -f *.o *.d *.a

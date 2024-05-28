@@ -121,7 +121,7 @@ void opp_reduce_thread_level_data(opp_arg arg)
         {
             int start  = ((dat->dim * dat_set_size)* thr)/nthreads;
             int finish = ((dat->dim * dat_set_size)*(thr+1))/nthreads;
-            if (OPP_DBG) printf("opp_reduce_thread_level_data THREAD [%d] %d %d\n", thr, start, finish);
+            // if (OPP_DBG) printf("opp_reduce_thread_level_data THREAD [%d] %d %d\n", thr, start, finish);
             for (int n = start; n < finish; n++)
             {
                 for (int array_num = 1; array_num < nthreads; array_num++)
@@ -139,7 +139,7 @@ void opp_reduce_thread_level_data(opp_arg arg)
                     }
                 }
             }
-            if (OPP_DBG) printf("opp_reduce_thread_level_data THREAD [%d] END\n", thr);
+            // if (OPP_DBG) printf("opp_reduce_thread_level_data THREAD [%d] END\n", thr);
         }
     }
 }
@@ -237,6 +237,7 @@ inline bool opp_part_checkForGlobalMove_util(opp_set set, const opp_point& point
         return true;
     }
 
+#ifdef USE_MPI  
     const int structCellRank = cellMapper->findClosestCellRank(structCellIdx);
 
     // Check whether the paticles need global moving, if yes start global moving process, 
@@ -275,7 +276,9 @@ inline bool opp_part_checkForGlobalMove_util(opp_set set, const opp_point& point
         cellIdx = MAX_CELL_INDEX;
         return true;
     }
-    else {
+    else
+#endif 
+    {
         
         // Due to renumbering local cell indices will be different to global, hence do global comm with global indices
         cellIdx = cellMapper->findClosestCellIndex(structCellIdx);
@@ -285,6 +288,10 @@ inline bool opp_part_checkForGlobalMove_util(opp_set set, const opp_point& point
                 "Error... Particle %d assigned to current rank but invalid cell index %d [strCellIdx:%zu]", 
                     partIndex, cellIdx, structCellIdx);
             opp_abort("opp_part_checkForGlobalMove Error... Particle assigned to current rank but invalid cell index");
+        }
+
+        if (cellIdx == MAX_CELL_INDEX) { // Particle is outside the mesh, need to remove
+            return true;
         }
     }
                 

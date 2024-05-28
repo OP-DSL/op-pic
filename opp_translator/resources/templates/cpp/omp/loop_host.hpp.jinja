@@ -112,8 +112,8 @@ void opp_par_loop_{{lh.iterator_type}}__{{lh.kernel}}(opp_set set, opp_iterate_t
     #pragma omp parallel for 
     for (int thr = 0; thr < nthreads; thr++)
     {
-        const size_t start  = (iter_size * thr) / nthreads;
-        const size_t finish = (iter_size * (thr+1)) / nthreads;
+        const size_t start  = ((size_t)iter_size * thr) / nthreads;
+        const size_t finish = ((size_t)iter_size * (thr+1)) / nthreads;
         {% for arg in lh.args|dat|reduction|not_already_mapped(lh)|not_same_iter_set_dat(lh) if lh is indirect %}
 
         {{lh.dat(arg).typ}}* arg{{arg.id}}_dat_thread_data = ({{lh.dat(arg).typ}} *)((*(args[{{arg.id}}].dat->thread_data))[thr]);

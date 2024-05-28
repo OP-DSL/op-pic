@@ -423,7 +423,7 @@ void opp_init_particle_move(opp_set set, int nargs, opp_arg *args)
     for (int t = 0; t < OPP_nthreads; t++) 
     {
         gbl_move_indices_per_thr[t].clear();
-        gbl_move_indices_per_thr[t].reserve(100);
+        gbl_move_indices_per_thr[t].reserve(1000);
     }    
 #endif
 
@@ -807,7 +807,7 @@ void opp_mpi_halo_wait_all(int nargs, opp_arg *args)
 {
     // Nothing to execute here
 }
-#endif
+#endif // if USE_MPI is defined, the functions in opp_mpi_particle_comm.cpp and opp_mpi_halo.cpp is used
 
 //****************************************
 opp_move_var opp_get_move_var(int thread)

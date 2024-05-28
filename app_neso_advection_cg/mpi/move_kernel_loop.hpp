@@ -4,16 +4,16 @@
 //*********************************************
 
 namespace opp_k2 {
+enum Dim {
+    x = 0,
+    y = 1,
+};
+
 enum CellMap {
     xd_y = 0,
     xu_y,
     x_yd,
     x_yu
-};
-
-enum Dim {
-    x = 0,
-    y = 1,
 };
 
 inline void move_kernel(const double* part_pos, const double* cell_pos_ll)
@@ -91,7 +91,7 @@ void opp_particle_move__move_kernel(opp_set set, opp_map c2c_map, opp_map p2c_ma
     };
 
     // ----------------------------------------------------------------------------
-    opp_init_particle_move(set, 0, nullptr);
+    opp_init_particle_move(set, nargs, args);
 
     if (useGlobalMove) {
         
@@ -170,7 +170,7 @@ void opp_particle_move__move_kernel(opp_set set, opp_map c2c_map, opp_map p2c_ma
         const std::string profName = std::string("Mv_AllMv") + std::to_string(OPP_comm_iteration);
         opp_profiler->start(profName);
         
-        opp_init_particle_move(set, 0, nullptr);
+        opp_init_particle_move(set, nargs, args);
 
         // check whether particle is within cell, and if not move between cells within the MPI rank, mark for neighbour comm
         opp_profiler->start("move_kernel_only");
@@ -328,8 +328,8 @@ inline void gen_dh_structured_mesh(opp_set set, const opp_dat c_gbl_id, opp_map 
         cellMapper->lockWindows();
         int avail_gbl_cid = cellMapper->structMeshToCellMapping[index]; 
         if ((most_suitable_gbl_cid != MAX_CELL_INDEX) && (most_suitable_gbl_cid < avail_gbl_cid) && 
-                    (most_suitable_cid < set->size)) {          
-            cellMapper->enrichStructuredMesh(index, most_suitable_gbl_cid, OPP_rank);       
+                    (most_suitable_cid < set->size)) {        
+            cellMapper->enrichStructuredMesh(index, most_suitable_gbl_cid, OPP_rank);      
         }
         cellMapper->unlockWindows();
     }
