@@ -8,7 +8,10 @@ This repository contains the implementation of the code translation tools and ru
  * `app_<app_name>_cg`: Copy of the example applications that are already being code generated. 
  * `scripts/source`: Some example source files used during implementation
  * `scripts/batch`: Some example slurm batch files used during implementation
- * `handcoded`: Some hand-coded application code, written prior code generation
+ * `app_handcoded`: Some hand-coded application code, written prior code generation
+
+## Documentation
+Documentation is available on [Read the Docs](https://zamanlantra.github.io/git_docs_test/index.html).
 
 ## Dependencies
 OP-PIC has a variety of toolchain dependencies that you will likely be able to obtain from your package manager or programming environment:
@@ -39,7 +42,7 @@ In addition, there are a few optional library dependencies that you will likely 
  * Compile the required application version using the make command. (`make` followed by the required parallelization). 
  
  For example, `cd app_cabanapic; python3 $OPP_TRANSLATOR -v -I$OPP_PATH/include/ --file_paths cabanapic.cpp; make cuda_mpi`.
- A detail explanation can be found in the readme file of opp_translator folder and the required application folder.
+ A detail explanation can be found in the readme file of `opp_translator` folder and the required application folder.
  
  In addition, `app_<app_name>_cg` will additionally include code-generated files, ready to compile directly using make commands.
 
