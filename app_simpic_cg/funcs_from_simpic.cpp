@@ -178,54 +178,46 @@ void seq_field_solve_poissons_equation(opp_set set, opp_arg arg0, opp_arg arg1)
 
     // modify density array
     double nlold, nrold;
-    if(rank == 0)
-    {
+
+    if(rank == 0) {
         nlold = node0_field_J[0];
         node0_field_J[0] = 0.;
     }
-    else
-    {
+    else {
         node0_field_J[0] *= 2;
     }
-    if(rank == last)
-    {
+
+    if(rank == last) {
         nrold = node0_field_J[nc];
         node0_field_J[nc] = 0.;
     }
-    else
-    {
+    else {
         node0_field_J[nc] *= 2;
     }
 
-    int nstrt = 0;
-
-    // Tridiagonal matrix of Poisson equation 𝜙𝑗+1−2𝜙𝑗+𝜙𝑗−1=𝑝𝑗 is solved with Gaussian elimination 
-    // by each processor
+    // Tridiagonal matrix of Poisson eq. 𝜙𝑗+1−2𝜙𝑗+𝜙𝑗−1=𝑝𝑗 is solved with Gaussian elimination by each processor 
     {
-        int j;
-        double bet = tri_b[nstrt];
-        node0_field_P[nstrt] = node0_field_J[nstrt]/bet;
+        double bet = tri_b[0];
+        node0_field_P[0] = node0_field_J[0] / bet;
 
-        for(j = nstrt + 1; j < set_size; j++) 
+        for(int j = 1; j < set_size; j++) 
         {
-            gam[j]              = tri_c[j-1]/bet;
-            bet                 = tri_b[j] - tri_a[j]*gam[j];
-            node0_field_P[j]    = (node0_field_J[j] - tri_a[j]*node0_field_P[j-1])/bet;
+            gam[j]              = tri_c[j-1] / bet;
+            bet                 = tri_b[j] - tri_a[j] * gam[j];
+            node0_field_P[j]    = (node0_field_J[j] - tri_a[j] * node0_field_P[j-1]) / bet;
         }
 
-        for(j = nc - 1; j >= nstrt; j--)
+        for(int j = nc - 1; j >= 0; j--)
         {
             node0_field_P[j] -= (gam[j+1] * node0_field_P[j+1]);
         }
     }
 
     // restore density array
-    if(rank == 0)
-    {
+    if(rank == 0) {
         node0_field_J[0] = 2*nlold;
     }
-    if(rank == last)
-    {
+    if(rank == last) {
         node0_field_J[nc] = 2*nrold;
     }
 
