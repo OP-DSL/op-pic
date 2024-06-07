@@ -10,12 +10,20 @@
 runFolder=$PWD"/MPI2_"$(date +"D_%Y_%m_%d_T_%I_%M_%S")
 echo "Creating running folder" $runFolder
 
-binary="/home/dcs/csrcnj/phd/OP-PIC/fempic_mpi/bin/mpi_hdf5"
+binary="/home/dcs/csrcnj/phd/OP-PIC/app_fempic/bin/mpi_hdf5"
 echo "Using Binary" $binary
 
-module load GCC/10.3.0  OpenMPI/4.1.1
-module load PETSc/3.15.1
-module load HDF5/1.12.1
+module purge
+
+# module load GCC/10.3.0  OpenMPI/4.1.1
+# module load PETSc/3.15.1
+# module load HDF5/1.12.1
+
+module load intel/2022a
+module load HDF5/1.13.1
+# unset I_MPI_PMI_LIBRARY
+export PETSC_INSTALL_PATH=/home/dcs/csrcnj/lib_install/petsc-3.21.0_intel2022a
+export LD_LIBRARY_PATH=$PETSC_INSTALL_PATH/lib:$LD_LIBRARY_PATH
 
 # export I_MPI_PMI_LIBRARY=/usr/lib/x86_64-linux-gnu/libpmi.so
 # export I_MPI_PMI_LIBRARY=/usr/lib64/pmix/lib/libpmi.so
