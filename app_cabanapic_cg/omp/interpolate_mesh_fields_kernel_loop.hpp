@@ -4,6 +4,12 @@
 //*********************************************
 
 namespace opp_k1 {
+enum Dim {
+    x = 0,
+    y = 1,
+    z = 2,
+};
+
 enum CellInterp {
     ex = 0,
     dexdy,
@@ -23,12 +29,6 @@ enum CellInterp {
     dcbydy,
     cbz,
     dcbzdz,
-};
-
-enum Dim {
-    x = 0,
-    y = 1,
-    z = 2,
 };
 
 inline void interpolate_mesh_fields_kernel(
@@ -153,8 +153,8 @@ void opp_par_loop_all__interpolate_mesh_fields_kernel(opp_set set, opp_iterate_t
     #pragma omp parallel for 
     for (int thr = 0; thr < nthreads; thr++)
     {
-        const size_t start  = (iter_size * thr) / nthreads;
-        const size_t finish = (iter_size * (thr+1)) / nthreads;
+        const size_t start  = ((size_t)iter_size * thr) / nthreads;
+        const size_t finish = ((size_t)iter_size * (thr+1)) / nthreads;
       
         for (size_t n = start; n < finish; n++)
         { 

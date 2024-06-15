@@ -35,6 +35,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 int OPP_nthreads = 1;
 std::vector<int> part_remove_count_per_thr;
 std::vector<std::vector<int>> move_part_indices_per_thr;
+std::vector<std::vector<opp_tmp_gbl_move_info>> gbl_move_indices_per_thr;
 std::vector<opp_move_var> move_var_per_thr;
 
 void opp_part_pack(opp_set set);
@@ -88,6 +89,13 @@ void opp_init(int argc, char **argv)
 //****************************************
 void opp_exit()
 {
+    if (OPP_DBG) opp_printf("opp_exit", "");
+    
+    globalMover.reset();
+    cellMapper.reset();
+    boundingBox.reset();
+    comm.reset();
+
 #ifdef USE_MPI 
         opp_halo_destroy(); // free memory allocated to halos and mpi_buffers 
         opp_partition_destroy(); // free memory used for holding partition information
@@ -401,9 +409,22 @@ void opp_init_particle_move(opp_set set, int nargs, opp_arg *args)
 
 #ifdef USE_MPI
     opp_move_part_indices.clear();
+    opp_move_part_indices.reserve(20000);
 
     move_part_indices_per_thr.resize(OPP_nthreads);
-    std::fill(move_part_indices_per_thr.begin(), move_part_indices_per_thr.end(), std::vector<int>());
+    for (int t = 0; t < OPP_nthreads; t++) 
+    {
+        move_part_indices_per_thr[t].clear();
+        move_part_indices_per_thr[t].reserve(1000);
+    }
+    // std::fill(move_part_indices_per_thr.begin(), move_part_indices_per_thr.end(), std::vector<int>());
+
+    gbl_move_indices_per_thr.resize(OPP_nthreads);
+    for (int t = 0; t < OPP_nthreads; t++) 
+    {
+        gbl_move_indices_per_thr[t].clear();
+        gbl_move_indices_per_thr[t].reserve(1000);
+    }    
 #endif
 
     if (OPP_comm_iteration == 0)
@@ -786,7 +807,7 @@ void opp_mpi_halo_wait_all(int nargs, opp_arg *args)
 {
     // Nothing to execute here
 }
-#endif
+#endif // if USE_MPI is defined, the functions in opp_mpi_particle_comm.cpp and opp_mpi_halo.cpp is used
 
 //****************************************
 opp_move_var opp_get_move_var(int thread)

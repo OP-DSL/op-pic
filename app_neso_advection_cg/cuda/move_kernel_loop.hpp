@@ -12,16 +12,16 @@ __constant__ OPP_INT opp_k2_dat1_stride_d;
 __constant__ OPP_INT opp_k2_c2c_map_stride_d;
 
 namespace opp_k2 {
+enum Dim {
+    x = 0,
+    y = 1,
+};
+
 enum CellMap {
     xd_y = 0,
     xu_y,
     x_yd,
     x_yu
-};
-
-enum Dim {
-    x = 0,
-    y = 1,
 };
 
 __device__ inline void move_kernel(char& opp_move_status_flag, const bool opp_move_hop_iter_one_flag, // Added by code-gen

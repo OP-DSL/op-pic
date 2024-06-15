@@ -4,16 +4,16 @@
 //*********************************************
 
 namespace opp_k2 {
+enum Dim {
+    x = 0,
+    y = 1,
+};
+
 enum CellMap {
     xd_y = 0,
     xu_y,
     x_yd,
     x_yu
-};
-
-enum Dim {
-    x = 0,
-    y = 1,
 };
 
 inline void move_kernel(const double* part_pos, const double* cell_pos_ll)
@@ -268,8 +268,8 @@ inline void gen_dh_structured_mesh(opp_set set, const opp_dat c_gbl_id, opp_map 
         cellMapper->lockWindows();
         int avail_gbl_cid = cellMapper->structMeshToCellMapping[index]; 
         if ((most_suitable_gbl_cid != MAX_CELL_INDEX) && (most_suitable_gbl_cid < avail_gbl_cid) && 
-                    (most_suitable_cid < set->size)) {          
-            cellMapper->enrichStructuredMesh(index, most_suitable_gbl_cid, OPP_rank);       
+                    (most_suitable_cid < set->size)) {        
+            cellMapper->enrichStructuredMesh(index, most_suitable_gbl_cid, OPP_rank);      
         }
         cellMapper->unlockWindows();
     }

@@ -35,8 +35,6 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 // USER WRITTEN CODE
 //*********************************************
 
-// #define OPP_KERNEL_LOOPP_UNROLL
-
 #include "opp_lib.h"
 
 //****************************************
@@ -45,34 +43,6 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #define KERNEL_DET_FIELDS       4
 #define KERNEL_NEIGHB_C         4
 #define KERNEL_DIM              3
-
-//*************************************************************************************************
-inline void calculate_injection_distribution(
-    int* injected_total,
-    double* face_area,
-    int* particle_distribution,
-    double* remainder 
-)
-{   
-    /*number of real ions per sec, given prescribed density and velocity*/
-    double num_per_sec = CONST_plasma_den[0] * CONST_ion_velocity[0] * (*face_area);
-
-    /*number of ions to generate in this time step*/
-    double num_real = num_per_sec * CONST_dt[0];
-
-    /*fraction number of macroparticles*/
-    double fnum_mp = num_real / CONST_spwt[0] + (*remainder);
-
-    /*integer number of macroparticles*/
-    int num_mp = (int)fnum_mp;
-
-    /*update reminder*/
-    (*remainder) = fnum_mp - num_mp;
-
-    (*injected_total) += num_mp;
-
-    (*particle_distribution) = (*injected_total);
-}
 
 //*************************************************************************************************
 inline void init_boundary_pot_kernel(
@@ -111,7 +81,7 @@ inline void inject_ions_kernel(
 {
     double a = dummy_part_random[0];
     double b = dummy_part_random[1];
-    if ((a + b) > 1)  
+    if ((a + b) > 1)  // TODO : Change the random dat to avoid this
     {
         a = (1 - a);
         b = (1 - b);
@@ -142,161 +112,6 @@ inline void calculate_new_pos_vel_kernel(
 }
 
 //*************************************************************************************************
-inline void deposit_charge_on_nodes_kernel(
-    const double *part_lc,
-    double *node_charge_den0,
-    double *node_charge_den1,
-    double *node_charge_den2,
-    double *node_charge_den3) {
-
-    node_charge_den0[0] += part_lc[0];
-    node_charge_den1[0] += part_lc[1];
-    node_charge_den2[0] += part_lc[2];
-    node_charge_den3[0] += part_lc[3];
-}
-
-//*************************************************************************************************
-inline void move_all_particles_to_cell_kernel(
-    const double *cell_ef,
-    double *part_pos,
-    double *part_vel,
-    double *part_lc,
-    int* current_cell_index,
-    const double *current_cell_volume,
-    const double *current_cell_det,
-    const int *cell_connectivity,
-    double *node_charge_den0,
-    double *node_charge_den1,
-    double *node_charge_den2,
-    double *node_charge_den3
-)
-{
-    if (OPP_DO_ONCE)
-    {
-        const double coefficient1 = CONST_charge[0] / CONST_mass[0] * (CONST_dt[0]);
-        for (int i = 0; i < KERNEL_DIM; i++)
-            part_vel[i] += (coefficient1 * cell_ef[i]);                  
-        
-        for (int i = 0; i < KERNEL_DIM; i++)
-            part_pos[i] += part_vel[i] * (CONST_dt[0]); // v = u + at
-    }
-
-    bool inside = true;
-    const double coefficient2 = KERNEL_ONE_OVER_SIX / (*current_cell_volume);
-    for (int i=0; i<KERNEL_N_PER_C; i++) /*loop over vertices*/
-    {
-        part_lc[i] = coefficient2 * (
-            current_cell_det[i * KERNEL_DET_FIELDS + 0] - 
-            current_cell_det[i * KERNEL_DET_FIELDS + 1] * part_pos[0] + 
-            current_cell_det[i * KERNEL_DET_FIELDS + 2] * part_pos[1] - 
-            current_cell_det[i * KERNEL_DET_FIELDS + 3] * part_pos[2]);
-        
-        if (part_lc[i] < 0.0 || 
-            part_lc[i] > 1.0)  
-                inside = false;
-                // m.inside_cell = false;
-    }    
-
-    if (inside)
-    {
-        OPP_PARTICLE_MOVE_DONE;
-
-        (*node_charge_den0) += part_lc[0];
-        (*node_charge_den1) += part_lc[1];
-        (*node_charge_den2) += part_lc[2];
-        (*node_charge_den3) += part_lc[3];
-
-        return;
-    }
-
-    // outside the last known cell, find most negative weight and 
-    // use that cell_index to reduce computations
-    int min_i = 0;
-    double min_lc = part_lc[0];
-    
-    for (int i=1; i<KERNEL_NEIGHB_C; i++)
-    {
-        if (part_lc[i] < min_lc) 
-        {
-            min_lc = part_lc[i];
-            min_i = i;
-        }
-    }
-
-    if (cell_connectivity[min_i] >= 0) // is there a neighbor in this direction?
-    {
-        (*current_cell_index) = cell_connectivity[min_i];
-        OPP_PARTICLE_NEED_MOVE;
-    }
-    else
-    {
-        OPP_PARTICLE_NEED_REMOVE;
-    }
-}
-
-//*************************************************************************************************
-inline void compute_node_charge_density_kernel(
-    double *node_charge_den,
-    const double *node_volume
-)
-{
-    (*node_charge_den) *= (CONST_spwt[0] / node_volume[0]);
-}
-
-//*************************************************************************************************
-inline void compute_electric_field_kernel(
-    double *cell_electric_field,             
-    const double *cell_shape_deriv,
-    const double *node_potential0,
-    const double *node_potential1,
-    const double *node_potential2,
-    const double *node_potential3
-)
-{
-    for (int dim = 0; dim < KERNEL_DIM; dim++)
-    { 
-        const double c1 = (cell_shape_deriv[0 * KERNEL_DIM + dim] * (*node_potential0));
-        const double c2 = (cell_shape_deriv[1 * KERNEL_DIM + dim] * (*node_potential1));
-        const double c3 = (cell_shape_deriv[2 * KERNEL_DIM + dim] * (*node_potential2));
-        const double c4 = (cell_shape_deriv[3 * KERNEL_DIM + dim] * (*node_potential3));
-
-        cell_electric_field[dim] -= (c1 + c2 + c3 + c4);
-    }    
-}
-
-//*************************************************************************************************
-
-// #define OPP_LOOPP_UNROLL
-//*******************************************************************************
-inline void isPointInCellKernel(bool& inside, const double *point_pos, double* point_lc, 
-                                const double *cell_volume, const double *cell_det) { 
-
-    inside = true;  
-    const double coefficient2 = KERNEL_ONE_OVER_SIX / (*cell_volume);
-
-    for (int i=0; i<KERNEL_N_PER_C; i++) { /*loop over vertices*/
-    
-        point_lc[i] = coefficient2 * (
-            cell_det[i * KERNEL_DET_FIELDS + 0] - 
-            cell_det[i * KERNEL_DET_FIELDS + 1] * point_pos[0] + 
-            cell_det[i * KERNEL_DET_FIELDS + 2] * point_pos[1] - 
-            cell_det[i * KERNEL_DET_FIELDS + 3] * point_pos[2]);
-    }  
-
-    if (point_lc[0] < 0.0 || 
-        point_lc[0] > 1.0 ||
-        point_lc[1] < 0.0 || 
-        point_lc[1] > 1.0 ||
-        point_lc[2] < 0.0 || 
-        point_lc[2] > 1.0 ||
-        point_lc[3] < 0.0 || 
-        point_lc[3] > 1.0) { 
-            
-            inside = false;
-    }  
-}
-
-//*******************************************************************************
 inline void move_kernel(
     const double *point_pos, double* point_lc, 
     const double *cell_volume, const double *cell_det
@@ -348,7 +163,51 @@ inline void move_kernel(
     }
 }
 
-//*******************************************************************************
+//*************************************************************************************************
+inline void deposit_charge_on_nodes_kernel(
+    const double *part_lc,
+    double *node_charge_den0,
+    double *node_charge_den1,
+    double *node_charge_den2,
+    double *node_charge_den3) {
+
+    node_charge_den0[0] += part_lc[0];
+    node_charge_den1[0] += part_lc[1];
+    node_charge_den2[0] += part_lc[2];
+    node_charge_den3[0] += part_lc[3];
+}
+
+//*************************************************************************************************
+inline void compute_node_charge_density_kernel(
+    double *node_charge_den,
+    const double *node_volume
+)
+{
+    (*node_charge_den) *= (CONST_spwt[0] / node_volume[0]);
+}
+
+//*************************************************************************************************
+inline void compute_electric_field_kernel(
+    double *cell_electric_field,             
+    const double *cell_shape_deriv,
+    const double *node_potential0,
+    const double *node_potential1,
+    const double *node_potential2,
+    const double *node_potential3
+)
+{
+    for (int dim = 0; dim < KERNEL_DIM; dim++)
+    { 
+        const double c1 = (cell_shape_deriv[0 * KERNEL_DIM + dim] * (*node_potential0));
+        const double c2 = (cell_shape_deriv[1 * KERNEL_DIM + dim] * (*node_potential1));
+        const double c3 = (cell_shape_deriv[2 * KERNEL_DIM + dim] * (*node_potential2));
+        const double c4 = (cell_shape_deriv[3 * KERNEL_DIM + dim] * (*node_potential3));
+
+        cell_electric_field[dim] -= (c1 + c2 + c3 + c4);
+    }    
+}
+
+//*************************************************************************************************
 inline void get_final_max_values_kernel(
     const OPP_REAL* n_charge_den,
     OPP_REAL* max_n_charge_den,
@@ -358,4 +217,15 @@ inline void get_final_max_values_kernel(
     *max_n_charge_den = MAX(abs(*n_charge_den), *max_n_charge_den);
     
     *max_n_pot = MAX(*n_pot, *max_n_pot);
+}
+
+//*******************************************************************************
+inline void get_max_cef_kernel(
+    const OPP_REAL* val,
+    OPP_REAL* max_val)
+{
+    for (int dim = 0; dim < KERNEL_DIM; ++dim) 
+    {
+        *max_val = MAX(val[dim], *max_val);
+    }
 }

@@ -122,7 +122,7 @@ omp_mpi: mklib
 	     $(MPICPP) $(CPPFLAGS) -fopenmp -DUSE_OMP -DUSE_MPI -c fempic_opp.cpp -o $(OBJ)/fempic_opp_omp_mpi.o $(ALL_INC)
 		 $(MPICPP) $(CPPFLAGS) -fopenmp -DUSE_OMP -DUSE_MPI -c field_solver/cpu.cpp -o $(OBJ)/field_solver_cpu_omp_mpi.o $(ALL_INC)
 		 $(MPICPP) $(CPPFLAGS) -fopenmp -DUSE_OMP -DUSE_MPI -c omp/opp_kernels.cpp -o $(OBJ)/opp_kernels_omp_mpi.o $(ALL_INC)
-	     $(MPICPP) $(CPPFLAGS) -fopenmp -o $(BIN)/omp_mpi_hdf5 \
+	     $(MPICPP) $(CPPFLAGS) -fopenmp -o $(BIN)/omp_mpi \
 		 	$(OBJ)/fempic_opp_omp_mpi.o \
 			$(OBJ)/opp_kernels_omp_mpi.o \
 			$(OBJ)/field_solver_cpu_omp_mpi.o \

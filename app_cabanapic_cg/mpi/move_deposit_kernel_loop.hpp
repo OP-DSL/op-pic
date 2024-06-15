@@ -10,27 +10,6 @@ enum CellAcc {
     jfz = 2 * 4,
 };
 
-enum CellInterp {
-    ex = 0,
-    dexdy,
-    dexdz,
-    d2exdydz,
-    ey,
-    deydz,
-    deydx,
-    d2eydzdx,
-    ez,
-    dezdx,
-    dezdy,
-    d2ezdxdy,
-    cbx,
-    dcbxdx,
-    cby,
-    dcbydy,
-    cbz,
-    dcbzdz,
-};
-
 inline void weight_current_to_accumulator_kernel(
         double* cell_acc,
         const double* q,
@@ -64,6 +43,27 @@ enum Dim {
     x = 0,
     y = 1,
     z = 2,
+};
+
+enum CellInterp {
+    ex = 0,
+    dexdy,
+    dexdz,
+    d2exdydz,
+    ey,
+    deydz,
+    deydx,
+    d2eydzdx,
+    ez,
+    dezdx,
+    dezdy,
+    d2ezdxdy,
+    cbx,
+    dcbxdx,
+    cby,
+    dcbydy,
+    cbz,
+    dcbzdz,
 };
 
 inline void move_deposit_kernel(
@@ -341,7 +341,7 @@ void opp_particle_move__move_deposit_kernel(opp_set set, opp_map c2c_map, opp_ma
     };
 
     // ----------------------------------------------------------------------------
-    opp_init_particle_move(set, 0, nullptr);
+    opp_init_particle_move(set, nargs, args);
 
 
     opp_profiler->start("Mv_AllMv0");
@@ -369,7 +369,7 @@ void opp_particle_move__move_deposit_kernel(opp_set set, opp_map c2c_map, opp_ma
         const std::string profName = std::string("Mv_AllMv") + std::to_string(OPP_comm_iteration);
         opp_profiler->start(profName);
         
-        opp_init_particle_move(set, 0, nullptr);
+        opp_init_particle_move(set, nargs, args);
 
         // check whether particle is within cell, and if not move between cells within the MPI rank, mark for neighbour comm
         opp_profiler->start("move_deposit_kernel_only");

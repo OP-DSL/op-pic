@@ -3,7 +3,7 @@
 // AUTO GENERATED CODE
 //*********************************************
 
-namespace opp_k8 {
+namespace opp_k9 {
 inline void get_final_max_values_kernel(
     const double* n_charge_den,
     double* max_n_charge_den,
@@ -59,12 +59,12 @@ void opp_par_loop_all__get_final_max_values_kernel(opp_set set, opp_iterate_type
     #pragma omp parallel for 
     for (int thr = 0; thr < nthreads; thr++)
     {
-        const size_t start  = (iter_size * thr) / nthreads;
-        const size_t finish = (iter_size * (thr+1)) / nthreads;
+        const size_t start  = ((size_t)iter_size * thr) / nthreads;
+        const size_t finish = ((size_t)iter_size * (thr+1)) / nthreads;
       
         for (size_t n = start; n < finish; n++)
         { 
-            opp_k8::get_final_max_values_kernel(
+            opp_k9::get_final_max_values_kernel(
                 (const OPP_REAL *)args[0].data + (n * 1),
                 arg1_l + (1 * thr),
                 (const OPP_REAL *)args[2].data + (n * 1),

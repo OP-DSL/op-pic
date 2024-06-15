@@ -67,8 +67,8 @@ void opp_par_loop_all__half_advance_b_kernel(opp_set set, opp_iterate_type,
     #pragma omp parallel for 
     for (int thr = 0; thr < nthreads; thr++)
     {
-        const size_t start  = (iter_size * thr) / nthreads;
-        const size_t finish = (iter_size * (thr+1)) / nthreads;
+        const size_t start  = ((size_t)iter_size * thr) / nthreads;
+        const size_t finish = ((size_t)iter_size * (thr+1)) / nthreads;
       
         for (size_t n = start; n < finish; n++)
         { 

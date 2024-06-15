@@ -4,6 +4,12 @@
 //*********************************************
 
 namespace opp_k1 {
+enum Dim {
+    x = 0,
+    y = 1,
+    z = 2,
+};
+
 enum CellInterp {
     ex = 0,
     dexdy,
@@ -23,12 +29,6 @@ enum CellInterp {
     dcbydy,
     cbz,
     dcbzdz,
-};
-
-enum Dim {
-    x = 0,
-    y = 1,
-    z = 2,
 };
 
 inline void interpolate_mesh_fields_kernel(

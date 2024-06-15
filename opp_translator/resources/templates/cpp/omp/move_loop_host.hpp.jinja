@@ -108,13 +108,15 @@ void opp_particle_move__{{lh.kernel}}(opp_set set, opp_map c2c_map, opp_map p2c_
     };
 
     // ----------------------------------------------------------------------------
-    opp_init_particle_move(set, 0, nullptr);
+    opp_init_particle_move(set, nargs, args);
+    const int total_count = OPP_iter_end - OPP_iter_start;
 
 {% if lh.dh_loop_required %}
-#ifdef USE_MPI 
     if (useGlobalMove) { // For now Global Move will not work with MPI
-        
+
+#ifdef USE_MPI         
         globalMover->initGlobalMove();
+#endif
 
         opp_profiler->start("GblMv_Move");
 
@@ -122,8 +124,8 @@ void opp_particle_move__{{lh.kernel}}(opp_set set, opp_map c2c_map, opp_map p2c_
         #pragma omp parallel for
         for (int thr = 0; thr < nthreads; thr++)
         {
-            const size_t start  = ((size_t)size * thr) / nthreads;
-            const size_t finish = ((size_t)size * (thr+1)) / nthreads;
+            const size_t start  = ((size_t)total_count * thr) / nthreads;
+            const size_t finish = ((size_t)total_count * (thr+1)) / nthreads;
 
             for (size_t i = start; i < finish; i++)
             {
@@ -132,9 +134,9 @@ void opp_particle_move__{{lh.kernel}}(opp_set set, opp_map c2c_map, opp_map p2c_
                 const opp_point* point = (const opp_point*)&(((OPP_REAL*)args[0].data)[i * {{lh.dat(lh.args[0]).dim}}]); 
 
                 // check for global move, and if satisfy global move criteria, then remove the particle from current rank
-                if (opp_part_checkForGlobalMove{{lh.dat(lh.args[0]).dim}}D(set, *point, i, opp_p2c[0])) { 
+                if (opp_part_checkForGlobalMove{{lh.dat(lh.args[0]).dim}}D(set, *point, i, opp_p2c[0], thr)) { 
                     
-                    set->particle_remove_count++;
+                    part_remove_count_per_thr[thr] += 1;
                     continue;  
                 }
             }
@@ -142,9 +144,11 @@ void opp_particle_move__{{lh.kernel}}(opp_set set, opp_map c2c_map, opp_map p2c_
 
         opp_profiler->end("GblMv_Move");
 
+#ifdef USE_MPI 
+        opp_gather_gbl_move_indices();
         globalMover->communicate(set);
-    }
 #endif
+    }
 {% endif %}
 
     opp_profiler->start("Mv_AllMv0");
@@ -153,7 +157,6 @@ void opp_particle_move__{{lh.kernel}}(opp_set set, opp_map c2c_map, opp_map p2c_
     // check whether all particles not marked for global comm is within cell, 
     // and if not mark to move between cells within the MPI rank, mark for neighbour comm
     opp_profiler->start("{{lh.kernel}}_only");
-    const int total_count = OPP_iter_end - OPP_iter_start;
     #pragma omp parallel for
     for (int thr = 0; thr < nthreads; thr++)
     {
@@ -227,7 +230,7 @@ void opp_particle_move__{{lh.kernel}}(opp_set set, opp_map c2c_map, opp_map p2c_
         const std::string profName = std::string("Mv_AllMv") + std::to_string(OPP_comm_iteration);
         opp_profiler->start(profName);
         
-        opp_init_particle_move(set, 0, nullptr);
+        opp_init_particle_move(set, nargs, args);
 
         // check whether particle is within cell, and if not move between cells within the MPI rank, mark for neighbour comm
         opp_profiler->start("{{lh.kernel}}_only");

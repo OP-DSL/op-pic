@@ -18,6 +18,12 @@ __constant__ OPP_INT opp_k1_map0_stride_d;
 
 
 namespace opp_k1 {
+enum Dim {
+    x = 0,
+    y = 1,
+    z = 2,
+};
+
 enum CellInterp {
     ex = 0,
     dexdy,
@@ -37,12 +43,6 @@ enum CellInterp {
     dcbydy,
     cbz,
     dcbzdz,
-};
-
-enum Dim {
-    x = 0,
-    y = 1,
-    z = 2,
 };
 
 __device__ inline void interpolate_mesh_fields_kernel(

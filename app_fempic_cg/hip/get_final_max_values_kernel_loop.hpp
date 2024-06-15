@@ -3,15 +3,15 @@
 // AUTO GENERATED CODE
 //*********************************************
 
-OPP_INT opp_k8_dat0_stride = -1;
-OPP_INT opp_k8_dat1_stride = -1;
+OPP_INT opp_k9_dat0_stride = -1;
+OPP_INT opp_k9_dat1_stride = -1;
 
-__constant__ OPP_INT opp_k8_dat0_stride_d;
-__constant__ OPP_INT opp_k8_dat1_stride_d;
+__constant__ OPP_INT opp_k9_dat0_stride_d;
+__constant__ OPP_INT opp_k9_dat1_stride_d;
 
 
 
-namespace opp_k8 {
+namespace opp_k9 {
 __device__ inline void get_final_max_values_kernel(
     const double* n_charge_den,
     double* max_n_charge_den,
@@ -47,7 +47,7 @@ __global__ void opp_dev_get_final_max_values_kernel(
 
     for (int n = thread_id; n < (end - start); n += blockDim.x * gridDim.x) {
 
-        opp_k8::get_final_max_values_kernel(
+        opp_k9::get_final_max_values_kernel(
             dat0 + n, // n_charge_den 
             gbl1_local, // 
             dat1 + n, // n_potential 
@@ -89,17 +89,17 @@ void opp_par_loop_all__get_final_max_values_kernel(opp_set set, opp_iterate_type
     OPP_REAL *arg1_host_data = (OPP_REAL *)args[1].data;
     OPP_REAL *arg3_host_data = (OPP_REAL *)args[3].data;
 
-    if (opp_k8_dat0_stride != args[0].dat->set->set_capacity) {
-        opp_k8_dat0_stride = args[0].dat->set->set_capacity;
-        cutilSafeCall(hipMemcpyToSymbol(HIP_SYMBOL(opp_k8_dat0_stride_d), &opp_k8_dat0_stride, sizeof(OPP_INT)));
+    if (opp_k9_dat0_stride != args[0].dat->set->set_capacity) {
+        opp_k9_dat0_stride = args[0].dat->set->set_capacity;
+        cutilSafeCall(hipMemcpyToSymbol(HIP_SYMBOL(opp_k9_dat0_stride_d), &opp_k9_dat0_stride, sizeof(OPP_INT)));
     }
-    if (opp_k8_dat1_stride != args[2].dat->set->set_capacity) {
-        opp_k8_dat1_stride = args[2].dat->set->set_capacity;
-        cutilSafeCall(hipMemcpyToSymbol(HIP_SYMBOL(opp_k8_dat1_stride_d), &opp_k8_dat1_stride, sizeof(OPP_INT)));
+    if (opp_k9_dat1_stride != args[2].dat->set->set_capacity) {
+        opp_k9_dat1_stride = args[2].dat->set->set_capacity;
+        cutilSafeCall(hipMemcpyToSymbol(HIP_SYMBOL(opp_k9_dat1_stride_d), &opp_k9_dat1_stride, sizeof(OPP_INT)));
     }
 
-#ifdef OPP_BLOCK_SIZE_8
-    const int block_size = OPP_BLOCK_SIZE_8;
+#ifdef OPP_BLOCK_SIZE_9
+    const int block_size = OPP_BLOCK_SIZE_9;
 #else
     const int block_size = OPP_gpu_threads_per_block;
 #endif

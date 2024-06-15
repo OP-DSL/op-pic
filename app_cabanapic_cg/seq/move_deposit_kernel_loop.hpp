@@ -10,27 +10,6 @@ enum CellAcc {
     jfz = 2 * 4,
 };
 
-enum CellInterp {
-    ex = 0,
-    dexdy,
-    dexdz,
-    d2exdydz,
-    ey,
-    deydz,
-    deydx,
-    d2eydzdx,
-    ez,
-    dezdx,
-    dezdy,
-    d2ezdxdy,
-    cbx,
-    dcbxdx,
-    cby,
-    dcbydy,
-    cbz,
-    dcbzdz,
-};
-
 inline void weight_current_to_accumulator_kernel(
         double* cell_acc,
         const double* q,
@@ -64,6 +43,27 @@ enum Dim {
     x = 0,
     y = 1,
     z = 2,
+};
+
+enum CellInterp {
+    ex = 0,
+    dexdy,
+    dexdz,
+    d2exdydz,
+    ey,
+    deydz,
+    deydx,
+    d2eydzdx,
+    ez,
+    dezdx,
+    dezdy,
+    d2ezdxdy,
+    cbx,
+    dcbxdx,
+    cby,
+    dcbydy,
+    cbz,
+    dcbzdz,
 };
 
 inline void move_deposit_kernel(

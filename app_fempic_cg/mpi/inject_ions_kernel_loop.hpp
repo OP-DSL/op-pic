@@ -19,7 +19,7 @@ inline void inject_ions_kernel(
 {
     double a = dummy_part_random[0];
     double b = dummy_part_random[1];
-    if ((a + b) > 1)
+    if ((a + b) > 1)  // TODO : Change the random dat to avoid this
     {
         a = (1 - a);
         b = (1 - b);

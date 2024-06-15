@@ -125,8 +125,10 @@ int main(int argc, char **argv)
                 log += str(OPP_max_comm_iteration, "max_comm_iteration: %d");
             }
 
+            const int64_t glb_parts = get_global_parts_iterated(part_set->size);
             OPP_RUN_ON_ROOT()
-                opp_printf("Main", "ts: %d parts: %d | %s ****", OPP_main_loop_iter, part_set->size, log.c_str());       
+                opp_printf("Main", "ts: %d parts: %d | %s ****", OPP_main_loop_iter, 
+                    glb_parts, log.c_str());           
         }
     opp_profiler->end("MainLoop");
         

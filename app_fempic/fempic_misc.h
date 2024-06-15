@@ -39,8 +39,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  * This function will enrich the particle distribution values into if_dist_dat
  * In addition, dummy_random dat will get enriched with random values in "rand_file"
 */
-inline int init_inject_distributions(opp_dat if_dist_dat, opp_dat if_area_dat, 
-                                        opp_dat dummy_random)
+inline int init_inject_distributions(opp_dat if_dist_dat, opp_dat if_area_dat, opp_dat dummy_random)
 {
     if (OPP_DBG) opp_printf("init_inject_distributions", "START");
 
@@ -52,8 +51,8 @@ inline int init_inject_distributions(opp_dat if_dist_dat, opp_dat if_area_dat,
     int total_inject_count = 0, max_inject_count_per_face = 0;
     double remainder = 0.0;
 
-    if (OPP_DBG) 
-        opp_printf("init_inject_distributions", "plasma_den=%2.15lE dt=%2.25lE ion_velocity=%2.15lE spwt=%2.15lE", 
+    OPP_RUN_ON_ROOT()
+        opp_printf("init_inject_distributions", "plasma_den=%2.15lE dt=%2.25lE ion_vel=%2.15lE spwt=%2.15lE", 
             plasma_den, dt, ion_velocity, spwt);
 
     // find the number of particles to be injected through each inlet face and 
@@ -66,7 +65,7 @@ inline int init_inject_distributions(opp_dat if_dist_dat, opp_dat if_area_dat,
         double num_real = num_per_sec * dt;
         double fnum_mp = num_real / spwt + remainder;
         int num_mp = (int)fnum_mp;
-        remainder = fnum_mp - num_mp;
+        // remainder = fnum_mp - num_mp;
 
         total_inject_count += num_mp;
 
@@ -196,14 +195,14 @@ inline void print_per_cell_particle_counts(opp_dat c_part_count, opp_dat part_me
 
 /*************************************************************************************************
  * This is a utility function create a global level log string using local values
- * @param max_n_charge_density - this is already reduced glocally by the opp_par_loop
+ * @param max_c_ef - this is already reduced glocally by the opp_par_loop
  * @param max_n_potential - this is already reduced glocally by the opp_par_loop
  * @param local_part_count - these are local values
  * @param local_parts_injected - these are local values
  * @param local_part_removed - these are local values
  * @return std::string
 */
-inline std::string get_global_level_log(double max_n_charge_density, double max_n_potential, 
+inline std::string get_global_level_log(double max_c_ef, double max_n_potential, 
     int local_part_count, int local_parts_injected, int local_part_removed)
 {
     std::string log = "";
@@ -230,8 +229,8 @@ inline std::string get_global_level_log(double max_n_charge_density, double max_
     log += std::string("\t np: ") + str(global_part_size, "%" PRId64);
     log += std::string(" (") + str(global_inj_size, "%" PRId64);
     log += std::string(" added, ") + str(global_removed, "%" PRId64);
-    log += std::string(" removed)\t max den: ") + str(max_n_charge_density, "%2.25lE");
-    log += std::string(" max |phi|: ") + str(max_n_potential, "%2.10lE");
+    log += std::string(" removed)\t max c_ef: ") + str(max_c_ef, "%2.15lE");
+    log += std::string(" max n_pot: ") + str(max_n_potential, "%2.15lE");
     log += std::string(" max_comm_iteration: ") + str(global_max_comm_iteration, "%d");
     return log;
 }

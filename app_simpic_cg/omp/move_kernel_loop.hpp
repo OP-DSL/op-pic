@@ -100,7 +100,8 @@ void opp_particle_move__move_kernel(opp_set set, opp_map c2c_map, opp_map p2c_ma
     };
 
     // ----------------------------------------------------------------------------
-    opp_init_particle_move(set, 0, nullptr);
+    opp_init_particle_move(set, nargs, args);
+    const int total_count = OPP_iter_end - OPP_iter_start;
 
 
     opp_profiler->start("Mv_AllMv0");
@@ -109,7 +110,6 @@ void opp_particle_move__move_kernel(opp_set set, opp_map c2c_map, opp_map p2c_ma
     // check whether all particles not marked for global comm is within cell, 
     // and if not mark to move between cells within the MPI rank, mark for neighbour comm
     opp_profiler->start("move_kernel_only");
-    const int total_count = OPP_iter_end - OPP_iter_start;
     #pragma omp parallel for
     for (int thr = 0; thr < nthreads; thr++)
     {
@@ -134,7 +134,7 @@ void opp_particle_move__move_kernel(opp_set set, opp_map c2c_map, opp_map p2c_ma
         const std::string profName = std::string("Mv_AllMv") + std::to_string(OPP_comm_iteration);
         opp_profiler->start(profName);
         
-        opp_init_particle_move(set, 0, nullptr);
+        opp_init_particle_move(set, nargs, args);
 
         // check whether particle is within cell, and if not move between cells within the MPI rank, mark for neighbour comm
         opp_profiler->start("move_kernel_only");

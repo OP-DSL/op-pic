@@ -22,6 +22,11 @@ https://bitbucket.org/lecad-peg/simpic/src/ab6a92dea645ee39747aff214884a51a14802
 
 *Both these issues will make the shared memory serial and distributed memory runs deviate even if we use the same number of particles per cell and the same total number of particles and mesh elements per simulation*
 
+## TODO
+If MPI versions of Simpic needs to be developed with OP-PIC, the above issues should be addressed.
+
+In addition, the mesh/particles should be distributed, an appropriate partitioning routine should be called and the field solver needs to be re-implemented, perhaps consider using PETSc.
+
 ## Structure
  * `simpic.cpp` : The main file containing OP-PIC API calls. 
  * `kernels.h` : The user written elemental kernel functions.
