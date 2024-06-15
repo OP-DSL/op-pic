@@ -2,6 +2,8 @@
 *.so
 *.pyc
 
+_build/
+
 opp_venv/
 
 MPI_*
