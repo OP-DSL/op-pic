@@ -49,6 +49,7 @@ endif
 HIP ?= 1
 ifeq ($(HIP), 1)
 	HIP_INC   = -I$(ROCM_INSTALL_DIR)/include -I$(ROCM_THRUST_DIR)/include -I$(ROCM_PRIM_DIR)/include
+	HIP_LIB   = -L$(ROCM_INSTALL_DIR)/lib -lamdhip64
 endif
 
 PARMETIS ?= 0

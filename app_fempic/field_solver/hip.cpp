@@ -626,12 +626,17 @@ bool FESolver::linearSolve(double *ion_den_d)
 
     opp_profiler->start("FSolve_j_and_f1");
     const int stride = c2n_map->from->size + c2n_map->from->exec_size + c2n_map->from->nonexec_size;
-
+    opp_profiler->start("FSolvef1");
     computeF1VectorValuesKernel <<<cells_inc_haloNBlocks, OPP_gpu_threads_per_block>>> (n_elements_inc_halo, 
                                             c2n_map->map_d, node_to_eq_map_d, tempNEQ1_d, f1Local_d, detJ_d, stride);
-
+    cutilSafeCall(hipDeviceSynchronize());
+    opp_profiler->end("FSolvef1");
+    
+    opp_profiler->start("FSolve_j");
     computeJmatrixValuesKernel <<<cells_inc_haloNBlocks, OPP_gpu_threads_per_block>>> (n_elements_inc_halo, 
                     c2n_map->map_d, node_to_eq_map_d, detJ_d, tempNEQ3_d, tempNEQ2_d, stride);
+    cutilSafeCall(hipDeviceSynchronize());
+    opp_profiler->end("FSolve_j");
 
     MatCopy(Kmat, Jmat, DIFFERENT_NONZERO_PATTERN);
 

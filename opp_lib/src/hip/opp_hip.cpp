@@ -84,8 +84,8 @@ void opp_init(int argc, char **argv)
     cutilDeviceInit(argc, argv);
 
     // cutilSafeCall(hipDeviceSetCacheConfig(hipFuncCachePreferL1));
-    cutilSafeCall(hipDeviceSetCacheConfig(hipFuncCachePreferShared));
-    cutilSafeCall(hipDeviceSetSharedMemConfig(hipSharedMemBankSizeEightByte));
+    // cutilSafeCall(hipDeviceSetCacheConfig(hipFuncCachePreferShared));
+    // cutilSafeCall(hipDeviceSetSharedMemConfig(hipSharedMemBankSizeEightByte));
 
     OPP_auto_soa = 1; // TODO : Make this configurable with args
 

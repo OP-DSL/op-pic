@@ -13,7 +13,7 @@ HIPCC      = $(HIP_COMPILER)
 
 CPPFLAGS   = -std=c++14 -Wall -fPIC 
 NVCCFLAGS  = -m64 -Xptxas -dlcm=ca -Xptxas=-v $(NVCCFLAGS_ADD)
-HIPCCFLAGS = $(HIPCCFLAGS_ADD) -std=c++17 -Wall -isystem -D__HIP_PLATFORM_AMD__
+HIPCCFLAGS = $(HIPCCFLAGS_ADD) -std=c++17 -Wall -isystem -D__HIP_PLATFORM_AMD__ -munsafe-fp-atomics -march=native
 
 DEBUG ?= 0
 ifeq ($(DEBUG), 1)
@@ -50,6 +50,7 @@ endif
 HIP ?= 1
 ifeq ($(HIP), 1)
 	HIP_INC   = -I$(ROCM_INSTALL_DIR)/include -I$(ROCM_THRUST_DIR)/include -I$(ROCM_PRIM_DIR)/include
+	HIP_LIB   = -L$(ROCM_INSTALL_DIR)/lib -lamdhip64
 endif
 
 ALL_INC    += -I$(OPP_PATH)/include
@@ -117,18 +118,18 @@ cuda_mpi: common
 hip: mklib
 		 $(HIPCC) $(HIPCCFLAGS) -c advec_opp.cpp -o $(OBJ)/advec_opp_hip.o $(ALL_INC) $(HIP_INC)
 		 $(HIPCC) $(HIPCCFLAGS) -c hip/opp_kernels.cpp -o $(OBJ)/opp_kernels_hip.o $(ALL_INC) $(HIP_INC)
-	     $(HIPCC) $(HIPCCFLAGS) -o $(BIN)/hip \
+	     $(MPICPP) $(CPPFLAGS) -o $(BIN)/hip \
 			$(OBJ)/advec_opp_hip.o \
 			$(OBJ)/opp_kernels_hip.o \
-			$(ALL_INC) $(HIP_INC) $(ALL_LIBS) -lopp_hip
+			$(ALL_INC) $(HIP_INC) $(HIP_LIB) $(ALL_LIBS) -lopp_hip
 
 hip_mpi: common
 		 $(HIPCC) $(HIPCCFLAGS) -DUSE_MPI -c advec_opp.cpp -o $(OBJ)/advec_opp_hip_mpi.o $(ALL_INC) $(HIP_INC)
 		 $(HIPCC) $(HIPCCFLAGS) -DUSE_MPI -c hip/opp_kernels.cpp -o $(OBJ)/opp_kernels_hip_mpi.o $(ALL_INC) $(HIP_INC)
-	     $(HIPCC) $(HIPCCFLAGS) -DUSE_MPI -o $(BIN)/hip_mpi \
+	     $(MPICPP) $(CPPFLAGS) -DUSE_MPI -o $(BIN)/hip_mpi \
 		 	$(OBJ)/advec_opp_hip_mpi.o \
 			$(OBJ)/opp_kernels_hip_mpi.o \
-			$(ALL_INC) $(HIP_INC) $(ALL_LIBS) -lopp_hip_mpi -lmpi
+			$(ALL_INC) $(HIP_INC) $(HIP_LIB) $(ALL_LIBS) -lopp_hip_mpi -lmpi
 
 clean: 
 	     rm -f *.o *.d *.a

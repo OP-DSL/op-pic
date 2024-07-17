@@ -72,7 +72,8 @@ int main(int argc, char **argv)
         opp_map p2c_map  = opp_decl_map(part_set, cell_set, 1, nullptr, "p_mesh_rel");
 
         opp_dat p_pos    = opp_decl_dat(part_set, DIM, DT_REAL, nullptr, "p_pos");
-        opp_dat p_vel    = opp_decl_dat(part_set, DIM, DT_REAL, nullptr, "p_vel");    
+        opp_dat p_vel    = opp_decl_dat(part_set, DIM, DT_REAL, nullptr, "p_vel");
+        opp_dat p_mdir   = opp_decl_dat(part_set, DIM, DT_INT,  nullptr, "p_move_dir");
         opp_dat p_idx    = opp_decl_dat(part_set, ONE, DT_INT,  nullptr, "p_index"); // Unused in the simulation
 
         opp_decl_const<OPP_REAL>(TWO, extents,     "CONST_extents");
@@ -103,12 +104,14 @@ int main(int argc, char **argv)
         for (OPP_main_loop_iter = 0; OPP_main_loop_iter < max_iter; OPP_main_loop_iter++)
         {
             opp_par_loop(update_pos_kernel, "update_pos", part_set, OPP_ITERATE_ALL,
-                opp_arg_dat(p_vel, OPP_READ),
-                opp_arg_dat(p_pos, OPP_RW)
+                opp_arg_dat(p_vel,  OPP_READ),
+                opp_arg_dat(p_pos,  OPP_RW),
+                opp_arg_dat(p_mdir, OPP_WRITE)
             );
 
             opp_particle_move(move_kernel, "move", part_set, c2c_map, p2c_map,
                 opp_arg_dat(p_pos,             OPP_READ),
+                opp_arg_dat(p_mdir,            OPP_RW),
                 opp_arg_dat(c_pos_ll, p2c_map, OPP_READ)
             );
 
@@ -146,16 +149,34 @@ int main(int argc, char **argv)
 
 /*
 NOTE: ------------------------------------------------------------------
-    cell_set     	        28 bytes
-    part_set     	        40 bytes
+    cell_set     	        40 bytes
+    part_set     	        48 bytes + 12 bytes (3 ints used in particle move)
 
-    Assume, 1024 x 1024 mesh 
-    cell_set->size          1,048,576     29,360,128 bytes
+    Assume, 512 x 512 mesh 
+    cell_set->size          262,144     10,485,760 bytes
     
     Assume 16GB of GPU memory and we have two thrust vectors per opp_dat
-    max particles           ~374,000,000
-    max particles per cell  ~175
+    max particles           ~125,000,000
+    max particles per cell  ~475
+
+    Assume 64GB of GPU memory and we have two thrust vectors per opp_dat
+    max particles           ~525,000,000
+    max particles per cell  ~2,002
+
+    Assume, 1024 x 1024 mesh 
+    cell_set->size          1,048,576     41,943,040 bytes
+
+    Assume 64GB of GPU memory and we have two thrust vectors per opp_dat
+    max particles           ~646,000,000
+    max particles per cell  ~500
 
     or reduce the mesh size to increase particles per cell
 ------------------------------------------------------------------------
+
+mesh      -> cells      | ppc  -> parts       -> bytes  | ppc  -> parts       -> bytes  | ppc  -> parts       -> bytes  |
+256x256   -> 65,536	    | 6800 -> 445,644,800 -> 49.8GB | 3400 -> 222,822,400 -> 24.9GB | 1700 -> 111,411,200 -> 24.9GB |
+512x256   -> 131,072	| 3400 -> 445,644,800 -> 49.8GB | 1700 -> 222,822,400 -> 24.9GB | 850  -> 111,411,200 -> 24.9GB |
+512x512   -> 262,144	| 1700 -> 445,644,800 -> 49.8GB | 850  -> 222,822,400 -> 24.9GB | 425  -> 111,411,200 -> 24.9GB |
+1024x1024 -> 1,048,576	| 425  -> 445,644,800 -> 49.8GB | 212  -> 222,298,112 -> 24.8GB |                               |
+
 */

@@ -38,42 +38,52 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "opp_lib.h"
 
 //*************************************************************************************************
-inline void update_pos_kernel(const OPP_REAL* part_vel, OPP_REAL* part_pos)
+inline void update_pos_kernel(const OPP_REAL* part_vel, OPP_REAL* part_pos, OPP_INT* part_mdir)
 {
     for (int dm = 0; dm < DIM; dm++) {
         
-        part_pos[dm] += part_vel[dm] * CONST_dt[0]; // s1 = s0 + ut
+        const OPP_REAL offset = part_vel[dm] * CONST_dt[0];
+        part_pos[dm] += offset; // s1 = s0 + ut
         
         // correct for periodic boundary conditions
         const OPP_INT n_extent_offset_int = std::abs(part_pos[dm]) + 2.0;
         const OPP_REAL temp_pos = part_pos[dm] + n_extent_offset_int * CONST_extents[dm];
         part_pos[dm] = std::fmod(temp_pos, CONST_extents[dm]);
+
+        part_mdir[dm] = (offset > 0) ? 1 : -1;
     }
 }
 
 //*************************************************************************************************
-inline void move_kernel(const OPP_REAL* part_pos, const OPP_REAL* cell_pos_ll)
+inline void move_kernel(const OPP_REAL* part_pos, OPP_INT* part_mdir, const OPP_REAL* cell_pos_ll)
 {
     // check for x direction movement
-    const OPP_REAL part_pos_x = part_pos[Dim::x];
-    if (part_pos_x < cell_pos_ll[Dim::x]) {
-        opp_p2c[0] = opp_c2c[CellMap::xd_y];
+    const OPP_REAL part_pos_x_diff = (part_pos[Dim::x] - cell_pos_ll[Dim::x]);
+    if ((part_pos_x_diff >= 0.0) && (part_pos_x_diff <= CONST_cell_width[0])) {
+        part_mdir[Dim::x] = 0; // within cell in x direction
+    }
+    else if (part_mdir[Dim::x] > 0) {
+        opp_p2c[0] = opp_c2c[CellMap::xu_y];
 
         OPP_PARTICLE_NEED_MOVE; return;
     }
-    if (part_pos_x > (cell_pos_ll[Dim::x] + CONST_cell_width[0])) {
-        opp_p2c[0] = opp_c2c[CellMap::xu_y];
+    else if (part_mdir[Dim::x] < 0) {
+        opp_p2c[0] = opp_c2c[CellMap::xd_y];
         OPP_PARTICLE_NEED_MOVE; return;
     }
 
     // check for y direction movement
-    const OPP_REAL part_pos_y = part_pos[Dim::y];
-    if (part_pos_y < cell_pos_ll[Dim::y]) {
-        opp_p2c[0] = opp_c2c[CellMap::x_yd];
+    const OPP_REAL part_pos_y_diff = (part_pos[Dim::y] - cell_pos_ll[Dim::y]);
+    if ((part_pos_y_diff >= 0.0) && (part_pos_y_diff <= CONST_cell_width[0])) { 
+        part_mdir[Dim::y] = 0; // within cell in y direction
+    }
+    else if (part_mdir[Dim::y] > 0) {
+        opp_p2c[0] = opp_c2c[CellMap::x_yu];
+
         OPP_PARTICLE_NEED_MOVE; return;
     }
-    if (part_pos_y > (cell_pos_ll[Dim::y] + CONST_cell_width[0])) {
-        opp_p2c[0] = opp_c2c[CellMap::x_yu];
+    else if (part_mdir[Dim::y] < 0) {
+        opp_p2c[0] = opp_c2c[CellMap::x_yd];
         OPP_PARTICLE_NEED_MOVE; return;
     }
 
