@@ -51,7 +51,7 @@ ENV MPI_COMPILER=mpicxx
 ENV PETSC_INSTALL_PATH=/usr/lib/petsc
 
 ENV HDF5_INSTALL_PATH=/usr/lib/x86_64-linux-gnu/hdf5/openmpi
-# ENV HDF5_INSTALL_PATH=/usr/lib/aarch64-linux-gnu/hdf5/openmpi 
+# 'x86_64-linux-gnu' for x86_64, 'aarch64-linux-gnu' for Mac M1
 
 # clone the OP-PIC library
 WORKDIR /home/myuser/
@@ -89,7 +89,7 @@ RUN make PETSC=1 seq
 RUN make PETSC=1 mpi
 RUN make PETSC=1 omp
 RUN make PETSC=1 mpi_hdf5 || \
-    echo "Script is written for architecture x86_64, please check the arch using echo $(uname -m) and change HDF5_INSTALL_PATH in this script" 
+    echo "Script is written for architecture x86_64, please check the arch using echo $(uname -m) and change HDF5_INSTALL_PATH if required" 
 
 # Copy the unzipped artifacts
 ADD OP-PIC_Artifacts /home/myuser/OP-PIC_Artifacts
