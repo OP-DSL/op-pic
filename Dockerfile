@@ -1,9 +1,11 @@
+# ------------------------------------------------------------------------------
+
 # This dockerfile compiles and runs both Mini-FEM-PIC and CabanaPIC applications
 # on CPUs using an Ubuntu Operating System. Further instructions on deploying 
 # (e.g. on GPUs) can be found below.
 
 # Please copy and keep this Dockerfile and the extracted artifact in the same 
-# folder prior running this script.
+# folder prior running this script. Please check the below commented commands.
 
 # mkdir op-pic_docker
 # cd op-pic_docker
@@ -15,6 +17,7 @@
 # docker images
 # docker run -it <IMAGE ID> /bin/bash
 
+# ------------------------------------------------------------------------------
 FROM ubuntu
 
 # Install necessary packages
@@ -207,7 +210,9 @@ WORKDIR /home/myuser/
 #             V100: 'compute_70,code=sm_70'
 #             P100: 'compute_60,code=sm_60'
 #             H100: 'compute_90,code=sm_90'
-#         export HIPCCFLAGS_ADD="-x hip"
+
+#         If CC is used instead of hipcc, use
+#             export HIPCCFLAGS_ADD="-x hip"
     
 #     8. Export OP-PIC directores
 
