@@ -1,9 +1,11 @@
+# ------------------------------------------------------------------------------
+
 # This dockerfile compiles and runs both Mini-FEM-PIC and CabanaPIC applications
 # on CPUs using an Ubuntu Operating System. Further instructions on deploying 
 # (e.g. on GPUs) can be found below.
 
 # Please copy and keep this Dockerfile and the extracted artifact in the same 
-# folder prior running this script.
+# folder prior running this script. Please check the below commented commands.
 
 # mkdir op-pic_docker
 # cd op-pic_docker
@@ -15,6 +17,7 @@
 # docker images
 # docker run -it <IMAGE ID> /bin/bash
 
+# ------------------------------------------------------------------------------
 FROM ubuntu
 
 # Install necessary packages
@@ -46,7 +49,9 @@ ENV MPI_COMPILER=mpicxx
 
 # setup user installed libs
 ENV PETSC_INSTALL_PATH=/usr/lib/petsc
-ENV HDF5_INSTALL_PATH=/usr/lib/aarch64-linux-gnu/hdf5/openmpi
+
+ENV HDF5_INSTALL_PATH=/usr/lib/x86_64-linux-gnu/hdf5/openmpi
+# 'x86_64-linux-gnu' for x86_64, 'aarch64-linux-gnu' for Mac M1
 
 # clone the OP-PIC library
 WORKDIR /home/myuser/
@@ -83,7 +88,8 @@ WORKDIR /home/myuser/OP-PIC/app_fempic
 RUN make PETSC=1 seq
 RUN make PETSC=1 mpi
 RUN make PETSC=1 omp
-RUN make PETSC=1 mpi_hdf5
+RUN make PETSC=1 mpi_hdf5 || \
+    echo "Script is written for architecture x86_64, please check the arch using echo $(uname -m) and change HDF5_INSTALL_PATH if required" 
 
 # Copy the unzipped artifacts
 ADD OP-PIC_Artifacts /home/myuser/OP-PIC_Artifacts
@@ -207,7 +213,9 @@ WORKDIR /home/myuser/
 #             V100: 'compute_70,code=sm_70'
 #             P100: 'compute_60,code=sm_60'
 #             H100: 'compute_90,code=sm_90'
-#         export HIPCCFLAGS_ADD="-x hip"
+
+#         If CC is used instead of hipcc, use
+#             export HIPCCFLAGS_ADD="-x hip"
     
 #     8. Export OP-PIC directores
 
