@@ -216,7 +216,10 @@ WORKDIR /home/myuser/
 
 #         If CC is used instead of hipcc, use
 #             export HIPCCFLAGS_ADD="-x hip"
-    
+
+#         If CUDA is installed in a user directory, use
+#             export CUDA_INSTALL_PATH=<cuda_installed_directory>
+
 #     8. Export OP-PIC directores
 
 #         export OPP=<path to OP-PIC folder>
