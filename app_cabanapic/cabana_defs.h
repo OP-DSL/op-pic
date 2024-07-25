@@ -345,7 +345,7 @@ class Deck {
         const OPP_REAL default_grid_len = param.get<OPP_REAL>("default_grid_len");
         len_x_global = default_grid_len;
         len_y_global = 0.628318530717959 * (gam * sqrt(gam));
-        len_z_global = default_grid_len;      
+        len_z_global = default_grid_len * OPP_comm_size; // Always expect to expand on z direction when weak scaling!      
         dx = len_x_global / nx;
         dy = len_y_global / ny;
         dz = len_z_global / nz;

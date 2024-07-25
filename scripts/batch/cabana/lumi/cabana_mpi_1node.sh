@@ -7,7 +7,7 @@
 #SBATCH --nodes=1                    # Total number of nodes 
 #SBATCH --ntasks-per-node=8          # 8 MPI ranks per node, 16 total (2x8)
 #SBATCH --gpus-per-node=8            # Allocate one gpu per MPI rank
-#SBATCH --time=0-03:00:00            # Run time (d-hh:mm:ss)
+#SBATCH --time=0-02:00:00            # Run time (d-hh:mm:ss)
 #SBATCH --mail-type=all              # Send email at begin and end of job
 #SBATCH --account=project_465001068  # Project for billing
 #SBATCH --mail-user=username@domain.com
@@ -42,7 +42,7 @@ export OMP_PLACES=cores
 export OMP_PROC_BIND=close
 
 CPU_BIND="map_cpu:49,57,17,25,1,9,33,41"
-export MPICH_GPU_SUPPORT_ENABLED=1
+export MPICH_GPU_SUPPORT_ENABLED=0
 
 module load LUMI/23.09
 module load partition/G

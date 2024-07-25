@@ -58,6 +58,7 @@ int main(int argc, char **argv)
         OPP_INT ndimcells[2]  = {opp_params->get<OPP_INT>("nx"), opp_params->get<OPP_INT>("ny")};
         OPP_BOOL verify_parts = opp_params->get<OPP_BOOL>("verify_particles");
         OPP_REAL grid_spacing = opp_params->get<OPP_REAL>("grid_spacing");
+        int64_t total_glb_part_iter = 0;
 
         std::shared_ptr<DataPointers> m = LoadData();
 
@@ -84,8 +85,10 @@ int main(int argc, char **argv)
         m->DeleteValues();
 
 #ifdef USE_MPI
-        std::vector<int> counts = { opp_params->get<OPP_INT>("nx"), opp_params->get<OPP_INT>("ny") };
-        opp_colour_cartesian_mesh(DIM, counts, c_idx, c_colors);
+        // std::vector<int> counts = { opp_params->get<OPP_INT>("nx"), opp_params->get<OPP_INT>("ny") };
+        // opp_colour_cartesian_mesh(DIM, counts, c_idx, c_colors);
+
+        advec_color_block(c_idx, c_colors);
 
         opp_partition(std::string("EXTERNAL"), cell_set, nullptr, c_colors);
 #endif
@@ -128,18 +131,19 @@ int main(int argc, char **argv)
                 log += str(OPP_max_comm_iteration, "max_comm_iteration: %d");
             }
 
-            const int64_t glb_parts = get_global_parts_iterated(part_set->size);
+            int64_t glb_parts, gbl_max_parts, gbl_min_parts;
+            get_global_parts_iterated(part_set->size, glb_parts, gbl_max_parts, gbl_min_parts);
             OPP_RUN_ON_ROOT()
-                opp_printf("Main", "ts: %d parts: %d | %s ****", OPP_main_loop_iter, 
-                    glb_parts, log.c_str());           
+                opp_printf("Main", "ts: %d | %s **** Gbl parts: %" PRId64 " Min %" PRId64 " Max %" PRId64 " Avg %.1lf", 
+                    OPP_main_loop_iter, log.c_str(), glb_parts, gbl_min_parts, gbl_max_parts, 
+                    (double)glb_parts/OPP_comm_size);  
+            total_glb_part_iter += glb_parts;
         }
     opp_profiler->end("MainLoop");
         
-        int64_t total_glb_particles = get_global_parts_iterated(part_set->size);
-
         OPP_RUN_ON_ROOT()
-            opp_printf("Main", "Main loop completed after %d iterations {particles=%d} ****", 
-                max_iter, total_glb_particles);
+            opp_printf("Main", "Main loop completed after %d iterations {%" PRId64 " particless iterated} ****", 
+                max_iter, total_glb_part_iter);
     }
 
     opp_exit();
