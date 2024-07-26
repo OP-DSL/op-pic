@@ -31,3 +31,9 @@ BOOL opp_global_move = false
 BOOL use_reg_red = false
 
 STRING hdf_filename = /home/zl/phd/neso_test/OP-PIC_Configs/cabana/mesh_files/cab_48000.hdf5
+INT domain_expansion = 1
+
+# 1 0 0 is the CabanaPIC original configuration
+REAL velX_mult_const = 1
+REAL velY_mult_const = 0.01
+REAL velZ_mult_const = 0.01
