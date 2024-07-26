@@ -257,7 +257,7 @@ void distribute_data_over_ranks(std::shared_ptr<DataPointers>& g_m, std::shared_
 /*************************************************************************************************
  * This is a utility function to get the total particles iterated during the simulation
 */
-inline void get_global_parts_iterated(const int64_t total_part_iter, int64_t& gbl_total_part_iter, 
+inline void get_global_values(const int64_t total_part_iter, int64_t& gbl_total_part_iter, 
     int64_t& gbl_max_iter, int64_t& gbl_min_iter) {
 
 #ifdef USE_MPI

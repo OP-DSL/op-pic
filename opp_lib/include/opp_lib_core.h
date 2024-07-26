@@ -363,6 +363,7 @@ extern int OPP_main_loop_iter;
 extern int OPP_gpu_threads_per_block;
 extern size_t OPP_gpu_shared_mem_per_block;
 extern int OPP_part_cells_set_size;
+extern int OPP_part_move_count_per_iter;
 
 extern std::vector<opp_set> opp_sets;
 extern std::vector<opp_map> opp_maps;

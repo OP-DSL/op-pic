@@ -58,7 +58,7 @@ int main(int argc, char **argv)
         OPP_INT ndimcells[2]  = {opp_params->get<OPP_INT>("nx"), opp_params->get<OPP_INT>("ny")};
         OPP_BOOL verify_parts = opp_params->get<OPP_BOOL>("verify_particles");
         OPP_REAL grid_spacing = opp_params->get<OPP_REAL>("grid_spacing");
-        int64_t total_glb_part_iter = 0;
+        int64_t total_glb_part_iter = 0, total_gbl_part_comms = 0;
 
         std::shared_ptr<DataPointers> m = LoadData();
 
@@ -132,18 +132,20 @@ int main(int argc, char **argv)
             }
 
             int64_t glb_parts, gbl_max_parts, gbl_min_parts;
-            get_global_parts_iterated(part_set->size, glb_parts, gbl_max_parts, gbl_min_parts);
+            int64_t glb_part_comms, gbl_max_part_comms, gbl_min_part_comms;
+            get_global_values(part_set->size, glb_parts, gbl_max_parts, gbl_min_parts);   
+            get_global_values(OPP_part_move_count_per_iter, glb_part_comms, gbl_max_part_comms, gbl_min_part_comms);
             OPP_RUN_ON_ROOT()
-                opp_printf("Main", "ts: %d | %s **** Gbl parts: %" PRId64 " Min %" PRId64 " Max %" PRId64 " Avg %.1lf", 
-                    OPP_main_loop_iter, log.c_str(), glb_parts, gbl_min_parts, gbl_max_parts, 
-                    (double)glb_parts/OPP_comm_size);  
+                opp_printf("Main", "ts: %d | %s **** Gbl parts: %" PRId64 " Min %" PRId64 " Max %" PRId64 " | %s **** Gbl comms: %" PRId64 " Min %" PRId64 " Max %" PRId64 "", 
+                    OPP_main_loop_iter, log.c_str(), glb_parts, gbl_min_parts, gbl_max_parts, glb_part_comms, gbl_max_part_comms, gbl_min_part_comms);  
             total_glb_part_iter += glb_parts;
+            total_gbl_part_comms += glb_part_comms;
         }
     opp_profiler->end("MainLoop");
         
         OPP_RUN_ON_ROOT()
-            opp_printf("Main", "Main loop completed after %d iterations {%" PRId64 " particless iterated} ****", 
-                max_iter, total_glb_part_iter);
+            opp_printf("Main", "Main loop completed after %d iterations {%" PRId64 " particless iterated with %" PRId64 " particle communications} ****", 
+                max_iter, total_glb_part_iter, total_gbl_part_comms);
     }
 
     opp_exit();

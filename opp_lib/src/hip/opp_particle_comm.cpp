@@ -52,6 +52,7 @@ int *OPP_move_particle_indices_d = nullptr;
 int *OPP_move_cell_indices_d = nullptr;
 int *OPP_move_count_d = nullptr;
 int OPP_move_count_h = 0;
+int OPP_part_move_count_per_iter = 0;
 
 int *OPP_remove_particle_indices_d = nullptr;
 thrust::device_vector<int> OPP_thrust_remove_particle_indices_d;
@@ -104,7 +105,8 @@ void opp_init_particle_move(opp_set set, int nargs, opp_arg *args)
     if (OPP_comm_iteration == 0)
     {
         OPP_iter_start = 0;
-        OPP_iter_end   = set->size;          
+        OPP_iter_end   = set->size;
+        OPP_part_move_count_per_iter = 0;    
     }
     else
     {
@@ -885,6 +887,8 @@ bool opp_finalize_particle_move(opp_set set)
     cutilSafeCall(hipMemcpy(&OPP_move_count_h, OPP_move_count_d, sizeof(int), 
                     hipMemcpyDeviceToHost));
 
+    OPP_part_move_count_per_iter += OPP_move_count_h;
+    
     cutilSafeCall(hipMemcpy(&(set->particle_remove_count), set->particle_remove_count_d, 
                     sizeof(int), hipMemcpyDeviceToHost));
 
