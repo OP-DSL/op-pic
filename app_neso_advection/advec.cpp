@@ -136,7 +136,7 @@ int main(int argc, char **argv)
             get_global_values(part_set->size, glb_parts, gbl_max_parts, gbl_min_parts);   
             get_global_values(OPP_part_move_count_per_iter, glb_part_comms, gbl_max_part_comms, gbl_min_part_comms);
             OPP_RUN_ON_ROOT()
-                opp_printf("Main", "ts: %d | %s **** Gbl parts: %" PRId64 " Min %" PRId64 " Max %" PRId64 " | %s **** Gbl comms: %" PRId64 " Min %" PRId64 " Max %" PRId64 "", 
+                opp_printf("Main", "ts: %d | %s **** Gbl parts: %" PRId64 " Min %" PRId64 " Max %" PRId64 " | %s **** Gbl comms: %" PRId64 " Max %" PRId64 " Min %" PRId64 "", 
                     OPP_main_loop_iter, log.c_str(), glb_parts, gbl_min_parts, gbl_max_parts, glb_part_comms, gbl_max_part_comms, gbl_min_part_comms);  
             total_glb_part_iter += glb_parts;
             total_gbl_part_comms += glb_part_comms;

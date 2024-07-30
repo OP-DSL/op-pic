@@ -185,7 +185,7 @@ void enrich_particles_two_stream(const Deck& deck, const OPP_INT cell_count,
     const OPP_REAL velY_mult_const = opp_params->get<OPP_REAL>("velY_mult_const");
     const OPP_REAL velZ_mult_const = opp_params->get<OPP_REAL>("velZ_mult_const");
 
-    OPP_RUN_ON_ROOT() opp_printf("Setup", "enrich_particles_two_stream Mult Constants %d %d %d",
+    OPP_RUN_ON_ROOT() opp_printf("Setup", "enrich_particles_two_stream Mult Constants %lf %lf %lf",
                         velX_mult_const, velY_mult_const, velZ_mult_const);
 
     // Populate the host space with particle data.
