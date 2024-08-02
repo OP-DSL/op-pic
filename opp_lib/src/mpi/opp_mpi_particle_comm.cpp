@@ -323,6 +323,8 @@ void opp_part_exchange(opp_set set)
         const int64_t& recv_count = mpi_part_data->import_counts[neighbour_rank];
         MPI_Irecv((void*)&recv_count, 1, MPI_INT64_T, neighbour_rank, count_ex_tag, // MPI_MH_COUNT_EXCHANGE, 
                     OPP_MPI_WORLD, &(recv_count_reqs[i]));
+        
+        // opp_printf("Exchange", "%d->%d Send %" PRId64 " particles", OPP_rank, neighbour_rank, send_count);
     }
 
     double total_send_bytes = 0.0;

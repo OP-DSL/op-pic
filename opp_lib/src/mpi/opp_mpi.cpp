@@ -364,6 +364,7 @@ void opp_init_particle_move(opp_set set, int nargs, opp_arg *args)
     {
         OPP_iter_start = 0;
         OPP_iter_end   = set->size;          
+        OPP_part_comm_count_per_iter = 0; 
     }
     else
     {
@@ -388,6 +389,8 @@ bool opp_finalize_particle_move(opp_set set)
     if (OPP_DBG) opp_printf("opp_finalize_particle_move", "Start particle set [%s]", set->name);
 
     opp_profiler->start("Mv_Finalize");
+
+    OPP_part_comm_count_per_iter += (int)opp_move_part_indices.size();
 
     opp_process_marked_particles(set); 
 

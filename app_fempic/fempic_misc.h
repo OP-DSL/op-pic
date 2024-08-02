@@ -226,7 +226,7 @@ inline std::string get_global_level_log(double max_c_ef, double max_n_potential,
     int64_t global_part_size = 0, global_inj_size = 0, global_removed = 0;
     int64_t glb_parts, gbl_max_parts, gbl_min_parts;
     int64_t glb_part_comms, gbl_max_part_comms, gbl_min_part_comms;
-    int global_max_comm_iteration = 0;
+    int global_max_comm_iteration = 0, global_move_max_hops = -1;
 
 #ifdef USE_MPI
     MPI_Reduce(&OPP_max_comm_iteration, &global_max_comm_iteration, 1, MPI_INT, MPI_MAX, OPP_ROOT, MPI_COMM_WORLD);
@@ -246,7 +246,8 @@ inline std::string get_global_level_log(double max_c_ef, double max_n_potential,
 #endif
 
     get_global_values(local_part_count, glb_parts, gbl_max_parts, gbl_min_parts);   
-    get_global_values(OPP_part_move_count_per_iter, glb_part_comms, gbl_max_part_comms, gbl_min_part_comms);
+    get_global_values(OPP_part_comm_count_per_iter, glb_part_comms, gbl_max_part_comms, gbl_min_part_comms);
+    MPI_Reduce(&OPP_move_max_hops, &global_move_max_hops, 1, MPI_INT, MPI_MAX, OPP_ROOT, MPI_COMM_WORLD);
 
     log += std::string("\t np: ") + str(global_part_size, "%" PRId64);
     log += std::string(" (") + str(global_inj_size, "%" PRId64);
@@ -261,6 +262,8 @@ inline std::string get_global_level_log(double max_c_ef, double max_n_potential,
     log += std::string(" | Gbl comms: ") + str(glb_part_comms, "%" PRId64);
     log += std::string(" Min: ") + str(gbl_min_part_comms, "%" PRId64);
     log += std::string(" Max: ") + str(gbl_max_part_comms, "%" PRId64);
+    log += std::string(" | max hops: ") + str(global_move_max_hops, "%d");
+
     return log;
 }
 

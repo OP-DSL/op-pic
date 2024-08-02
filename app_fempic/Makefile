@@ -125,22 +125,22 @@ omp_mpi: mklib
 	     $(MPICPP) $(CPPFLAGS) -fopenmp -DUSE_OMP -DUSE_MPI -c fempic_opp.cpp -o $(OBJ)/fempic_opp_omp_mpi.o $(ALL_INC)
 		 $(MPICPP) $(CPPFLAGS) -fopenmp -DUSE_OMP -DUSE_MPI -c field_solver/cpu.cpp -o $(OBJ)/field_solver_cpu_omp_mpi.o $(ALL_INC)
 		 $(MPICPP) $(CPPFLAGS) -fopenmp -DUSE_OMP -DUSE_MPI -c omp/opp_kernels.cpp -o $(OBJ)/opp_kernels_omp_mpi.o $(ALL_INC)
-	     $(MPICPP) $(CPPFLAGS) -fopenmp -o $(BIN)/omp_mpi_hdf5 \
+	     $(MPICPP) $(CPPFLAGS) -fopenmp -o $(BIN)/omp_mpi \
 		 	$(OBJ)/fempic_opp_omp_mpi.o \
 			$(OBJ)/opp_kernels_omp_mpi.o \
 			$(OBJ)/field_solver_cpu_omp_mpi.o \
 			$(ALL_INC) $(ALL_LIBS) -lopp_omp_mpi
 
 omp_mpi_hdf5: mklib
-	     $(MPICPP) $(CPPFLAGS) -fopenmp -DUSE_OMP -DUSE_MPI -c fempic_op_hdf5.cpp -o $(OBJ)/fempic_op_omp_mpi_hdf5.o $(ALL_INC)
-		 $(MPICPP) $(CPPFLAGS) -fopenmp -DUSE_OMP -DUSE_MPI -c FESolver.cpp -o $(OBJ)/FESolver_omp_mpi_hdf5.o $(ALL_INC)
+	     $(MPICPP) $(CPPFLAGS) -fopenmp -DUSE_OMP -DUSE_MPI -c fempic_hdf5_opp.cpp -o $(OBJ)/fempic_opp_omp_mpi_hdf5.o $(ALL_INC)
+		 $(MPICPP) $(CPPFLAGS) -fopenmp -DUSE_OMP -DUSE_MPI -c field_solver/cpu.cpp -o $(OBJ)/field_solver_cpu_omp_mpi_hdf5.o $(ALL_INC)
 		 $(MPICPP) $(CPPFLAGS) -fopenmp -DUSE_OMP -DUSE_MPI -c omp/ompkernels.cpp -o $(OBJ)/ompkernels_omp_mpi_hdf5.o $(ALL_INC)
 		 $(MPICPP) $(CPPFLAGS) -fopenmp -DUSE_OMP -DUSE_MPI -c opp_mpi_hdf5.cpp -o $(OBJ)/opp_mpi_hdf5_omp_mpi_hdf5.o $(ALL_INC)
 	     $(MPICPP) $(CPPFLAGS) -fopenmp -o $(BIN)/omp_mpi_hdf5 \
-		 	$(OBJ)/fempic_op_omp_mpi_hdf5.o \
+		 	$(OBJ)/fempic_opp_omp_mpi_hdf5.o \
 			$(OBJ)/opp_mpi_hdf5_omp_mpi_hdf5.o \ \
 			$(OBJ)/ompkernels_omp_mpi_hdf5.o \
-			$(OBJ)/FESolver_omp_mpi_hdf5.o \
+			$(OBJ)/field_solver_cpu_omp_mpi_hdf5.o \
 			$(ALL_INC) $(ALL_LIBS) -lopp_omp_mpi -lhdf5
 
 mpi: mklib

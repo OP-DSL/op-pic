@@ -1,4 +1,3 @@
-#include "hip/hip_runtime.h"
 /* 
 BSD 3-Clause License
 
@@ -52,7 +51,6 @@ int *OPP_move_particle_indices_d = nullptr;
 int *OPP_move_cell_indices_d = nullptr;
 int *OPP_move_count_d = nullptr;
 int OPP_move_count_h = 0;
-int OPP_part_move_count_per_iter = 0;
 
 int *OPP_remove_particle_indices_d = nullptr;
 thrust::device_vector<int> OPP_thrust_remove_particle_indices_d;
@@ -80,10 +78,11 @@ void opp_init_particle_move(opp_set set, int nargs, opp_arg *args)
     cutilSafeCall(hipMemcpy(set->particle_remove_count_d, &(set->particle_remove_count), sizeof(int), 
                     hipMemcpyHostToDevice));
 
-    if (set->size > (int)OPP_thrust_move_particle_indices_d.size())
+    const int half_set_size_alloc_mul = (int)(set->size * OPP_part_alloc_mult / 2);
+    if (half_set_size_alloc_mul > (int)OPP_thrust_move_particle_indices_d.size())
     {     
-        OPP_thrust_move_particle_indices_d.resize(set->size);
-        OPP_thrust_move_cell_indices_d.resize(set->size);
+        OPP_thrust_move_particle_indices_d.resize(half_set_size_alloc_mul);
+        OPP_thrust_move_cell_indices_d.resize(half_set_size_alloc_mul);
 
         OPP_move_particle_indices_d = (int*)thrust::raw_pointer_cast(OPP_thrust_move_particle_indices_d.data());
         OPP_move_cell_indices_d = (int*)thrust::raw_pointer_cast(OPP_thrust_move_cell_indices_d.data());
@@ -92,7 +91,7 @@ void opp_init_particle_move(opp_set set, int nargs, opp_arg *args)
             cutilSafeCall(hipMalloc(&OPP_move_count_d, sizeof(int)));
         }
 
-        OPP_thrust_remove_particle_indices_d.resize(set->size);
+        OPP_thrust_remove_particle_indices_d.resize(half_set_size_alloc_mul);
         OPP_remove_particle_indices_d = (int*)thrust::raw_pointer_cast(OPP_thrust_remove_particle_indices_d.data());
         if (OPP_remove_count_d == nullptr) {
             cutilSafeCall(hipMalloc(&OPP_remove_count_d, sizeof(int)));
@@ -106,7 +105,7 @@ void opp_init_particle_move(opp_set set, int nargs, opp_arg *args)
     {
         OPP_iter_start = 0;
         OPP_iter_end   = set->size;
-        OPP_part_move_count_per_iter = 0;    
+        OPP_part_comm_count_per_iter = 0;    
     }
     else
     {
@@ -181,13 +180,13 @@ void opp_part_pack_device(opp_set set)
     // copy_according_to_index(set->mesh_relation_dat->thrust_int, &send_part_cell_idx_dv, 
     //     OPP_thrust_move_particle_indices_d, -1, -1, OPP_move_count_h, 1);
 
-opp_profiler->start("Mv_Pack1");
+    // opp_profiler->start("Mv_Pack1");
     thrust::host_vector<int> send_part_cell_idx_hv(OPP_move_count_h);
     thrust::copy(OPP_thrust_move_cell_indices_d.begin(), 
             OPP_thrust_move_cell_indices_d.begin() + OPP_move_count_h, send_part_cell_idx_hv.begin());
-opp_profiler->end("Mv_Pack1");
+    // opp_profiler->end("Mv_Pack1");
 
-opp_profiler->start("Mv_Pack2");
+    // opp_profiler->start("Mv_Pack2");
     // enrich the particles to communicate with the correct external cell index and mpi rank
     std::map<int, opp_particle_comm_data>& set_part_com_data = opp_part_comm_neighbour_data[set];
     for (int index = 0; index < OPP_move_count_h; index++)
@@ -206,9 +205,9 @@ opp_profiler->start("Mv_Pack2");
 
         opp_part_mark_move(set, index, it->second); // it->second is the local cell index in foreign rank
     }
-opp_profiler->end("Mv_Pack2");
+    // opp_profiler->end("Mv_Pack2");
 
-opp_profiler->start("Mv_Pack3");
+    // opp_profiler->start("Mv_Pack3");
     std::map<int, std::vector<char>> move_dat_data_map;
 
     // download the particles to send
@@ -242,9 +241,9 @@ opp_profiler->start("Mv_Pack3");
             }
         }      
     }
-opp_profiler->end("Mv_Pack3");
+    // opp_profiler->end("Mv_Pack3");
 
-opp_profiler->start("Mv_Pack4");
+    // opp_profiler->start("Mv_Pack4");
     opp_part_all_neigh_comm_data* send_buffers = (opp_part_all_neigh_comm_data*)set->mpi_part_buffers;
 
     // increase the sizes of MPI buffers
@@ -279,9 +278,9 @@ opp_profiler->start("Mv_Pack4");
             }        
         }
     }
-opp_profiler->end("Mv_Pack4");
+    // opp_profiler->end("Mv_Pack4");
 
-opp_profiler->start("Mv_Pack5");
+    // opp_profiler->start("Mv_Pack5");
     // iterate over all the ranks and pack to mpi buffers using SOA
     for (auto& move_indices_per_rank : opp_part_move_indices[set->index])
     {
@@ -332,14 +331,14 @@ opp_profiler->start("Mv_Pack5");
 
         move_indices_vector.clear();
     }
-opp_profiler->end("Mv_Pack5");
+    // opp_profiler->end("Mv_Pack5");
 
-opp_profiler->start("Mv_Pack6");
+    // opp_profiler->start("Mv_Pack6");
     // This particle is already packed, hence needs to be removed from the current rank
     CopyMaxCellIndexFunctor copyMaxCellIndexFunctor((int*)set->mesh_relation_dat->data_d);
     thrust::for_each(OPP_thrust_move_particle_indices_d.begin(), OPP_thrust_move_particle_indices_d.begin() + OPP_move_count_h, 
         copyMaxCellIndexFunctor);
-opp_profiler->end("Mv_Pack6");
+    // opp_profiler->end("Mv_Pack6");
 
     opp_profiler->end("Mv_Pack");
 #endif
@@ -887,7 +886,7 @@ bool opp_finalize_particle_move(opp_set set)
     cutilSafeCall(hipMemcpy(&OPP_move_count_h, OPP_move_count_d, sizeof(int), 
                     hipMemcpyDeviceToHost));
 
-    OPP_part_move_count_per_iter += OPP_move_count_h;
+    OPP_part_comm_count_per_iter += OPP_move_count_h;
     
     cutilSafeCall(hipMemcpy(&(set->particle_remove_count), set->particle_remove_count_d, 
                     sizeof(int), hipMemcpyDeviceToHost));
