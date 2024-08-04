@@ -35,5 +35,5 @@ INT domain_expansion = 1
 
 # 1 0 0 is the CabanaPIC original configuration
 REAL velX_mult_const = 1
-REAL velY_mult_const = 0.01
-REAL velZ_mult_const = 0.01
+REAL velY_mult_const = 0.00
+REAL velZ_mult_const = 0.00
