@@ -51,3 +51,26 @@ In addition, there are a few optional library dependencies that you will likely 
 
 ## License 
 OP-PIC is released as an open-source project under the BSD 3-Clause License. See the file called [LICENSE](https://github.com/OP-DSL/OP-PIC/blob/main/LICENSE) for more information.
+
+## Citing
+To cite OP-PIC, please reference the following paper:
+
+[Zaman Lantra, Steven A. Wright, and Gihan R. Mudalige. 2024. OP-PIC - an Unstructured-Mesh Particle-in-Cell DSL for Developing Nuclear Fusion Simulations. In Proceedings of the 53rd International Conference on Parallel Processing (ICPP '24). Association for Computing Machinery, New York, NY, USA, 294–304. https://doi.org/10.1145/3673038.3673130](https://dl.acm.org/doi/10.1145/3673038.3673130)
+
+```
+@inproceedings{10.1145/3673038.3673130,
+author = {Lantra, Zaman and Wright, Steven A. and Mudalige, Gihan R.},
+title = {OP-PIC - an Unstructured-Mesh Particle-in-Cell DSL for Developing Nuclear Fusion Simulations},
+year = {2024},
+isbn = {9798400717932},
+publisher = {Association for Computing Machinery},
+address = {New York, NY, USA},
+url = {https://doi.org/10.1145/3673038.3673130},
+doi = {10.1145/3673038.3673130},
+pages = {294–304},
+numpages = {11},
+keywords = {DSL, OP-PIC, PIC, Particle-In-Cell, Unstructured-mesh},
+location = {Gotland, Sweden},
+series = {ICPP '24}
+}
+```
