@@ -47,6 +47,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <thrust/iterator/zip_iterator.h>
 #include <thrust/generate.h>
 #include <thrust/random.h>
+#include <thrust/iterator/discard_iterator.h>
 
 #ifdef USE_MPI
     #include <opp_mpi_core.h>

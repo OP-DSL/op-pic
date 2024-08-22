@@ -536,7 +536,7 @@ void opp_print_dat_to_txtfile(opp_dat dat, const char *file_name_prefix, const c
     if (dat->dirty_hd == Dirty::Host) 
         opp_download_dat(dat);
 
-    std::string prefix = std::string(file_name_prefix) + "_c";
+    std::string prefix = std::string(file_name_prefix) + "_h";
     opp_print_dat_to_txtfile_core(dat, prefix.c_str(), file_name_suffix);
 }
 
@@ -545,7 +545,7 @@ void opp_print_map_to_txtfile(opp_map map, const char *file_name_prefix, const c
 {
     if (OPP_DBG) opp_printf("opp_print_map_to_txtfile", "writing file [%s]", file_name_suffix);
     
-    std::string prefix = std::string(file_name_prefix) + "_c";
+    std::string prefix = std::string(file_name_prefix) + "_h";
 
     opp_print_map_to_txtfile_core(map, file_name_prefix, file_name_suffix);
 }

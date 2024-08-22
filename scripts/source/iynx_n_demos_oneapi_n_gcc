@@ -46,7 +46,7 @@ spack load openmpi@4.1.5
 spack load petsc@3.19.1%gcc@=12.2.0/62sv5zj
 spack load hdf5@1.14.1-2%gcc@=12.2.0/r5i22pi
 
-export CC_COMPILER=mpicxx
+export CC_COMPILER=g++
 export MPI_COMPILER=mpicxx
 
 export MPI_INSTALL_PATH=$(spack location -i openmpi@4.1.5)
@@ -55,9 +55,13 @@ export MPICH_CC=/usr/bin/gcc
 export PETSC_INSTALL_PATH=$(spack location -i petsc@3.19.1%gcc@=12.2.0/62sv5zj)
 export HDF5_INSTALL_PATH=$(spack location -i hdf5@1.14.1-2%gcc@=12.2.0/r5i22pi)
 export LD_LIBRARY_PATH=$HDF5_INSTALL_PATH/lib:$LD_LIBRARY_PATH
+spack load python@3.9.7
 
-
-
+cd $OPP/opp_translator/
+rm -rf opp_venv
+ln -s opp_venv_iynx opp_venv
+source $OPP/opp_translator/opp_venv/bin/activate
+cd $OPP
 
 # demos oneapi 2023.1.0 ---------------------------------------------------------------------------------
 
@@ -110,7 +114,7 @@ spack load petsc@3.19.1%gcc@=12.2.0/hc3jxay
 spack load hdf5@1.14.1-2%gcc@=12.2.0/2qjxlnq
 spack load cuda@12.1.1
 
-export CC_COMPILER=mpicxx
+export CC_COMPILER=g++
 export MPI_COMPILER=mpicxx
 
 export MPI_INSTALL_PATH=$(spack location -i mpich@4.1.1)
