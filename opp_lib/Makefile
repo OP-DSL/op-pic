@@ -18,7 +18,7 @@ CPP        = $(CC_COMPILER)
 MPICPP	   = $(MPI_COMPILER)
 NVCC       = nvcc
 HIPCC      = $(HIP_COMPILER)
-# -qopt-zmm-usage=high
+# -qopt-zmm-usage=high    -march=znver3 -mtune=znver3
 CPPFLAGS   = -std=c++14 -Wall -fPIC -march=native 
 NVCCFLAGS  = -std=c++14 --extended-lambda -m64 -Xptxas -dlcm=ca -Xptxas=-v $(NVCCFLAGS_ADD)
 HIPCCFLAGS = $(HIPCCFLAGS_ADD) -std=c++17 -isystem -D__HIP_PLATFORM_AMD__ -munsafe-fp-atomics -march=native 
