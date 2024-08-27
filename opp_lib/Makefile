@@ -18,10 +18,13 @@ CPP        = $(CC_COMPILER)
 MPICPP	   = $(MPI_COMPILER)
 NVCC       = nvcc
 HIPCC      = $(HIP_COMPILER)
+SYCLCC     = icpx
+
 # -qopt-zmm-usage=high    -march=znver3 -mtune=znver3
 CPPFLAGS   = -std=c++14 -Wall -fPIC -march=native 
 NVCCFLAGS  = -std=c++14 --extended-lambda -m64 -Xptxas -dlcm=ca -Xptxas=-v $(NVCCFLAGS_ADD)
 HIPCCFLAGS = $(HIPCCFLAGS_ADD) -std=c++17 -isystem -D__HIP_PLATFORM_AMD__ -munsafe-fp-atomics -march=native 
+SYCLFLAGS  = -w -fsycl -std=c++17 -Wall -fPIC -march=native 
 
 DEBUG ?= 0
 ifeq ($(DEBUG), 1)
@@ -56,7 +59,7 @@ ifeq ($(EXT_HALOS), 0)
 	HIPCCFLAGS += -DNO_EXTENDED_HALOS
 endif
 
-PETSC ?= 1
+PETSC ?= 0
 ifeq ($(PETSC), 1)
 	CPPFLAGS   += -DUSE_PETSC
 	NVCCFLAGS += -DUSE_PETSC
@@ -64,12 +67,12 @@ ifeq ($(PETSC), 1)
 	PETSC_INC  = -I$(PETSC_INSTALL_PATH)/include
 endif
 
-CUDA ?= 1
+CUDA ?= 0
 ifeq ($(CUDA), 1)
 	OPP_INC   = -I$(CUDA_INSTALL_PATH)/include
 endif
 
-HIP ?= 1
+HIP ?= 0
 ifeq ($(HIP), 1)
 	OPP_INC   += -I$(ROCM_INSTALL_DIR)/include -I$(ROCM_THRUST_DIR)/include -I$(ROCM_PRIM_DIR)/include
 endif
@@ -127,6 +130,21 @@ cuda: mklib
 			$(OBJ)/particle_sorter_cuda.o \
 			$(OBJ)/opp_cuda_halo.o
 
+sycl: mklib
+	     $(SYCLCC) $(SYCLFLAGS) -DUSE_DPCT -c $(SRC)/core/opp_lib_core.cpp -o $(OBJ)/opp_lib_core.o $(OPP_INC) $(PETSC_INC)
+	     $(SYCLCC) $(SYCLFLAGS) -DUSE_DPCT -c $(SRC)/core/opp_util.cpp -o $(OBJ)/opp_util.o $(OPP_INC) $(PETSC_INC)
+		 $(SYCLCC) $(SYCLFLAGS) -DUSE_DPCT -c $(SRC)/core/opp_params.cpp -o $(OBJ)/opp_params.o $(OPP_INC) $(PETSC_INC)
+	     $(SYCLCC) $(SYCLFLAGS) -DUSE_DPCT -c $(SRC)/sycl/opp_cuda.dp.cpp -o $(OBJ)/opp_cuda.o $(OPP_INC) $(PETSC_INC)
+		 $(SYCLCC) $(SYCLFLAGS) -DUSE_DPCT -c $(SRC)/sycl/opp_particle_sorter.dp.cpp -o $(OBJ)/particle_sorter_cuda.o $(OPP_INC) $(PETSC_INC)
+		 $(SYCLCC) $(SYCLFLAGS) -DUSE_DPCT -c $(SRC)/sycl/opp_cuda_halo.dp.cpp -o $(OBJ)/opp_cuda_halo.o $(OPP_INC) $(PETSC_INC)
+	     ar -r $(LIB)/libopp_sycl.a \
+			$(OBJ)/opp_lib_core.o \
+			$(OBJ)/opp_util.o \
+			$(OBJ)/opp_params.o \
+			$(OBJ)/opp_cuda.o \
+			$(OBJ)/particle_sorter_cuda.o \
+			$(OBJ)/opp_cuda_halo.o
+
 hip: mklib
 	     $(HIPCC) $(HIPCCFLAGS) -DUSE_THRUST -c $(SRC)/core/opp_lib_core.cpp -o $(OBJ)/opp_lib_core.o $(OPP_INC) $(PETSC_INC) $(HIP_INC)
 	     $(HIPCC) $(HIPCCFLAGS) -DUSE_THRUST -c $(SRC)/core/opp_util.cpp -o $(OBJ)/opp_util.o $(OPP_INC) $(PETSC_INC) $(HIP_INC)
@@ -166,6 +184,33 @@ mpi: mklib
 			$(OBJ)/opp_mpi_partition.o \
 			$(OBJ)/opp_mpi_particle_comm.o \
 			$(OBJ)/opp_mpi_double_ind_reducs.o
+
+sycl_mpi: mklib
+	     $(MPICPP) $(SYCLFLAGS) -DUSE_DPCT -DUSE_MPI -c $(SRC)/core/opp_lib_core.cpp -o $(OBJ)/opp_lib_core.o $(OPP_INC) $(PETSC_INC) 
+	     $(MPICPP) $(SYCLFLAGS) -DUSE_DPCT -DUSE_MPI -c $(SRC)/core/opp_util.cpp -o $(OBJ)/opp_util.o $(OPP_INC) $(PETSC_INC)
+		 $(MPICPP) $(SYCLFLAGS) -DUSE_DPCT -DUSE_MPI -c $(SRC)/core/opp_params.cpp -o $(OBJ)/opp_params.o $(OPP_INC) $(PETSC_INC)
+		 $(MPICPP) $(SYCLFLAGS) -DUSE_DPCT -DUSE_MPI -c $(SRC)/mpi/opp_mpi_halo_core.cpp -o $(OBJ)/opp_mpi_halo_core.o $(OPP_INC) $(PETSC_INC)
+		 $(MPICPP) $(SYCLFLAGS) -DUSE_DPCT -DUSE_MPI -c $(SRC)/mpi/opp_mpi_partition.cpp -o $(OBJ)/opp_mpi_partition.o $(OPP_INC) $(PETSC_INC)
+		 $(MPICPP) $(SYCLFLAGS) -DUSE_DPCT -DUSE_MPI -c $(SRC)/mpi/opp_mpi_core.cpp -o $(OBJ)/opp_mpi_core.o $(OPP_INC) $(PETSC_INC)
+		 $(MPICPP) $(SYCLFLAGS) -DUSE_DPCT -DUSE_MPI -c $(SRC)/mpi/opp_mpi_particle_comm.cpp -o $(OBJ)/opp_mpi_particle_comm.o $(OPP_INC) $(PETSC_INC)
+		 $(MPICPP) $(SYCLFLAGS) -DUSE_DPCT -DUSE_MPI -c $(SRC)/mpi/opp_mpi_double_ind_reducs.cpp -o $(OBJ)/opp_mpi_double_ind_reducs.o $(OPP_INC) $(PETSC_INC)
+		 $(MPICPP) $(SYCLFLAGS) -DUSE_DPCT -DUSE_MPI -c $(SRC)/mpi/opp_mpi_utils.cpp -o $(OBJ)/opp_mpi_utils.o $(OPP_INC) $(PETSC_INC)
+	     $(SYCLCC) $(SYCLFLAGS) -DUSE_DPCT -DUSE_MPI -c $(SRC)/sycl/opp_cuda.dp.cpp -o $(OBJ)/opp_cuda.o $(OPP_INC) $(PETSC_INC)
+		 $(SYCLCC) $(SYCLFLAGS) -DUSE_DPCT -DUSE_MPI -c $(SRC)/sycl/opp_cuda_halo.dp.cpp -o $(OBJ)/opp_cuda_halo.o $(OPP_INC) $(PETSC_INC)
+		 $(SYCLCC) $(SYCLFLAGS) -DUSE_DPCT -DUSE_MPI -c $(SRC)/sycl/opp_particle_sorter.dp.cpp -o $(OBJ)/particle_sorter_cuda.o $(OPP_INC) $(PETSC_INC)
+	     ar -r $(LIB)/libopp_sycl_mpi.a \
+		 	$(OBJ)/opp_lib_core.o \
+			$(OBJ)/opp_util.o \
+			$(OBJ)/opp_params.o \
+			$(OBJ)/opp_mpi_halo_core.o \
+			$(OBJ)/opp_mpi_partition.o \
+			$(OBJ)/opp_mpi_core.o \
+			$(OBJ)/opp_mpi_particle_comm.o \
+			$(OBJ)/opp_mpi_double_ind_reducs.o \
+			$(OBJ)/opp_mpi_utils.o \
+			$(OBJ)/opp_cuda.o \
+			$(OBJ)/opp_cuda_halo.o \
+			$(OBJ)/particle_sorter_cuda.o
 
 cuda_mpi: mklib
 	     $(MPICPP) $(CPPFLAGS) -DUSE_MPI -DUSE_THRUST -c $(SRC)/core/opp_lib_core.cpp -o $(OBJ)/opp_lib_core.o $(OPP_INC) $(PETSC_INC) 

@@ -87,6 +87,14 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
     #include <thrust/host_vector.h>
     #define THRUST_REAL thrust::device_vector<double>
     #define THRUST_INT thrust::device_vector<int>
+#elif USE_DPCT
+    #include <oneapi/dpl/execution>
+    #include <oneapi/dpl/algorithm>
+    #include <sycl/sycl.hpp>
+    #include <dpct/dpct.hpp>
+    #include <dpct/dpl_utils.hpp>
+    #define THRUST_REAL dpct::device_vector<double>
+    #define THRUST_INT dpct::device_vector<int>    
 #else
     #define THRUST_REAL void
     #define THRUST_INT void

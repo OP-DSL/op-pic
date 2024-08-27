@@ -10,10 +10,12 @@ CPP        = $(CC_COMPILER)
 MPICPP	   = $(MPI_COMPILER)
 NVCC       = nvcc
 HIPCC      = $(HIP_COMPILER)
+SYCLCC     = icpx
 
 CPPFLAGS   = -std=c++14 -Wall -fPIC 
 NVCCFLAGS  = -m64 -Xptxas -dlcm=ca -Xptxas=-v $(NVCCFLAGS_ADD)
 HIPCCFLAGS = $(HIPCCFLAGS_ADD) -std=c++17 -Wall -isystem -D__HIP_PLATFORM_AMD__
+SYCLFLAGS = -w -fsycl -std=c++17 -Wall -fPIC -march=native 
 
 DEBUG ?= 0
 ifeq ($(DEBUG), 1)
@@ -113,6 +115,22 @@ cuda_mpi: common
 		 	$(OBJ)/advec_opp_cuda_mpi.o \
 			$(OBJ)/opp_kernels_cuda_mpi.o \
 			$(ALL_INC) $(CUDA_INC) $(ALL_LIBS) $(CUDA_LIB) -lopp_cuda_mpi
+
+sycl: common
+		 $(SYCLCC) $(SYCLFLAGS) -c advec_opp.cpp -o $(OBJ)/advec_opp_cuda.o $(ALL_INC)
+		 $(SYCLCC) $(SYCLFLAGS) -c sycl/opp_kernels.dp.cpp -o $(OBJ)/opp_kernels_cuda.o $(ALL_INC) $(CUDA_INC)
+	     $(SYCLCC) $(SYCLFLAGS) -o $(BIN)/cuda \
+		 	$(OBJ)/advec_opp_cuda.o \
+			$(OBJ)/opp_kernels_cuda.o \
+			$(ALL_INC) $(CUDA_INC) $(ALL_LIBS) $(CUDA_LIB) -lopp_sycl
+
+sycl_mpi: common
+		 $(SYCLCC) $(SYCLFLAGS) -DUSE_MPI -c advec_opp.cpp -o $(OBJ)/advec_opp_cuda_mpi.o $(ALL_INC) $(CUDA_INC)
+		 $(SYCLCC) $(SYCLFLAGS) -DUSE_MPI -c sycl/opp_kernels.dp.cpp -o $(OBJ)/opp_kernels_cuda_mpi.o $(ALL_INC) $(CUDA_INC)
+	     $(SYCLCC) $(SYCLFLAGS) -DUSE_MPI -o $(BIN)/cuda_mpi \
+		 	$(OBJ)/advec_opp_cuda_mpi.o \
+			$(OBJ)/opp_kernels_cuda_mpi.o \
+			$(ALL_INC) $(CUDA_INC) $(ALL_LIBS) $(CUDA_LIB) -lopp_sycl_mpi -lmpi
 
 hip: mklib
 		 $(HIPCC) $(HIPCCFLAGS) -c advec_opp.cpp -o $(OBJ)/advec_opp_hip.o $(ALL_INC) $(HIP_INC)
