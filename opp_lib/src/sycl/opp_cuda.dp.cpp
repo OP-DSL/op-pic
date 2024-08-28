@@ -29,36 +29,25 @@ OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-#include <oneapi/dpl/execution>
-#include <oneapi/dpl/algorithm>
-#include <sycl/sycl.hpp>
-#include <dpct/dpct.hpp>
 #include <opp_sycl.h>
 #include <unistd.h>
 #include "opp_particle_comm.dp.cpp"
 #include "opp_increase_part_count.dp.cpp"
 
-// arrays for global constants and reductions
-int OPP_consts_bytes = 0, OPP_reduct_bytes = 0;
-char *OPP_reduct_h = nullptr;
-char *OPP_reduct_d = nullptr;
-char *OPP_consts_h = nullptr;
-char *OPP_consts_d = nullptr;
+sycl::queue *opp_queue = nullptr;
 
 //****************************************
 void opp_init(int argc, char **argv)
 {
     if (argc < 2) {
         std::cerr << "Usage: " << argv[0] << " <config_file> ..." << std::endl;
-        exit(-1);
+        opp_abort();
     }
 
-#ifdef USE_PETSC
-    PetscInitialize(&argc, &argv, PETSC_NULLPTR, "opp::PetscCUDA");
-#else
-    #ifdef USE_MPI
+#if defined(USE_PETSC)
+    PetscInitialize(&argc, &argv, PETSC_NULLPTR, "opp::PetscSYCL");
+#elif defined(USE_MPI)
         MPI_Init(&argc, &argv);
-    #endif
 #endif
 
 #ifdef USE_MPI
@@ -69,36 +58,19 @@ void opp_init(int argc, char **argv)
     MPI_Comm_size(OPP_MPI_WORLD, &OPP_comm_size);
 #endif
 
-    if (OPP_rank == OPP_ROOT)
-    {
+    if (OPP_rank == OPP_ROOT) {
         std::string log = "Running on CUDA";
 #ifdef USE_MPI
         log += "+MPI with " + std::to_string(OPP_comm_size) + " ranks";
+        MPI_Barrier(MPI_COMM_WORLD);
 #endif        
         opp_printf("OP-PIC", "%s", log.c_str());
         opp_printf("OP-PIC", "---------------------------------------------");
     }
 
-#ifdef USE_MPI
-    MPI_Barrier(MPI_COMM_WORLD);
-#endif  
-
     opp_init_core(argc, argv);
     opp_params->write(std::cout);
-    cutilDeviceInit(argc, argv);
-
-    // cutilSafeCall(cudaDeviceSetCacheConfig(cudaFuncCachePreferL1));
-    /*
-    DPCT1027:11: The call to cudaDeviceSetCacheConfig was replaced with 0
-    because SYCL currently does not support setting cache config on devices.
-    */
-    cutilSafeCall(0);
-    /*
-    DPCT1027:12: The call to cudaDeviceSetSharedMemConfig was replaced with 0
-    because SYCL currently does not support configuring shared memory on
-    devices.
-    */
-    cutilSafeCall(0);
+    opp_sycl_init(argc, argv);
 
     OPP_auto_soa = 1; // TODO : Make this configurable with args
 
@@ -110,35 +82,21 @@ void opp_init(int argc, char **argv)
     if (gpu_direct > 0 && gpu_direct < INT_MAX)
         OPP_gpu_direct = gpu_direct;
 
-    int deviceId = -1;
-    deviceId = dpct::dev_mgr::instance().current_device_id();
+    const int deviceId = dpct::dev_mgr::instance().current_device_id();
     dpct::device_info prop;
-    cutilSafeCall(DPCT_CHECK_ERROR(dpct::get_device_info(
-        prop, dpct::dev_mgr::instance().get_device(deviceId))));
+    dpct::get_device_info(prop, dpct::dev_mgr::instance().get_device(deviceId));
 
-    /*
-    DPCT1019:13: local_mem_size in SYCL is not a complete equivalent of
-    sharedMemPerBlock in CUDA. You may need to adjust the code.
-    */
-    OPP_gpu_shared_mem_per_block = prop.get_local_mem_size();
+    // DPCT1019:13: local_mem_size in SYCL is not a complete equivalent of sharedMemPerBlock in CUDA.
+    // OPP_gpu_shared_mem_per_block = prop.get_local_mem_size();
 
     char hostname[256];
-    if (gethostname(hostname, sizeof(hostname)) != 0) 
-    {
-        opp_printf("cutilDeviceInit", "Failed to get hostname of MPI rank %d", OPP_rank);
+    if (gethostname(hostname, sizeof(hostname)) != 0) {
+        opp_printf("opp_init", "Failed to get hostname of MPI rank %d", OPP_rank);
         opp_abort();
     }
 
-    opp_printf("opp_init",
-               "Device: %d [%s] on Host [%s] threads=%d Shared_Mem=%lubytes "
-               "GPU_Direct=%d",
-               deviceId,
-               /*
-               DPCT1019:14: local_mem_size in SYCL is not a complete equivalent
-               of sharedMemPerBlock in CUDA. You may need to adjust the code.
-               */
-               prop.get_name(), hostname, OPP_gpu_threads_per_block,
-               prop.get_local_mem_size(), OPP_gpu_direct);
+    opp_printf("opp_init",  "Device: %d [%s] on Host [%s] threads=%d Shared_Mem=%lubytes GPU_Direct=%d",
+        deviceId, prop.get_name(), hostname, OPP_gpu_threads_per_block, prop.get_local_mem_size(), OPP_gpu_direct);
 }
 
 //****************************************
@@ -149,20 +107,18 @@ void opp_exit()
     boundingBox.reset();
     comm.reset();
 
-    if (OPP_reduct_h) free(OPP_reduct_h);
-    if (OPP_reduct_d) cutilSafeCall(DPCT_CHECK_ERROR(
-        dpct::dpct_free(OPP_reduct_d, dpct::get_in_order_queue())));
-    if (OPP_consts_h) free(OPP_consts_h);
-    if (OPP_consts_d) cutilSafeCall(DPCT_CHECK_ERROR(
-        dpct::dpct_free(OPP_consts_d, dpct::get_in_order_queue())));
+    if (OPP_reduct_h) opp_host_free(OPP_reduct_h);
+    if (OPP_reduct_d) sycl::free(OPP_reduct_d, *opp_queue);
+    if (OPP_consts_h) opp_host_free(OPP_consts_h);
+    if (OPP_consts_d) sycl::free(OPP_consts_d, *opp_queue);
 
 #ifdef USE_MPI 
-        opp_halo_destroy(); // free memory allocated to halos and mpi_buffers 
-        opp_partition_destroy(); // free memory used for holding partition information
-        opp_part_comm_destroy(); // free memory allocated for particle communication
+    opp_halo_destroy(); // free memory allocated to halos and mpi_buffers 
+    opp_partition_destroy(); // free memory used for holding partition information
+    opp_part_comm_destroy(); // free memory allocated for particle communication
 #endif
 
-    opp_cuda_exit();
+    opp_sycl_exit();
     opp_exit_core();
 
 #ifdef USE_PETSC
@@ -182,19 +138,72 @@ void opp_abort(std::string s)
 }
 
 //****************************************
-void opp_cuda_exit() 
-{
-    if (!OPP_hybrid_gpu)
-        return;
+void opp_sycl_init(int argc, char **argv) {
 
-    for (auto& a : opp_maps) 
-    {
-        cutilSafeCall(DPCT_CHECK_ERROR(
-            dpct::dpct_free(a->map_d, dpct::get_in_order_queue())));
+    (void)argc; (void)argv;
+
+    try {
+        std::vector<sycl::device> gpu_devices;
+        std::vector<sycl::device> all_devices = sycl::device::get_devices();
+        
+        if (all_devices.size() == 0) {
+            opp_printf("opp_sycl_init", "Error: no supporting devices found");
+            opp_abort();
+        }
+
+        for (const auto& dev : all_devices) {
+
+            if (OPP_DBG) {
+                std::string device_type;  
+                if (dev.is_cpu()) device_type = "CPU";
+                else if (dev.is_gpu()) device_type = "GPU";
+                else if (dev.is_accelerator()) device_type = "Accelerator";
+                else device_type = "Unknown";
+
+                std::cout << "opp_sycl_init[" << OPP_rank << "] - Detected device [ " 
+                    << dev.get_info<sycl::info::device::name>() << " (" 
+                    << device_type << ") ]" << std::endl;
+            }
+
+            // TODO : Make this for CPU devices as well
+
+            if (dev.is_gpu()) {
+                gpu_devices.push_back(dev);
+            }
+        }
+
+#ifdef USE_MPI
+        opp::Comm comm(MPI_COMM_WORLD);
+        const int_rank = comm.rank_intra;
+#else
+        const int int_rank = OPP_rank;
+#endif
+
+        // Select a GPU based on the MPI rank
+        sycl::device selected_device = gpu_devices[int_rank % gpu_devices.size()];
+        opp_queue = new sycl::queue(selected_device);
+
+        float *test = sycl::malloc_device<float>(1, *opp_queue);
+        sycl::free(test, *opp_queue);
+        OPP_hybrid_gpu = 1;
+    }
+    catch (sycl::exception const &exc) {
+        
+        std::cerr << exc.what() << "Exception caught at file:" << __FILE__
+                    << ", line:" << __LINE__ << std::endl;
+        opp_abort("opp_sycl_init - Error... Init device Device Failed");
+    }
+}
+
+//****************************************
+void opp_sycl_exit() 
+{
+    for (auto& a : opp_maps) {
+        sycl::free(a->map_d, *opp_queue);
     }
 
-    for (auto& a : opp_dats) 
-    {
+    // TODO : Check
+    for (auto& a : opp_dats) {
         // cutilSafeCall(cudaFree(a->data_d));
         if (a->thrust_int) delete a->thrust_int;
         if (a->thrust_real) delete a->thrust_real;
@@ -202,10 +211,8 @@ void opp_cuda_exit()
         if (a->thrust_real_sort) delete a->thrust_real_sort;
     }
 
-    if (opp_saved_mesh_relation_d != nullptr)
-    {
-        cutilSafeCall(DPCT_CHECK_ERROR(dpct::dpct_free(
-            opp_saved_mesh_relation_d, dpct::get_in_order_queue())));
+    if (opp_saved_mesh_relation_d != nullptr) {
+        sycl::free(opp_saved_mesh_relation_d, *opp_queue);
         // opp_host_free(opp_saved_mesh_relation_d);
     }
 
@@ -239,32 +246,25 @@ void opp_cuda_exit()
 
     for (auto it = particle_indices_hv.begin(); it != particle_indices_hv.end(); it++) it->second.clear();
     for (auto it = cell_indices_hv.begin(); it != cell_indices_hv.end(); it++) it->second.clear();
-    for (auto it = particle_indices_dv.begin(); it != particle_indices_dv.end(); it++)
-    {
+    for (auto it = particle_indices_dv.begin(); it != particle_indices_dv.end(); it++) {
         it->second.clear();
         it->second.shrink_to_fit();
     }
-    for (auto it = send_data.begin(); it != send_data.end(); it++)
-    {
+    for (auto it = send_data.begin(); it != send_data.end(); it++) {
         it->second.clear();
         it->second.shrink_to_fit();
     }
-    for (auto it = recv_data.begin(); it != recv_data.end(); it++)
-    {
+    for (auto it = recv_data.begin(); it != recv_data.end(); it++) {
         it->second.clear();
         it->second.shrink_to_fit();
     }
 
-    if (OPP_need_remove_flags_d != nullptr)
-    {
-        cutilSafeCall(DPCT_CHECK_ERROR(dpct::dpct_free(
-            OPP_need_remove_flags_d, dpct::get_in_order_queue())));
+    if (OPP_need_remove_flags_d != nullptr) {
+        sycl::free(OPP_need_remove_flags_d, *opp_queue);
     }
 
-    if (OPP_move_count_d != nullptr)
-    {
-        cutilSafeCall(DPCT_CHECK_ERROR(
-            dpct::dpct_free(OPP_move_count_d, dpct::get_in_order_queue())));
+    if (OPP_move_count_d != nullptr) {
+        sycl::free(OPP_move_count_d, *opp_queue);
     } 
 }
 
@@ -279,13 +279,11 @@ opp_map opp_decl_map(opp_set from, opp_set to, int dim, int *imap, char const *n
 {
     opp_map map = opp_decl_map_core(from, to, dim, imap, name);
 
-    if (from->is_particle)
-    {
+    if (from->is_particle) {
         opp_create_device_arrays(map->p2c_dat);
         opp_upload_dat(map->p2c_dat);
     }
-    else
-    {
+    else {
         opp_upload_map(map, true);
     }
 
@@ -436,11 +434,7 @@ opp_set opp_decl_particle_set(int size, char const *name, opp_set cells_set)
 {
     opp_set set = opp_decl_particle_set_core(size, name, cells_set);
 
-    cutilSafeCall(DPCT_CHECK_ERROR(
-        set->particle_remove_count_d =
-            sycl::malloc_device<int>(1, dpct::get_in_order_queue())));
-    cutilSafeCall(
-        DPCT_CHECK_ERROR(dpct::get_current_device().queues_wait_and_throw()));
+    set->particle_remove_count_d = sycl::malloc_device<int>(1, *opp_queue);
 
     return set;
 }
@@ -584,19 +578,11 @@ void opp_reset_dat_impl(opp_dat dat, char* val, opp_reset reset)
             opp_printf("opp_reset_dat_impl", "dat %s dim %lld bytes_to_copy_per_dim %zu %p offset %zu", 
                 dat->name, i, (end - start) * element_size, dat->data_d, data_d_offset);
 
-        cutilSafeCall(
-            DPCT_CHECK_ERROR(dpct::get_in_order_queue()
-                                 .memset((dat->data_d + data_d_offset), 0,
-                                         (end - start) * element_size)
-                                 .wait()));
+        opp_device_memset<char>((char*)(dat->data_d + data_d_offset), 0, (end - start) * element_size);
     }
 #else
-    // cutilSafeCall(cudaMemset((double*)(dat->data_d), 0, dat->size * dat->set->set_capacity));
-    syclMemset<double>((double*)(dat->data_d), 0.0, dat->dim * dat->set->set_capacity);
+    opp_device_memset<char>((char*)(dat->data_d), 0, dat->size * dat->set->set_capacity);
 #endif
-
-    cutilSafeCall(
-        DPCT_CHECK_ERROR(dpct::get_current_device().queues_wait_and_throw()));
 
     dat->dirty_hd = Dirty::Host;
     dat->dirtybit = 1;
@@ -655,8 +641,8 @@ opp_dat opp_fetch_data(opp_dat dat) {
 //*******************************************************************************
 void opp_mpi_print_dat_to_txtfile(opp_dat dat, const char *file_name) 
 {
-    cutilSafeCall(
-        DPCT_CHECK_ERROR(dpct::get_current_device().queues_wait_and_throw()));
+    opp_queue->wait();
+
 #ifdef USE_MPI
     const std::string prefixed_file_name = std::string("mpi_files/MPI_") + 
                                             std::to_string(OPP_comm_size) + std::string("_") + file_name;
@@ -678,8 +664,7 @@ void opp_mpi_print_dat_to_txtfile(opp_dat dat, const char *file_name)
 //****************************************
 void opp_dump_dat(opp_dat dat)
 {
-    cutilSafeCall(
-        DPCT_CHECK_ERROR(dpct::get_current_device().queues_wait_and_throw()));
+    opp_queue->wait();
 
     if (dat->dirty_hd == Dirty::Host) 
         opp_download_dat(dat);
@@ -691,8 +676,7 @@ void opp_dump_dat(opp_dat dat)
 // DEVICE->HOST | this invalidates what is in the HOST
 void opp_download_dat(opp_dat dat) 
 {
-    cutilSafeCall(
-        DPCT_CHECK_ERROR(dpct::get_current_device().queues_wait_and_throw()));
+    opp_queue->wait();
 
     size_t set_size = dat->set->set_capacity;
     if (strstr(dat->type, ":soa") != NULL || (OPP_auto_soa && dat->dim > 1)) 
@@ -700,10 +684,7 @@ void opp_download_dat(opp_dat dat)
         if (OPP_DBG) opp_printf("opp_download_dat", "GPU->CPU SOA | %s", dat->name);
 
         char *temp_data = (char *)opp_host_malloc(dat->size * set_size * sizeof(char));
-        cutilSafeCall(DPCT_CHECK_ERROR(
-            dpct::get_in_order_queue()
-                .memcpy(temp_data, dat->data_d, set_size * dat->size)
-                .wait()));
+        opp_queue->memcpy(temp_data, dat->data_d, set_size * dat->size).wait();
 
         int element_size = dat->size / dat->dim;
         for (int i = 0; i < dat->dim; i++) 
@@ -723,10 +704,7 @@ void opp_download_dat(opp_dat dat)
     {
         if (OPP_DBG) opp_printf("opp_download_dat", "GPU->CPU NON-SOA| %s", dat->name);
 
-        cutilSafeCall(DPCT_CHECK_ERROR(
-            dpct::get_in_order_queue()
-                .memcpy(dat->data, dat->data_d, set_size * dat->size)
-                .wait()));
+        opp_queue->memcpy(dat->data, dat->data_d, set_size * dat->size).wait();
     }
 
     dat->dirty_hd = Dirty::NotDirty;
@@ -805,8 +783,7 @@ void opp_download_particle_set(opp_set particles_set, bool force_download)
 
     if (OPP_DBG) opp_printf("opp_download_particle_set", "set [%s]", particles_set->name);
 
-    cutilSafeCall(
-        DPCT_CHECK_ERROR(dpct::get_current_device().queues_wait_and_throw()));
+    opp_queue->wait();
 
     for (opp_dat& current_dat : *(particles_set->particle_dats))
     {
@@ -861,8 +838,7 @@ void opp_exchange_double_indirect_reductions_cuda(int nargs, opp_arg *args)
 
     if (OPP_DBG) opp_printf("opp_exchange_double_indirect_reductions_cuda", "ALL START");
 
-    cutilSafeCall(
-        DPCT_CHECK_ERROR(dpct::get_current_device().queues_wait_and_throw()));
+    opp_queue->wait();
 
     for (int n = 0; n < nargs; n++) 
     {
@@ -984,19 +960,12 @@ void __cutilCheckMsg(const char *errorMessage, const char *file, const int line)
 //****************************************
 void opp_cpHostToDevice(void **data_d, void **data_h, size_t copy_size, size_t alloc_size, bool create_new) 
 {
-    if (create_new)
-    {
-        if (*data_d != NULL) cutilSafeCall(DPCT_CHECK_ERROR(
-            dpct::dpct_free(*data_d, dpct::get_in_order_queue())));
-        cutilSafeCall(
-            DPCT_CHECK_ERROR(*data_d = (void *)sycl::malloc_device(
-                                 alloc_size, dpct::get_in_order_queue())));
+    if (create_new) {
+        if (*data_d != NULL)  sycl::free(*data_d, *opp_queue);
+        *data_d = (void*)sycl::malloc_device<char>(alloc_size, *opp_queue);
     }
 
-    cutilSafeCall(DPCT_CHECK_ERROR(
-        dpct::get_in_order_queue().memcpy(*data_d, *data_h, copy_size).wait()));
-    cutilSafeCall(
-        DPCT_CHECK_ERROR(dpct::get_current_device().queues_wait_and_throw()));
+    opp_queue->memcpy(*data_d, *data_h, copy_size).wait();
 }
 
 //****************************************
@@ -1057,73 +1026,6 @@ void opp_create_device_arrays(opp_dat dat, bool create_new)
 
     if (OPP_DBG) opp_printf("opp_create_device_arrays", "Device array of dat [%s][%p][%p] Capacity [%d]", 
                         dat->name, dat->data_d, temp_char_d, dat->set->set_capacity * dat->dim);
-}
-
-//****************************************
-void cutilDeviceInit(int argc, char **argv) try {
-    (void)argc;
-    (void)argv;
-    int deviceCount;
-
-    cutilSafeCall(DPCT_CHECK_ERROR(
-        deviceCount = dpct::dev_mgr::instance().device_count()));
-    if (deviceCount == 0) 
-    {
-        opp_printf("cutilDeviceInit", "cutil error: no devices supporting DEVICE");
-        opp_abort();
-    }
-  
-    int int_rank = OPP_rank;
-#ifdef USE_MPI
-        opp::Comm comm(MPI_COMM_WORLD);
-        int_rank = comm.rank_intra;
-#endif
-
-    // Test we have access to a device
-    /*
-    DPCT1093:22: The "int_rank % deviceCount" device may be not the one intended
-    for use. Adjust the selected device if needed.
-    */
-    dpct::err0 err =
-        DPCT_CHECK_ERROR(dpct::select_device(int_rank % deviceCount));
-    if (err == 0)
-    {
-        float *test;
-        if (DPCT_CHECK_ERROR(test = sycl::malloc_device<float>(
-                                 1, dpct::get_in_order_queue())) != 0) {
-            OPP_hybrid_gpu = 0;
-        }
-        else {
-            dpct::dpct_free(test, dpct::get_in_order_queue());
-            OPP_hybrid_gpu = 1;
-        }
-    }
-
-    if (OPP_hybrid_gpu == 0) 
-    {
-        opp_printf("cutilDeviceInit", "Error... Init device Device Failed");
-        opp_abort();
-    }
-}
-catch (sycl::exception const &exc) {
-  std::cerr << exc.what() << "Exception caught at file:" << __FILE__
-            << ", line:" << __LINE__ << std::endl;
-  std::exit(1);
-}
-
-//****************************************
-void print_last_cuda_error()
-{
-    /*
-    DPCT1009:23: SYCL uses exceptions to report errors and does not use the
-    error codes. The call was replaced by a placeholder string. You need to
-    rewrite this code.
-    */
-    /*
-    DPCT1010:24: SYCL uses exceptions to report errors and does not use the
-    error codes. The call was replaced with 0. You need to rewrite this code.
-    */
-    printf("ANY CUDA ERRORS? %s\n", "<Placeholder string>");
 }
 
 //*******************************************************************************

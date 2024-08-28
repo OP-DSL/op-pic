@@ -41,6 +41,25 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
     #include <petscksp.h>
 #endif
 
+#ifdef USE_THRUST
+    #include <thrust/device_vector.h>
+    #include <thrust/host_vector.h>
+    #define THRUST_REAL thrust::device_vector<double>
+    #define THRUST_INT thrust::device_vector<int>
+#elif USE_SYCL
+    #include <sycl/sycl.hpp>
+    #include <dpct/dpct.hpp>
+    #include <dpct/dpl_utils.hpp>
+    #include <oneapi/dpl/execution>
+    #include <oneapi/dpl/algorithm>
+    #define THRUST_REAL dpct::device_vector<double>
+    #define THRUST_INT dpct::device_vector<int>
+    extern sycl::queue* opp_queue;
+#else
+    #define THRUST_REAL void
+    #define THRUST_INT void
+#endif
+
 //*************************************************************************************************
 
 #ifdef DEBUG_LOG
@@ -81,24 +100,6 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #define OPP_BOOL_ZERO  0
 
 #define OPP_DEFAULT_GPU_THREADS_PER_BLOCK 32
-
-#ifdef USE_THRUST
-    #include <thrust/device_vector.h>
-    #include <thrust/host_vector.h>
-    #define THRUST_REAL thrust::device_vector<double>
-    #define THRUST_INT thrust::device_vector<int>
-#elif USE_DPCT
-    #include <oneapi/dpl/execution>
-    #include <oneapi/dpl/algorithm>
-    #include <sycl/sycl.hpp>
-    #include <dpct/dpct.hpp>
-    #include <dpct/dpl_utils.hpp>
-    #define THRUST_REAL dpct::device_vector<double>
-    #define THRUST_INT dpct::device_vector<int>    
-#else
-    #define THRUST_REAL void
-    #define THRUST_INT void
-#endif
 
 #define LOG_STR_LEN 100000
 

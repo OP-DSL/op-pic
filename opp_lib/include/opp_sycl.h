@@ -32,15 +32,14 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #pragma once
 
-#include <oneapi/dpl/execution>
-#include <oneapi/dpl/algorithm>
 #include <sycl/sycl.hpp>
 #include <dpct/dpct.hpp>
-#include <opp_lib.h>
 #include <dpct/dpl_utils.hpp>
-
-#include <iostream>
+#include <oneapi/dpl/execution>
+#include <oneapi/dpl/algorithm>
 #include <oneapi/dpl/random>
+
+#include <opp_lib.h>
 
 #ifdef USE_MPI
     #include <opp_mpi_core.h>
@@ -86,6 +85,8 @@ extern std::map<int, dpct::device_vector<char>> send_data;
 extern std::map<int, dpct::device_vector<char>> recv_data;
 
 // arrays for global constants and reductions
+extern int OPP_consts_bytes;
+extern int OPP_reduct_bytes;
 extern char *OPP_reduct_h, *OPP_reduct_d;
 extern char *OPP_consts_h, *OPP_consts_d;
 
@@ -95,10 +96,8 @@ void __cudaSafeCall(dpct::err0 err, const char *file, const int line);
 
 void __cutilCheckMsg(const char *errorMessage, const char *file, const int line);
 
-
-void opp_cuda_exit();
-
-void cutilDeviceInit(int argc, char **argv);
+void opp_sycl_init(int argc, char **argv);
+void opp_sycl_exit();
 
 // Copy a map from host to device
 void opp_upload_map(opp_map map, bool create_new = false);
@@ -119,8 +118,6 @@ void opp_complete_double_indirect_reductions_cuda(int nargs, opp_arg *args);
 
 void print_dat_to_txtfile_mpi(opp_dat dat, const char *file_name);
 void opp_mpi_print_dat_to_txtfile(opp_dat dat, const char *file_name);
-
-void print_last_cuda_error();
 
 void opp_cpHostToDevice(void **data_d, void **data_h, size_t copy_size, size_t alloc_size = 0, 
     bool create_new = false);
@@ -415,8 +412,8 @@ void copy_according_to_index(dpct::device_vector<T> *in_dat_dv,
 }
 
 template <class T>
-void syclMemset(T* data, T value, size_t size) {
-    dpct::get_in_order_queue().submit([&](sycl::handler& cgh) {
+void opp_device_memset(T* data, T value, size_t size) {
+    opp_queue->submit([&](sycl::handler& cgh) {
         cgh.parallel_for<class memset_kernel>(sycl::range<1>(size), [=](sycl::id<1> idx) {
             data[idx] = value;
         });

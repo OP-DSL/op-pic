@@ -92,6 +92,8 @@ extern std::map<int, thrust::device_vector<char>> send_data;
 extern std::map<int, thrust::device_vector<char>> recv_data;
 
 // arrays for global constants and reductions
+extern int OPP_consts_bytes;
+extern int OPP_reduct_bytes;
 extern char *OPP_reduct_h, *OPP_reduct_d;
 extern char *OPP_consts_h, *OPP_consts_d;
 

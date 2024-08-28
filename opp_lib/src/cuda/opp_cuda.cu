@@ -34,13 +34,6 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "opp_particle_comm.cu"
 #include "opp_increase_part_count.cu"
 
-// arrays for global constants and reductions
-int OPP_consts_bytes = 0, OPP_reduct_bytes = 0;
-char *OPP_reduct_h = nullptr;
-char *OPP_reduct_d = nullptr;
-char *OPP_consts_h = nullptr;
-char *OPP_consts_d = nullptr;
-
 //****************************************
 void opp_init(int argc, char **argv)
 {

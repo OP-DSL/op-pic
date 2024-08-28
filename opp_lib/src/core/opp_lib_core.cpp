@@ -76,6 +76,13 @@ std::shared_ptr<Comm> comm;
 std::unique_ptr<GlobalParticleMover> globalMover;
 bool useGlobalMove = false;
 
+// arrays for global constants and reductions
+int OPP_consts_bytes = 0, OPP_reduct_bytes = 0;
+char *OPP_reduct_h = nullptr;
+char *OPP_reduct_d = nullptr;
+char *OPP_consts_h = nullptr;
+char *OPP_consts_d = nullptr;
+
 //****************************************
 void opp_init_core(int argc, char **argv) 
 {
