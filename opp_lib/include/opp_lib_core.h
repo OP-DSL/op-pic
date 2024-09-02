@@ -46,14 +46,13 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
     #include <thrust/host_vector.h>
     #define THRUST_REAL thrust::device_vector<double>
     #define THRUST_INT thrust::device_vector<int>
-#elif USE_SYCL
+#elif defined(USE_SYCL)
     #include <sycl/sycl.hpp>
-    #include <dpct/dpct.hpp>
     #include <dpct/dpl_utils.hpp>
-    #include <oneapi/dpl/execution>
-    #include <oneapi/dpl/algorithm>
-    #define THRUST_REAL dpct::device_vector<double>
-    #define THRUST_INT dpct::device_vector<int>
+    // #define THRUST_REAL dpct::device_vector<double>
+    // #define THRUST_INT dpct::device_vector<int>
+    #define THRUST_REAL void
+    #define THRUST_INT void    
     extern sycl::queue* opp_queue;
 #else
     #define THRUST_REAL void
@@ -250,11 +249,12 @@ struct opp_map_core {
 
 struct opp_dat_core {
     int index;                  /* index */
-    opp_set set;              /* set on which data is defined */
+    opp_set set;                /* set on which data is defined */
     int dim;                    /* dimension of data */
     int size;                   /* size of each element in dataset */
     char *data;                 /* data on host */
     char *data_d;               /* data on device (GPU) */
+    char *data_swap_d;          /* data on device (GPU) - used for swapping */
     char const *type;           /* datatype */
     char const *name;           /* name of dataset */
     char *buffer_d;             /* buffer for MPI halo sends on the devidce */

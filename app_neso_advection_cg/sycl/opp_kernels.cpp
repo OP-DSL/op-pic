@@ -34,49 +34,46 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 // AUTO GENERATED CODE
 //*********************************************
 
-#include <sycl/sycl.hpp>
-#include <dpct/dpct.hpp>
 #include "opp_sycl.h"
 
-static dpct::constant_memory<OPP_REAL, 1> CONST_extents_d(2);
-static dpct::constant_memory<OPP_REAL, 1> CONST_dt_d(1);
-static dpct::constant_memory<OPP_REAL, 1> CONST_cell_width_d(1);
-static dpct::constant_memory<OPP_INT, 1> CONST_ndimcells_d(2);
+OPP_REAL* CONST_extents_s;
+OPP_REAL* CONST_dt_s;
+OPP_REAL* CONST_cell_width_s;
+OPP_INT* CONST_ndimcells_s;
 
-static dpct::constant_memory<int, 0> OPP_cells_set_size_d;
-int OPP_cells_set_size;
+OPP_INT* cells_set_size_s;
+int cells_set_size;
 
-static dpct::constant_memory<int, 0> OPP_comm_iteration_d;
+OPP_INT* comm_iteration_s;
+OPP_INT comm_iteration;
 
 void opp_decl_const_impl(int dim, int size, char *data, const char *name) {
-    dpct::device_ext &dev_ct1 = dpct::get_current_device();
-    sycl::queue &q_ct1 = dev_ct1.in_order_queue();
+
+    if (OPP_DBG)
+        opp_printf("opp_decl_const_impl", "Registering %s", name);
 
     if (!strcmp(name, "CONST_extents")) {
-        cutilSafeCall(DPCT_CHECK_ERROR(
-            q_ct1.memcpy(CONST_extents_d.get_ptr(), data, dim * size).wait()));
+        opp_register_const<OPP_REAL>(CONST_extents_s, dim);
+        opp_mem::copy_host_to_dev<OPP_REAL>(CONST_extents_s, (OPP_REAL*)data, dim);
         return;
     }
     if (!strcmp(name, "CONST_dt")) {
-        cutilSafeCall(DPCT_CHECK_ERROR(
-            q_ct1.memcpy(CONST_dt_d.get_ptr(), data, dim * size).wait()));
+        opp_register_const<OPP_REAL>(CONST_dt_s, dim);
+        opp_mem::copy_host_to_dev<OPP_REAL>(CONST_dt_s, (OPP_REAL*)data, dim);
         return;
     }
     if (!strcmp(name, "CONST_cell_width")) {
-        cutilSafeCall(DPCT_CHECK_ERROR(
-            q_ct1.memcpy(CONST_cell_width_d.get_ptr(), data, dim * size)
-                .wait()));
+        opp_register_const<OPP_REAL>(CONST_cell_width_s, dim);
+        opp_mem::copy_host_to_dev<OPP_REAL>(CONST_cell_width_s, (OPP_REAL*)data, dim);
         return;
     }
     if (!strcmp(name, "CONST_ndimcells")) {
-        cutilSafeCall(DPCT_CHECK_ERROR(
-            q_ct1.memcpy(CONST_ndimcells_d.get_ptr(), data, dim * size)
-                .wait()));
+        opp_register_const<OPP_INT>(CONST_ndimcells_s, dim);
+        opp_mem::copy_host_to_dev<OPP_INT>(CONST_ndimcells_s, (OPP_INT*)data, dim);
         return;
     }
 
-    opp_printf("Error: unknown const name %s", name);
-    opp_abort("Error: unknown const name");
+    opp_abort(std::string("Error: unknown const name") + std::string(name));
 }
 
 #include "update_pos_kernel_loop.hpp"

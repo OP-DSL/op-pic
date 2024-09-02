@@ -1,7 +1,34 @@
-#include <oneapi/dpl/execution>
-#include <oneapi/dpl/algorithm>
-#include <sycl/sycl.hpp>
-#include <dpct/dpct.hpp>
+/* 
+BSD 3-Clause License
+
+Copyright (c) 2022, OP-DSL
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions are met:
+
+1. Redistributions of source code must retain the above copyright notice, this
+   list of conditions and the following disclaimer.
+
+2. Redistributions in binary form must reproduce the above copyright notice,
+   this list of conditions and the following disclaimer in the documentation
+   and/or other materials provided with the distribution.
+
+3. Neither the name of the copyright holder nor the names of its
+   contributors may be used to endorse or promote products derived from
+   this software without specific prior written permission.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+*/
+
 #include "opp_sycl.h"
 
 void export_halo_gather(int *list, char *dat, int copy_size,
@@ -86,9 +113,9 @@ void gather_data_to_buffer(opp_arg arg, halo_list exp_exec_list,
 
         {
             dpct::has_capability_or_fail(
-                dpct::get_in_order_queue().get_device(), {sycl::aspect::fp64});
+                opp_queue->get_device(), {sycl::aspect::fp64});
 
-            dpct::get_in_order_queue().submit([&](sycl::handler &cgh) {
+            opp_queue->submit([&](sycl::handler &cgh) {
                 int *export_exec_list_d_arg_dat_set_index_ct0 =
                     export_exec_list_d[arg.dat->set->index];
                 int exp_exec_list_size_ct2 = exp_exec_list->size;
@@ -112,9 +139,9 @@ void gather_data_to_buffer(opp_arg arg, halo_list exp_exec_list,
 
         {
             dpct::has_capability_or_fail(
-                dpct::get_in_order_queue().get_device(), {sycl::aspect::fp64});
+                opp_queue->get_device(), {sycl::aspect::fp64});
 
-            dpct::get_in_order_queue().submit([&](sycl::handler &cgh) {
+            opp_queue->submit([&](sycl::handler &cgh) {
                 int *export_nonexec_list_d_arg_dat_set_index_ct0 =
                     export_nonexec_list_d[arg.dat->set->index];
                 int exp_nonexec_list_size_ct2 = exp_nonexec_list->size;
@@ -143,9 +170,9 @@ void gather_data_to_buffer(opp_arg arg, halo_list exp_exec_list,
     {
         {
             dpct::has_capability_or_fail(
-                dpct::get_in_order_queue().get_device(), {sycl::aspect::fp64});
+                opp_queue->get_device(), {sycl::aspect::fp64});
 
-            dpct::get_in_order_queue().submit([&](sycl::handler &cgh) {
+            opp_queue->submit([&](sycl::handler &cgh) {
                 int *export_exec_list_d_arg_dat_set_index_ct0 =
                     export_exec_list_d[arg.dat->set->index];
                 int exp_exec_list_size_ct2 = exp_exec_list->size;
@@ -167,9 +194,9 @@ void gather_data_to_buffer(opp_arg arg, halo_list exp_exec_list,
 
         {
             dpct::has_capability_or_fail(
-                dpct::get_in_order_queue().get_device(), {sycl::aspect::fp64});
+                opp_queue->get_device(), {sycl::aspect::fp64});
 
-            dpct::get_in_order_queue().submit([&](sycl::handler &cgh) {
+            opp_queue->submit([&](sycl::handler &cgh) {
                 int *export_nonexec_list_d_arg_dat_set_index_ct0 =
                     export_nonexec_list_d[arg.dat->set->index];
                 int exp_nonexec_list_size_ct2 = exp_nonexec_list->size;
@@ -248,9 +275,9 @@ void scatter_data_from_buffer(opp_arg arg)
 
         {
             dpct::has_capability_or_fail(
-                dpct::get_in_order_queue().get_device(), {sycl::aspect::fp64});
+                opp_queue->get_device(), {sycl::aspect::fp64});
 
-            dpct::get_in_order_queue().submit([&](sycl::handler &cgh) {
+            opp_queue->submit([&](sycl::handler &cgh) {
                 int arg_dat_size_ct3 = arg.dat->size;
                 char *arg_dat_buffer_d_r_ct4 = arg.dat->buffer_d_r;
                 int arg_dat_dim_ct6 = arg.dat->dim;
@@ -273,9 +300,9 @@ void scatter_data_from_buffer(opp_arg arg)
 
         {
             dpct::has_capability_or_fail(
-                dpct::get_in_order_queue().get_device(), {sycl::aspect::fp64});
+                opp_queue->get_device(), {sycl::aspect::fp64});
 
-            dpct::get_in_order_queue().submit([&](sycl::handler &cgh) {
+            opp_queue->submit([&](sycl::handler &cgh) {
                 int arg_dat_size_ct3 = arg.dat->size;
                 char
                     *arg_dat_buffer_d_r_arg_dat_set_exec_size_arg_dat_size_ct4 =

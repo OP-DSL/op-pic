@@ -76,13 +76,6 @@ std::shared_ptr<Comm> comm;
 std::unique_ptr<GlobalParticleMover> globalMover;
 bool useGlobalMove = false;
 
-// arrays for global constants and reductions
-int OPP_consts_bytes = 0, OPP_reduct_bytes = 0;
-char *OPP_reduct_h = nullptr;
-char *OPP_reduct_d = nullptr;
-char *OPP_consts_h = nullptr;
-char *OPP_consts_d = nullptr;
-
 //****************************************
 void opp_init_core(int argc, char **argv) 
 {
@@ -327,6 +320,7 @@ opp_dat opp_decl_dat_core(opp_set set, int dim, char const *type, int size, char
     }
 
     dat->data_d        = NULL;
+    dat->data_swap_d   = NULL;
     dat->name          = copy_str(name);
     dat->type          = copy_str(type);
     dat->size          = dim * size;

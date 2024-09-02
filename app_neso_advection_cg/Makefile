@@ -28,7 +28,7 @@ else
 	CPPFLAGS   += -O3 -g
 	NVCCFLAGS  += -O3 -g
 	HIPCCFLAGS += -O3 -g
-	SYCLFLAGS  += -O3
+	SYCLFLAGS  += -O3 -g
 endif
 
 DEBUG_LOG ?= 0
@@ -120,19 +120,19 @@ cuda_mpi: common
 			$(ALL_INC) $(CUDA_INC) $(ALL_LIBS) $(CUDA_LIB) -lopp_cuda_mpi
 
 sycl: common
-		 $(SYCLCC) $(SYCLFLAGS) -c advec_opp.cpp -o $(OBJ)/advec_opp_cuda.o $(ALL_INC)
-		 $(SYCLCC) $(SYCLFLAGS) -c sycl/opp_kernels.dp.cpp -o $(OBJ)/opp_kernels_cuda.o $(ALL_INC) $(CUDA_INC)
+		 $(SYCLCC) $(SYCLFLAGS) -c sycl/opp_kernels.cpp -o $(OBJ)/opp_kernels_sycl.o $(ALL_INC) $(CUDA_INC)
+		 $(SYCLCC) $(SYCLFLAGS) -c advec_opp.cpp -o $(OBJ)/advec_opp_sycl.o $(ALL_INC)		 
 	     $(SYCLCC) $(SYCLFLAGS) -o $(BIN)/sycl \
-		 	$(OBJ)/advec_opp_cuda.o \
-			$(OBJ)/opp_kernels_cuda.o \
+		 	$(OBJ)/advec_opp_sycl.o \
+			$(OBJ)/opp_kernels_sycl.o \
 			$(ALL_INC) $(CUDA_INC) $(ALL_LIBS) $(CUDA_LIB) -lopp_sycl
 
 sycl_mpi: common
-		 $(SYCLCC) $(SYCLFLAGS) -DUSE_MPI -c advec_opp.cpp -o $(OBJ)/advec_opp_cuda_mpi.o $(ALL_INC) $(CUDA_INC)
-		 $(SYCLCC) $(SYCLFLAGS) -DUSE_MPI -c sycl/opp_kernels.dp.cpp -o $(OBJ)/opp_kernels_cuda_mpi.o $(ALL_INC) $(CUDA_INC)
+		 $(SYCLCC) $(SYCLFLAGS) -DUSE_MPI -c advec_opp.cpp -o $(OBJ)/advec_opp_sycl_mpi.o $(ALL_INC) $(CUDA_INC)
+		 $(SYCLCC) $(SYCLFLAGS) -DUSE_MPI -c sycl/opp_kernels.cpp -o $(OBJ)/opp_kernels_sycl_mpi.o $(ALL_INC) $(CUDA_INC)
 	     $(SYCLCC) $(SYCLFLAGS) -DUSE_MPI -o $(BIN)/sycl_mpi \
-		 	$(OBJ)/advec_opp_cuda_mpi.o \
-			$(OBJ)/opp_kernels_cuda_mpi.o \
+		 	$(OBJ)/advec_opp_sycl_mpi.o \
+			$(OBJ)/opp_kernels_sycl_mpi.o \
 			$(ALL_INC) $(CUDA_INC) $(ALL_LIBS) $(CUDA_LIB) -lopp_sycl_mpi -lmpi
 
 hip: mklib

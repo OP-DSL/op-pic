@@ -31,14 +31,10 @@ OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-#include <oneapi/dpl/execution>
-#include <oneapi/dpl/algorithm>
-#include <sycl/sycl.hpp>
-#include <dpct/dpct.hpp>
 #include "opp_sycl.h"
 
 #ifdef USE_MPI
-#include "opp_cuda_kernels.dp.cpp"
+#include "opp_sycl_helper_kernels.cpp"
 #endif
 
 enum UpDownType {
@@ -58,16 +54,16 @@ void opp_device_malloc(void **ptr, size_t size)
 {
     if (*ptr != NULL)
         cutilSafeCall(DPCT_CHECK_ERROR(
-            dpct::dpct_free(*ptr, dpct::get_in_order_queue())));
+            dpct::dpct_free(*ptr, *opp_queue)));
 
     cutilSafeCall(DPCT_CHECK_ERROR(*ptr = (void *)sycl::malloc_device(
-                                       size, dpct::get_in_order_queue())));
+                                       size, *opp_queue)));
 }
 
 //*******************************************************************************
 void opp_device_free(void* ptr)
 {
-    dpct::dpct_free(ptr, dpct::get_in_order_queue());
+    dpct::dpct_free(ptr, *opp_queue);
 }
 
 /*******************************************************************************
@@ -132,20 +128,20 @@ void opp_halo_destroy()
             if (strstr(dat->type, ":soa") != NULL || (OPP_auto_soa && dat->dim > 1)) 
             {
                 cutilSafeCall(DPCT_CHECK_ERROR(dpct::dpct_free(
-                    dat->buffer_d_r, dpct::get_in_order_queue())));
+                    dat->buffer_d_r, *opp_queue)));
             }
             cutilSafeCall(DPCT_CHECK_ERROR(
-                dpct::dpct_free(dat->buffer_d, dpct::get_in_order_queue())));
+                dpct::dpct_free(dat->buffer_d, *opp_queue)));
         }
 
         for (int i = 0; i < (int)opp_sets.size(); i++) 
         {
             if (export_exec_list_d[i] != NULL)
                 cutilSafeCall(DPCT_CHECK_ERROR(dpct::dpct_free(
-                    export_exec_list_d[i], dpct::get_in_order_queue())));
+                    export_exec_list_d[i], *opp_queue)));
             if (export_nonexec_list_d[i] != NULL)
                 cutilSafeCall(DPCT_CHECK_ERROR(dpct::dpct_free(
-                    export_nonexec_list_d[i], dpct::get_in_order_queue())));
+                    export_nonexec_list_d[i], *opp_queue)));
         }
     }
 #endif
@@ -479,14 +475,14 @@ void __opp_mpi_device_halo_exchange(opp_arg *arg, int exec_flag)
     else 
     { // opp_printf("opp_mpi_halo_exchange_dev", "4");
         cutilSafeCall(DPCT_CHECK_ERROR(
-            dpct::get_in_order_queue()
+            *opp_queue
                 .memcpy(((op_mpi_buffer)(dat->mpi_buffer))->buf_exec,
                         arg->dat->buffer_d,
                         exp_exec_list->size * arg->dat->size)
                 .wait()));
 // opp_printf("opp_mpi_halo_exchange_dev", "5");
         cutilSafeCall(DPCT_CHECK_ERROR(
-            dpct::get_in_order_queue()
+            *opp_queue
                 .memcpy(((op_mpi_buffer)(dat->mpi_buffer))->buf_nonexec,
                         arg->dat->buffer_d +
                             exp_exec_list->size * arg->dat->size,
@@ -610,7 +606,7 @@ void __opp_mpi_device_halo_wait_all(opp_arg *arg)
             operand memory, so you may need to call wait() on event return by
             memcpy API to ensure synchronization behavior.
             */
-            cutilSafeCall(DPCT_CHECK_ERROR(dpct::get_in_order_queue().memcpy(
+            cutilSafeCall(DPCT_CHECK_ERROR(opp_queue->memcpy(
                 dat->buffer_d_r, dat->data + init, size)));
             scatter_data_from_buffer(*arg);
         } 
@@ -623,7 +619,7 @@ void __opp_mpi_device_halo_wait_all(opp_arg *arg)
             operand memory, so you may need to call wait() on event return by
             memcpy API to ensure synchronization behavior.
             */
-            cutilSafeCall(DPCT_CHECK_ERROR(dpct::get_in_order_queue().memcpy(
+            cutilSafeCall(DPCT_CHECK_ERROR(opp_queue->memcpy(
                 dat->data_d + init, dat->data + init,
                 (OPP_import_exec_list[dat->set->index]->size +
                  OPP_import_nonexec_list[dat->set->index]->size) *
@@ -678,7 +674,7 @@ void opp_mv_halo_list_device()
             if (export_exec_list_d[opp_sets[s]->index] != NULL)
                 cutilSafeCall(DPCT_CHECK_ERROR(
                     dpct::dpct_free(export_exec_list_d[opp_sets[s]->index],
-                                    dpct::get_in_order_queue())));
+                                    *opp_queue)));
         free(export_exec_list_d);
     }
     export_exec_list_d = (int **)malloc(sizeof(int *) * (int)opp_sets.size());
@@ -690,7 +686,7 @@ void opp_mv_halo_list_device()
 
         if (set->is_particle) continue;
 
-        opp_cpHostToDevice((void **)&(export_exec_list_d[set->index]),
+        opp_copy_host_to_device((void **)&(export_exec_list_d[set->index]),
                         (void **)&(OPP_export_exec_list[set->index]->list),
                         OPP_export_exec_list[set->index]->size * sizeof(int),
                         OPP_export_exec_list[set->index]->size * sizeof(int), true);
@@ -705,7 +701,7 @@ void opp_mv_halo_list_device()
             if (export_nonexec_list_d[opp_sets[s]->index] != NULL)
                 cutilSafeCall(DPCT_CHECK_ERROR(
                     dpct::dpct_free(export_nonexec_list_d[opp_sets[s]->index],
-                                    dpct::get_in_order_queue())));
+                                    *opp_queue)));
         free(export_nonexec_list_d);
     }
     export_nonexec_list_d = (int **)malloc(sizeof(int *) * (int)opp_sets.size());
@@ -717,7 +713,7 @@ void opp_mv_halo_list_device()
         
         if (set->is_particle) continue;
 
-        opp_cpHostToDevice((void **)&(export_nonexec_list_d[set->index]),
+        opp_copy_host_to_device((void **)&(export_nonexec_list_d[set->index]),
                         (void **)&(OPP_export_nonexec_list[set->index]->list),
                         OPP_export_nonexec_list[set->index]->size * sizeof(int),
                         OPP_export_nonexec_list[set->index]->size * sizeof(int), true);
@@ -733,7 +729,7 @@ void opp_mv_halo_list_device()
             if (export_exec_list_disps_d[opp_sets[s]->index] != NULL)
                 cutilSafeCall(DPCT_CHECK_ERROR(dpct::dpct_free(
                     export_exec_list_disps_d[opp_sets[s]->index],
-                    dpct::get_in_order_queue())));
+                    *opp_queue)));
         free(export_exec_list_disps_d);
     }
     export_exec_list_disps_d = (int **)malloc(sizeof(int *) * (int)opp_sets.size());
@@ -754,7 +750,7 @@ void opp_mv_halo_list_device()
                         ->disps[OPP_export_exec_list[set->index]->ranks_size - 1] +
                     OPP_export_exec_list[set->index]
                         ->sizes[OPP_export_exec_list[set->index]->ranks_size - 1];
-        opp_cpHostToDevice((void **)&(export_exec_list_disps_d[set->index]),
+        opp_copy_host_to_device((void **)&(export_exec_list_disps_d[set->index]),
                         (void **)&(OPP_export_exec_list[set->index]->disps),
                         (OPP_export_exec_list[set->index]->ranks_size+1) * sizeof(int),
                         (OPP_export_exec_list[set->index]->ranks_size+1) * sizeof(int), true);
@@ -769,7 +765,7 @@ void opp_mv_halo_list_device()
             if (export_nonexec_list_disps_d[opp_sets[s]->index] != NULL)
                 cutilSafeCall(DPCT_CHECK_ERROR(dpct::dpct_free(
                     export_nonexec_list_disps_d[opp_sets[s]->index],
-                    dpct::get_in_order_queue())));
+                    *opp_queue)));
         free(export_nonexec_list_disps_d);
     }
     export_nonexec_list_disps_d = (int **)malloc(sizeof(int *) * (int)opp_sets.size());
@@ -791,7 +787,7 @@ void opp_mv_halo_list_device()
                     OPP_export_nonexec_list[set->index]
                         ->sizes[OPP_export_nonexec_list[set->index]->ranks_size -
                                 1];
-        opp_cpHostToDevice((void **)&(export_nonexec_list_disps_d[set->index]),
+        opp_copy_host_to_device((void **)&(export_nonexec_list_disps_d[set->index]),
                         (void **)&(OPP_export_nonexec_list[set->index]->disps),
                         (OPP_export_nonexec_list[set->index]->ranks_size+1) * sizeof(int),
                         (OPP_export_nonexec_list[set->index]->ranks_size+1) * sizeof(int), true);
@@ -805,7 +801,7 @@ void opp_mv_halo_list_device()
         if (import_exec_list_disps_d[opp_sets[s]->index] != NULL)
             cutilSafeCall(DPCT_CHECK_ERROR(
                 dpct::dpct_free(import_exec_list_disps_d[opp_sets[s]->index],
-                                dpct::get_in_order_queue())));
+                                *opp_queue)));
         free(import_exec_list_disps_d);
     }
     import_exec_list_disps_d = (int **)malloc(sizeof(int *) * (int)opp_sets.size());
@@ -826,7 +822,7 @@ void opp_mv_halo_list_device()
                         ->disps[OPP_import_exec_list[set->index]->ranks_size - 1] +
                     OPP_import_exec_list[set->index]
                         ->sizes[OPP_import_exec_list[set->index]->ranks_size - 1];
-        opp_cpHostToDevice((void **)&(import_exec_list_disps_d[set->index]),
+        opp_copy_host_to_device((void **)&(import_exec_list_disps_d[set->index]),
                         (void **)&(OPP_import_exec_list[set->index]->disps),
                         (OPP_import_exec_list[set->index]->ranks_size+1) * sizeof(int),
                         (OPP_import_exec_list[set->index]->ranks_size+1) * sizeof(int), true);
@@ -841,7 +837,7 @@ void opp_mv_halo_list_device()
             if (import_nonexec_list_disps_d[opp_sets[s]->index] != NULL)
                 cutilSafeCall(DPCT_CHECK_ERROR(dpct::dpct_free(
                     import_nonexec_list_disps_d[opp_sets[s]->index],
-                    dpct::get_in_order_queue())));
+                    *opp_queue)));
         free(import_nonexec_list_disps_d);
     }
     import_nonexec_list_disps_d = (int **)malloc(sizeof(int *) * (int)opp_sets.size());
@@ -864,7 +860,7 @@ void opp_mv_halo_list_device()
                     OPP_import_nonexec_list[set->index]
                         ->sizes[OPP_import_nonexec_list[set->index]->ranks_size -
                                 1];
-        opp_cpHostToDevice((void **)&(import_nonexec_list_disps_d[set->index]),
+        opp_copy_host_to_device((void **)&(import_nonexec_list_disps_d[set->index]),
                         (void **)&(OPP_import_nonexec_list[set->index]->disps),
                         (OPP_import_nonexec_list[set->index]->ranks_size+1) * sizeof(int),
                         (OPP_import_nonexec_list[set->index]->ranks_size+1) * sizeof(int), true);

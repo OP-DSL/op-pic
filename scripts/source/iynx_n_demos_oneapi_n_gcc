@@ -129,3 +129,50 @@ export NVCCFLAGS_ADD='-gencode arch=compute_90,code=sm_90 -I'$MPI_INSTALL_PATH'/
 export LD_LIBRARY_PATH=$HDF5_INSTALL_PATH/lib:$LD_LIBRARY_PATH
 
 # ------------------------------------------------------------------------------------------------------
+
+# ------------------------------------------------------------------------------------------------------
+# Running Sycl examples on demos - cd phd/test/sycl
+
+  $ spack install intel-oneapi-compilers@2024.2.1
+  $ sh /home/zl/lib_setup/oneapi-for-nvidia-gpus-2024.2.1-cuda-12.0-linux.sh --install-dir /home/zl/spack_install/spack_demos/opt/spack/linux-debian12-zen3/gcc-12.2.0/intel-oneapi-compilers-2024.2.1-jpypt464ei5wbrl2bly2y3hbngnhp3j4
+
+  $ module load cuda/12.5
+  $ . /home/zl/spack_install/spack_demos/opt/spack/linux-debian12-zen3/gcc-12.2.0/intel-oneapi-compilers-2024.2.1-jpypt464ei5wbrl2bly2y3hbngnhp3j4/setvars.sh --include-intel-llvm
+  
+  $ sycl-ls
+    # [opencl:cpu][opencl:0] Intel(R) OpenCL, AMD EPYC 9334 32-Core Processor                 OpenCL 3.0 (Build 0) [2024.18.7.0.11_160000]
+    # [cuda:gpu][cuda:0] NVIDIA CUDA BACKEND, NVIDIA H100 PCIe 9.0 [CUDA 12.6]
+
+  $ cd /home/zl/phd/test/sycl/
+  $ icpx -w -fsycl -fsycl-targets=nvptx64-nvidia-cuda -Xsycl-target-backend=nvptx64-nvidia-cuda --cuda-gpu-arch=sm_90 -O3 -std=c++17 -o sycl_sort_reduce_by_key sycl_sort_reduce_by_key.cpp
+  $ ONEAPI_DEVICE_SELECTOR="cuda:*" SYCL_PI_TRACE=1 ./sycl_sort_reduce_by_key
+
+
+# Sycl conversion (from CUDA) ---------------------------------------------------------------------------
+
+module purge
+
+export OPP=/home/zl/phd/OP-PIC
+export OPP_INSTALL_PATH=$OPP/opp_install
+export OPP_TRANSLATOR=$OPP/opp_translator/translator
+export OPP_PATH=$OPP/opp_lib
+
+export CC_COMPILER=icpx
+export MPI_COMPILER=mpicxx
+
+export MPICH_CXX=$(spack location -i intel-oneapi-compilers@2024.2.1/jpypt46)/compiler/2024.2/bin/icpx
+export MPICH_CC=$(spack location -i intel-oneapi-compilers@2024.2.1/jpypt46)/compiler/2024.2/bin/icx
+
+export SYCLFLAGS_ADD=" -fsycl-targets=nvptx64-nvidia-cuda -Xsycl-target-backend=nvptx64-nvidia-cuda --cuda-gpu-arch=sm_90 "
+
+spack load intel-oneapi-dpct@2024.2.1
+module load cuda/12.5
+. /home/zl/spack_install/spack_demos/opt/spack/linux-debian12-zen3/gcc-12.2.0/intel-oneapi-compilers-2024.2.1-jpypt464ei5wbrl2bly2y3hbngnhp3j4/setvars.sh --include-intel-llvm
+  
+dpct --extra-arg="-DUSE_THRUST" --extra-arg="-DUSE_MPI" --extra-arg="-I/home/zl/phd/test/OP-PIC/opp_lib/include" --cuda-include-path=/opt/nvidia/hpc_sdk/Linux_x86_64/23.7/cuda/include --process-all --in-root=. --out-root=/home/zl/phd/test/OP-PIC/dpct_lib
+dpct --extra-arg="-DUSE_THRUST" --extra-arg="-DUSE_MPI" --extra-arg="-I/home/zl/phd/test/OP-PIC/opp_lib/include" --cuda-include-path=/opt/nvidia/hpc_sdk/Linux_x86_64/23.7/cuda/include --process-all --in-root=. --out-root=/home/zl/phd/test/OP-PIC/dpct_cabanapic_cg
+
+# ------------------------------------------------------------------------------------------------------
+
+
+ONEAPI_DEVICE_SELECTOR="cuda:*" SYCL_PI_TRACE=1 bin/sycl configs/advec.param 
