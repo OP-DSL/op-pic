@@ -48,14 +48,20 @@ void opp_par_loop_all__update_pos_kernel(opp_set set, opp_iterate_type,
         {
             opp_queue->submit([&](sycl::handler &cgh) {
 
-                OPP_REAL* arg0_data_d = (OPP_REAL *)args[0].data_d;     // p_vel
-                OPP_REAL* arg1_data_d = (OPP_REAL *)args[1].data_d;     // p_pos
-
                 const OPP_INT* opp_k1_dat0_stride_sycl = opp_k1_dat0_stride_s;
                 const OPP_INT* opp_k1_dat1_stride_sycl = opp_k1_dat1_stride_s;
-
-                const OPP_REAL* CONST_extents_sycl = CONST_extents_s;
+    
                 const OPP_REAL* CONST_dt_sycl = CONST_dt_s;
+                const OPP_REAL* CONST_extents_sycl = CONST_extents_s;
+
+                OPP_REAL* arg0_data_d = (OPP_REAL *)args[0].data_d;     // p_vel
+                OPP_REAL* arg1_data_d = (OPP_REAL *)args[1].data_d;     // p_pos
+    
+                
+                
+
+               
+
 
                 // user provided elemental kernel
                 // -----------------------------------------------------------------------------------------

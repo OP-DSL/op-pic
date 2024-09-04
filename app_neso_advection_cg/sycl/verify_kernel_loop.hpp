@@ -1,6 +1,3 @@
-#include <sycl/sycl.hpp>
-#include <dpct/dpct.hpp>
-
 //*********************************************
 // AUTO GENERATED CODE
 //*********************************************
@@ -10,11 +7,6 @@ OPP_INT opp_k3_dat1_stride = -1;
 
 OPP_INT* opp_k3_dat0_stride_s = nullptr;
 OPP_INT* opp_k3_dat1_stride_s = nullptr;
-
-enum Dim {
-    x = 0,
-    y = 1,
-};
 
 //--------------------------------------------------------------
 void opp_par_loop_all__verify_kernel(opp_set set, opp_iterate_type, 
@@ -90,12 +82,16 @@ void opp_par_loop_all__verify_kernel(opp_set set, opp_iterate_type,
 
             const OPP_INT set_size = iter_size;
 
-            sycl::accessor<OPP_INT, 1, sycl::access::mode::read_write,
-                    sycl::access::target::local> red_int(block_size, cgh); // temp
+            sycl::accessor<OPP_INT, 1, sycl::access::mode::read_write, sycl::access::target::local>
+                                        red_int(block_size, cgh); // temp var for reduction
 
             // user provided elemental kernel
             // -----------------------------------------------------------------------------------------
-            auto verify_kernel = [=](
+            enum Dim {
+                x = 0,
+                y = 1,
+            };
+            auto verify_kernel_sycl = [=](
                     const double* p_pos,
                     const int* c_gbl_idx,
                     int* incorrect_count) {
@@ -144,7 +140,7 @@ void opp_par_loop_all__verify_kernel(opp_set set, opp_iterate_type,
 
                     const OPP_INT* opp_p2c = p2c_map_sycl + n;
 
-                    verify_kernel(
+                    verify_kernel_sycl(
                         arg0_data_sycl + n,
                         arg1_data_sycl + opp_p2c[0],
                         gbl2_local);

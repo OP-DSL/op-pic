@@ -6,9 +6,9 @@ OPP_INT opp_k2_dat0_stride = -1;
 OPP_INT opp_k2_dat1_stride = -1;
 OPP_INT opp_k2_c2c_map_stride = -1;
 
-OPP_INT* opp_k2_dat0_stride_s;
-OPP_INT* opp_k2_dat1_stride_s;
-OPP_INT* opp_k2_c2c_map_stride_s;
+OPP_INT* opp_k2_dat0_stride_s = nullptr;
+OPP_INT* opp_k2_dat1_stride_s = nullptr;
+OPP_INT* opp_k2_c2c_map_stride_s = nullptr;
 
 namespace opp_k2 {
 enum Dim {
@@ -103,26 +103,29 @@ void opp_particle_move__move_kernel(opp_set set, opp_map c2c_map, opp_map p2c_ma
         {
             opp_queue->submit([&](sycl::handler &cgh) {
                 
-                const OPP_INT* opp_k2_dat0_stride_sycl = opp_k2_dat0_stride_s;
-                const OPP_INT* opp_k2_dat1_stride_sycl = opp_k2_dat1_stride_s;
-                const OPP_INT* opp_k2_c2c_map_stride_sycl = opp_k2_c2c_map_stride_s;
-                const OPP_REAL* CONST_cell_width_sycl = CONST_cell_width_s;
-                const OPP_INT* opp_cell_set_size_sycl = cells_set_size_s;
                 const OPP_INT* comm_iteration_sycl = comm_iteration_s;
+                const OPP_INT* opp_cell_set_size_sycl = cells_set_size_s;
 
-                const OPP_REAL *args_data_d_ct0 = (OPP_REAL *)args[0].data_d;
-                const OPP_REAL *args_data_d_ct1 = (OPP_REAL *)args[1].data_d;
-                OPP_INT *p2c_map_sycl = (OPP_INT *)args[2].data_d;
-                const OPP_INT *c2c_map_sycl = (OPP_INT *)c2c_map->map_d;
-                
                 OPP_INT *remove_count = (OPP_INT *)set->particle_remove_count_d;
                 OPP_INT *remove_part_indices = (OPP_INT *)OPP_remove_particle_indices_d;
                 OPP_INT *move_part_indices = (OPP_INT *)OPP_move_particle_indices_d;
                 OPP_INT *move_cell_indices = (OPP_INT *)OPP_move_cell_indices_d;
                 OPP_INT *move_count = (OPP_INT *)OPP_move_count_d;
+
+                const OPP_INT* opp_k2_c2c_map_stride_sycl = opp_k2_c2c_map_stride_s;
+                const OPP_INT* opp_k2_dat0_stride_sycl = opp_k2_dat0_stride_s;
+                const OPP_INT* opp_k2_dat1_stride_sycl = opp_k2_dat1_stride_s;
                 
-                const int iter_start = OPP_iter_start;
-                const int iter_end = OPP_iter_end;
+                const OPP_REAL* CONST_cell_width_sycl = CONST_cell_width_s;
+
+                const OPP_REAL *args_data_d_ct0 = (OPP_REAL *)args[0].data_d;
+                const OPP_REAL *args_data_d_ct1 = (OPP_REAL *)args[1].data_d;
+                
+                OPP_INT *p2c_map_sycl = (OPP_INT *)args[2].data_d;
+                const OPP_INT *c2c_map_sycl = (OPP_INT *)c2c_map->map_d;
+                
+                const OPP_INT iter_start = OPP_iter_start;
+                const OPP_INT iter_end = OPP_iter_end;
 
                 // -----------------------------------------------------------------------------------------
                 auto opp_part_check_status = 

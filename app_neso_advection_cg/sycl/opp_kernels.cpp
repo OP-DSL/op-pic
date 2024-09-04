@@ -36,16 +36,16 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "opp_sycl.h"
 
-OPP_REAL* CONST_extents_s;
-OPP_REAL* CONST_dt_s;
-OPP_REAL* CONST_cell_width_s;
-OPP_INT* CONST_ndimcells_s;
+OPP_REAL* CONST_extents_s = nullptr;
+OPP_REAL* CONST_dt_s = nullptr;
+OPP_REAL* CONST_cell_width_s = nullptr;
+OPP_INT* CONST_ndimcells_s = nullptr;
 
-OPP_INT* cells_set_size_s;
-int cells_set_size;
+OPP_INT* cells_set_size_s = nullptr;
+OPP_INT cells_set_size = -1;
 
-OPP_INT* comm_iteration_s;
-OPP_INT comm_iteration;
+OPP_INT* comm_iteration_s = nullptr;
+OPP_INT comm_iteration = -1;
 
 void opp_decl_const_impl(int dim, int size, char *data, const char *name) {
 

@@ -10,21 +10,25 @@ CPP        = $(CC_COMPILER)
 MPICPP	   = $(MPI_COMPILER)
 NVCC       = nvcc
 HIPCC      = $(HIP_COMPILER)
+SYCLCC     = icpx
 
 CPPFLAGS   = -std=c++14 -Wall -fPIC 
 NVCCFLAGS  = -m64 -Xptxas -dlcm=ca -Xptxas=-v $(NVCCFLAGS_ADD)
 HIPCCFLAGS = $(HIPCCFLAGS_ADD) -std=c++17 -Wall -isystem -D__HIP_PLATFORM_AMD__ -munsafe-fp-atomics -march=native
+SYCLFLAGS  = -w -fsycl -std=c++17 $(SYCLFLAGS_ADD) -DUSE_SYCL
 
 DEBUG ?= 0
 ifeq ($(DEBUG), 1)
 	CPPFLAGS   += -O0 -g
 	NVCCFLAGS  += -O0 -g -lineinfo
 	HIPCCFLAGS += -O0 -g
+	SYCLFLAGS  += -O0
 	DEBUG_LOG   = 1
 else
 	CPPFLAGS   += -O3 -g
 	NVCCFLAGS  += -O3 -g
 	HIPCCFLAGS += -O3 -g
+	SYCLFLAGS  += -O3 -g
 endif
 
 DEBUG_LOG ?= 0
@@ -32,6 +36,7 @@ ifeq ($(DEBUG_LOG), 1)
 	CPPFLAGS   += -DDEBUG_LOG
 	NVCCFLAGS  += -DDEBUG_LOG
 	HIPCCFLAGS += -DDEBUG_LOG
+	SYCLFLAGS += -DDEBUG_LOG
 endif
 
 IEEE ?= 0
@@ -41,13 +46,13 @@ ifeq ($(IEEE), 1)
 	HIPCCFLAGS  += -fmad=false -ftz=false -prec-div=true -prec-sqrt=true
 endif
 
-CUDA ?= 1
+CUDA ?= 0
 ifeq ($(CUDA), 1)
 	CUDA_INC   = -I$(CUDA_INSTALL_PATH)/include
 	CUDA_LIB   = -L$(CUDA_INSTALL_PATH)/lib64 -lcudart -lcuda
 endif
 
-HIP ?= 1
+HIP ?= 0
 ifeq ($(HIP), 1)
 	HIP_INC   = -I$(ROCM_INSTALL_DIR)/include -I$(ROCM_THRUST_DIR)/include -I$(ROCM_PRIM_DIR)/include
 	HIP_LIB   = -L$(ROCM_INSTALL_DIR)/lib -lamdhip64
@@ -115,10 +120,26 @@ cuda_mpi: common
 			$(OBJ)/opp_kernels_cuda_mpi.o \
 			$(ALL_INC) $(CUDA_INC) $(ALL_LIBS) $(CUDA_LIB) -lopp_cuda_mpi
 
+sycl: common
+		 $(SYCLCC) $(SYCLFLAGS) -c sycl/opp_kernels.cpp -o $(OBJ)/opp_kernels_sycl.o $(ALL_INC) $(CUDA_INC)
+		 $(SYCLCC) $(SYCLFLAGS) -c advec_opp.cpp -o $(OBJ)/advec_opp_sycl.o $(ALL_INC)		 
+	     $(SYCLCC) $(SYCLFLAGS) -o $(BIN)/sycl \
+		 	$(OBJ)/advec_opp_sycl.o \
+			$(OBJ)/opp_kernels_sycl.o \
+			$(ALL_INC) $(CUDA_INC) $(ALL_LIBS) $(CUDA_LIB) -lopp_sycl
+
+sycl_mpi: common
+		 $(SYCLCC) $(SYCLFLAGS) -DUSE_MPI -c advec_opp.cpp -o $(OBJ)/advec_opp_sycl_mpi.o $(ALL_INC) $(CUDA_INC)
+		 $(SYCLCC) $(SYCLFLAGS) -DUSE_MPI -c sycl/opp_kernels.cpp -o $(OBJ)/opp_kernels_sycl_mpi.o $(ALL_INC) $(CUDA_INC)
+	     $(SYCLCC) $(SYCLFLAGS) -DUSE_MPI -o $(BIN)/sycl_mpi \
+		 	$(OBJ)/advec_opp_sycl_mpi.o \
+			$(OBJ)/opp_kernels_sycl_mpi.o \
+			$(ALL_INC) $(CUDA_INC) $(ALL_LIBS) $(CUDA_LIB) -lopp_sycl_mpi -lmpi
+
 hip: mklib
 		 $(HIPCC) $(HIPCCFLAGS) -c advec_opp.cpp -o $(OBJ)/advec_opp_hip.o $(ALL_INC) $(HIP_INC)
 		 $(HIPCC) $(HIPCCFLAGS) -c hip/opp_kernels.cpp -o $(OBJ)/opp_kernels_hip.o $(ALL_INC) $(HIP_INC)
-	     $(MPICPP) $(CPPFLAGS) -o $(BIN)/hip \
+	     $(HIPCC) $(HIPCCFLAGS) -o $(BIN)/hip \
 			$(OBJ)/advec_opp_hip.o \
 			$(OBJ)/opp_kernels_hip.o \
 			$(ALL_INC) $(HIP_INC) $(HIP_LIB) $(ALL_LIBS) -lopp_hip
@@ -126,7 +147,7 @@ hip: mklib
 hip_mpi: common
 		 $(HIPCC) $(HIPCCFLAGS) -DUSE_MPI -c advec_opp.cpp -o $(OBJ)/advec_opp_hip_mpi.o $(ALL_INC) $(HIP_INC)
 		 $(HIPCC) $(HIPCCFLAGS) -DUSE_MPI -c hip/opp_kernels.cpp -o $(OBJ)/opp_kernels_hip_mpi.o $(ALL_INC) $(HIP_INC)
-	     $(MPICPP) $(CPPFLAGS) -DUSE_MPI -o $(BIN)/hip_mpi \
+	     $(HIPCC) $(HIPCCFLAGS) -DUSE_MPI -o $(BIN)/hip_mpi \
 		 	$(OBJ)/advec_opp_hip_mpi.o \
 			$(OBJ)/opp_kernels_hip_mpi.o \
 			$(ALL_INC) $(HIP_INC) $(HIP_LIB) $(ALL_LIBS) -lopp_hip_mpi -lmpi

@@ -85,11 +85,7 @@ int main(int argc, char **argv)
         m->DeleteValues();
 
 #ifdef USE_MPI
-        // std::vector<int> counts = { opp_params->get<OPP_INT>("nx"), opp_params->get<OPP_INT>("ny") };
-        // opp_colour_cartesian_mesh(DIM, counts, c_idx, c_colors);
-
         advec_color_block(c_idx, c_colors);
-
         opp_partition(std::string("EXTERNAL"), cell_set, nullptr, c_colors);
 #endif
         
@@ -99,7 +95,7 @@ int main(int argc, char **argv)
         opp::BoundingBox bounding_box = opp::BoundingBox(c_pos_ll, DIM);
         opp_init_direct_hop(grid_spacing, DIM, c_idx, bounding_box);
 
-        opp_printf("Setup", "Cells[%d] Particles[%d] max_iter[%d]", cell_set->size, part_set->size, max_iter);
+        opp_printf("Setup Completed", "Cells[%d] Particles[%d] max_iter[%d]", cell_set->size, part_set->size, max_iter);
 
     opp_profiler->end("Setup");
 
@@ -134,17 +130,18 @@ int main(int argc, char **argv)
             int64_t glb_parts, gbl_max_parts, gbl_min_parts;
             int64_t glb_part_comms, gbl_max_part_comms, gbl_min_part_comms;
             get_global_values(part_set->size, glb_parts, gbl_max_parts, gbl_min_parts);   
-            get_global_values(OPP_part_move_count_per_iter, glb_part_comms, gbl_max_part_comms, gbl_min_part_comms);
-            OPP_RUN_ON_ROOT()
-                opp_printf("Main", "ts: %d | %s **** Gbl parts: %" PRId64 " Min %" PRId64 " Max %" PRId64 " | %s **** Gbl comms: %" PRId64 " Max %" PRId64 " Min %" PRId64 "", 
-                    OPP_main_loop_iter, log.c_str(), glb_parts, gbl_min_parts, gbl_max_parts, glb_part_comms, gbl_max_part_comms, gbl_min_part_comms);  
+            get_global_values(OPP_part_comm_count_per_iter, glb_part_comms, gbl_max_part_comms, gbl_min_part_comms);
             total_glb_part_iter += glb_parts;
             total_gbl_part_comms += glb_part_comms;
+
+            OPP_RUN_ON_ROOT()
+                opp_printf("Main", "ts: %d | %s **** Gbl parts: %" PRId64 " Min %" PRId64 " Max %" PRId64 " | **** Gbl comms: %" PRId64 " Max %" PRId64 " Min %" PRId64 "", 
+                    OPP_main_loop_iter, log.c_str(), glb_parts, gbl_min_parts, gbl_max_parts, glb_part_comms, gbl_max_part_comms, gbl_min_part_comms);  
         }
     opp_profiler->end("MainLoop");
         
         OPP_RUN_ON_ROOT()
-            opp_printf("Main", "Main loop completed after %d iterations {%" PRId64 " particless iterated with %" PRId64 " particle communications} ****", 
+            opp_printf("Main", "Completed %d iterations [%" PRId64 " parts iterated with %" PRId64 " comms]", 
                 max_iter, total_glb_part_iter, total_gbl_part_comms);
     }
 
@@ -178,11 +175,14 @@ NOTE: ------------------------------------------------------------------
 
     or reduce the mesh size to increase particles per cell
 ------------------------------------------------------------------------
-
+ESTIMATED --
 mesh      -> cells      | ppc  -> parts       -> bytes  | ppc  -> parts       -> bytes  | ppc  -> parts       -> bytes  |
-256x256   -> 65,536	    | 6800 -> 445,644,800 -> 49.8GB | 3400 -> 222,822,400 -> 24.9GB | 1700 -> 111,411,200 -> 24.9GB |
-512x256   -> 131,072	| 3400 -> 445,644,800 -> 49.8GB | 1700 -> 222,822,400 -> 24.9GB | 850  -> 111,411,200 -> 24.9GB |
-512x512   -> 262,144	| 1700 -> 445,644,800 -> 49.8GB | 850  -> 222,822,400 -> 24.9GB | 425  -> 111,411,200 -> 24.9GB |
+256x256   -> 65,536	    | 6800 -> 445,644,800 -> 49.8GB | 3400 -> 222,822,400 -> 24.9GB | 1700 -> 111,411,200 -> 12.5GB |
+512x256   -> 131,072	| 3400 -> 445,644,800 -> 49.8GB | 1700 -> 222,822,400 -> 24.9GB | 850  -> 111,411,200 -> 12.5GB |
+512x512   -> 262,144	| 1700 -> 445,644,800 -> 49.8GB | 850  -> 222,822,400 -> 24.9GB | 425  -> 111,411,200 -> 12.5GB |
 1024x1024 -> 1,048,576	| 425  -> 445,644,800 -> 49.8GB | 212  -> 222,298,112 -> 24.8GB |                               |
 
+ACTUAL --
+256x256-1700 - 111,411,200 - 14.6GB GPU - H100 5.7s
+256x256-6800 - 445,644,800 - 56.6GB GPU - H100 22.7s
 */
