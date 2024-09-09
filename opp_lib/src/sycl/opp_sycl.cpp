@@ -30,7 +30,6 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
 #include <opp_sycl.h>
-#include <unistd.h>
 #include "opp_particle_mover.cpp"
 #include "opp_increase_part_count.cpp"
 #include "opp_sycl_utils.cpp"
@@ -52,6 +51,9 @@ void opp_init(int argc, char **argv)
         opp_abort();
     }
 
+    if (OPP_DBG)
+        opp_printf("opp_init", "Starting init");
+
 #if defined(USE_PETSC)
     PetscInitialize(&argc, &argv, PETSC_NULLPTR, "opp::PetscSYCL");
 #elif defined(USE_MPI)
@@ -60,21 +62,23 @@ void opp_init(int argc, char **argv)
 
 #ifdef USE_MPI
     OPP_MPI_WORLD = MPI_COMM_WORLD;
-    OPP_MPI_GLOBAL = MPI_COMM_WORLD;
-    
+
     MPI_Comm_rank(OPP_MPI_WORLD, &OPP_rank);
     MPI_Comm_size(OPP_MPI_WORLD, &OPP_comm_size);
 #endif
 
     if (OPP_rank == OPP_ROOT) {
-        std::string log = "Running on CUDA";
+        std::string log = "Running on SYCL";
 #ifdef USE_MPI
         log += "+MPI with " + std::to_string(OPP_comm_size) + " ranks";
-        MPI_Barrier(MPI_COMM_WORLD);
 #endif        
         opp_printf("OP-PIC", "%s", log.c_str());
         opp_printf("OP-PIC", "---------------------------------------------");
     }
+
+#ifdef USE_MPI
+    MPI_Barrier(MPI_COMM_WORLD);
+#endif  
 
     opp_init_core(argc, argv);
     opp_params->write(std::cout);
@@ -146,10 +150,18 @@ void opp_abort(std::string s)
 //****************************************
 void opp_sycl_init(int argc, char **argv) {
 
-    (void)argc; (void)argv;
+    char temp[64];
+    bool run_on_gpu = true;
+    for (int n = 1; n < argc; n++) {
+        char *pch = strstr(argv[n], "-cpu");
+        if (pch != NULL)
+            run_on_gpu = true;
+    }
+
+    if (OPP_DBG) opp_printf("opp_sycl_init", "run_on_gpu=%s", run_on_gpu ? "TRUE" : "FALSE");
 
     try {
-        std::vector<sycl::device> gpu_devices;
+        std::vector<sycl::device> selected_devices;
         std::vector<sycl::device> all_devices = sycl::device::get_devices();
         
         if (all_devices.size() == 0) {
@@ -171,11 +183,15 @@ void opp_sycl_init(int argc, char **argv) {
                     << device_type << ") ]" << std::endl;
             }
 
-            // TODO : Make this for CPU devices as well
-
-            if (dev.is_gpu()) {
-                gpu_devices.push_back(dev);
+            // Should we include CPU and GPU loops as well?
+            if ((dev.is_cpu() && !run_on_gpu) || (dev.is_gpu() && run_on_gpu)) {
+                selected_devices.push_back(dev);
             }
+        }
+
+        if (selected_devices.size() == 0) {
+            opp_printf("opp_sycl_init", "Requested %s but none found", run_on_gpu ? "GPUs" : "CPUs");
+            opp_abort();
         }
 
 #ifdef USE_MPI
@@ -186,7 +202,7 @@ void opp_sycl_init(int argc, char **argv) {
 #endif
 
         // Select a GPU based on the MPI rank
-        sycl::device selected_device = gpu_devices[int_rank % gpu_devices.size()];
+        sycl::device selected_device = selected_devices[int_rank % selected_devices.size()];
         opp_queue = new sycl::queue(selected_device);
 
         float *test = sycl::malloc_device<float>(1, *opp_queue);
@@ -302,6 +318,13 @@ opp_map opp_decl_map(opp_set from, opp_set to, int dim, int *imap, char const *n
     }
 
     return map;
+}
+
+//****************************************
+// TODO : Remove once API of mpi/opp_mpi_core.cpp:168 is fixed
+opp_dat opp_decl_mesh_dat(opp_set set, int dim, opp_data_type dtype, void *data, char const *name)
+{
+    return opp_decl_dat(set, dim, dtype, data, name);
 }
 
 //****************************************
@@ -449,7 +472,7 @@ void opp_print_dat_to_txtfile(opp_dat dat, const char *file_name_prefix, const c
     if (dat->dirty_hd == Dirty::Host) 
         opp_download_dat(dat);
 
-    std::string prefix = std::string(file_name_prefix) + "_c";
+    std::string prefix = std::string(file_name_prefix) + "_sycl";
     opp_print_dat_to_txtfile_core(dat, prefix.c_str(), file_name_suffix);
 }
 
@@ -458,7 +481,7 @@ void opp_print_map_to_txtfile(opp_map map, const char *file_name_prefix, const c
 {
     if (OPP_DBG) opp_printf("opp_print_map_to_txtfile", "writing file [%s]", file_name_suffix);
     
-    std::string prefix = std::string(file_name_prefix) + "_c";
+    std::string prefix = std::string(file_name_prefix) + "_sycl";
 
     opp_print_map_to_txtfile_core(map, file_name_prefix, file_name_suffix);
 }
@@ -667,6 +690,7 @@ void opp_mvReductArraysToDevice(int reduct_bytes)
 //****************************************
 void opp_mvReductArraysToHost(int reduct_bytes) 
 {
+    opp_queue->wait();
     opp_queue->memcpy(OPP_reduct_h, OPP_reduct_d, reduct_bytes).wait();
 }
 
@@ -695,6 +719,7 @@ void opp_mvConstArraysToDevice(int consts_bytes)
 //****************************************
 void opp_mvConstArraysToHost(int consts_bytes) 
 {
+    opp_queue->wait();
     opp_queue->memcpy(OPP_consts_h, OPP_consts_d, consts_bytes).wait();
 }
 

@@ -33,11 +33,9 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 void export_halo_gather(int *list, char *dat, int copy_size,
                                    int elem_size, char *export_buffer,
-                                   const sycl::nd_item<3> &item_ct1) 
+                                   const sycl::nd_item<1> &item_ct1) 
 {
-    const int id = item_ct1.get_group(2) * item_ct1.get_local_range(2) +
-                   item_ct1.get_local_id(2);
-
+    const int id = item_ct1.get_global_linear_id();
     if (id < copy_size) 
     {
         int off = 0;
@@ -69,10 +67,9 @@ void export_halo_gather(int *list, char *dat, int copy_size,
 void export_halo_gather_soa(int *list, char *dat, int copy_size,
                                        int elem_size, char *export_buffer,
                                        int set_size, int dim,
-                                       const sycl::nd_item<3> &item_ct1) 
+                                       const sycl::nd_item<1> &item_ct1) 
 {
-    const int id = item_ct1.get_group(2) * item_ct1.get_local_range(2) +
-                   item_ct1.get_local_id(2);
+    const int id = item_ct1.get_global_linear_id();
     const int size_of = elem_size / dim;
     
     if (id < copy_size) 
@@ -102,6 +99,8 @@ void export_halo_gather_soa(int *list, char *dat, int copy_size,
 void gather_data_to_buffer(opp_arg arg, halo_list exp_exec_list,
                            halo_list exp_nonexec_list) 
 {
+    if (OPP_DBG) opp_printf("opp_helper", "Running gather_data_to_buffer");
+
     const int threads = 192;
     const int blocks = 1 + ((exp_exec_list->size - 1) / threads);
     const int blocks2 = 1 + ((exp_nonexec_list->size - 1) / threads);
@@ -124,10 +123,8 @@ void gather_data_to_buffer(opp_arg arg, halo_list exp_exec_list,
                 int arg_dat_dim_ct6 = arg.dat->dim;
 
                 cgh.parallel_for(
-                    sycl::nd_range<3>(sycl::range<3>(1, 1, blocks) *
-                                          sycl::range<3>(1, 1, threads),
-                                      sycl::range<3>(1, 1, threads)),
-                    [=](sycl::nd_item<3> item_ct1) {
+                    sycl::nd_range<1>(threads * blocks, threads),
+                    [=](sycl::nd_item<1> item_ct1) {
                         export_halo_gather_soa(
                             export_exec_list_d_arg_dat_set_index_ct0,
                             arg.data_d, exp_exec_list_size_ct2,
@@ -151,10 +148,8 @@ void gather_data_to_buffer(opp_arg arg, halo_list exp_exec_list,
                 int arg_dat_dim_ct6 = arg.dat->dim;
 
                 cgh.parallel_for(
-                    sycl::nd_range<3>(sycl::range<3>(1, 1, blocks2) *
-                                          sycl::range<3>(1, 1, threads),
-                                      sycl::range<3>(1, 1, threads)),
-                    [=](sycl::nd_item<3> item_ct1) {
+                    sycl::nd_range<1>(threads * blocks2, threads),
+                    [=](sycl::nd_item<1> item_ct1) {
                         export_halo_gather_soa(
                             export_nonexec_list_d_arg_dat_set_index_ct0,
                             arg.data_d, exp_nonexec_list_size_ct2,
@@ -180,10 +175,8 @@ void gather_data_to_buffer(opp_arg arg, halo_list exp_exec_list,
                 char *arg_dat_buffer_d_ct4 = arg.dat->buffer_d;
 
                 cgh.parallel_for(
-                    sycl::nd_range<3>(sycl::range<3>(1, 1, blocks) *
-                                          sycl::range<3>(1, 1, threads),
-                                      sycl::range<3>(1, 1, threads)),
-                    [=](sycl::nd_item<3> item_ct1) {
+                    sycl::nd_range<1>(threads * blocks, threads),
+                    [=](sycl::nd_item<1> item_ct1) {
                         export_halo_gather(
                             export_exec_list_d_arg_dat_set_index_ct0,
                             arg.data_d, exp_exec_list_size_ct2,
@@ -205,10 +198,8 @@ void gather_data_to_buffer(opp_arg arg, halo_list exp_exec_list,
                     arg.dat->buffer_d + exp_exec_list->size * arg.dat->size;
 
                 cgh.parallel_for(
-                    sycl::nd_range<3>(sycl::range<3>(1, 1, blocks2) *
-                                          sycl::range<3>(1, 1, threads),
-                                      sycl::range<3>(1, 1, threads)),
-                    [=](sycl::nd_item<3> item_ct1) {
+                    sycl::nd_range<1>(threads * blocks2, threads),
+                    [=](sycl::nd_item<1> item_ct1) {
                         export_halo_gather(
                             export_nonexec_list_d_arg_dat_set_index_ct0,
                             arg.data_d, exp_nonexec_list_size_ct2,
@@ -220,8 +211,7 @@ void gather_data_to_buffer(opp_arg arg, halo_list exp_exec_list,
         }
     }
 
-    cutilSafeCall(
-        DPCT_CHECK_ERROR(dpct::get_current_device().queues_wait_and_throw()));
+    opp_queue->wait();
 }
 
 
@@ -230,11 +220,10 @@ void gather_data_to_buffer(opp_arg arg, halo_list exp_exec_list,
 void import_halo_scatter_soa(int offset, char *dat, int copy_size,
                                         int elem_size, char *import_buffer,
                                         int set_size, int dim,
-                                        const sycl::nd_item<3> &item_ct1) 
+                                        const sycl::nd_item<1> &item_ct1) 
 {
-    int id = item_ct1.get_group(2) * item_ct1.get_local_range(2) +
-             item_ct1.get_local_id(2);
-    int size_of = elem_size / dim;
+    const int id = item_ct1.get_global_linear_id();
+    const int size_of = elem_size / dim;
     
     if (id < copy_size) 
     {
@@ -262,6 +251,8 @@ void import_halo_scatter_soa(int offset, char *dat, int copy_size,
 
 void scatter_data_from_buffer(opp_arg arg) 
 {
+    if (OPP_DBG) opp_printf("opp_helper", "Running scatter_data_from_buffer");
+    
     const int threads = 192;
     const int blocks = 1 + ((arg.dat->set->exec_size - 1) / 192);
     const int blocks2 = 1 + ((arg.dat->set->nonexec_size - 1) / 192);
@@ -283,10 +274,8 @@ void scatter_data_from_buffer(opp_arg arg)
                 int arg_dat_dim_ct6 = arg.dat->dim;
 
                 cgh.parallel_for(
-                    sycl::nd_range<3>(sycl::range<3>(1, 1, blocks) *
-                                          sycl::range<3>(1, 1, threads),
-                                      sycl::range<3>(1, 1, threads)),
-                    [=](sycl::nd_item<3> item_ct1) {
+                    sycl::nd_range<1>(threads * blocks, threads),
+                    [=](sycl::nd_item<1> item_ct1) {
                         import_halo_scatter_soa(
                             offset, arg.data_d, copy_size, arg_dat_size_ct3,
                             arg_dat_buffer_d_r_ct4, set_size, arg_dat_dim_ct6,
@@ -311,10 +300,8 @@ void scatter_data_from_buffer(opp_arg arg)
                 int arg_dat_dim_ct6 = arg.dat->dim;
 
                 cgh.parallel_for(
-                    sycl::nd_range<3>(sycl::range<3>(1, 1, blocks2) *
-                                          sycl::range<3>(1, 1, threads),
-                                      sycl::range<3>(1, 1, threads)),
-                    [=](sycl::nd_item<3> item_ct1) {
+                    sycl::nd_range<1>(threads * blocks, threads),
+                    [=](sycl::nd_item<1> item_ct1) {
                         import_halo_scatter_soa(
                             offset, arg.data_d, copy_size, arg_dat_size_ct3,
                             arg_dat_buffer_d_r_arg_dat_set_exec_size_arg_dat_size_ct4,
@@ -323,4 +310,6 @@ void scatter_data_from_buffer(opp_arg arg)
             });
         }
     }
+
+    opp_queue->wait();
 }

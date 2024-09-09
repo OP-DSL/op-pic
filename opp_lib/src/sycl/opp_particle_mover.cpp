@@ -461,8 +461,9 @@ void opp_part_unpack_device(opp_set set)
                 const size_t data_d_offset = (recv_part_start_idx + d * set->set_capacity) * element_size;
                 const size_t data_h_offset = d * new_part_count * element_size;
 
-                opp_mem::copy_host_to_dev<char>((dat->data_d + data_d_offset), 
-                        &(temp_data[data_h_offset]), bytes_to_copy_per_dim, opp_queue, true);
+                char* data_d = dat->data_d + data_d_offset;
+                opp_mem::copy_host_to_dev<char>(data_d, &(temp_data[data_h_offset]), 
+                        bytes_to_copy_per_dim, opp_queue, true);
             }
         }
         opp_queue->wait();

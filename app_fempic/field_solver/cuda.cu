@@ -566,7 +566,7 @@ void FESolver::computePhi(opp_arg arg0, opp_arg arg1, opp_arg arg2)
 
     opp_profiler->start("ComputePhi");
 
-    int nargs = 3;
+    const int nargs = 3;
     opp_arg args[nargs];
     args[0] = arg0;  // node_potential
     args[1] = arg1;  // ion_den

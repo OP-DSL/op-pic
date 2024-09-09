@@ -173,12 +173,6 @@ void opp_mvConstArraysToHost(int consts_bytes);
 template <opp_access reduction, int intel, class T, class out_acc, class local_acc>
 void opp_reduction(out_acc dat_g, int offset, T dat_l, local_acc temp, sycl::nd_item<1> &item) {
     T dat_t;
-#ifdef __SYCL_COMPILER_VERSION
-    sycl::sub_group sg = item.get_sub_group();
-    if (intel)
-        sg.barrier();
-    else
-#endif
 
     /* important to finish all previous activity */
     item.barrier(sycl::access::fence_space::local_space); 
@@ -187,11 +181,6 @@ void opp_reduction(out_acc dat_g, int offset, T dat_l, local_acc temp, sycl::nd_
     temp[tid] = dat_l;
 
     for (size_t d = item.get_local_range(0) / 2; d > 0; d >>= 1) {
-#ifdef __SYCL_COMPILER_VERSION
-        if (intel)
-            sg.barrier();
-        else
-#endif
         item.barrier(sycl::access::fence_space::local_space);
         if (tid < d) {
         dat_t = temp[tid + d];
@@ -429,7 +418,7 @@ public:
 
     // initialize device memory with a specific value
     template <typename T>
-    static void dev_memset(T*& ptr, size_t count, T value, sycl::queue* q = opp_queue) {
+    static void dev_memset(T* ptr, size_t count, T value, sycl::queue* q = opp_queue) {
         q->fill(ptr, value, count).wait();
     }
 

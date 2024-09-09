@@ -22,7 +22,7 @@ ifeq ($(DEBUG), 1)
 	CPPFLAGS   += -O0 -g
 	NVCCFLAGS  += -O0 -g -lineinfo
 	HIPCCFLAGS += -O0 -g
-	SYCLFLAGS  += -O0
+	SYCLFLAGS  += -O0 -g
 	DEBUG_LOG   = 1
 else
 	CPPFLAGS   += -O3 -g
@@ -121,20 +121,20 @@ cuda_mpi: common
 			$(ALL_INC) $(CUDA_INC) $(ALL_LIBS) $(CUDA_LIB) -lopp_cuda_mpi
 
 sycl: common
-		 $(SYCLCC) $(SYCLFLAGS) -c sycl/opp_kernels.cpp -o $(OBJ)/opp_kernels_sycl.o $(ALL_INC) $(CUDA_INC)
+		 $(SYCLCC) $(SYCLFLAGS) -c sycl/opp_kernels.cpp -o $(OBJ)/opp_kernels_sycl.o $(ALL_INC)
 		 $(SYCLCC) $(SYCLFLAGS) -c advec_opp.cpp -o $(OBJ)/advec_opp_sycl.o $(ALL_INC)		 
 	     $(SYCLCC) $(SYCLFLAGS) -o $(BIN)/sycl \
 		 	$(OBJ)/advec_opp_sycl.o \
 			$(OBJ)/opp_kernels_sycl.o \
-			$(ALL_INC) $(CUDA_INC) $(ALL_LIBS) $(CUDA_LIB) -lopp_sycl
+			$(ALL_INC) $(ALL_LIBS) -lopp_sycl
 
 sycl_mpi: common
-		 $(SYCLCC) $(SYCLFLAGS) -DUSE_MPI -c advec_opp.cpp -o $(OBJ)/advec_opp_sycl_mpi.o $(ALL_INC) $(CUDA_INC)
-		 $(SYCLCC) $(SYCLFLAGS) -DUSE_MPI -c sycl/opp_kernels.cpp -o $(OBJ)/opp_kernels_sycl_mpi.o $(ALL_INC) $(CUDA_INC)
-	     $(SYCLCC) $(SYCLFLAGS) -DUSE_MPI -o $(BIN)/sycl_mpi \
+		 $(SYCLCC) $(SYCLFLAGS) -DUSE_MPI -c advec_opp.cpp -o $(OBJ)/advec_opp_sycl_mpi.o $(ALL_INC)
+		 $(SYCLCC) $(SYCLFLAGS) -DUSE_MPI -c sycl/opp_kernels.cpp -o $(OBJ)/opp_kernels_sycl_mpi.o $(ALL_INC)
+	     $(MPICPP) $(SYCLFLAGS) -DUSE_MPI -o $(BIN)/sycl_mpi \
 		 	$(OBJ)/advec_opp_sycl_mpi.o \
 			$(OBJ)/opp_kernels_sycl_mpi.o \
-			$(ALL_INC) $(CUDA_INC) $(ALL_LIBS) $(CUDA_LIB) -lopp_sycl_mpi -lmpi
+			$(ALL_INC) $(CUDA_INC) $(ALL_LIBS) -lopp_sycl_mpi
 
 hip: mklib
 		 $(HIPCC) $(HIPCCFLAGS) -c advec_opp.cpp -o $(OBJ)/advec_opp_hip.o $(ALL_INC) $(HIP_INC)

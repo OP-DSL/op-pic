@@ -232,7 +232,8 @@ class CppSycl(Scheme):
             ctk.updateMoveKernelArgs(extracted_entities, 
                 lambda typ, _: f"char& opp_move_status_flag, const bool opp_move_hop_iter_one_flag, // Added by code-gen\n    const OPP_INT* opp_c2c, OPP_INT* opp_p2c, // Added by code-gen\n    {typ}", loop.kernel)
 
-        ctk.updateKernelAsLambda(extracted_entities, loop.kernel)
+        dependent_functions = ctk.updateKernelAsLambda(extracted_entities, loop.kernel)
+        ctk.renameDependentFunctionCalls(extracted_entities, dependent_functions, lambda const, _: f"{const}_sycl")
         ctk.renameConsts(extracted_entities, app, lambda const, _: f"{const}_sycl")
 
         for entity, rewriter in filter(lambda e: e[0] in kernel_entities, extracted_entities):
@@ -249,6 +250,6 @@ class CppSycl(Scheme):
                 skip=lambda arg: arg.access_type == OP.AccessType.INC and (arg.map_id is not None or arg.p2c_id is not None) and (config["atomics"] or config["seg_red"]),
             )
 
-        return ctk.writeSource(extracted_entities)
+        return ctk.writeSource(extracted_entities, ";")
 
 Scheme.register(CppSycl)

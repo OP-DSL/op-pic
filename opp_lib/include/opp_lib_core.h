@@ -48,9 +48,6 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
     #define THRUST_INT thrust::device_vector<int>
 #elif defined(USE_SYCL)
     #include <sycl/sycl.hpp>
-    #include <dpct/dpl_utils.hpp>
-    // #define THRUST_REAL dpct::device_vector<double>
-    // #define THRUST_INT dpct::device_vector<int>
     #define THRUST_REAL void
     #define THRUST_INT void    
     extern sycl::queue* opp_queue;

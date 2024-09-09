@@ -6,7 +6,7 @@
 {% endblock %}
 
 {% macro stride_cuda(arg) -%}
-{{-" * opp_k%s_dat%s_stride_d" % (kernel_idx, arg.dat_id) if lh.dat(arg) is soa-}}
+{{-" * opp_k%s_dat%s_stride_sycl[0]" % (kernel_idx, arg.dat_id) if lh.dat(arg) is soa-}}
 {%- endmacro %}
 
 {% macro opt_cond(arg) %}
@@ -55,10 +55,10 @@
 
 {% macro map_lookup(arg, kernel_idx = '') -%}
 {%- if arg is double_indirect -%}
-map{{arg.map_id}}[opp_k{{kernel_idx}}_map{{lh.map(arg).id}}_stride_d * {{arg.map_idx}} + opp_p2c[0]]
+map{{arg.map_id}}_sycl[opp_k{{kernel_idx}}_map{{lh.map(arg).id}}_stride_sycl[0] * {{arg.map_idx}} + opp_p2c[0]]
     {{-(" * %d" % lh.dat(arg).dim) if lh.dat(arg) is not soa}}
 {%- else -%}
-map{{arg.map_id}}[opp_k{{kernel_idx}}_map{{lh.map(arg).id}}_stride_d * {{arg.map_idx}} + n]
+map{{arg.map_id}}_sycl[opp_k{{kernel_idx}}_map{{lh.map(arg).id}}_stride_sycl[0] * {{arg.map_idx}} + n]
     {{-(" * %d" % lh.dat(arg).dim) if lh.dat(arg) is not soa}}
 {%- endif -%}
 {%- endmacro %}
@@ -67,10 +67,10 @@ map{{arg.map_id}}[opp_k{{kernel_idx}}_map{{lh.map(arg).id}}_stride_d * {{arg.map
 
     {%- if arg is gbl %}
         {% if arg is reduction %}
-gbl{{arg.id}}{{"_local"}}
+gbl{{arg.id}}_local
         {%- else -%}
         {%- set cast = arg.typ -%}
-gbl{{arg.id}}
+gbl{{arg.id}}_sycl
         {%- endif -%}
     {%- else -%}
         {%- set cast = lh.dat(arg).typ -%}
@@ -81,19 +81,19 @@ gbl{{arg.id}}
             {%- else -%}
             {%- set offset = " + n" -%}
             {%- endif -%}
-            dat{{lh.dat(arg).id}}{{offset}}
+            dat{{lh.dat(arg).id}}_sycl{{offset}}
         {%- else -%}
             {%- if arg is reduction -%}
             arg{{arg.id}}_{{arg.map_idx}}_local
             {%- else -%}
                 {%- if arg is double_indirect -%}
-            {%- set offset = " + map%s[opp_p2c[0] + opp_k%d_map%d_stride_d * %d]" % (arg.map_id, kernel_idx, arg.map_id, arg.map_idx) -%}
+            {%- set offset = " + map%s_sycl[opp_p2c[0] + opp_k%d_map%d_stride_sycl[0] * %d]" % (arg.map_id, kernel_idx, arg.map_id, arg.map_idx) -%}
                 {%- elif arg is p2c_mapped -%}
             {%- set offset = " + opp_p2c[0]" -%}
                 {%- elif arg is indirect -%}
-            {%- set offset = " + map%s[n + opp_k%d_map%d_stride_d * %d]" % (arg.map_id, kernel_idx, lh.map(arg).id, arg.map_idx) -%}
+            {%- set offset = " + map%s_sycl[n + opp_k%d_map%d_stride_sycl[0] * %d]" % (arg.map_id, kernel_idx, lh.map(arg).id, arg.map_idx) -%}
                 {%- endif -%}
-                dat{{lh.dat(arg).id}}{{offset}}
+                dat{{lh.dat(arg).id}}_sycl{{offset}}
             {%- endif -%}
         {%- endif -%}
 
@@ -127,7 +127,7 @@ OPP_INT* opp_k{{kernel_idx}}_map{{map.id}}_stride_s = nullptr;
                     gbl{{arg.id}}_local[d] = {% if arg is inc -%}
                         {{arg.typ}}_ZERO
         {%- else -%}
-                    gbl{{arg.id}}[blockIdx.x * {{arg.dim}} + d]
+                    gbl{{arg.id}}_sycl[item.get_group(0) * {{arg.dim}} + d]
         {%- endif -%};
 
     {% endfor %}
@@ -170,14 +170,14 @@ OPP_INT* opp_k{{kernel_idx}}_map{{map.id}}_stride_s = nullptr;
         {% for arg in lh.args_expanded|indirect|reduction if config.atomics %}
 
                     for (int d = 0; {{opt_dev_cond_comp(arg)}}d < {{lh.dat(arg).dim}}; ++d)
-                        atomicAdd(dat{{arg.dat_id}} + {{map_lookup(arg, kernel_idx)}} + (d{{stride_cuda(arg)}}), arg{{arg.id}}_{{arg.map_idx}}_local[d]);
+                        opp_atomic_fetch_add(dat{{arg.dat_id}}_sycl + {{map_lookup(arg, kernel_idx)}} + (d{{stride_cuda(arg)}}), arg{{arg.id}}_{{arg.map_idx}}_local[d]);
         {% endfor %}
                 }
     {% endif %}
     {% for arg in lh.args|gbl|reduction %}
 
-                for (int d = 0; {{opt_dev_cond_comp(arg)}}d < {{arg.dim}}; ++d)
-                    opp_reduction<OPP_{{arg.access_type.name}}, 1>(gbl{{arg.id}}_sycl, (arg{{arg.id}}_offset + d + item.get_group_linear_id() * {{arg.dim}}), 
+                for (int d = 0; {{opt_dev_cond_comp(arg)}}d < {{arg.dim}}; ++d) //arg{{arg.id}}_offset + 
+                    opp_reduction<OPP_{{arg.access_type.name}}, 0>(gbl{{arg.id}}_sycl, (d + item.get_group_linear_id() * {{arg.dim}}), 
                                     gbl{{arg.id}}_local[d], red_{{arg.typ}}_{{arg.id}}, item);
     {% endfor %}
     {{ caller() }}
@@ -291,7 +291,7 @@ void opp_par_loop_{{lh.iterator_type}}__{{lh.kernel}}(opp_set set, opp_iterate_t
             {% call opt_if(arg) %}
     args[{{arg.id}}].data   = OPP_reduct_h + reduction_bytes;
     args[{{arg.id}}].data_d = OPP_reduct_d + reduction_bytes;
-    const OPP_INT arg{{arg.id}}_offset = reduction_bytes / sizeof(OPP_INT);
+    {#const OPP_INT arg{{arg.id}}_offset = reduction_bytes / sizeof({{arg.typ}});#}
 
     for (int b = 0; b < num_blocks; ++b) {
         for (int d = 0; d < {{arg.dim}}; ++d)
@@ -327,8 +327,11 @@ void opp_par_loop_{{lh.iterator_type}}__{{lh.kernel}}(opp_set set, opp_iterate_t
             const {{consts.typ}}* {{consts.ptr}}_sycl = {{consts.ptr}}_s;
     {% endfor %}
 
-    {% for arg in lh.args|dat %}
-            {{"const " if lh.dat(arg) is read_in(lh)}}{{lh.dat(arg).typ}}* dat{{lh.dat(arg).id}} = ({{lh.dat(arg).typ}}*)args[{{lh.dat(arg).id}}].data_d;     // {{lh.dat(arg).ptr}}
+    {% for dat in lh.dats %}
+            {{dat.typ}}* dat{{dat.id}}_sycl = ({{dat.typ}}*)args[{{dat.arg_id}}].data_d;     // {{dat.ptr}}
+    {% endfor %}
+    {% for map in lh.maps %}
+            const OPP_INT* map{{map.id}}_sycl = args[{{map.arg_id}}].map_data_d;     // {{map.ptr}}
     {% endfor %}
     {% for arg in lh.args|gbl %}
             {{arg.typ}}* gbl{{arg.id}}_sycl = ({{arg.typ}}*)args[{{arg.id}}].data_d;
@@ -350,7 +353,7 @@ void opp_par_loop_{{lh.iterator_type}}__{{lh.kernel}}(opp_set set, opp_iterate_t
 
             // user provided elemental kernel
             // -----------------------------------------------------------------------------------------
-            {{kernel_func|indent(12)}};
+            {{kernel_func|indent(12)}}
 
             // -----------------------------------------------------------------------------------------
     {% call atomic_kernel_wrapper()%}

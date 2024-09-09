@@ -237,17 +237,18 @@ inline std::string get_global_level_log(double max_c_ef, double max_n_potential,
     MPI_Reduce(&temp_local_part_count, &global_part_size, 1, MPI_INT64_T, MPI_SUM, OPP_ROOT, MPI_COMM_WORLD);
     MPI_Reduce(&temp_local_parts_injected, &global_inj_size, 1, MPI_INT64_T, MPI_SUM, OPP_ROOT, MPI_COMM_WORLD);
     MPI_Reduce(&temp_local_part_removed, &global_removed, 1, MPI_INT64_T, MPI_SUM, OPP_ROOT, MPI_COMM_WORLD);
+    MPI_Reduce(&OPP_move_max_hops, &global_move_max_hops, 1, MPI_INT, MPI_MAX, OPP_ROOT, MPI_COMM_WORLD);
     
 #else
     global_part_size = local_part_count;
     global_inj_size = local_parts_injected;
     global_removed = local_part_removed;
     global_max_comm_iteration = OPP_max_comm_iteration;
+    global_move_max_hops = OPP_move_max_hops;
 #endif
 
     get_global_values(local_part_count, glb_parts, gbl_max_parts, gbl_min_parts);   
     get_global_values(OPP_part_comm_count_per_iter, glb_part_comms, gbl_max_part_comms, gbl_min_part_comms);
-    MPI_Reduce(&OPP_move_max_hops, &global_move_max_hops, 1, MPI_INT, MPI_MAX, OPP_ROOT, MPI_COMM_WORLD);
 
     log += std::string("\t np: ") + str(global_part_size, "%" PRId64);
     log += std::string(" (") + str(global_inj_size, "%" PRId64);

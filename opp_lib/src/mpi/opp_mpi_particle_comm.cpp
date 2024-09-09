@@ -573,17 +573,21 @@ void opp_part_comm_init()
 void opp_part_set_comm_init(opp_set set)
 {
     // TODO : can use the same mappings for all particle sets with the same cells set, instead of communicating again
-
-    if (OPP_DBG) opp_printf("opp_part_set_comm_init", "set: %s", set->name);
-
     const halo_list exp_exec_list = OPP_export_exec_list[set->cells_set->index];
     const halo_list imp_exec_list = OPP_import_exec_list[set->cells_set->index];
 
+    const size_t exp_exec_rank_count = (size_t)(exp_exec_list->ranks_size);
+    const size_t imp_exec_rank_count = (size_t)(imp_exec_list->ranks_size);
+
+    if (OPP_DBG) opp_printf("opp_part_set_comm_init", "set: %s exp_exec_ranks:%zu imp_exec_ranks:%zu", 
+                    set->name, exp_exec_rank_count, imp_exec_rank_count);
+
     std::vector<MPI_Request> send_reqs;
     std::vector<MPI_Request> recv_reqs;    
+    std::vector<std::vector<int>> recv_buffers(imp_exec_rank_count);
 
     // send the local index of the export elements of the set to all neighbours
-    for (int i = 0; i < exp_exec_list->ranks_size; i++) 
+    for (size_t i = 0; i < exp_exec_rank_count; i++) 
     {  
         const int neighbour_rank = exp_exec_list->ranks[i];
         const int* send_buffer = &(exp_exec_list->list[exp_exec_list->disps[i]]);
@@ -604,11 +608,10 @@ void opp_part_set_comm_init(opp_set set)
         } 
     }
 
-    std::vector<std::vector<int>> recv_buffers(imp_exec_list->ranks_size);
-
     // receive the foreign ranks local index of the import elements of the set from all neighbours
-    for (int i = 0; i < imp_exec_list->ranks_size; i++) 
+    for (size_t i = 0; i < imp_exec_rank_count; i++) 
     {
+        // opp_printf("opp_part_set_comm_init", "imp_exec_rank_count: %zu %zu", imp_exec_rank_count, i);
         const int neighbour_rank = imp_exec_list->ranks[i];
         const int recv_size = imp_exec_list->sizes[i];
         
@@ -635,13 +638,13 @@ void opp_part_set_comm_init(opp_set set)
     // print the per rank received buffers
     if (OPP_DBG)
     {
-        for (int i = 0; i < (int)recv_buffers.size(); i++) 
+        for (size_t i = 0; i < recv_buffers.size(); i++) 
         {
             // what I have (mappings) in import exec buffers, mappings before renumbering from that rank
             const int* imp_buffer = &(imp_exec_list->list[imp_exec_list->disps[i]]); 
 
             std::string log = "";
-            for (int k = 0; k < (int)recv_buffers[i].size(); k++)
+            for (size_t k = 0; k < recv_buffers[i].size(); k++)
                 log += std::to_string((recv_buffers[i])[k]) + "|" + std::to_string(imp_buffer[k]) + " ";  
 
             opp_printf("opp_part_set_comm_init", "%s RECEIVE neighbour_rank %d recv_size %d (new|old) -> %s", 
@@ -651,7 +654,7 @@ void opp_part_set_comm_init(opp_set set)
 
     if (true) // TODO : this might break existing OP2 functionality, check for issues
     { 
-        for (int i = 0; i < (int)recv_buffers.size(); i++) 
+        for (size_t i = 0; i < recv_buffers.size(); i++) 
         {
             int* imp_buffer = &(imp_exec_list->list[imp_exec_list->disps[i]]); 
             
@@ -661,7 +664,7 @@ void opp_part_set_comm_init(opp_set set)
     }
 
     // create mappings of neighbour ranks cell information for easy access during particle communication
-    for (int i = 0; i < imp_exec_list->ranks_size; i++) 
+    for (size_t i = 0; i < imp_exec_rank_count; i++) 
     {
         const int neighbour_rank = imp_exec_list->ranks[i];
         const std::vector<int>& neighbour_rank_local_idxs = recv_buffers[i];
@@ -687,7 +690,7 @@ void opp_part_set_comm_init(opp_set set)
     mpi_buffers->send_req.clear();
     mpi_buffers->recv_req.clear();
 
-    for (int i = 0; i < imp_exec_list->ranks_size; i++) 
+    for (size_t i = 0; i < imp_exec_rank_count; i++) 
     {
         const int neighbour_rank = imp_exec_list->ranks[i];
 
@@ -700,7 +703,7 @@ void opp_part_set_comm_init(opp_set set)
         part_buffer.buf_import_index     = 0;
     }
 
-    for (int i = 0; i < exp_exec_list->ranks_size; i++) 
+    for (size_t i = 0; i < exp_exec_rank_count; i++) 
     {
         const int neighbour_rank = exp_exec_list->ranks[i];
 

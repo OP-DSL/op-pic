@@ -56,10 +56,9 @@ void opp_init(int argc, char **argv)
 #endif
 
     OPP_MPI_WORLD = MPI_COMM_WORLD;
-    OPP_MPI_GLOBAL = MPI_COMM_WORLD;
-    
-    MPI_Comm_rank(OPP_MPI_WORLD, &OPP_rank);
-    MPI_Comm_size(OPP_MPI_WORLD, &OPP_comm_size);
+
+    MPI_Comm_rank(MPI_COMM_WORLD, &OPP_rank);
+    MPI_Comm_size(MPI_COMM_WORLD, &OPP_comm_size);
 
     if (OPP_rank == OPP_ROOT)
     {
@@ -118,7 +117,7 @@ void opp_exit()
 void opp_abort(std::string s)
 {
     opp_printf("opp_abort", "%s", s.c_str());
-    MPI_Abort(OPP_MPI_WORLD, 2);
+    MPI_Abort(MPI_COMM_WORLD, 2);
 }
 
 //****************************************
