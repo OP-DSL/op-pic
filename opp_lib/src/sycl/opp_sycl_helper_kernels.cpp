@@ -211,7 +211,7 @@ void gather_data_to_buffer(opp_arg arg, halo_list exp_exec_list,
         }
     }
 
-    opp_queue->wait();
+    OPP_DEVICE_SYNCHRONIZE();
 }
 
 
@@ -254,8 +254,8 @@ void scatter_data_from_buffer(opp_arg arg)
     if (OPP_DBG) opp_printf("opp_helper", "Running scatter_data_from_buffer");
     
     const int threads = 192;
-    const int blocks = 1 + ((arg.dat->set->exec_size - 1) / 192);
-    const int blocks2 = 1 + ((arg.dat->set->nonexec_size - 1) / 192);
+    const int blocks = 1 + ((arg.dat->set->exec_size - 1) / threads);
+    const int blocks2 = 1 + ((arg.dat->set->nonexec_size - 1) / threads);
 
     if (strstr(arg.dat->type, ":soa") != NULL || (OPP_auto_soa && arg.dat->dim > 1)) 
     {
@@ -311,5 +311,5 @@ void scatter_data_from_buffer(opp_arg arg)
         }
     }
 
-    opp_queue->wait();
+    OPP_DEVICE_SYNCHRONIZE();
 }

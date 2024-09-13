@@ -222,35 +222,35 @@ void opp_sycl_exit()
 {
     for (auto& a : opp_sets) {
         if (a->is_particle) 
-            opp_mem::dev_free(a->particle_remove_count_d, opp_queue);
+            opp_mem::dev_free(a->particle_remove_count_d);
     }
 
     for (auto& a : opp_maps) {
-        opp_mem::dev_free(a->map_d, opp_queue);
+        opp_mem::dev_free(a->map_d);
     }
 
     for (auto& a : opp_dats) {
-        opp_mem::dev_free(a->data_d, opp_queue);
-        opp_mem::dev_free(a->data_swap_d, opp_queue);
+        opp_mem::dev_free(a->data_d);
+        opp_mem::dev_free(a->data_swap_d);
     }
 
-    opp_mem::dev_free(opp_saved_mesh_relation_d, opp_queue);
+    opp_mem::dev_free(opp_saved_mesh_relation_d);
 
-    opp_mem::dev_free(OPP_move_particle_indices_d, opp_queue);
-    opp_mem::dev_free(OPP_move_cell_indices_d, opp_queue);
-    opp_mem::dev_free(OPP_remove_particle_indices_d, opp_queue);
-    opp_mem::dev_free(OPP_move_count_d, opp_queue);
+    opp_mem::dev_free(OPP_move_particle_indices_d);
+    opp_mem::dev_free(OPP_move_cell_indices_d);
+    opp_mem::dev_free(OPP_remove_particle_indices_d);
+    opp_mem::dev_free(OPP_move_count_d);
 
     ps_cell_index_dv.clear(); ps_cell_index_dv.shrink_to_fit();
     ps_swap_indices_dv.clear(); ps_swap_indices_dv.shrink_to_fit();
     hf_from_indices_dv.clear(); hf_from_indices_dv.shrink_to_fit(); 
     hf_sequence_dv.clear(); hf_sequence_dv.shrink_to_fit(); 
 
-    opp_mem::dev_free(OPP_reduct_d, opp_queue);
-    opp_mem::dev_free(OPP_consts_d, opp_queue);
+    opp_mem::dev_free(OPP_reduct_d);
+    opp_mem::dev_free(OPP_consts_d);
 
     for (auto& a : opp_consts)
-        opp_mem::dev_free(a, opp_queue);
+        opp_mem::dev_free(a);
 
     // send_part_cell_idx_dv.clear();
     // send_part_cell_idx_dv.shrink_to_fit();
@@ -296,7 +296,7 @@ opp_set opp_decl_set(int size, char const *name)
 opp_set opp_decl_particle_set(int size, char const *name, opp_set cells_set)
 {
     opp_set set = opp_decl_particle_set_core(size, name, cells_set);
-    set->particle_remove_count_d = opp_mem::dev_malloc<OPP_INT>(1, opp_queue);
+    set->particle_remove_count_d = opp_mem::dev_malloc<OPP_INT>(1);
     return set;
 }
 opp_set opp_decl_particle_set(char const *name, opp_set cells_set)
@@ -508,10 +508,10 @@ void opp_reset_dat_impl(opp_dat dat, char* val, opp_reset reset)
             opp_printf("opp_reset_dat_impl", "dat %s dim %lld bytes_to_copy_per_dim %zu %p offset %zu", 
                 dat->name, i, (end - start) * element_size, dat->data_d, data_d_offset);
 
-        opp_mem::dev_memset<char>(dat->data_d + data_d_offset, (end - start) * element_size, 0, opp_queue);
+        opp_mem::dev_memset<char>(dat->data_d + data_d_offset, (end - start) * element_size, 0);
     }
 #else
-    opp_mem::dev_memset<char>(dat->data_d, dat->size * dat->set->set_capacity, 0, opp_queue);
+    opp_mem::dev_memset<char>(dat->data_d, dat->size * dat->set->set_capacity, 0);
 #endif
 
     dat->dirty_hd = Dirty::Host;
@@ -566,7 +566,7 @@ opp_dat opp_fetch_data(opp_dat dat) {
 //*******************************************************************************
 void opp_mpi_print_dat_to_txtfile(opp_dat dat, const char *file_name) 
 {
-    opp_queue->wait();
+    OPP_DEVICE_SYNCHRONIZE();
 
 #ifdef USE_MPI
     const std::string prefixed_file_name = std::string("mpi_files/MPI_") + 
@@ -585,7 +585,7 @@ void opp_mpi_print_dat_to_txtfile(opp_dat dat, const char *file_name)
 //********************************************************************************
 void opp_dump_dat(opp_dat dat)
 {
-    opp_queue->wait();
+    OPP_DEVICE_SYNCHRONIZE();
 
     if (dat->dirty_hd == Dirty::Host) opp_download_dat(dat);
 
@@ -609,7 +609,7 @@ void opp_exchange_double_indirect_reductions_cuda(int nargs, opp_arg *args)
 
     if (OPP_DBG) opp_printf("opp_exchange_double_indirect_reductions_cuda", "ALL START");
 
-    opp_queue->wait();
+    OPP_DEVICE_SYNCHRONIZE();
 
     for (int n = 0; n < nargs; n++) {
         bool already_done = false;
@@ -690,7 +690,7 @@ void opp_mvReductArraysToDevice(int reduct_bytes)
 //****************************************
 void opp_mvReductArraysToHost(int reduct_bytes) 
 {
-    opp_queue->wait();
+    OPP_DEVICE_SYNCHRONIZE();
     opp_queue->memcpy(OPP_reduct_h, OPP_reduct_d, reduct_bytes).wait();
 }
 
@@ -719,7 +719,7 @@ void opp_mvConstArraysToDevice(int consts_bytes)
 //****************************************
 void opp_mvConstArraysToHost(int consts_bytes) 
 {
-    opp_queue->wait();
+    OPP_DEVICE_SYNCHRONIZE();
     opp_queue->memcpy(OPP_consts_h, OPP_consts_d, consts_bytes).wait();
 }
 

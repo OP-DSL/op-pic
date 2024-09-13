@@ -380,7 +380,7 @@ auto opp_part_check_status =
             OPP_INT *move_cell_indices = (OPP_INT *)OPP_move_cell_indices_d;
             OPP_INT *move_count = (OPP_INT *)OPP_move_count_d;
 
-            const OPP_INT* opp_k2_c2c_map_stride_sycl = opp_k2_c2c_map_stride_s;
+            const OPP_INT* opp_k{{kernel_idx}}_c2c_map_stride_sycl = opp_k{{kernel_idx}}_c2c_map_stride_s;
     {% for dat in lh.dats|soa %}
             const OPP_INT* opp_k{{kernel_idx}}_dat{{dat.id}}_stride_sycl = opp_k{{kernel_idx}}_dat{{dat.id}}_stride_s;
     {% endfor %}

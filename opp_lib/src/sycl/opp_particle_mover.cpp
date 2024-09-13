@@ -49,15 +49,13 @@ bool opp_finalize_particle_move(opp_set set)
 { 
     opp_profiler->start("Mv_Finalize");
 
-    opp_queue->wait();
+    OPP_DEVICE_SYNCHRONIZE();
 
     // this is the exchange particle count
-    opp_queue->memcpy(&OPP_move_count_h, OPP_move_count_d, sizeof(int));
+    opp_mem::copy_dev_to_host<int>(&OPP_move_count_h, OPP_move_count_d, 1, true);
 
     // remove count is the addition of removed particles and the exchange count
-    opp_queue->memcpy(&(set->particle_remove_count), set->particle_remove_count_d, sizeof(int));
-
-    opp_queue->wait();
+    opp_mem::copy_dev_to_host<int>(&(set->particle_remove_count), set->particle_remove_count_d, 1);
 
     if (OPP_DBG)
         opp_printf("opp_finalize_particle_move", "set [%s][%d] remove_count [%d] move count [%d]", 
@@ -120,7 +118,7 @@ bool opp_finalize_particle_move(opp_set set)
 
         OPP_comm_iteration = 0; // reset for the next par loop
 
-        opp_queue->wait();
+        OPP_DEVICE_SYNCHRONIZE();
         opp_profiler->end("Mv_Finalize");
         return false; // all mpi ranks do not have anything to communicate to any rank
     }
@@ -131,7 +129,7 @@ bool opp_finalize_particle_move(opp_set set)
     if (OPP_DBG)
         opp_printf("opp_finalize_particle_move", "set [%s] size prior unpack %d", set->name, set->size);
 
-    opp_queue->wait();
+    OPP_DEVICE_SYNCHRONIZE();
 
     // if current MPI rank received particles, increase the particle count if required and 
     // unpack the communicated particles to separate dats
@@ -171,26 +169,25 @@ void opp_init_particle_move(opp_set set, int nargs, opp_arg *args)
 { 
     opp_init_particle_move_core(set);
 
-    opp_mem::dev_memcpy<OPP_INT>(set->particle_remove_count_d, &(set->particle_remove_count), 
-                        1, opp_queue);
+    opp_mem::dev_memcpy<OPP_INT>(set->particle_remove_count_d, &(set->particle_remove_count), 1);
 
     const size_t buffer_alloc_size = (size_t)(set->size * OPP_part_alloc_mult / 2);
     if (buffer_alloc_size > opp_move_particle_indices_h) {     
 
         opp_mem::dev_resize<OPP_INT>(OPP_move_particle_indices_d, 
-                        opp_move_particle_indices_h, buffer_alloc_size, opp_queue);
+                        opp_move_particle_indices_h, buffer_alloc_size);
         
         opp_mem::dev_resize<OPP_INT>(OPP_move_cell_indices_d,  
-                        opp_move_cell_indices_size_h, buffer_alloc_size, opp_queue);
+                        opp_move_cell_indices_size_h, buffer_alloc_size);
 
         opp_mem::dev_resize<OPP_INT>(OPP_remove_particle_indices_d, 
-                        opp_remove_particle_indices_size_h, buffer_alloc_size, opp_queue);
+                        opp_remove_particle_indices_size_h, buffer_alloc_size);
     }
 
     if (OPP_move_count_d == nullptr)
-        OPP_move_count_d = opp_mem::dev_malloc<OPP_INT>(1, opp_queue);
+        OPP_move_count_d = opp_mem::dev_malloc<OPP_INT>(1);
     OPP_move_count_h = 0;
-    opp_mem::dev_memcpy<OPP_INT>(OPP_move_count_d, &OPP_move_count_h, 1, opp_queue);
+    opp_mem::dev_memcpy<OPP_INT>(OPP_move_count_d, &OPP_move_count_h, 1);
 
     if (OPP_comm_iteration == 0) {
         OPP_iter_start               = 0;
@@ -229,7 +226,7 @@ void opp_part_pack_device(opp_set set)
     if (verbose_profile) opp_profiler->start("Mv_Pack1");
     std::vector<OPP_INT> send_part_cell_idx_hv(OPP_move_count_h);
     opp_mem::copy_dev_to_host<OPP_INT>(send_part_cell_idx_hv.data(), 
-                            OPP_move_cell_indices_d, OPP_move_count_h, opp_queue);
+                            OPP_move_cell_indices_d, OPP_move_count_h);
     if (verbose_profile) opp_profiler->end("Mv_Pack1");
 
     // TODO : Mv_Pack2 (CPU) and Mv_Pack3 (GPU/CPU Copy) could be overlapped!!!
@@ -271,7 +268,7 @@ void opp_part_pack_device(opp_set set)
                     dat->set->set_capacity, OPP_move_count_h, OPP_move_count_h, dat->dim);
 
             opp_mem::copy_dev_to_host<char>(
-                        move_dat_data.data(), dat->data_swap_d, bytes_to_copy, opp_queue);
+                        move_dat_data.data(), dat->data_swap_d, bytes_to_copy);
         }
         else if (strcmp(dat->type, "int") == 0) {
 
@@ -280,7 +277,7 @@ void opp_part_pack_device(opp_set set)
                     dat->set->set_capacity, OPP_move_count_h, OPP_move_count_h, dat->dim);
 
             opp_mem::copy_dev_to_host<char>(
-                        move_dat_data.data(), dat->data_swap_d, bytes_to_copy, opp_queue);
+                        move_dat_data.data(), dat->data_swap_d, bytes_to_copy);
         }
     }      
     if (verbose_profile) opp_profiler->end("Mv_Pack3");
@@ -463,10 +460,10 @@ void opp_part_unpack_device(opp_set set)
 
                 char* data_d = dat->data_d + data_d_offset;
                 opp_mem::copy_host_to_dev<char>(data_d, &(temp_data[data_h_offset]), 
-                        bytes_to_copy_per_dim, opp_queue, true);
+                        bytes_to_copy_per_dim, true);
             }
         }
-        opp_queue->wait();
+        OPP_DEVICE_SYNCHRONIZE();
     }
 
     opp_profiler->end("Mv_Unpack");

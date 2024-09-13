@@ -38,13 +38,13 @@ void opp_create_dat_device_arrays(opp_dat dat, bool create_new)
         opp_printf("opp_create_dat_device_arrays", "%s %s", dat->name, dat->type);
 
     if (create_new) {
-        opp_mem::dev_free(dat->data_d, opp_queue);
-        opp_mem::dev_free(dat->data_swap_d, opp_queue);
+        opp_mem::dev_free(dat->data_d);
+        opp_mem::dev_free(dat->data_swap_d);
     }
 
     const size_t alloc_count = (size_t)(dat->set->set_capacity * dat->size);
-    dat->data_d = opp_mem::dev_malloc<char>(alloc_count, opp_queue);
-    dat->data_swap_d = opp_mem::dev_malloc<char>(alloc_count, opp_queue);
+    dat->data_d = opp_mem::dev_malloc<char>(alloc_count);
+    dat->data_swap_d = opp_mem::dev_malloc<char>(alloc_count);
 
     if (OPP_DBG) 
         opp_printf("opp_create_dat_device_arrays", "Device array of dat [%s][%p][%p] [%zubytes]", 
@@ -55,7 +55,7 @@ void opp_create_dat_device_arrays(opp_dat dat, bool create_new)
 // DEVICE->HOST | this invalidates what is in the HOST
 void opp_download_dat(opp_dat dat) 
 {
-    opp_queue->wait();
+    OPP_DEVICE_SYNCHRONIZE();
 
     const size_t set_size = dat->set->set_capacity;
 
@@ -63,7 +63,7 @@ void opp_download_dat(opp_dat dat)
         if (OPP_DBG) opp_printf("opp_download_dat", "GPU->CPU SOA | %s", dat->name);
 
         std::vector<char> tmp_data(dat->size * set_size);
-        opp_mem::copy_dev_to_host(tmp_data.data(), dat->data_d, set_size * dat->size, opp_queue);
+        opp_mem::copy_dev_to_host(tmp_data.data(), dat->data_d, set_size * dat->size);
 
         int element_size = dat->size / dat->dim;
         for (int i = 0; i < dat->dim; i++) {
@@ -77,7 +77,7 @@ void opp_download_dat(opp_dat dat)
     } 
     else {
         if (OPP_DBG) opp_printf("opp_download_dat", "GPU->CPU NON-SOA| %s", dat->name);
-        opp_mem::copy_dev_to_host<char>(dat->data, dat->data_d, set_size * dat->size, opp_queue);
+        opp_mem::copy_dev_to_host<char>(dat->data, dat->data_d, set_size * dat->size);
     }
 
     dat->dirty_hd = Dirty::NotDirty;
@@ -115,7 +115,7 @@ void opp_upload_dat(opp_dat dat)
         if (OPP_DBG) opp_printf("opp_upload_dat", "CPU->GPU NON-SOA| %s", dat->name);
     }
 
-    opp_mem::copy_host_to_dev<char>(dat->data_d, host_data, (dat_size * capacity), opp_queue);
+    opp_mem::copy_host_to_dev<char>(dat->data_d, host_data, (dat_size * capacity));
 
     dat->dirty_hd = Dirty::NotDirty;
 }
@@ -142,9 +142,9 @@ void opp_upload_map(opp_map map, bool create_new)
 
     if (create_new)
         opp_mem::copy_host_to_dev<OPP_INT>(map->map_d, tmp_map.data(), (map->dim * set_size), 
-                                        opp_queue, false, true, (map->dim * set_size));
+                                        false, true, (map->dim * set_size));
     else
-        opp_mem::copy_host_to_dev<OPP_INT>(map->map_d, tmp_map.data(), (map->dim * set_size), opp_queue);        
+        opp_mem::copy_host_to_dev<OPP_INT>(map->map_d, tmp_map.data(), (map->dim * set_size));        
 }
 
 //*******************************************************************************
@@ -154,7 +154,7 @@ void opp_download_particle_set(opp_set particles_set, bool force_download)
     if (OPP_DBG) 
         opp_printf("opp_download_particle_set", "set [%s]", particles_set->name);
 
-    opp_queue->wait();
+    OPP_DEVICE_SYNCHRONIZE();
 
     for (opp_dat& current_dat : *(particles_set->particle_dats)) {
         if (current_dat->data_d == NULL) {

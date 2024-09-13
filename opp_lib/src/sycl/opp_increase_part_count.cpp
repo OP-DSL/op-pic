@@ -148,7 +148,7 @@ void opp_inc_part_count_with_distribution(opp_set set, int num_particles_to_inse
             }
             else {
                 const size_t copy_size = (end - start) * sizeof(int);
-                int* inj_mesh_relations = (int *)mesh_rel_dat->data_d + inj_start;
+                int* inj_mesh_relations_d = (int *)mesh_rel_dat->data_d + inj_start;
 
                 if (opp_saved_mesh_relation_d == nullptr) {
                     if (OPP_DBG) 
@@ -164,7 +164,7 @@ void opp_inc_part_count_with_distribution(opp_set set, int num_particles_to_inse
                     }).wait();
 
                     // save the mesh relation data for next iteration
-                    opp_queue->memcpy(opp_saved_mesh_relation_d, inj_mesh_relations,
+                    opp_queue->memcpy(opp_saved_mesh_relation_d, inj_mesh_relations_d,
                                     copy_size).wait();
                 }
                 else {
@@ -179,7 +179,7 @@ void opp_inc_part_count_with_distribution(opp_set set, int num_particles_to_inse
                     }
 
                     // Copy from the saved mesh relation data
-                    opp_queue->memcpy(inj_mesh_relations, opp_saved_mesh_relation_d,
+                    opp_queue->memcpy(inj_mesh_relations_d, opp_saved_mesh_relation_d,
                                         copy_size).wait();
                 }
             }

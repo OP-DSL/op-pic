@@ -76,8 +76,9 @@ void sort_dat_according_to_index(opp_dat dat, const dpct::device_vector<int> &sw
     // else: arrange all and swap the array pointers of the dat
     
     // NOTE: Both commented thrust routine and device_kernel function has approx same performance
-    // copy_according_to_index<double>(dat->thrust_real, dat->thrust_real_sort, swap_indices, 
-    //         set_capacity, set_capacity, 0, out_start_idx, size, dat->dim);
+    // copy_according_to_index<T>((const T*)dat->data_d, (T*)dat->data_swap_d, 
+    //         (const int *)dpct::get_raw_pointer(swap_indices.data()), set_capacity, 
+    //         set_capacity, 0, out_start_idx, size, dat->dim);
 
     T *dat_data = (T *)(dat->data_d);
     T *dat_swap_data = (T *)(dat->data_swap_d);
@@ -104,7 +105,7 @@ void sort_dat_according_to_index(opp_dat dat, const dpct::device_vector<int> &sw
 
     if (shuffle && OPP_comm_iteration != 0) {
         
-        opp_queue->wait();
+        OPP_DEVICE_SYNCHRONIZE();
 
         // Now the valid data is in dat->data_swap_d, but since it is not the 1st communicator iteration
         // we only swap the newly added indices (since newly added particle count is small compared to 
@@ -118,7 +119,7 @@ void sort_dat_according_to_index(opp_dat dat, const dpct::device_vector<int> &sw
     }
     else {
         // Now the valid data is in dat->data_swap_d, simply switch the data_swap_d and data_d pointers
-        char *tmp = dat->data_d;
+        char *tmp = dat->data_swap_d;
         dat->data_swap_d = dat->data_d;
         dat->data_d = tmp;
     }
@@ -326,6 +327,6 @@ void particle_hole_fill_device(opp_set set)
             opp_abort();
         }
     }
-    opp_queue->wait();
+    OPP_DEVICE_SYNCHRONIZE();
     opp_profiler->end("HF_Dats");
 }

@@ -341,13 +341,13 @@ public:
 
     // Allocate host memory
     template <typename T>
-    static T* host_malloc(size_t count) {
+    inline static T* host_malloc(size_t count) {
         return (T*)malloc(count * sizeof(T));
     }
 
     // Free host memory
     template <typename T>
-    static void host_free(T* ptr) {
+    inline static void host_free(T* ptr) {
         if (ptr)
             free(ptr);
         ptr = nullptr;
@@ -355,17 +355,17 @@ public:
 
     // Reallocate host memory
     template <typename T>
-    static void host_realloc(T*& ptr, size_t new_size) {
+    inline static void host_realloc(T*& ptr, size_t new_size) {
         T* tmp_ptr = (T*)realloc(ptr, new_size);
         ptr = tmp_ptr;
     }
 
     // Allocate device memory
     template <typename T>
-    static T* dev_malloc(size_t count, sycl::queue* q = opp_queue) {
+    inline static T* dev_malloc(size_t count) {
         if (count <= 0) return nullptr;
         try {
-            T* ptr = sycl::malloc_device<T>(count * sizeof(T), *q);
+            T* ptr = sycl::malloc_device<T>(count * sizeof(T), *opp_queue);
             if (debug_mem) opp_printf("dev_malloc", "[%p][%zu]", ptr, count);
             return ptr;
         }
@@ -376,31 +376,31 @@ public:
 
     // Free device memory
     template <typename T>
-    static void dev_free(T*& ptr, sycl::queue* q = opp_queue) {
+    inline static void dev_free(T*& ptr) {
         if (ptr) {
             if (debug_mem) opp_printf("dev_free", "[%p]", ptr);
-            sycl::free(ptr, *q);
+            sycl::free(ptr, *opp_queue);
         }
     }
 
     // Copy memory from one device pointer to another
     template <typename T>
-    static void dev_memcpy(T*& dst, const T* src, size_t cpy_count, sycl::queue* q = opp_queue) {
+    inline static void dev_memcpy(T*& dst, const T* src, size_t cpy_count) {
         if (debug_mem) opp_printf("dev_memcpy", "[%p]->[%p] cpy_count[%zu]", src, dst, cpy_count);
-        q->memcpy(dst, src, cpy_count * sizeof(T)).wait();
+        opp_queue->memcpy(dst, src, cpy_count * sizeof(T)).wait();
     }
 
     // Resize device memory
     template <typename T>
-    static void dev_realloc(T*& ptr, size_t& current_size, const size_t& new_size, sycl::queue* q = opp_queue) {
+    inline static void dev_realloc(T*& ptr, size_t& current_size, const size_t& new_size) {
         if (new_size <= 0) 
             throw std::runtime_error("dev_realloc: New Realloc size invalid - " + std::to_string(new_size));
-        T* new_ptr = opp_mem::dev_malloc<T>(new_size, q);
+        T* new_ptr = opp_mem::dev_malloc<T>(new_size);
         if (debug_mem) opp_printf("dev_realloc", "created [%p] old [%p]", new_ptr, ptr);
         if (ptr) {
             const size_t copy_size = std::min(current_size, new_size);
-            opp_mem::dev_memcpy<T>(new_ptr, ptr, copy_size, q);
-            opp_mem::dev_free<T>(ptr, q);
+            opp_mem::dev_memcpy<T>(new_ptr, ptr, copy_size);
+            opp_mem::dev_free<T>(ptr);
             current_size = new_size;
             if (debug_mem) opp_printf("dev_realloc", "[%p]->[%p] cpy_count[%zu]", ptr, new_ptr, copy_size);
         }
@@ -409,38 +409,38 @@ public:
 
     // Resize device memory (only increasing size)
     template <typename T>
-    static void dev_resize(T*& ptr, size_t& current_size, const size_t& new_size, sycl::queue* q = opp_queue) {
+    inline static void dev_resize(T*& ptr, size_t& current_size, const size_t& new_size) {
         if (debug_mem) opp_printf("dev_resize", "[%p] %zu -> %zu", ptr, current_size, new_size);
         if (new_size > current_size) {
-            opp_mem::dev_realloc<T>(ptr, current_size, new_size, q);
+            opp_mem::dev_realloc<T>(ptr, current_size, new_size);
         }
     }
 
     // initialize device memory with a specific value
     template <typename T>
-    static void dev_memset(T* ptr, size_t count, T value, sycl::queue* q = opp_queue) {
-        q->fill(ptr, value, count).wait();
+    inline static void dev_memset(T* ptr, size_t count, T value) {
+        opp_queue->fill(ptr, value, count).wait();
     }
 
     // Allocate and initialize device memory with a specific value
     template <typename T>
-    static T* dev_malloc_set(size_t count, T value, sycl::queue* q = opp_queue) {
-        T* ptr = opp_mem::dev_malloc<T>(count, q);
-        opp_mem::dev_memset<T>(ptr, count, value, q);
+    inline static T* dev_malloc_set(size_t count, T value) {
+        T* ptr = opp_mem::dev_malloc<T>(count);
+        opp_mem::dev_memset<T>(ptr, count, value);
         return ptr;
     }
 
     // Copy data from host to device, create new device arrays if requested
     template <typename T>
-    static void copy_host_to_dev(T*& data_d, const T *data_h, size_t copy_count, sycl::queue* q = opp_queue, 
+    inline static void copy_host_to_dev(T*& data_d, const T *data_h, size_t copy_count,
                         bool no_wait = false, bool create_new = false, size_t alloc_count = 0) {
         try {
             if (create_new) {
                 if (data_d != nullptr)  
-                    opp_mem::dev_free<T>(data_d, q);
-                data_d = opp_mem::dev_malloc<T>(alloc_count, q);
+                    opp_mem::dev_free<T>(data_d);
+                data_d = opp_mem::dev_malloc<T>(alloc_count);
             }
-            q->memcpy(data_d, data_h, copy_count * sizeof(T));
+            opp_queue->memcpy(data_d, data_h, copy_count * sizeof(T));
             if (!no_wait) 
                 opp_queue->wait(); 
             if (debug_mem) opp_printf("copy_host_to_dev", "[%p]->[%p] copy_count[%zu]", data_h, data_d, copy_count);
@@ -453,10 +453,10 @@ public:
     // Copy data from device to host, no dot create new host arrays since it can be allocated differently, 
     // like malloc, new, stack, std::vector<>, hence free mechanism is unknown
     template <typename T>
-    static void copy_dev_to_host(T* data_h, const T *data_d, size_t copy_count, sycl::queue* q = opp_queue, 
+    inline static void copy_dev_to_host(T* data_h, const T *data_d, size_t copy_count, 
                         bool no_wait = false) {
         try {
-            q->memcpy(data_h, data_d, copy_count * sizeof(T));
+            opp_queue->memcpy(data_h, data_d, copy_count * sizeof(T));
             if (!no_wait) 
                 opp_queue->wait();
             if (debug_mem) opp_printf("copy_dev_to_host", "[%p]->[%p] copy_count[%zu]", data_d, data_h, copy_count);
@@ -466,6 +466,16 @@ public:
         }
     }
 };
+
+/*******************************************************************************/
+#define OPP_DEVICE_SYNCHRONIZE()  opp_queue->wait()
+#define OPP_DEVICE_GLOBAL_LINEAR_ID (item.get_global_linear_id())
+#define OPP_GLOBAL_FUNCTION inline
+#define OPP_DEVICE_FUNCTION 
+#define ADDITIONAL_PARAMETERS , sycl::nd_item<1> item
+#define OPP_ATOMIC_FETCH_ADD(address, value) opp_atomic_fetch_add(address, value)
+
+/*******************************************************************************/
 
 //****************************************
 template <typename T>
@@ -511,7 +521,7 @@ void copy_from_to(
 template <class T>
 void opp_register_const(T*& ptr, const size_t count) {
     if (ptr == nullptr) {
-        ptr = opp_mem::dev_malloc<T>(count, opp_queue);
+        ptr = opp_mem::dev_malloc<T>(count);
         opp_consts.push_back((char*)ptr);
     }
 }

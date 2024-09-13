@@ -249,7 +249,7 @@ OBJ_CUDA_MPI_CPP = 	$(patsubst $(SRC)/core/%.cpp,$(OBJ)/%+cuda_mpi.o,$(SRC_CUDA_
 OBJ_CUDA_MPI_CU = 	$(patsubst $(SRC)/cuda/%.cu,$(OBJ)/%+cuda_mpi.o,$(SRC_CUDA_MPI_CU))
 $(OBJ)/%+cuda_mpi.o: $(SRC)/core/%.cpp
 	$(CPP) $(CPPFLAGS) -DUSE_MPI -DUSE_THRUST -c $< -o $@ $(OPP_INC) $(CUDA_INC)
-$(OBJ)/%+cuda_mpi.o: $(SRC)/core/%.cpp
+$(OBJ)/%+cuda_mpi.o: $(SRC)/mpi/%.cpp
 	$(CPP) $(CPPFLAGS) -DUSE_MPI -DUSE_THRUST -c $< -o $@ $(OPP_INC) $(CUDA_INC)
 $(OBJ)/%+cuda_mpi.o: $(SRC)/cuda/%.cu
 	$(NVCC) $(NVCCFLAGS) -DUSE_MPI -DUSE_THRUST -c $< -o $@ $(OPP_INC) $(CUDA_INC)

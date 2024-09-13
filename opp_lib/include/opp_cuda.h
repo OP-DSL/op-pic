@@ -390,3 +390,144 @@ void copy_according_to_index(thrust::device_vector<T>* in_dat_dv, thrust::device
 }
 
 /*******************************************************************************/
+class opp_mem {
+
+public:
+
+    // Allocate host memory
+    template <typename T>
+    inline static T* host_malloc(size_t count) {
+        return (T*)malloc(count * sizeof(T));
+    }
+
+    // Free host memory
+    template <typename T>
+    inline static void host_free(T* ptr) {
+        if (ptr)
+            free(ptr);
+        ptr = nullptr;
+    }
+
+    // Reallocate host memory
+    template <typename T>
+    inline static void host_realloc(T*& ptr, size_t new_size) {
+        T* tmp_ptr = (T*)realloc(ptr, new_size);
+        ptr = tmp_ptr;
+    }
+
+    // Allocate device memory
+    template <typename T>
+    inline static T* dev_malloc(size_t count) {
+        T* ptr;
+        cudaError_t err = cudaMalloc((void**)&ptr, count * sizeof(T));
+        if (err != cudaSuccess) {
+            throw std::runtime_error(std::string("dev_malloc: ") + cudaGetErrorString(err));
+        }
+        return ptr;
+    }
+
+    // Free device memory
+    template <typename T>
+    inline static void dev_free(T*& ptr) {
+        if (ptr) {
+            cudaError_t err = cudaFree(ptr);
+            if (err != cudaSuccess) {
+                throw std::runtime_error(std::string("dev_free: ") + cudaGetErrorString(err));
+            }
+        }
+        ptr = nullptr;
+    }
+
+    // Copy memory from one device pointer to another
+    template <typename T>
+    inline static void dev_memcpy(T* dst, const T* src, size_t copy_count) {
+        cudaError_t err = cudaMemcpy(dst, src, copy_count * sizeof(T), cudaMemcpyDeviceToDevice);
+        if (err != cudaSuccess) {
+            throw std::runtime_error(std::string("dev_memcpy: ") + cudaGetErrorString(err));
+        }
+    }
+
+    // Resize device memory
+    template <typename T>
+    inline static void dev_realloc(T*& ptr, size_t& current_size, const size_t& new_size) {
+        if (new_size <= 0) 
+            throw std::runtime_error("dev_realloc: New Realloc size invalid - " + std::to_string(new_size));
+        T* new_ptr = opp_mem::dev_malloc<T>(new_size);
+        if (ptr) {
+            const size_t copy_size = std::min(current_size, new_size);
+            opp_mem::dev_memcpy<T>(new_ptr, ptr, copy_size);
+            opp_mem::dev_free<T>(ptr);
+            current_size = new_size;
+        }
+        ptr = new_ptr;
+    }
+
+    // Resize device memory (only increasing size)
+    template <typename T>
+    inline static void dev_resize(T*& ptr, size_t& current_size, const size_t& new_size) {
+        if (new_size > current_size) {
+            opp_mem::dev_realloc<T>(ptr, current_size, new_size);
+        }
+    }
+
+    // Initialize device memory with a specific value
+    template <typename T>
+    inline static void dev_memset(T* ptr, size_t count, T value) {
+        cudaError_t err = cudaMemset(ptr, value, count * sizeof(T));
+        if (err != cudaSuccess) {
+            throw std::runtime_error(std::string("dev_memset: ") + cudaGetErrorString(err));
+        }
+    }
+
+    // Allocate and initialize device memory with a specific value
+    template <typename T>
+    inline static T* dev_malloc_set(size_t count, T value) {
+        T* ptr = opp_mem::dev_malloc<T>(count);
+        opp_mem::dev_memset<T>(ptr, count, value);
+        return ptr;
+    }
+
+    // Copy data from host to device, create new device arrays if requested
+    template <typename T>
+    inline static void copy_host_to_dev(T*& data_d, const T *data_h, size_t copy_count, 
+                                       bool create_new = false, size_t alloc_count = 0) {
+        if (create_new) {
+            if (data_d != nullptr)  
+                opp_mem::dev_free<T>(data_d);
+            data_d = opp_mem::dev_malloc<T>(alloc_count);
+        }
+        cudaError_t err = cudaMemcpy(data_d, data_h, copy_count * sizeof(T), cudaMemcpyHostToDevice);
+        if (err != cudaSuccess) {
+            throw std::runtime_error(std::string("copy_host_to_dev: ") + cudaGetErrorString(err));
+        }
+    }
+
+    // Copy data from device to host
+    template <typename T>
+    inline static void copy_dev_to_host(T* data_h, const T *data_d, size_t copy_count) {
+        cudaError_t err = cudaMemcpy(data_h, data_d, copy_count * sizeof(T), cudaMemcpyDeviceToHost);
+        if (err != cudaSuccess) {
+            throw std::runtime_error(std::string("copy_dev_to_host: ") + cudaGetErrorString(err));
+        }
+    }
+};
+
+/*******************************************************************************/
+#define OPP_DEVICE_SYNCHRONIZE() \
+    do { \
+        cudaError_t err = cudaDeviceSynchronize(); \
+        if (cudaSuccess != err) { \
+            std::string log = std::string(__FILE__) + "(" + std::to_string(__LINE__) + \
+                                std::string(") Error : ") + cudaGetErrorString(err); \
+            opp_abort(log.c_str()); \
+        } \
+    } while (0)
+
+/*******************************************************************************/
+#define OPP_DEVICE_GLOBAL_LINEAR_ID (blockIdx.x * blockDim.x + threadIdx.x)
+#define OPP_GLOBAL_FUNCTION __global__ 
+#define OPP_DEVICE_FUNCTION __device__ 
+#define ADDITIONAL_PARAMETERS 
+#define OPP_ATOMIC_FETCH_ADD(address, value) atomicAdd(address, value)
+
+/*******************************************************************************/

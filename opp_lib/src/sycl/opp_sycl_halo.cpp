@@ -440,7 +440,7 @@ void __opp_mpi_device_halo_exchange(opp_arg *arg, int exec_flag)
         outptr_nonexec =
             arg->dat->buffer_d + exp_exec_list->size * arg->dat->size;
         
-        opp_queue->wait();
+        OPP_DEVICE_SYNCHRONIZE();
     } 
     else 
     { // opp_printf("opp_mpi_halo_exchange_dev", "4");
@@ -453,7 +453,7 @@ void __opp_mpi_device_halo_exchange(opp_arg *arg, int exec_flag)
                             exp_exec_list->size * arg->dat->size,
                         exp_nonexec_list->size * arg->dat->size);
 
-        opp_queue->wait();
+        OPP_DEVICE_SYNCHRONIZE();
 
         outptr_exec = ((op_mpi_buffer)(dat->mpi_buffer))->buf_exec;
         outptr_nonexec = ((op_mpi_buffer)(dat->mpi_buffer))->buf_nonexec;
