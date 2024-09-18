@@ -354,7 +354,6 @@ auto opp_part_check_status =
         move_cell_indices[moveIdx] = c_idx[0];
 
         // To be removed from the current rank, packing will be done prior exchange & removal
-        move_flag = OPP_NEED_REMOVE;
         const int removeIdx = opp_atomic_fetch_add(remove_count, 1);
         remove_part_indices[removeIdx] = p_idx;
 

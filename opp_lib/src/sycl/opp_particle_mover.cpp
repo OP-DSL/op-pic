@@ -47,14 +47,16 @@ void opp_part_unpack_device_direct(opp_set set);
 //*******************************************************************************
 bool opp_finalize_particle_move(opp_set set)
 { 
-    opp_profiler->start("Mv_Finalize");
-
     OPP_DEVICE_SYNCHRONIZE();
 
+    opp_profiler->start("Mv_Finalize");
+
     // this is the exchange particle count
+    OPP_move_count_h = -1;
     opp_mem::copy_dev_to_host<int>(&OPP_move_count_h, OPP_move_count_d, 1, true);
 
     // remove count is the addition of removed particles and the exchange count
+    set->particle_remove_count = -1;
     opp_mem::copy_dev_to_host<int>(&(set->particle_remove_count), set->particle_remove_count_d, 1);
 
     if (OPP_DBG)
@@ -86,22 +88,27 @@ bool opp_finalize_particle_move(opp_set set)
 
             if (OPP_DBG) 
                 opp_printf("opp_finalize_particle_move", "hole fill set [%s]", set->name);
-            
+            opp_profiler->start("Mv_holefill");
             particle_hole_fill_device(set);
+            opp_profiler->end("Mv_holefill");
         }
         else if (OPP_fill_type == OPP_Sort_All || OPP_fill_type == OPP_Sort_Periodic) {
             
             if (OPP_DBG)
                 opp_printf("opp_finalize_particle_move", "sort set [%s]", set->name);
             
+            opp_profiler->start("Mv_sort");
             opp_particle_sort(set);
+            opp_profiler->end("Mv_sort");
         }
         else if (OPP_fill_type == OPP_Shuffle_All || OPP_fill_type == OPP_Shuffle_Periodic) {
             
             if (OPP_DBG) 
                 opp_printf("opp_finalize_particle_move", "shuffle set [%s]", set->name);
             
+            opp_profiler->start("Mv_shuffle");
             particle_sort_device(set, true); // true will shuffle the particles
+            opp_profiler->end("Mv_shuffle");
         }
         else {
             opp_abort("OPP_fill_type is undefined");
@@ -146,9 +153,9 @@ bool opp_finalize_particle_move(opp_set set)
     OPP_comm_iteration++;  
 
     opp_profiler->end("Mv_Finalize");
-
     return true; // need to run another communication iteration (particle move loop)
 #else
+    opp_profiler->end("Mv_Finalize");
     return false;
 #endif
 }
@@ -171,7 +178,7 @@ void opp_init_particle_move(opp_set set, int nargs, opp_arg *args)
 
     opp_mem::dev_memcpy<OPP_INT>(set->particle_remove_count_d, &(set->particle_remove_count), 1);
 
-    const size_t buffer_alloc_size = (size_t)(set->size * OPP_part_alloc_mult / 2);
+    const size_t buffer_alloc_size = (size_t)(set->set_capacity / 4);
     if (buffer_alloc_size > opp_move_particle_indices_h) {     
 
         opp_mem::dev_resize<OPP_INT>(OPP_move_particle_indices_d, 
@@ -868,9 +875,7 @@ void opp_part_pack_and_exchange_device_direct(opp_set set)
         mpi_buffers->buffers[it->first].buf_export_index = 0; // make export indices to zero for next iteration
     }
 
-    // for (const auto& x : streams) cudaStreamDestroy(x.second);
-    cutilSafeCall(
-        DPCT_CHECK_ERROR(dpct::get_current_device().queues_wait_and_throw()));
+    OPP_DEVICE_SYNCHRONIZE();
 
     opp_profiler->end("Mv_PackExDir");
 #endif
@@ -995,8 +1000,7 @@ void opp_part_unpack_device_direct(opp_set set)
             }         
         }
 
-        cutilSafeCall(DPCT_CHECK_ERROR(
-            dpct::get_current_device().queues_wait_and_throw()));
+        OPP_DEVICE_SYNCHRONIZE();
     }
 
     opp_profiler->end("Mv_UnpackDir");

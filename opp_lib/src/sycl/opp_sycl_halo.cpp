@@ -74,8 +74,7 @@ void opp_halo_create()
                                                 OPP_import_nonexec_list[set->index]->size);
                     dat->buffer_d_r = opp_mem::dev_malloc<char>(size);
                     if (OPP_DBG)
-                        opp_printf("opp_halo_create", "buffer_d_r Alloc %zu bytes for %s dat", 
-                            size, dat->name);
+                        opp_printf("opp_halo_create", "buffer_d_r Alloc %zu bytes for %s dat", size, dat->name);
                 } 
 
                 const size_t size = (size_t)dat->size * (size_t)(OPP_export_exec_list[set->index]->size +
@@ -83,8 +82,7 @@ void opp_halo_create()
                 dat->buffer_d = opp_mem::dev_malloc<char>(size); 
  
                 if (OPP_DBG)
-                    opp_printf("opp_halo_create", "buffer_d Alloc %zu bytes for %s dat", 
-                        size, dat->name);
+                    opp_printf("opp_halo_create", "buffer_d Alloc %zu bytes for %s dat", size, dat->name);
             }
         }
     }
@@ -101,20 +99,21 @@ void opp_halo_destroy()
 #ifdef USE_MPI
     __opp_halo_destroy();
 
-    if (OPP_hybrid_gpu) 
-    {
+    if (OPP_hybrid_gpu) {
         if (OPP_DBG) opp_printf("opp_halo_destroy", "Destroying sycl halo buffers START");
 
-        for (auto& dat : opp_dats) 
-        {
+        for (auto& dat : opp_dats) {
             opp_mem::dev_free(dat->buffer_d_r);
             opp_mem::dev_free(dat->buffer_d);
         }
 
-        for (int i = 0; i < (int)opp_sets.size(); i++) 
-        {
+        for (size_t i = 0; i < opp_sets.size(); i++) {
             opp_mem::dev_free(export_exec_list_d[i]);
             opp_mem::dev_free(export_nonexec_list_d[i]);
+            opp_mem::dev_free(export_exec_list_disps_d[i]);
+            opp_mem::dev_free(export_nonexec_list_disps_d[i]);
+            opp_mem::dev_free(import_exec_list_disps_d[i]);
+            opp_mem::dev_free(import_nonexec_list_disps_d[i]);
         }
 
         if (OPP_DBG) opp_printf("opp_halo_destroy", "Destroying sycl halo buffers END");
@@ -233,7 +232,7 @@ HOST	DIRECT LOOP	    0	    Not Dirty		0	    0	    0	    |   0	        Not Dirty
                         1	    Host Dirty		1	    1	    0	    |   0	        Not Dirty
 */
 
-void markExInfo(opp_arg& arg, DeviceType device, bool direct_loop, opp_HaloExInfo& exInfo) {
+void mark_ex_info(opp_arg& arg, DeviceType device, bool direct_loop, opp_HaloExInfo& exInfo) {
 
     // return if the arg is not for a dat or it is not read somehow
     if (!arg.opt || arg.argtype != OPP_ARG_DAT || !(arg.acc == OPP_READ || arg.acc == OPP_RW))
@@ -264,7 +263,7 @@ void markExInfo(opp_arg& arg, DeviceType device, bool direct_loop, opp_HaloExInf
 
 }
 
-void changeDatFlags(opp_arg& arg, DeviceType device, bool direct_loop) {
+void change_dat_flags(opp_arg& arg, DeviceType device, bool direct_loop) {
 
     if (!arg.opt || arg.argtype != OPP_ARG_DAT || !(arg.acc == OPP_READ || arg.acc == OPP_RW))
         return;
@@ -281,7 +280,7 @@ void changeDatFlags(opp_arg& arg, DeviceType device, bool direct_loop) {
         arg.dat->dirtybit = 0;
 }
 
-void generateHaloExchangeInfo(opp_set iter_set, int nargs, opp_arg *args, DeviceType device) {
+void generate_halo_ex_info(opp_set iter_set, int nargs, opp_arg *args, DeviceType device) {
 
     haloExInfo.clear();
     bool direct_loop = true;
@@ -304,7 +303,7 @@ void generateHaloExchangeInfo(opp_set iter_set, int nargs, opp_arg *args, Device
         }
 
         if (!already_done) {
-            markExInfo(args[n], device, direct_loop, exInfo);
+            mark_ex_info(args[n], device, direct_loop, exInfo);
         }
         else {
             exInfo.skip = true;
@@ -316,7 +315,7 @@ void generateHaloExchangeInfo(opp_set iter_set, int nargs, opp_arg *args, Device
     for (int n = 0; n < nargs; n++) {
 
         if (!haloExInfo[n].skip) {
-            changeDatFlags(args[n], device, direct_loop);
+            change_dat_flags(args[n], device, direct_loop);
         }
     }
 
@@ -334,7 +333,7 @@ int opp_mpi_halo_exchanges_grouped(opp_set set, int nargs, opp_arg *args, Device
     current_device = device;
     int size = set->size;
     
-    generateHaloExchangeInfo(set, nargs, args, device);
+    generate_halo_ex_info(set, nargs, args, device);
 
     for (int n = 0; n < nargs; n++)
     {
@@ -437,8 +436,7 @@ void __opp_mpi_device_halo_exchange(opp_arg *arg, int exec_flag)
     char *outptr_nonexec = NULL; // opp_printf("opp_mpi_halo_exchange_dev", "2");
     if (OPP_gpu_direct) {
         outptr_exec = arg->dat->buffer_d;
-        outptr_nonexec =
-            arg->dat->buffer_d + exp_exec_list->size * arg->dat->size;
+        outptr_nonexec = arg->dat->buffer_d + exp_exec_list->size * arg->dat->size;
         
         OPP_DEVICE_SYNCHRONIZE();
     } 
@@ -564,24 +562,14 @@ void __opp_mpi_device_halo_wait_all(opp_arg *arg)
         {
             int init = dat->set->size * dat->size;
             int size = (dat->set->exec_size + dat->set->nonexec_size) * dat->size;
-            /*
-            DPCT1124:26: cudaMemcpyAsync is migrated to asynchronous memcpy API.
-            While the origin API might be synchronous, it depends on the type of
-            operand memory, so you may need to call wait() on event return by
-            memcpy API to ensure synchronization behavior.
-            */
+
             opp_queue->memcpy(dat->buffer_d_r, dat->data + init, size).wait();
             scatter_data_from_buffer(*arg);
         } 
         else 
         {
             int init = dat->set->size * dat->size;
-            /*
-            DPCT1124:27: cudaMemcpyAsync is migrated to asynchronous memcpy API.
-            While the origin API might be synchronous, it depends on the type of
-            operand memory, so you may need to call wait() on event return by
-            memcpy API to ensure synchronization behavior.
-            */
+
             opp_queue->memcpy(
                 dat->data_d + init, dat->data + init,
                 (OPP_import_exec_list[dat->set->index]->size +
@@ -621,9 +609,13 @@ void __opp_mpi_device_halo_wait_all(int nargs, opp_arg *args)
     if (OPP_DBG) opp_printf("__opp_mpi_device_halo_wait_all", "END");
 }
 
-
-
-
+inline void clean_int_array_hd(int **list_d) {
+    if (list_d != NULL) {
+        for (size_t s = 0; s < opp_sets.size(); s++)
+            opp_mem::dev_free(list_d[opp_sets[s]->index]);
+        opp_mem::host_free(list_d);
+    }
+}
 
 void opp_mv_halo_list_device() 
 {
@@ -631,191 +623,116 @@ void opp_mv_halo_list_device()
 
 #ifdef USE_MPI
 
-    if (export_exec_list_d != NULL) 
-    {
-        for (int s = 0; s < (int)opp_sets.size(); s++)
-            if (export_exec_list_d[opp_sets[s]->index] != NULL)
-                opp_mem::dev_free(export_exec_list_d[opp_sets[s]->index]);
-        free(export_exec_list_d);
-    }
-    export_exec_list_d = (int **)malloc(sizeof(int *) * (int)opp_sets.size());
+    clean_int_array_hd(export_exec_list_d);
+    export_exec_list_d = opp_mem::host_malloc<int*>(opp_sets.size());
+    for (opp_set& set : opp_sets) {
 
-    for (int s = 0; s < (int)opp_sets.size(); s++)  // for each set
-    {
-        opp_set set = opp_sets[s];
-        export_exec_list_d[set->index] = NULL;
-
+        export_exec_list_d[set->index] = nullptr;
         if (set->is_particle) continue;
 
-        opp_copy_host_to_device((void **)&(export_exec_list_d[set->index]),
-                        (void **)&(OPP_export_exec_list[set->index]->list),
-                        OPP_export_exec_list[set->index]->size * sizeof(int),
-                        OPP_export_exec_list[set->index]->size * sizeof(int), true);
+        const size_t count = (size_t)OPP_export_exec_list[set->index]->size;
+        opp_mem::copy_host_to_dev<int>(export_exec_list_d[set->index], 
+            OPP_export_exec_list[set->index]->list, count, false, true, count);
 
         if (OPP_DBG) opp_printf("opp_mv_halo_list_device", "export_exec_list_d Alloc %zu bytes for set %s", 
             OPP_export_exec_list[set->index]->size * sizeof(int), set->name);
     }
 
-    if (export_nonexec_list_d != NULL) 
-    {
-        for (int s = 0; s < (int)opp_sets.size(); s++)
-            if (export_nonexec_list_d[opp_sets[s]->index] != NULL)
-                opp_mem::dev_free(export_nonexec_list_d[opp_sets[s]->index]);
-        free(export_nonexec_list_d);
-    }
-    export_nonexec_list_d = (int **)malloc(sizeof(int *) * (int)opp_sets.size());
+    clean_int_array_hd(export_nonexec_list_d);
+    export_nonexec_list_d = opp_mem::host_malloc<int*>(opp_sets.size());
+    for (opp_set& set : opp_sets) {
 
-    for (int s = 0; s < (int)opp_sets.size(); s++) // for each set
-    {
-        opp_set set = opp_sets[s];
-        export_nonexec_list_d[set->index] = NULL;
-        
+        export_nonexec_list_d[set->index] = nullptr;
         if (set->is_particle) continue;
 
-        opp_copy_host_to_device((void **)&(export_nonexec_list_d[set->index]),
-                        (void **)&(OPP_export_nonexec_list[set->index]->list),
-                        OPP_export_nonexec_list[set->index]->size * sizeof(int),
-                        OPP_export_nonexec_list[set->index]->size * sizeof(int), true);
-        
+        const size_t count = (size_t)OPP_export_nonexec_list[set->index]->size;
+        opp_mem::copy_host_to_dev<int>(export_nonexec_list_d[set->index], 
+            OPP_export_nonexec_list[set->index]->list, count, false, true, count);
+
         if (OPP_DBG) opp_printf("opp_mv_halo_list_device", "export_nonexec_list_d Alloc %zu bytes for set %s", 
             OPP_export_nonexec_list[set->index]->size * sizeof(int), set->name);
     }
 
-    //for grouped, we need the disps array on device too
-    if (export_exec_list_disps_d != NULL) 
-    {
-        for (int s = 0; s < (int)opp_sets.size(); s++)
-            if (export_exec_list_disps_d[opp_sets[s]->index] != NULL)
-                opp_mem::dev_free(export_exec_list_disps_d[opp_sets[s]->index]);
-        free(export_exec_list_disps_d);
-    }
-    export_exec_list_disps_d = (int **)malloc(sizeof(int *) * (int)opp_sets.size());
+    clean_int_array_hd(export_exec_list_disps_d);
+    export_exec_list_disps_d = opp_mem::host_malloc<int*>(opp_sets.size());
+    for (opp_set& set : opp_sets) {
 
-    for (int s = 0; s < (int)opp_sets.size(); s++) // for each set
-    { 
-        opp_set set = opp_sets[s];
-        export_exec_list_disps_d[set->index] = NULL;
-
+        export_exec_list_disps_d[set->index] = nullptr;
         if (set->is_particle) continue;
 
         //make sure end size is there too
-        OPP_export_exec_list[set->index]
-            ->disps[OPP_export_exec_list[set->index]->ranks_size] =
-            OPP_export_exec_list[set->index]->ranks_size == 0
-                ? 0
-                : OPP_export_exec_list[set->index]
-                        ->disps[OPP_export_exec_list[set->index]->ranks_size - 1] +
-                    OPP_export_exec_list[set->index]
-                        ->sizes[OPP_export_exec_list[set->index]->ranks_size - 1];
-        opp_copy_host_to_device((void **)&(export_exec_list_disps_d[set->index]),
-                        (void **)&(OPP_export_exec_list[set->index]->disps),
-                        (OPP_export_exec_list[set->index]->ranks_size+1) * sizeof(int),
-                        (OPP_export_exec_list[set->index]->ranks_size+1) * sizeof(int), true);
+        OPP_export_exec_list[set->index]->disps[OPP_export_exec_list[set->index]->ranks_size] =
+            OPP_export_exec_list[set->index]->ranks_size == 0 ? 0 : 
+                OPP_export_exec_list[set->index]->disps[OPP_export_exec_list[set->index]->ranks_size - 1] +
+                OPP_export_exec_list[set->index]->sizes[OPP_export_exec_list[set->index]->ranks_size - 1];
         
+        const size_t count = (size_t)(OPP_export_exec_list[set->index]->ranks_size + 1);
+        opp_mem::copy_host_to_dev<int>(export_exec_list_disps_d[set->index], 
+            OPP_export_exec_list[set->index]->disps, count, false, true, count);
+
         if (OPP_DBG) opp_printf("opp_mv_halo_list_device", "export_exec_list_disps_d Alloc %zu bytes for set %s", 
-            (OPP_export_exec_list[set->index]->ranks_size+1) * sizeof(int), set->name);
+            (OPP_export_exec_list[set->index]->ranks_size + 1) * sizeof(int), set->name);
     }
 
-    if (export_nonexec_list_disps_d != NULL) 
-    {
-        for (int s = 0; s < (int)opp_sets.size(); s++)
-            if (export_nonexec_list_disps_d[opp_sets[s]->index] != NULL)
-                opp_mem::dev_free(export_nonexec_list_disps_d[opp_sets[s]->index]);
-        free(export_nonexec_list_disps_d);
-    }
-    export_nonexec_list_disps_d = (int **)malloc(sizeof(int *) * (int)opp_sets.size());
+    clean_int_array_hd(export_nonexec_list_disps_d);
+    export_nonexec_list_disps_d = opp_mem::host_malloc<int*>(opp_sets.size());
+    for (opp_set& set : opp_sets) {
 
-    for (int s = 0; s < (int)opp_sets.size(); s++) { // for each set
-        opp_set set = opp_sets[s];
-        export_nonexec_list_disps_d[set->index] = NULL;
-
+        export_nonexec_list_disps_d[set->index] = nullptr;
         if (set->is_particle) continue;
 
         //make sure end size is there too
-        OPP_export_nonexec_list[set->index]
-            ->disps[OPP_export_nonexec_list[set->index]->ranks_size] =
-            OPP_export_nonexec_list[set->index]->ranks_size == 0
-                ? 0
-                : OPP_export_nonexec_list[set->index]
-                        ->disps[OPP_export_nonexec_list[set->index]->ranks_size -
-                                1] +
-                    OPP_export_nonexec_list[set->index]
-                        ->sizes[OPP_export_nonexec_list[set->index]->ranks_size -
-                                1];
-        opp_copy_host_to_device((void **)&(export_nonexec_list_disps_d[set->index]),
-                        (void **)&(OPP_export_nonexec_list[set->index]->disps),
-                        (OPP_export_nonexec_list[set->index]->ranks_size+1) * sizeof(int),
-                        (OPP_export_nonexec_list[set->index]->ranks_size+1) * sizeof(int), true);
+        OPP_export_nonexec_list[set->index]->disps[OPP_export_nonexec_list[set->index]->ranks_size] =
+            OPP_export_nonexec_list[set->index]->ranks_size == 0 ? 0 : 
+                (OPP_export_nonexec_list[set->index] ->disps[OPP_export_nonexec_list[set->index]->ranks_size - 1] +
+                OPP_export_nonexec_list[set->index] ->sizes[OPP_export_nonexec_list[set->index]->ranks_size - 1]);
         
+        const size_t count = (size_t)(OPP_export_nonexec_list[set->index]->ranks_size + 1);
+        opp_mem::copy_host_to_dev<int>(export_nonexec_list_disps_d[set->index], 
+            OPP_export_nonexec_list[set->index]->disps, count, false, true, count);
+
         if (OPP_DBG) opp_printf("opp_mv_halo_list_device", "export_nonexec_list_disps_d Alloc %zu bytes for set %s", 
             (OPP_export_nonexec_list[set->index]->ranks_size+1) * sizeof(int), set->name);
     }
 
-    if (import_exec_list_disps_d != NULL) {
-        for (int s = 0; s < (int)opp_sets.size(); s++)
-        if (import_exec_list_disps_d[opp_sets[s]->index] != NULL)
-            opp_mem::dev_free(import_exec_list_disps_d[opp_sets[s]->index]);
-        free(import_exec_list_disps_d);
-    }
-    import_exec_list_disps_d = (int **)malloc(sizeof(int *) * (int)opp_sets.size());
+    clean_int_array_hd(import_exec_list_disps_d);
+    import_exec_list_disps_d = opp_mem::host_malloc<int*>(opp_sets.size());
+    for (opp_set& set : opp_sets) {
 
-    for (int s = 0; s < (int)opp_sets.size(); s++) // for each set
-    { 
-        opp_set set = opp_sets[s];
-        import_exec_list_disps_d[set->index] = NULL;
-
+        import_exec_list_disps_d[set->index] = nullptr;
         if (set->is_particle) continue;
 
         //make sure end size is there too
-        OPP_import_exec_list[set->index]
-            ->disps[OPP_import_exec_list[set->index]->ranks_size] =
-            OPP_import_exec_list[set->index]->ranks_size == 0
-                ? 0
-                : OPP_import_exec_list[set->index]
-                        ->disps[OPP_import_exec_list[set->index]->ranks_size - 1] +
-                    OPP_import_exec_list[set->index]
-                        ->sizes[OPP_import_exec_list[set->index]->ranks_size - 1];
-        opp_copy_host_to_device((void **)&(import_exec_list_disps_d[set->index]),
-                        (void **)&(OPP_import_exec_list[set->index]->disps),
-                        (OPP_import_exec_list[set->index]->ranks_size+1) * sizeof(int),
-                        (OPP_import_exec_list[set->index]->ranks_size+1) * sizeof(int), true);
+        OPP_import_exec_list[set->index]->disps[OPP_import_exec_list[set->index]->ranks_size] =
+            OPP_import_exec_list[set->index]->ranks_size == 0 ? 0 : 
+                (OPP_import_exec_list[set->index]->disps[OPP_import_exec_list[set->index]->ranks_size - 1] +
+                OPP_import_exec_list[set->index]->sizes[OPP_import_exec_list[set->index]->ranks_size - 1]);
+
+        const size_t count = (size_t)(OPP_import_exec_list[set->index]->ranks_size + 1);
+        opp_mem::copy_host_to_dev<int>(import_exec_list_disps_d[set->index], 
+            OPP_import_exec_list[set->index]->disps, count, false, true, count);
 
         if (OPP_DBG) opp_printf("opp_mv_halo_list_device", "import_exec_list_disps_d Alloc %zu bytes for set %s", 
             (OPP_import_exec_list[set->index]->ranks_size+1) * sizeof(int), set->name);
     }
 
-    if (import_nonexec_list_disps_d != NULL) 
-    {
-        for (int s = 0; s < (int)opp_sets.size(); s++)
-            if (import_nonexec_list_disps_d[opp_sets[s]->index] != NULL)
-                opp_mem::dev_free(import_nonexec_list_disps_d[opp_sets[s]->index]);
-        free(import_nonexec_list_disps_d);
-    }
-    import_nonexec_list_disps_d = (int **)malloc(sizeof(int *) * (int)opp_sets.size());
+    clean_int_array_hd(import_nonexec_list_disps_d);
+    import_nonexec_list_disps_d = opp_mem::host_malloc<int*>(opp_sets.size());
+    for (opp_set& set : opp_sets) {
 
-    for (int s = 0; s < (int)opp_sets.size(); s++) // for each set
-    { 
-        opp_set set = opp_sets[s];
-        import_nonexec_list_disps_d[set->index] = NULL;
-
+        import_nonexec_list_disps_d[set->index] = nullptr;
         if (set->is_particle) continue;
-        
-        //make sure end size is there too
-        OPP_import_nonexec_list[set->index]
-            ->disps[OPP_import_nonexec_list[set->index]->ranks_size] =
-            OPP_import_nonexec_list[set->index]->ranks_size == 0
-                ? 0
-                : OPP_import_nonexec_list[set->index]
-                        ->disps[OPP_import_nonexec_list[set->index]->ranks_size -
-                                1] +
-                    OPP_import_nonexec_list[set->index]
-                        ->sizes[OPP_import_nonexec_list[set->index]->ranks_size -
-                                1];
-        opp_copy_host_to_device((void **)&(import_nonexec_list_disps_d[set->index]),
-                        (void **)&(OPP_import_nonexec_list[set->index]->disps),
-                        (OPP_import_nonexec_list[set->index]->ranks_size+1) * sizeof(int),
-                        (OPP_import_nonexec_list[set->index]->ranks_size+1) * sizeof(int), true);
 
+        //make sure end size is there too
+        OPP_import_nonexec_list[set->index]->disps[OPP_import_nonexec_list[set->index]->ranks_size] =
+            OPP_import_nonexec_list[set->index]->ranks_size == 0 ? 0 : 
+                OPP_import_nonexec_list[set->index]->disps[OPP_import_nonexec_list[set->index]->ranks_size - 1] +
+                    OPP_import_nonexec_list[set->index]->sizes[OPP_import_nonexec_list[set->index]->ranks_size - 1];
+        
+        const size_t count = (size_t)(OPP_import_nonexec_list[set->index]->ranks_size + 1);
+        opp_mem::copy_host_to_dev<int>(import_nonexec_list_disps_d[set->index], 
+            OPP_import_nonexec_list[set->index]->disps, count, false, true, count);        
+        
         if (OPP_DBG) opp_printf("opp_mv_halo_list_device", "import_nonexec_list_disps_d Alloc %zu bytes for set %s", 
             (OPP_import_nonexec_list[set->index]->ranks_size+1) * sizeof(int), set->name);
     }

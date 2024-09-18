@@ -490,7 +490,7 @@ public:
     // Copy data from host to device, create new device arrays if requested
     template <typename T>
     inline static void copy_host_to_dev(T*& data_d, const T *data_h, size_t copy_count, 
-                                       bool create_new = false, size_t alloc_count = 0) {
+                            bool no_wait = false, bool create_new = false, size_t alloc_count = 0) {
         if (create_new) {
             if (data_d != nullptr)  
                 opp_mem::dev_free<T>(data_d);

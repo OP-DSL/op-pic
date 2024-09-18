@@ -141,13 +141,12 @@ void opp_inc_part_count_with_distribution(opp_set set, int num_particles_to_inse
                     opp_printf("opp_inc_part_count_with_distribution", 
                         "Calculating all from new");
 
-
                 opp_queue->submit([&](sycl::handler &cgh) {
                     cgh.parallel_for(sycl::nd_range<1>(nthread*nblocks,nthread), kernel);
                 }).wait();
             }
             else {
-                const size_t copy_size = (end - start) * sizeof(int);
+                const size_t copy_size = (end - start);
                 int* inj_mesh_relations_d = (int *)mesh_rel_dat->data_d + inj_start;
 
                 if (opp_saved_mesh_relation_d == nullptr) {
@@ -156,16 +155,15 @@ void opp_inc_part_count_with_distribution(opp_set set, int num_particles_to_inse
                             "Allocating saved_mesh_relation_d with size [%zu]", copy_size);
 
                     opp_saved_mesh_relation_size = copy_size;
-                    opp_saved_mesh_relation_d = (int *)sycl::malloc_device(
-                                                            copy_size, *opp_queue);
+                    opp_saved_mesh_relation_d = opp_mem::dev_malloc<int>(copy_size);
 
                     opp_queue->submit([&](sycl::handler &cgh) {
                         cgh.parallel_for(sycl::nd_range<1>(nthread*nblocks,nthread), kernel);
                     }).wait();
 
                     // save the mesh relation data for next iteration
-                    opp_queue->memcpy(opp_saved_mesh_relation_d, inj_mesh_relations_d,
-                                    copy_size).wait();
+                    opp_mem::copy_dev_to_dev<int>(opp_saved_mesh_relation_d, 
+                                                    inj_mesh_relations_d, copy_size);
                 }
                 else {
                     if (OPP_DBG) 
@@ -179,8 +177,8 @@ void opp_inc_part_count_with_distribution(opp_set set, int num_particles_to_inse
                     }
 
                     // Copy from the saved mesh relation data
-                    opp_queue->memcpy(inj_mesh_relations_d, opp_saved_mesh_relation_d,
-                                        copy_size).wait();
+                    opp_mem::copy_dev_to_dev<int>(inj_mesh_relations_d, 
+                                                opp_saved_mesh_relation_d, copy_size);
                 }
             }
         }

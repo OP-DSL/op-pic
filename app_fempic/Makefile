@@ -94,7 +94,7 @@ fempic_opp+seq:
 opp_kernels+seq: 
 		 $(CPP) $(CPPFLAGS) -c seq/opp_kernels.cpp -o $(OBJ)/opp_kernels_seq.o $(ALL_INC)
 field_solver+seq: 
-		 $(CPP) $(CPPFLAGS) -c field_solver/cpu.cpp -o $(OBJ)/field_solver_cpu_seq.o $(ALL_INC)
+		 $(CPP) $(CPPFLAGS) -c field_solver/field_solver.cpp -o $(OBJ)/field_solver_cpu_seq.o $(ALL_INC)
 
 seq: mklib fempic_opp+seq opp_kernels+seq field_solver+seq
 	     $(CPP) $(CPPFLAGS) -o $(BIN)/seq \
@@ -109,7 +109,7 @@ opp_kernels+omp:
 fempic_opp+omp: 
 	     $(CPP) $(CPPFLAGS) -fopenmp -DUSE_OMP -c fempic_opp.cpp -o $(OBJ)/fempic_opp_omp.o $(ALL_INC)
 field_solver+omp: 
-		 $(CPP) $(CPPFLAGS) -fopenmp -DUSE_OMP -c field_solver/cpu.cpp -o $(OBJ)/field_solver_cpu_omp.o $(ALL_INC)		 
+		 $(CPP) $(CPPFLAGS) -fopenmp -DUSE_OMP -c field_solver/field_solver.cpp -o $(OBJ)/field_solver_cpu_omp.o $(ALL_INC)		 
 
 omp: mklib opp_kernels+omp fempic_opp+omp field_solver+omp
 		 $(CPP) $(CPPFLAGS) -fopenmp -o $(BIN)/omp \
@@ -250,11 +250,11 @@ hip_mpi_hdf5: mklib fempic_opp+hip_mpi opp_kernels+hip_mpi field_solver+hip_mpi 
 
 # ----------------------------------------------------------------------------------------------------------------------
 fempic_opp+sycl:
-	     $(SYCLCC) $(SYCLFLAGS) -DUSE_SYCL -c fempic_opp.cpp -o $(OBJ)/fempic_opp_sycl.o $(ALL_INC)
+	     $(SYCLCC) $(SYCLFLAGS) -c fempic_opp.cpp -o $(OBJ)/fempic_opp_sycl.o $(ALL_INC)
 opp_kernels+sycl:
-		 $(SYCLCC) $(SYCLFLAGS) -DUSE_SYCL -c sycl/opp_kernels.cpp -o $(OBJ)/opp_kernels_sycl.o $(ALL_INC)
+		 $(SYCLCC) $(SYCLFLAGS) -c sycl/opp_kernels.cpp -o $(OBJ)/opp_kernels_sycl.o $(ALL_INC)
 field_solver+sycl:
-		 $(SYCLCC) $(SYCLFLAGS) -DUSE_SYCL -c field_solver/field_solver.cpp -o $(OBJ)/field_solver_sycl.o $(ALL_INC)
+		 $(SYCLCC) $(SYCLFLAGS) -c field_solver/field_solver.cpp -o $(OBJ)/field_solver_sycl.o $(ALL_INC)
 
 sycl: mklib fempic_opp+sycl opp_kernels+sycl field_solver+sycl
 		 $(SYCLCC) $(SYCLFLAGS) -o $(BIN)/sycl \
@@ -265,23 +265,23 @@ sycl: mklib fempic_opp+sycl opp_kernels+sycl field_solver+sycl
 
 # ----------------------------------------------------------------------------------------------------------------------
 fempic_opp+sycl_mpi:
-		 $(MPICPP) $(SYCLFLAGS) -DUSE_MPI -DUSE_SYCL -c fempic_opp.cpp -o $(OBJ)/fempic_opp_sycl_mpi.o $(ALL_INC)
+		 $(MPICPP) $(SYCLFLAGS) -DUSE_MPI -c fempic_opp.cpp -o $(OBJ)/fempic_opp_sycl_mpi.o $(ALL_INC)
 opp_kernels+sycl_mpi:
-		 $(MPICPP) $(SYCLFLAGS) -DUSE_MPI -DUSE_SYCL -c sycl/opp_kernels.cpp -o $(OBJ)/opp_kernels_sycl_mpi.o $(ALL_INC) 
+		 $(MPICPP) $(SYCLFLAGS) -DUSE_MPI -c sycl/opp_kernels.cpp -o $(OBJ)/opp_kernels_sycl_mpi.o $(ALL_INC) 
 field_solver+sycl_mpi:
-		 $(MPICPP) $(SYCLFLAGS) -DUSE_MPI -DUSE_SYCL -c field_solver/field_solver.cpp -o $(OBJ)/field_solver_sycl_mpi.o $(ALL_INC) 
+		 $(MPICPP) $(SYCLFLAGS) -DUSE_MPI -c field_solver/field_solver.cpp -o $(OBJ)/field_solver_sycl_mpi.o $(ALL_INC) 
 opp_mpi_hdf5+sycl_mpi:
-		 $(MPICPP) $(SYCLFLAGS) -DUSE_MPI -DUSE_SYCL -c $(OPP_PATH)/src/hdf5/opp_mpi_hdf5.cpp -o $(OBJ)/opp_mpi_hdf5_sycl_mpi_hdf5.o $(ALL_INC)
+		 $(MPICPP) $(SYCLFLAGS) -DUSE_MPI -c $(OPP_PATH)/src/hdf5/opp_mpi_hdf5.cpp -o $(OBJ)/opp_mpi_hdf5_sycl_mpi_hdf5.o $(ALL_INC)
 
 sycl_mpi: mklib fempic_opp+sycl_mpi opp_kernels+sycl_mpi field_solver+sycl_mpi
-		 $(MPICPP) $(CPPFLAGS) -DUSE_MPI -o $(BIN)/sycl_mpi \
+		 $(MPICPP) $(SYCLFLAGS) -DUSE_MPI -o $(BIN)/sycl_mpi \
 		 	$(OBJ)/fempic_opp_sycl_mpi.o \
 			$(OBJ)/opp_kernels_sycl_mpi.o \
 			$(OBJ)/field_solver_sycl_mpi.o \
 			$(ALL_LIBS) $(SYCL_LIB) -lopp_sycl_mpi
 
 sycl_mpi_hdf5: mklib fempic_opp+sycl_mpi opp_kernels+sycl_mpi field_solver+sycl_mpi opp_mpi_hdf5+sycl_mpi
-		 $(MPICPP) $(CPPFLAGS) -DUSE_MPI -o $(BIN)/sycl_mpi_hdf5 \
+		 $(MPICPP) $(SYCLFLAGS) -DUSE_MPI -o $(BIN)/sycl_mpi_hdf5 \
 		 	$(OBJ)/fempic_hdf5_opp_sycl_mpi_hdf5.o \
 			$(OBJ)/opp_kernels_sycl_mpi_hdf5.o \
 			$(OBJ)/opp_mpi_hdf5_sycl_mpi_hdf5.o \

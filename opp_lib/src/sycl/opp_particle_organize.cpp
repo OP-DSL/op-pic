@@ -33,11 +33,12 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <opp_sycl.h>
 
 constexpr int opp_const_threads_per_block = 192;
+constexpr int const_blocks = 200;
 
-dpct::device_vector<int> hf_from_indices_dv;    // holefill from indices - starting in reverse order)
-dpct::device_vector<int> hf_sequence_dv;        // sequence of numbers required for hole filling
-dpct::device_vector<int> ps_cell_index_dv;      // cell indices required for sorting/swapping
-dpct::device_vector<int> ps_swap_indices_dv;    // swap (from mapping) indices required for sorting/swapping
+size_t hf_from_indices_size = 0;
+OPP_INT* hf_from_indices_dp = nullptr; // holefill from indices - starting in reverse order
+size_t ps_swap_indices_size = 0;
+OPP_INT* ps_swap_indices_dp = nullptr; // swap (from mapping) indices required for sorting/swapping
 
 //****************************************
 void opp_particle_sort(opp_set set)
@@ -46,29 +47,8 @@ void opp_particle_sort(opp_set set)
 }
 
 //****************************************
-unsigned int seed = 123; // Seed for random number generator
-struct RandomFunctor
-{
-    mutable dpl::default_engine rng;
-
-    RandomFunctor(unsigned int seed) : rng(seed) {}
-
-    int operator()(int value) const {
-        if (value == MAX_CELL_INDEX) {
-            return value; // Keep the value of MAX_CELL_INDEX unchanged
-        }
-        else {
-            dpl::uniform_int_distribution<int> dist(0, 1000000000);
-            return dist(rng); // Assign random number < 100
-        }
-    }
-};
-
-
-
-//****************************************
 template <typename T>
-void sort_dat_according_to_index(opp_dat dat, const dpct::device_vector<int> &swap_indices, 
+void sort_dat_according_to_index(opp_dat dat, const OPP_INT* swap_indices, 
     const int set_capacity, const int size, bool shuffle, const int out_start_idx)
 { 
     // if hole filling and second communicator iteration: arrange only the newly added particles
@@ -82,14 +62,13 @@ void sort_dat_according_to_index(opp_dat dat, const dpct::device_vector<int> &sw
 
     T *dat_data = (T *)(dat->data_d);
     T *dat_swap_data = (T *)(dat->data_swap_d);
-    const int *swap_indices_ptr = (int *)dpct::get_raw_pointer(swap_indices.data());
+    const int *swap_indices_ptr = swap_indices; 
     const int dat_dim = dat->dim;
 
     const int nblocks  = (size - 1) / opp_const_threads_per_block + 1;
 
     // data will be swapped from dat->data_d to dat->data_swap_d according to swap_indices
     opp_queue->submit([&](sycl::handler &cgh) {
-        
         cgh.parallel_for(
             sycl::nd_range<1>(opp_const_threads_per_block*nblocks,opp_const_threads_per_block),
             [=](sycl::nd_item<1> item) {
@@ -104,13 +83,11 @@ void sort_dat_according_to_index(opp_dat dat, const dpct::device_vector<int> &sw
     });
 
     if (shuffle && OPP_comm_iteration != 0) {
-        
         OPP_DEVICE_SYNCHRONIZE();
 
         // Now the valid data is in dat->data_swap_d, but since it is not the 1st communicator iteration
         // we only swap the newly added indices (since newly added particle count is small compared to 
         // existing particles), simply copy the required indices from dat->data_swap_d to dat->data_d
-
         for (int d = 0; d < dat->dim; d++)
             std::copy(dpl::execution::make_device_policy(*opp_queue),
                 (dat_swap_data + d * set_capacity + out_start_idx),
@@ -147,52 +124,73 @@ void particle_sort_device(opp_set set, bool shuffle)
             set->size, set->diff, set_capacity, set_size_plus_removed, 
             (shuffle ? "TRUE" : "FALSE"), OPP_comm_iteration, sort_start_index, sort_size);
     
-    opp_profiler->start("PS_Resize");
-    ps_cell_index_dv.reserve(set->set_capacity);
-    ps_cell_index_dv.resize(sort_size);
-    opp_profiler->end("PS_Resize");
-
     OPP_INT* cellIdx_dp = (OPP_INT*)set->mesh_relation_dat->data_d; // this is cell id data of particle set
+    OPP_INT* ps_cell_index_dp = (OPP_INT*)set->mesh_relation_dat->data_swap_d; // temp using swap array
 
     if (shuffle) {
-        opp_profiler->start("PS_Shuffle");
         // randomize the cell indices to minimize shared memory issues in later PIC routines
         // The below will create random numbers for each index, and MAX_CELL_INDEX for removed, 
-        std::transform(dpl::execution::make_device_policy(*opp_queue),
-                    cellIdx_dp + sort_start_index, cellIdx_dp + set_size_plus_removed, 
-                    ps_cell_index_dv.begin(),
-                    RandomFunctor(seed));
+        opp_profiler->start("PS_Shuffle");
+        const uint32_t shuffle_seed = 123;
+        const int size = (set_size_plus_removed - sort_start_index);
+        opp_queue->submit([&](sycl::handler& cgh) {
+            cgh.parallel_for(sycl::nd_range<1>(OPP_gpu_threads_per_block * const_blocks, OPP_gpu_threads_per_block),
+                [=](sycl::nd_item<1> item) {
+                    dpl::uniform_int_distribution<int> dist(0, 1000);
+                    for (size_t i = item.get_global_linear_id(); i < size; i += item.get_global_range()[0] ){
+                        dpl::minstd_rand engine(shuffle_seed, i);
+                        ps_cell_index_dp[i] = (cellIdx_dp[i + sort_start_index] == MAX_CELL_INDEX) ? 
+                                                MAX_CELL_INDEX : dist(engine);
+                    }
+                }
+            );
+        });
+        OPP_DEVICE_SYNCHRONIZE();
         opp_profiler->end("PS_Shuffle");
     }
     else {
         // copy the cell index to the thrust vector for sorting
         opp_profiler->start("PS_CopyCID");
-        std::copy(dpl::execution::make_device_policy(*opp_queue), 
-                    cellIdx_dp + sort_start_index, cellIdx_dp + set_size_plus_removed, 
-                    ps_cell_index_dv.begin());
+        const int size = (set_size_plus_removed - sort_start_index);
+        opp_queue->submit([&](sycl::handler& cgh) {
+            cgh.parallel_for(sycl::nd_range<1>(OPP_gpu_threads_per_block * const_blocks, OPP_gpu_threads_per_block),
+                [=](sycl::nd_item<1> item) {
+                    for (int i = item.get_global_linear_id(); i < size; i += item.get_global_range()[0] ){
+                        ps_cell_index_dp[i] = cellIdx_dp[i + sort_start_index];
+                    }
+                }
+            );
+        });
+        OPP_DEVICE_SYNCHRONIZE();
         opp_profiler->end("PS_CopyCID");
     }
     
     // Create a sequence of numbers starting from sort_start_index to be used as swap indices
     opp_profiler->start("PS_Sequence");
-    ps_swap_indices_dv.reserve(set->set_capacity);
-    ps_swap_indices_dv.resize(sort_size);
-    dpct::iota(dpl::execution::make_device_policy(*opp_queue),
-                ps_swap_indices_dv.begin(), ps_swap_indices_dv.end(), 
-                sort_start_index);
+    opp_mem::dev_resize<OPP_INT>(ps_swap_indices_dp, ps_swap_indices_size, (size_t)set->set_capacity);
+    opp_queue->submit([&](sycl::handler& cgh) {
+        OPP_INT* ps_swap_indices = ps_swap_indices_dp;
+        cgh.parallel_for(sycl::nd_range<1>(OPP_gpu_threads_per_block * const_blocks, OPP_gpu_threads_per_block),
+            [=](sycl::nd_item<1> item) {
+                for (int i = item.get_global_linear_id(); i < sort_size; i += item.get_global_range()[0] ){
+                    ps_swap_indices[i] = i;
+                }
+            }
+        );
+    });
+    OPP_DEVICE_SYNCHRONIZE();
     opp_profiler->end("PS_Sequence");
 
-    // sort ps_swap_indices_dv, with the key ps_cell_index_dv. Both keys and values will be sorted
+    // sort ps_swap_indices_dp, with the key ps_cell_index_dp. Both keys and values will be sorted
     opp_profiler->start("PS_SortKey");
-    dpct::sort(dpl::execution::make_device_policy(*opp_queue),
-                ps_cell_index_dv.begin(), ps_cell_index_dv.end(), 
-                ps_swap_indices_dv.begin());
+    dpl::sort_by_key(dpl::execution::make_device_policy(*opp_queue), 
+        ps_cell_index_dp, ps_cell_index_dp + sort_size,
+        ps_swap_indices_dp);
     opp_profiler->end("PS_SortKey");
 
+    // Reorder the dats according to ps_swap_indices_dp (from mapping)
     opp_profiler->start("PS_Dats");
-    for (int i = 0; i < (int)set->particle_dats->size(); i++) {    
-
-        opp_dat& dat = set->particle_dats->at(i);
+    for (opp_dat& dat : *(set->particle_dats)) {
 
         if (!(strstr(dat->type, ":soa") != NULL || OPP_auto_soa || (dat->dim > 1))) {
             std::cerr << "particle_sort_device not implemented for non SOA data structures [dat "
@@ -202,13 +200,12 @@ void particle_sort_device(opp_set set, bool shuffle)
 
         if (strcmp(dat->type, "int") == 0) {
 
-            sort_dat_according_to_index<OPP_INT>(dat, ps_swap_indices_dv, 
+            sort_dat_according_to_index<OPP_INT>(dat, ps_swap_indices_dp, 
                                     set_capacity, sort_size, shuffle, sort_start_index);
         }
         else if (strcmp(dat->type, "double") == 0) {
 
-            dpct::has_capability_or_fail(opp_queue->get_device(), {sycl::aspect::fp64});
-            sort_dat_according_to_index<OPP_REAL>(dat, ps_swap_indices_dv, 
+            sort_dat_according_to_index<OPP_REAL>(dat, ps_swap_indices_dp, 
                                     set_capacity, sort_size, shuffle, sort_start_index);
         }
         else {
@@ -224,46 +221,58 @@ void particle_sort_device(opp_set set, bool shuffle)
 // This assumes all the device data to be valid
 void particle_hole_fill_device(opp_set set)
 { 
-    const int set_capacity = set->set_capacity;
-    const int part_remove_count = set->particle_remove_count;
-    const int set_size_plus_removed = set->size + part_remove_count;
-    const int nblocks  = (part_remove_count - 1) / opp_const_threads_per_block + 1;
+    const OPP_INT set_capacity = set->set_capacity;
+    const OPP_INT part_remove_count = set->particle_remove_count;
+    const OPP_INT set_size_plus_removed = set->size + part_remove_count;
+    const OPP_INT nblocks  = (part_remove_count - 1) / opp_const_threads_per_block + 1;
 
     if (OPP_DBG) 
         opp_printf("particle_hole_fill_device", "remove=%d set_size+removed=%d capacity=%d", 
         part_remove_count, set_size_plus_removed, set_capacity);
 
-    int sort_start_index = 0;
-    int sort_size = set_size_plus_removed;
-
     // sort OPP_remove_particle_indices_d since it can be in shuffled state
     opp_profiler->start("HF_SORT");
     dpl::sort(dpl::execution::make_device_policy(*opp_queue),
-        OPP_remove_particle_indices_d,
-        OPP_remove_particle_indices_d + part_remove_count);
+        OPP_remove_particle_indices_d, OPP_remove_particle_indices_d + part_remove_count);
     opp_profiler->end("HF_SORT");
 
-    // resize hf_sequence_dv and hf_from_indices_dv if required
-    if (hf_sequence_dv.capacity() < sort_size) {
-        
-        hf_sequence_dv.resize(set_capacity);
-        dpct::iota(dpl::execution::make_device_policy(*opp_queue),
-                   hf_sequence_dv.begin(), hf_sequence_dv.end(), 0);
+    // resize only if hf_from_indices_size < set_capacity
+    opp_mem::dev_resize<OPP_INT>(hf_from_indices_dp, hf_from_indices_size, (size_t)set_capacity);
 
-        hf_from_indices_dv.reserve(set_size_plus_removed);
-    }
-    hf_from_indices_dv.resize(set_size_plus_removed);
+    OPP_INT* swap_indices_dp = (OPP_INT *)set->particle_remove_count_d; // using dev ptr temporarily
+    OPP_INT tmp = set_size_plus_removed - 1;
+    opp_mem::copy_host_to_dev<int>(swap_indices_dp, &tmp, 1);
 
-    // get the particle indices in reverse order whose cell index is not MAX_CELL_INDEX
+    // Find the hole fill from indices (order may not be preserved)
     opp_profiler->start("HF_COPY_IF");
-    auto end_iter1 = dpct::copy_if(dpl::execution::make_device_policy(*opp_queue),
-        dpl::make_reverse_iterator(hf_sequence_dv.begin() + set_size_plus_removed),
-        dpl::make_reverse_iterator(hf_sequence_dv.begin() + sort_start_index),
-        dpl::make_reverse_iterator(((OPP_INT*)set->mesh_relation_dat->data_d) + set_size_plus_removed),
-        hf_from_indices_dv.begin(), 
-        [](int i) { return i != MAX_CELL_INDEX; });
-    hf_from_indices_dv.resize(part_remove_count);
+    opp_queue->submit([&](sycl::handler& cgh) {
+        const OPP_INT* cid_dp = (OPP_INT*)set->mesh_relation_dat->data_d;
+        OPP_INT* hf_from_indices = hf_from_indices_dp;
+        cgh.parallel_for(
+            sycl::nd_range<1>(opp_const_threads_per_block*nblocks,opp_const_threads_per_block),
+            [=](sycl::nd_item<1> item) {   
+                const OPP_INT idx = item.get_global_linear_id();
+                if (idx < part_remove_count) {
+                    while (true) {
+                        const OPP_INT pos = opp_atomic_fetch_add(swap_indices_dp, -1);
+                        if (cid_dp[pos] != MAX_CELL_INDEX) {
+                            hf_from_indices[idx] = pos;
+                            break;
+                        }
+                    }
+                }         
+            }
+        );
+    });
+    OPP_DEVICE_SYNCHRONIZE();
     opp_profiler->end("HF_COPY_IF");
+
+    // Sort the hole fill from indices to avoid hole-filling issues
+    opp_profiler->start("HF_COPY_IF_SORT");
+    dpl::sort(dpl::execution::make_device_policy(*opp_queue), 
+                hf_from_indices_dp, hf_from_indices_dp + part_remove_count, 
+                std::greater<int>());
+    opp_profiler->end("HF_COPY_IF_SORT");
 
     // For all the dats, fill the holes using the swap_indices
     opp_profiler->start("HF_Dats");
@@ -278,12 +287,10 @@ void particle_hole_fill_device(opp_set set)
         if (strcmp(dat->type, "int") == 0) {
 
             opp_queue->submit([&](sycl::handler &cgh) {
-                
                 OPP_INT *dat_data = (OPP_INT *)(dat->data_d);
-                const int *from_indices = (int *)dpct::get_raw_pointer(hf_from_indices_dv.data());
+                const int *from_indices = hf_from_indices_dp;
                 const int *remove_indices = OPP_remove_particle_indices_d;
                 const int dat_dim = dat->dim;
-
                 cgh.parallel_for(
                     sycl::nd_range<1>(opp_const_threads_per_block*nblocks,opp_const_threads_per_block),
                     [=](sycl::nd_item<1> item) {
@@ -291,7 +298,7 @@ void particle_hole_fill_device(opp_set set)
                             dat_data, dat_data,
                             from_indices, remove_indices,
                             set_capacity, set_capacity, 
-                            0, sort_start_index,
+                            0, 0,
                             dat_dim, part_remove_count, 
                             item);
                     });
@@ -299,15 +306,11 @@ void particle_hole_fill_device(opp_set set)
         }
         else if (strcmp(dat->type, "double") == 0) {
 
-            dpct::has_capability_or_fail(opp_queue->get_device(), {sycl::aspect::fp64});
-
             opp_queue->submit([&](sycl::handler &cgh) {
-
                 OPP_REAL *dat_data = (OPP_REAL *)(dat->data_d);
-                const int *from_indices = (int *)dpct::get_raw_pointer(hf_from_indices_dv.data());
+                const int *from_indices = hf_from_indices_dp;
                 const int *remove_indices = OPP_remove_particle_indices_d;
                 const int dat_dim = dat->dim;
-
                 cgh.parallel_for(
                     sycl::nd_range<1>(opp_const_threads_per_block*nblocks,opp_const_threads_per_block),
                     [=](sycl::nd_item<1> item) { 
@@ -315,7 +318,7 @@ void particle_hole_fill_device(opp_set set)
                             dat_data, dat_data,
                             from_indices, remove_indices,
                             set_capacity, set_capacity, 
-                            0, sort_start_index,
+                            0, 0,
                             dat_dim, part_remove_count, 
                             item);
                     });

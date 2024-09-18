@@ -47,9 +47,6 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 constexpr bool debug_mem = false;
 
-#define cutilSafeCall(err) // these need to be remmoved
-#define cutilCheckMsg(msg) // these need to be remmoved
-
 #define OPP_GPU_THREADS_PER_BLOCK 32
 
 #define OPP_PARTICLE_MOVE_DONE { m.move_status = OPP_MOVE_DONE; }
@@ -58,31 +55,25 @@ constexpr bool debug_mem = false;
 #define OPP_DO_ONCE (m.iteration_one)
 #define OPP_MOVE_RESET_FLAGS { m.move_status = OPP_MOVE_DONE; m.iteration_one = true; }
 
-extern int* opp_saved_mesh_relation_d;
-extern size_t opp_saved_mesh_relation_size;
+#define OPP_DEVICE_SYNCHRONIZE()  opp_queue->wait()
+#define OPP_DEVICE_GLOBAL_LINEAR_ID (item.get_global_linear_id())
+#define OPP_GLOBAL_FUNCTION inline
+#define OPP_DEVICE_FUNCTION 
+#define ADDITIONAL_PARAMETERS , sycl::nd_item<1> item
+#define OPP_ATOMIC_FETCH_ADD(address, value) opp_atomic_fetch_add(address, value)
 
-extern dpct::device_vector<int> ps_cell_index_dv;
-extern dpct::device_vector<int> ps_swap_indices_dv;
-// extern char *OPP_need_remove_flags_d;
+extern int* opp_saved_mesh_relation_d;
+
+extern OPP_INT* hf_from_indices_dp;
+extern OPP_INT* ps_swap_indices_dp;
 
 extern int *OPP_move_particle_indices_d;
 extern int *OPP_move_cell_indices_d;
 extern int *OPP_move_count_d;
-// extern dpct::device_vector<int> OPP_thrust_move_particle_indices_d;
-// extern dpct::device_vector<int> OPP_thrust_move_cell_indices_d;
-
 extern int *OPP_remove_particle_indices_d;
-// extern int *OPP_remove_count_d;
-// extern dpct::device_vector<int> OPP_thrust_remove_particle_indices_d;
 
-// extern dpct::device_vector<int> ps_to_indices_dv;
-extern dpct::device_vector<int> hf_from_indices_dv;
-extern dpct::device_vector<int> hf_sequence_dv;
-
-extern std::map<int, std::vector<OPP_INT>>
-    cell_indices_hv; // cellid in the foreign rank, arrange according to rank
-extern std::map<int, std::vector<OPP_INT>>
-    particle_indices_hv; // particle ids to send, arrange according to rank
+extern std::map<int, std::vector<OPP_INT>> cell_indices_hv; // cellid in the foreign rank, arrange according to rank
+extern std::map<int, std::vector<OPP_INT>> particle_indices_hv; // particle ids to send, arrange according to rank
 extern std::map<int, dpct::device_vector<OPP_INT>> particle_indices_dv;
 extern std::map<int, dpct::device_vector<char>> send_data;
 extern std::map<int, dpct::device_vector<char>> recv_data;
@@ -96,59 +87,187 @@ extern char *OPP_consts_h, *OPP_consts_d;
 extern std::vector<char*> opp_consts;
 
 //*************************************************************************************************
-
-void __cudaSafeCall(dpct::err0 err, const char *file, const int line);
-
-void __cutilCheckMsg(const char *errorMessage, const char *file, const int line);
-
 void opp_sycl_init(int argc, char **argv);
 void opp_sycl_exit();
 
-// Copy a map from host to device
 void opp_upload_map(opp_map map, bool create_new = false);
+void opp_create_dat_device_arrays(opp_dat dat, bool create_new = false);
 
 /*******************************************************************************/
-
 void opp_halo_create();
 void opp_halo_destroy();
 
 /*******************************************************************************/
-
 void opp_init_double_indirect_reductions_cuda(int nargs, opp_arg *args);
 void opp_exchange_double_indirect_reductions_cuda(int nargs, opp_arg *args) ;
 void opp_complete_double_indirect_reductions_cuda(int nargs, opp_arg *args);
 
 /*******************************************************************************/
-
-
 void print_dat_to_txtfile_mpi(opp_dat dat, const char *file_name);
 void opp_mpi_print_dat_to_txtfile(opp_dat dat, const char *file_name);
 
-void opp_copy_host_to_device(void **data_d, void **data_h, size_t copy_size, 
-    size_t alloc_size = 0, bool create_new = false);
-
-void opp_create_dat_device_arrays(opp_dat dat, bool create_new = false);
-
 void opp_finalize_particle_move_cuda(opp_set set);
-
 void particle_sort_device(opp_set set, bool hole_filling);
 
 /*******************************************************************************/
+class opp_mem {
 
-inline void opp_mpi_reduce(opp_arg *args, double *data) 
+public:
+
+    // Allocate host memory
+    template <typename T>
+    inline static T* host_malloc(size_t count) {
+        return (T*)malloc(count * sizeof(T));
+    }
+
+    // Free host memory
+    template <typename T>
+    inline static void host_free(T* ptr) {
+        if (ptr)
+            free(ptr);
+        ptr = nullptr;
+    }
+
+    // Reallocate host memory
+    template <typename T>
+    inline static void host_realloc(T*& ptr, size_t new_size) {
+        T* tmp_ptr = (T*)realloc(ptr, new_size);
+        ptr = tmp_ptr;
+    }
+
+    // Allocate device memory
+    template <typename T>
+    inline static T* dev_malloc(size_t count) {
+        if (count <= 0) return nullptr;
+        try {
+            T* ptr = sycl::malloc_device<T>(count * sizeof(T), *opp_queue);
+            if (debug_mem) opp_printf("dev_malloc", "[%p][%zu]", ptr, count);
+            return ptr;
+        }
+        catch (const sycl::exception &e) {
+            throw std::runtime_error(std::string("dev_malloc: ") + e.what());
+        }
+    }
+
+    // Free device memory
+    template <typename T>
+    inline static void dev_free(T*& ptr) {
+        if (ptr) {
+            if (debug_mem) opp_printf("dev_free", "[%p]", ptr);
+            sycl::free(ptr, *opp_queue);
+            ptr = nullptr;
+        }
+    }
+
+    // Copy memory from one device pointer to another
+    template <typename T>
+    inline static void dev_memcpy(T*& dst, const T* src, size_t cpy_count) {
+        if (debug_mem) opp_printf("dev_memcpy", "[%p]->[%p] cpy_count[%zu]", src, dst, cpy_count);
+        opp_queue->memcpy(dst, src, cpy_count * sizeof(T)).wait();
+    }
+
+    // Resize device memory
+    template <typename T>
+    inline static void dev_realloc(T*& ptr, size_t& current_size, const size_t& new_size) {
+        if (new_size <= 0) 
+            throw std::runtime_error("dev_realloc: New Realloc size invalid - " + std::to_string(new_size));
+        T* new_ptr = opp_mem::dev_malloc<T>(new_size);
+        if (debug_mem) opp_printf("dev_realloc", "created [%p] old [%p]", new_ptr, ptr);
+        if (ptr) {
+            const size_t copy_size = std::min(current_size, new_size);
+            opp_mem::dev_memcpy<T>(new_ptr, ptr, copy_size);
+            opp_mem::dev_free<T>(ptr);
+            current_size = new_size;
+        }
+        if (debug_mem) opp_printf("dev_realloc", "[%p]->[%p] cpy_count[%zu]", ptr, new_ptr, current_size);
+        ptr = new_ptr;
+    }
+
+    // Resize device memory (only increasing size)
+    template <typename T>
+    inline static void dev_resize(T*& ptr, size_t& current_size, const size_t& new_size) {
+        if (debug_mem) opp_printf("dev_resize", "[%p] %zu -> %zu", ptr, current_size, new_size);
+        if (new_size > current_size) {
+            opp_mem::dev_realloc<T>(ptr, current_size, new_size);
+        }
+    }
+
+    // initialize device memory with a specific value
+    template <typename T>
+    inline static void dev_memset(T* ptr, size_t count, T value) {
+        opp_queue->fill(ptr, value, count).wait();
+    }
+
+    // Allocate and initialize device memory with a specific value
+    template <typename T>
+    inline static T* dev_malloc_set(size_t count, T value) {
+        T* ptr = opp_mem::dev_malloc<T>(count);
+        opp_mem::dev_memset<T>(ptr, count, value);
+        return ptr;
+    }
+
+    // Copy data from host to device, create new device arrays if requested
+    template <typename T>
+    inline static void copy_host_to_dev(T*& data_d, const T *data_h, size_t copy_count,
+                        bool no_wait = false, bool create_new = false, size_t alloc_count = 0) {
+        try {
+            if (create_new) {
+                if (data_d != nullptr)  
+                    opp_mem::dev_free<T>(data_d);
+                data_d = opp_mem::dev_malloc<T>(alloc_count);
+            }
+            opp_queue->memcpy(data_d, data_h, copy_count * sizeof(T));
+            if (!no_wait) 
+                opp_queue->wait(); 
+            if (debug_mem) opp_printf("copy_host_to_dev", "[%p]->[%p] copy_count[%zu]", data_h, data_d, copy_count);
+        }
+        catch (const sycl::exception &e) {
+            throw std::runtime_error(std::string("opp_mem::copy_host_to_dev: ") + e.what());
+        }
+    }
+
+    // Copy data from device to host, no dot create new host arrays since it can be allocated differently, 
+    // like malloc, new, stack, std::vector<>, hence free mechanism is unknown
+    template <typename T>
+    inline static void copy_dev_to_host(T* data_h, const T *data_d, size_t copy_count, 
+                        bool no_wait = false) {
+        try {
+            opp_queue->memcpy(data_h, data_d, copy_count * sizeof(T));
+            if (!no_wait) 
+                opp_queue->wait();
+            if (debug_mem) opp_printf("copy_dev_to_host", "[%p]->[%p] copy_count[%zu]", data_d, data_h, copy_count);
+        }
+        catch (const sycl::exception &e) {
+            throw std::runtime_error(std::string("opp_mem::copy_dev_to_host: ") + e.what());
+        }
+    }
+
+    // Copy data from device to device, create new device arrays if requested
+    template <typename T>
+    inline static void copy_dev_to_dev(T*& data_d, const T *data_h, size_t copy_count,
+                        bool no_wait = false, bool create_new = false, size_t alloc_count = 0) {
+        try {
+            return opp_mem::copy_host_to_dev<T>(data_d, data_h, copy_count, no_wait, create_new, alloc_count);
+        }
+        catch (const sycl::exception &e) {
+            throw std::runtime_error(std::string("opp_mem::copy_dev_to_dev: ") + e.what());
+        }
+    }
+};
+
+/*******************************************************************************/
+template<typename T>
+inline void opp_mpi_reduce(opp_arg *args, T *data) 
 {
 #ifdef USE_MPI
-    opp_mpi_reduce_double(args, data);
-#else
-    (void)args;
-    (void)data;
-#endif
-}
-
-inline void opp_mpi_reduce(opp_arg *args, int *data) 
-{
-#ifdef USE_MPI
-    opp_mpi_reduce_int(args, data);
+    if constexpr (std::is_same<T, double>::value) {
+        opp_mpi_reduce_double(args, data);
+    } else if constexpr (std::is_same<T, int>::value) {
+        opp_mpi_reduce_int(args, data);
+    } else {
+        static_assert(std::is_same<T, double>::value || std::is_same<T, int>::value, 
+                      "Unsupported data type for opp_mpi_reduce.");
+    }
 #else
     (void)args;
     (void)data;
@@ -159,15 +278,11 @@ inline void opp_mpi_reduce(opp_arg *args, int *data)
 // routines to resize constant/reduct arrays, if necessary
 
 void opp_reallocReductArrays(int reduct_bytes);
-
 void opp_mvReductArraysToDevice(int reduct_bytes);
-
 void opp_mvReductArraysToHost(int reduct_bytes);
 
 void opp_reallocConstArrays(int consts_bytes);
-
 void opp_mvConstArraysToDevice(int consts_bytes);
-
 void opp_mvConstArraysToHost(int consts_bytes);
 
 template <opp_access reduction, int intel, class T, class out_acc, class local_acc>
@@ -325,159 +440,7 @@ void copy_according_to_index(dpct::device_vector<T> *in_dat_dv,
         0, 0, size, dim);
 }
 
-// template <class T>
-// void opp_device_memset(T* data, T value, size_t size) {
-//     opp_queue->submit([&](sycl::handler& cgh) {
-//         cgh.parallel_for<class memset_kernel>(sycl::range<1>(size), [=](sycl::id<1> idx) {
-//             data[idx] = value;
-//         });
-//     }).wait(); // Wait for the kernel to finish
-// }
-
 /*******************************************************************************/
-class opp_mem {
-
-public:
-
-    // Allocate host memory
-    template <typename T>
-    inline static T* host_malloc(size_t count) {
-        return (T*)malloc(count * sizeof(T));
-    }
-
-    // Free host memory
-    template <typename T>
-    inline static void host_free(T* ptr) {
-        if (ptr)
-            free(ptr);
-        ptr = nullptr;
-    }
-
-    // Reallocate host memory
-    template <typename T>
-    inline static void host_realloc(T*& ptr, size_t new_size) {
-        T* tmp_ptr = (T*)realloc(ptr, new_size);
-        ptr = tmp_ptr;
-    }
-
-    // Allocate device memory
-    template <typename T>
-    inline static T* dev_malloc(size_t count) {
-        if (count <= 0) return nullptr;
-        try {
-            T* ptr = sycl::malloc_device<T>(count * sizeof(T), *opp_queue);
-            if (debug_mem) opp_printf("dev_malloc", "[%p][%zu]", ptr, count);
-            return ptr;
-        }
-        catch (const sycl::exception &e) {
-            throw std::runtime_error(std::string("dev_malloc: ") + e.what());
-        }
-    }
-
-    // Free device memory
-    template <typename T>
-    inline static void dev_free(T*& ptr) {
-        if (ptr) {
-            if (debug_mem) opp_printf("dev_free", "[%p]", ptr);
-            sycl::free(ptr, *opp_queue);
-        }
-    }
-
-    // Copy memory from one device pointer to another
-    template <typename T>
-    inline static void dev_memcpy(T*& dst, const T* src, size_t cpy_count) {
-        if (debug_mem) opp_printf("dev_memcpy", "[%p]->[%p] cpy_count[%zu]", src, dst, cpy_count);
-        opp_queue->memcpy(dst, src, cpy_count * sizeof(T)).wait();
-    }
-
-    // Resize device memory
-    template <typename T>
-    inline static void dev_realloc(T*& ptr, size_t& current_size, const size_t& new_size) {
-        if (new_size <= 0) 
-            throw std::runtime_error("dev_realloc: New Realloc size invalid - " + std::to_string(new_size));
-        T* new_ptr = opp_mem::dev_malloc<T>(new_size);
-        if (debug_mem) opp_printf("dev_realloc", "created [%p] old [%p]", new_ptr, ptr);
-        if (ptr) {
-            const size_t copy_size = std::min(current_size, new_size);
-            opp_mem::dev_memcpy<T>(new_ptr, ptr, copy_size);
-            opp_mem::dev_free<T>(ptr);
-            current_size = new_size;
-            if (debug_mem) opp_printf("dev_realloc", "[%p]->[%p] cpy_count[%zu]", ptr, new_ptr, copy_size);
-        }
-        ptr = new_ptr;
-    }
-
-    // Resize device memory (only increasing size)
-    template <typename T>
-    inline static void dev_resize(T*& ptr, size_t& current_size, const size_t& new_size) {
-        if (debug_mem) opp_printf("dev_resize", "[%p] %zu -> %zu", ptr, current_size, new_size);
-        if (new_size > current_size) {
-            opp_mem::dev_realloc<T>(ptr, current_size, new_size);
-        }
-    }
-
-    // initialize device memory with a specific value
-    template <typename T>
-    inline static void dev_memset(T* ptr, size_t count, T value) {
-        opp_queue->fill(ptr, value, count).wait();
-    }
-
-    // Allocate and initialize device memory with a specific value
-    template <typename T>
-    inline static T* dev_malloc_set(size_t count, T value) {
-        T* ptr = opp_mem::dev_malloc<T>(count);
-        opp_mem::dev_memset<T>(ptr, count, value);
-        return ptr;
-    }
-
-    // Copy data from host to device, create new device arrays if requested
-    template <typename T>
-    inline static void copy_host_to_dev(T*& data_d, const T *data_h, size_t copy_count,
-                        bool no_wait = false, bool create_new = false, size_t alloc_count = 0) {
-        try {
-            if (create_new) {
-                if (data_d != nullptr)  
-                    opp_mem::dev_free<T>(data_d);
-                data_d = opp_mem::dev_malloc<T>(alloc_count);
-            }
-            opp_queue->memcpy(data_d, data_h, copy_count * sizeof(T));
-            if (!no_wait) 
-                opp_queue->wait(); 
-            if (debug_mem) opp_printf("copy_host_to_dev", "[%p]->[%p] copy_count[%zu]", data_h, data_d, copy_count);
-        }
-        catch (const sycl::exception &e) {
-            throw std::runtime_error(std::string("opp_mem::copy_host_to_dev: ") + e.what());
-        }
-    }
-
-    // Copy data from device to host, no dot create new host arrays since it can be allocated differently, 
-    // like malloc, new, stack, std::vector<>, hence free mechanism is unknown
-    template <typename T>
-    inline static void copy_dev_to_host(T* data_h, const T *data_d, size_t copy_count, 
-                        bool no_wait = false) {
-        try {
-            opp_queue->memcpy(data_h, data_d, copy_count * sizeof(T));
-            if (!no_wait) 
-                opp_queue->wait();
-            if (debug_mem) opp_printf("copy_dev_to_host", "[%p]->[%p] copy_count[%zu]", data_d, data_h, copy_count);
-        }
-        catch (const sycl::exception &e) {
-            throw std::runtime_error(std::string("opp_mem::copy_dev_to_host: ") + e.what());
-        }
-    }
-};
-
-/*******************************************************************************/
-#define OPP_DEVICE_SYNCHRONIZE()  opp_queue->wait()
-#define OPP_DEVICE_GLOBAL_LINEAR_ID (item.get_global_linear_id())
-#define OPP_GLOBAL_FUNCTION inline
-#define OPP_DEVICE_FUNCTION 
-#define ADDITIONAL_PARAMETERS , sycl::nd_item<1> item
-#define OPP_ATOMIC_FETCH_ADD(address, value) opp_atomic_fetch_add(address, value)
-
-/*******************************************************************************/
-
-//****************************************
 template <typename T>
 void copy_from(
     const T* in_dat_d, T* out_dat_d, 
@@ -497,7 +460,7 @@ void copy_from(
     }
 }
 
-//****************************************
+/*******************************************************************************/
 template <typename T>
 void copy_from_to(
     const T* in_dat_d, T* out_dat_d, 
@@ -518,6 +481,7 @@ void copy_from_to(
     }
 }
 
+/*******************************************************************************/
 template <class T>
 void opp_register_const(T*& ptr, const size_t count) {
     if (ptr == nullptr) {
@@ -526,15 +490,32 @@ void opp_register_const(T*& ptr, const size_t count) {
     }
 }
 
+/*******************************************************************************/
 template <typename T>
 T opp_atomic_fetch_add(T* address, T value) {
     return dpct::atomic_fetch_add<sycl::access::address_space::generic_space>(address, value);
 }
 
+/*******************************************************************************/
 inline void opp_set_stride(OPP_INT*& data_d, OPP_INT& data_h, OPP_INT new_data) {
     opp_register_const<OPP_INT>(data_d, 1);
     if (data_h != new_data) {
         data_h = new_data;
         opp_mem::copy_host_to_dev<OPP_INT>(data_d, &data_h, 1);
     }    
+}
+
+/*******************************************************************************/
+template <typename T>
+inline void write_T_array_to_file(const T* array, size_t size, const std::string& filename) {
+    std::ofstream outFile(filename);
+    if (!outFile) {
+        std::cerr << "Error opening file: " << filename << std::endl;
+        return;
+    }
+    outFile << size << " 1 -- 0 0\n";
+    for (int i = 0; i < size; ++i) {
+        outFile << " " << array[i] << "\n";
+    }
+    outFile.close();
 }

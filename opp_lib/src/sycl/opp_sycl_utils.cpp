@@ -44,7 +44,8 @@ void opp_create_dat_device_arrays(opp_dat dat, bool create_new)
 
     const size_t alloc_count = (size_t)(dat->set->set_capacity * dat->size);
     dat->data_d = opp_mem::dev_malloc<char>(alloc_count);
-    dat->data_swap_d = opp_mem::dev_malloc<char>(alloc_count);
+    if (OPP_fill_type != OPP_HoleFill_All)
+        dat->data_swap_d = opp_mem::dev_malloc<char>(alloc_count);
 
     if (OPP_DBG) 
         opp_printf("opp_create_dat_device_arrays", "Device array of dat [%s][%p][%p] [%zubytes]", 
@@ -60,10 +61,12 @@ void opp_download_dat(opp_dat dat)
     const size_t set_size = dat->set->set_capacity;
 
     if (strstr(dat->type, ":soa") != NULL || (OPP_auto_soa && dat->dim > 1)) {
-        if (OPP_DBG) opp_printf("opp_download_dat", "GPU->CPU SOA | %s", dat->name);
+        if (OPP_DBG) 
+            opp_printf("opp_download_dat", "GPU->CPU SOA | %s to %p from %p", 
+                dat->name, dat->data, dat->data_d);
 
         std::vector<char> tmp_data(dat->size * set_size);
-        opp_mem::copy_dev_to_host(tmp_data.data(), dat->data_d, set_size * dat->size);
+        opp_mem::copy_dev_to_host<char>(tmp_data.data(), dat->data_d, set_size * dat->size);
 
         int element_size = dat->size / dat->dim;
         for (int i = 0; i < dat->dim; i++) {
@@ -76,7 +79,9 @@ void opp_download_dat(opp_dat dat)
         }
     } 
     else {
-        if (OPP_DBG) opp_printf("opp_download_dat", "GPU->CPU NON-SOA| %s", dat->name);
+        if (OPP_DBG) 
+            opp_printf("opp_download_dat", "GPU->CPU NON-SOA| %s to %p from %p", 
+                dat->name, dat->data, dat->data_d);
         opp_mem::copy_dev_to_host<char>(dat->data, dat->data_d, set_size * dat->size);
     }
 
@@ -195,16 +200,6 @@ void opp_upload_particle_set(opp_set particles_set, bool realloc)
 
 // TO BE DISCARDED --- Use opp_mem:: routines
 //****************************************
-void opp_copy_host_to_device(void **data_d, void **data_h, size_t copy_size, 
-                            size_t alloc_size, bool create_new) 
-{
-    if (create_new) {
-        if (*data_d != NULL)  sycl::free(*data_d, *opp_queue);
-        *data_d = (void*)sycl::malloc_device<char>(alloc_size, *opp_queue);
-    }
-
-    opp_queue->memcpy(*data_d, *data_h, copy_size).wait();
-}
 
 //*******************************************************************************
 void* opp_host_malloc(size_t size)
@@ -227,65 +222,3 @@ void opp_host_free(void* ptr)
 }
 
 //*******************************************************************************
-
-// //****************************************
-// void opp_create_dat_device_arrays(opp_dat dat, bool create_new)
-// {
-//     if (OPP_DBG) 
-//         opp_printf("opp_create_dat_device_arrays", "%s %s", dat->name, dat->type);
-
-//     char* temp_char_d = nullptr;
-
-//     if (strcmp(dat->type, "double") == 0)
-//     {
-//         if (dat->set->size > 0)
-//         {
-//             if (create_new && dat->thrust_real)
-//             {
-//                 delete dat->thrust_real;
-//                 delete dat->thrust_real_sort;
-//             }
-
-//             dat->thrust_real = new dpct::device_vector<double>(
-//                 dat->set->set_capacity * dat->dim);
-//             dat->data_d =
-//                 (char *)dpct::get_raw_pointer(dat->thrust_real->data());
-
-//             dat->thrust_real_sort = new dpct::device_vector<double>(
-//                 dat->set->set_capacity * dat->dim);
-//             temp_char_d =
-//                 (char *)dpct::get_raw_pointer(dat->thrust_real_sort->data());
-//         } 
-//     } 
-//     else if (strcmp(dat->type, "int") == 0 )
-//     {
-//         if (dat->set->size > 0)
-//         {
-//             if (create_new && dat->thrust_int)
-//             {
-//                 delete dat->thrust_int;
-//                 delete dat->thrust_int_sort;
-//             }
-
-//             dat->thrust_int =
-//                 new dpct::device_vector<int>(dat->set->set_capacity * dat->dim);
-//             dat->data_d =
-//                 (char *)dpct::get_raw_pointer(dat->thrust_int->data());
-
-//             dat->thrust_int_sort =
-//                 new dpct::device_vector<int>(dat->set->set_capacity * dat->dim);
-//             temp_char_d =
-//                 (char *)dpct::get_raw_pointer(dat->thrust_int_sort->data());
-//         } 
-//     }
-//     else
-//     {
-//         std::cerr << "opp_create_dat_device_arrays DEVICE not implemented for type: " 
-//             << dat->type << " dat name: " << dat->name << std::endl;
-//         opp_abort();
-//     }
-
-//     if (OPP_DBG) 
-//         opp_printf("opp_create_dat_device_arrays", "Device array of dat [%s][%p][%p] Capacity [%d]", 
-//                 dat->name, dat->data_d, temp_char_d, dat->set->set_capacity * dat->dim);
-// }

@@ -119,8 +119,8 @@ void opp_exit()
     boundingBox.reset();
     comm.reset();
 
-    opp_host_free(OPP_reduct_h);
-    opp_host_free(OPP_consts_h);
+    opp_mem::host_free(OPP_reduct_h);
+    opp_mem::host_free(OPP_consts_h);
 
 #ifdef USE_MPI 
     opp_halo_destroy(); // free memory allocated to halos and mpi_buffers 
@@ -205,8 +205,8 @@ void opp_sycl_init(int argc, char **argv) {
         sycl::device selected_device = selected_devices[int_rank % selected_devices.size()];
         opp_queue = new sycl::queue(selected_device);
 
-        float *test = sycl::malloc_device<float>(1, *opp_queue);
-        sycl::free(test, *opp_queue);
+        float *test = opp_mem::dev_malloc<float>(1);
+        opp_mem::dev_free(test);
         OPP_hybrid_gpu = 1;
     }
     catch (sycl::exception const &exc) {
@@ -241,36 +241,14 @@ void opp_sycl_exit()
     opp_mem::dev_free(OPP_remove_particle_indices_d);
     opp_mem::dev_free(OPP_move_count_d);
 
-    ps_cell_index_dv.clear(); ps_cell_index_dv.shrink_to_fit();
-    ps_swap_indices_dv.clear(); ps_swap_indices_dv.shrink_to_fit();
-    hf_from_indices_dv.clear(); hf_from_indices_dv.shrink_to_fit(); 
-    hf_sequence_dv.clear(); hf_sequence_dv.shrink_to_fit(); 
+    opp_mem::dev_free(hf_from_indices_dp);
+    opp_mem::dev_free(ps_swap_indices_dp);
 
     opp_mem::dev_free(OPP_reduct_d);
     opp_mem::dev_free(OPP_consts_d);
 
     for (auto& a : opp_consts)
         opp_mem::dev_free(a);
-
-    // send_part_cell_idx_dv.clear();
-    // send_part_cell_idx_dv.shrink_to_fit();
-
-    // temp_int_dv.clear();
-    // temp_int_dv.shrink_to_fit();
-
-    // temp_real_dv.clear();
-    // temp_real_dv.shrink_to_fit();
-
-    // OPP_thrust_move_particle_indices_d.clear();
-    // OPP_thrust_move_particle_indices_d.shrink_to_fit();
-
-    // OPP_thrust_move_cell_indices_d.clear();
-    // OPP_thrust_move_cell_indices_d.shrink_to_fit();
-
-    // OPP_thrust_remove_particle_indices_d.clear();
-    // OPP_thrust_remove_particle_indices_d.shrink_to_fit();
-
-    // ps_to_indices_dv.clear(); ps_to_indices_dv.shrink_to_fit(); 
 
     // below are for GPU direct particle communication
     for (auto it = particle_indices_hv.begin(); it != particle_indices_hv.end(); it++) it->second.clear();
@@ -352,7 +330,7 @@ opp_map opp_decl_map_txt(opp_set from, opp_set to, int dim, const char* file_nam
 {
     int* map_data = (int*)opp_load_from_file_core(file_name, from->size, dim, "int", sizeof(int));
     opp_map map = opp_decl_map(from, to, dim, map_data, name);
-    opp_host_free(map_data);
+    opp_mem::host_free(map_data);
 
     return map;
 }
@@ -373,7 +351,7 @@ opp_dat opp_decl_dat_txt(opp_set set, int dim, opp_data_type dtype, const char* 
     else
         dat = opp_decl_dat_core(set, dim, type.c_str(), size, (char*)dat_data, name);
 
-    opp_host_free(dat_data);
+    opp_mem::host_free(dat_data);
 
     return dat;
 }
@@ -576,9 +554,9 @@ void opp_mpi_print_dat_to_txtfile(opp_dat dat, const char *file_name)
     
     print_dat_to_txtfile_mpi(temp, prefixed_file_name.c_str());
 
-    opp_host_free(temp->data);
-    opp_host_free(temp->set);
-    opp_host_free(temp);
+    opp_mem::host_free(temp->data);
+    opp_mem::host_free(temp->set);
+    opp_mem::host_free(temp);
 #endif
 }
 
@@ -672,26 +650,26 @@ void opp_reallocReductArrays(int reduct_bytes)
 {
     if (reduct_bytes > OPP_reduct_bytes) {
         if (OPP_reduct_bytes > 0) {
-            opp_host_free(OPP_reduct_h);
-            sycl::free(OPP_reduct_d, *opp_queue);
+            opp_mem::host_free(OPP_reduct_h);
+            opp_mem::dev_free(OPP_reduct_d);
         }
         OPP_reduct_bytes = 4 * reduct_bytes; // 4 is arbitrary, more than needed
-        OPP_reduct_h = (char *)opp_host_malloc(OPP_reduct_bytes);
-        OPP_reduct_d = (char *)sycl::malloc_device(OPP_reduct_bytes, *opp_queue);
+        OPP_reduct_h = opp_mem::host_malloc<char>(OPP_reduct_bytes);
+        OPP_reduct_d = opp_mem::dev_malloc<char>(OPP_reduct_bytes); // use opp_mem::dev_realloc instead   
     }
 }
 
 //****************************************
 void opp_mvReductArraysToDevice(int reduct_bytes) 
 {
-    opp_queue->memcpy(OPP_reduct_d, OPP_reduct_h, reduct_bytes).wait();
+    opp_mem::copy_host_to_dev<char>(OPP_reduct_d, OPP_reduct_h, reduct_bytes);
 }
 
 //****************************************
 void opp_mvReductArraysToHost(int reduct_bytes) 
 {
     OPP_DEVICE_SYNCHRONIZE();
-    opp_queue->memcpy(OPP_reduct_h, OPP_reduct_d, reduct_bytes).wait();
+    opp_mem::copy_dev_to_host<char>(OPP_reduct_h, OPP_reduct_d, reduct_bytes);
 }
 
 //*******************************************************************************
@@ -701,26 +679,26 @@ void opp_reallocConstArrays(int consts_bytes)
     {
         if (OPP_consts_bytes > 0) 
         {
-            opp_host_free(OPP_consts_h);
-            sycl::free(OPP_consts_d, *opp_queue);
+            opp_mem::host_free(OPP_consts_h);
+            opp_mem::dev_free(OPP_consts_d);
         }
         OPP_consts_bytes = 4 * consts_bytes; // 4 is arbitrary, more than needed
-        OPP_consts_h = (char *)opp_host_malloc(OPP_consts_bytes);
-        OPP_consts_d = (char *)sycl::malloc_device( OPP_consts_bytes, *opp_queue);
+        OPP_consts_h = opp_mem::host_malloc<char>(OPP_consts_bytes);
+        OPP_consts_d = opp_mem::dev_malloc<char>(OPP_consts_bytes); // use opp_mem::dev_realloc instead
     }
 }
 
 //****************************************
 void opp_mvConstArraysToDevice(int consts_bytes) 
 {
-    opp_queue->memcpy(OPP_consts_d, OPP_consts_h, consts_bytes).wait();
+    opp_mem::copy_host_to_dev<char>(OPP_consts_d, OPP_consts_h, consts_bytes);
 }
 
 //****************************************
 void opp_mvConstArraysToHost(int consts_bytes) 
 {
     OPP_DEVICE_SYNCHRONIZE();
-    opp_queue->memcpy(OPP_consts_h, OPP_consts_d, consts_bytes).wait();
+    opp_mem::copy_dev_to_host<char>(OPP_consts_h, OPP_consts_d, consts_bytes);
 }
 
 //*******************************************************************************
