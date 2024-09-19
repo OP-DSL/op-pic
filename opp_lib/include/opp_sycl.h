@@ -46,6 +46,9 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #endif
 
 constexpr bool debug_mem = false;
+constexpr bool debugger = false;
+constexpr int opp_const_threads_per_block = 192;
+constexpr int const_blocks = 200;
 
 #define OPP_GPU_THREADS_PER_BLOCK 32
 
@@ -335,112 +338,6 @@ void opp_reduction(out_acc dat_g, int offset, T dat_l, local_acc temp, sycl::nd_
 }
 
 /*******************************************************************************/
-/*
-This function arranges the multi dimensional values in input array to output array 
-according to the indices provided
-    in_dat_dv - Input array with correct values
-    out_dat_dv - Output array to have the sorted values
-    new_idx_dv - indices of the input array to be arranged in the output array
-    in_capacity - capacity of the input array (useful for multi dimensional dats)
-    out_capacity - capacity of the output array (useful for multi dimensional dats)
-    in_offset - start offset if the input array
-    out_offset - start offset if the output array
-    size - number of dat elements to arrange (usually this is the size of new_idx_dv)
-    dim - dimension of the dat
-*/
-template <class T>
-void copy_according_to_index(const T *in_dat_dv, T *out_dat_dv, const OPP_INT* new_idx_dv,
-        int in_capacity, int out_capacity, int in_offset, int out_offset, int size, int dim)
-{
-    switch (dim)
-    {
-        case 1:
-            std::copy_n(oneapi::dpl::execution::make_device_policy(*opp_queue),
-                oneapi::dpl::make_permutation_iterator(
-                    oneapi::dpl::make_zip_iterator(std::make_tuple(
-                        in_dat_dv + in_offset)),
-                    new_idx_dv),
-                size,
-                oneapi::dpl::make_zip_iterator(std::make_tuple(
-                    out_dat_dv + out_offset)
-                ));
-            break;
-        case 2:
-            std::copy_n(oneapi::dpl::execution::make_device_policy(*opp_queue),
-                oneapi::dpl::make_permutation_iterator(
-                    oneapi::dpl::make_zip_iterator(std::make_tuple(
-                        (in_dat_dv + in_offset),
-                        (in_dat_dv + in_offset + in_capacity))),
-                    new_idx_dv),
-                size,
-                oneapi::dpl::make_zip_iterator(std::make_tuple(
-                    (out_dat_dv + out_offset),
-                    (out_dat_dv + out_offset + out_capacity))));
-            break;
-        case 3:
-            std::copy_n(oneapi::dpl::execution::make_device_policy(*opp_queue),
-                oneapi::dpl::make_permutation_iterator(
-                    oneapi::dpl::make_zip_iterator(std::make_tuple(
-                        (in_dat_dv + in_offset),
-                        (in_dat_dv + in_offset + in_capacity))),
-                    new_idx_dv),
-                size,
-                oneapi::dpl::make_zip_iterator(std::make_tuple(
-                    (out_dat_dv + out_offset),
-                    (out_dat_dv + out_offset + out_capacity))));
-            break;
-        case 4:
-            std::copy_n(oneapi::dpl::execution::make_device_policy(*opp_queue),
-                oneapi::dpl::make_permutation_iterator(
-                    oneapi::dpl::make_zip_iterator(std::make_tuple(
-                        (in_dat_dv + in_offset),
-                        (in_dat_dv + in_offset + in_capacity))),
-                    new_idx_dv),
-                size,
-                oneapi::dpl::make_zip_iterator(std::make_tuple(
-                    (out_dat_dv + out_offset),
-                    (out_dat_dv + out_offset + out_capacity))));
-            break;
-        default:
-            std::cerr << "copy_according_to_index not implemented for dim " << dim << std::endl;
-            exit(-1);
-    }
-}
-
-template <class T>
-void copy_according_to_index(dpct::device_vector<T> *in_dat_dv,
-                             dpct::device_vector<T> *out_dat_dv,
-                             const dpct::device_vector<int> &new_idx_dv,
-                             int in_capacity, int out_capacity, int in_offset,
-                             int out_offset, int size, int dim)
-{
-    copy_according_to_index<T>(
-                        dpct::get_raw_pointer(in_dat_dv->data()), 
-                        dpct::get_raw_pointer(out_dat_dv->data()), 
-                        dpct::get_raw_pointer(new_idx_dv.data()),
-                        in_capacity, out_capacity, in_offset, out_offset, size, dim);
-}
-
-template <class T>
-void copy_according_to_index(const T *in_dat_dv, T *out_dat_dv, const OPP_INT* new_idx_dv,
-        int in_capacity, int out_capacity, int size, int dim)
-{
-    copy_according_to_index(in_dat_dv, out_dat_dv, new_idx_dv, in_capacity, out_capacity, 
-        0, 0, size, dim);
-}
-
-template <class T>
-void copy_according_to_index(dpct::device_vector<T> *in_dat_dv,
-                             dpct::device_vector<T> *out_dat_dv,
-                             const dpct::device_vector<int> &new_idx_dv,
-                             int in_capacity, int out_capacity, int size,
-                             int dim)
-{
-    copy_according_to_index<T>(in_dat_dv, out_dat_dv, new_idx_dv, in_capacity, out_capacity, 
-        0, 0, size, dim);
-}
-
-/*******************************************************************************/
 template <typename T>
 void copy_from(
     const T* in_dat_d, T* out_dat_d, 
@@ -454,8 +351,8 @@ void copy_from(
     if (tid < size) {
         const int idx = from_idx_map[tid];
         for (int d = 0; d < dim; d++) {
-            out_dat_d[out_offset + tid + d * in_stride] = 
-                            in_dat_d[in_offset + idx + d * out_stride];
+            out_dat_d[out_offset + tid + d * out_stride] = 
+                            in_dat_d[in_offset + idx + d * in_stride];
         }
     }
 }
@@ -475,10 +372,54 @@ void copy_from_to(
         const int f_idx = from_idx_map[tid];
         const int t_idx = to_idx_map[tid];
         for (int d = 0; d < dim; d++) {
-            out_dat_d[out_offset + t_idx + d * in_stride] = 
-                            in_dat_d[in_offset + f_idx + d * out_stride];
+            out_dat_d[out_offset + t_idx + d * out_stride] = 
+                            in_dat_d[in_offset + f_idx + d * in_stride];
         }
     }
+}
+
+/*******************************************************************************/
+/*
+This function arranges the multi dimensional values in input array to output array 
+according to the indices provided
+    in_dat_dv - Input array with correct values
+    out_dat_dv - Output array to have the sorted values
+    new_idx_dv - indices of the input array to be arranged in the output array
+    in_capacity - capacity of the input array (useful for multi dimensional dats)
+    out_capacity - capacity of the output array (useful for multi dimensional dats)
+    in_offset - start offset if the input array
+    out_offset - start offset if the output array
+    size - number of dat elements to arrange (usually this is the size of new_idx_dv)
+    dim - dimension of the dat
+*/
+template <class T>
+void copy_according_to_index(const T *in_dat_d, T *out_dat_d, const OPP_INT* from_idx_map,
+        const int in_stride, const int out_stride, const int in_offset, const int out_offset, 
+        const int size, const int dim)
+{
+    const int nblocks  = (size - 1) / opp_const_threads_per_block + 1;
+
+    opp_queue->submit([&](sycl::handler &cgh) {
+        cgh.parallel_for(
+            sycl::nd_range<1>(opp_const_threads_per_block * nblocks, opp_const_threads_per_block),
+            [=](sycl::nd_item<1> item) {
+                copy_from<T>(
+                    in_dat_d, out_dat_d,
+                    from_idx_map,
+                    in_stride, out_stride, 
+                    in_offset, out_offset,
+                    dim, size, 
+                    item);
+            });
+    });
+}
+
+template <class T>
+void copy_according_to_index(const T *in_dat_dv, T *out_dat_dv, const OPP_INT* new_idx_dv,
+        int in_capacity, int out_capacity, int size, int dim)
+{
+    copy_according_to_index(in_dat_dv, out_dat_dv, new_idx_dv, in_capacity, out_capacity, 
+        0, 0, size, dim);
 }
 
 /*******************************************************************************/
@@ -507,15 +448,29 @@ inline void opp_set_stride(OPP_INT*& data_d, OPP_INT& data_h, OPP_INT new_data) 
 
 /*******************************************************************************/
 template <typename T>
-inline void write_T_array_to_file(const T* array, size_t size, const std::string& filename) {
-    std::ofstream outFile(filename);
+inline void write_array_to_file(const T* array, size_t size, const std::string& filename, bool is_host = true) {
+    const T* internal_array = nullptr;
+    std::vector<T> host_vec;
+    if (!is_host) {
+        host_vec.resize(size);
+        opp_mem::copy_dev_to_host<T>(host_vec.data(), array, size);
+        internal_array = host_vec.data();
+    }
+    else {
+        internal_array = array;
+    }
+    const std::string modified_file_name = filename + "_sycl_r"+ std::to_string(OPP_rank) + 
+                                                "_i" + std::to_string(OPP_main_loop_iter);
+    std::ofstream outFile(modified_file_name);
     if (!outFile) {
         std::cerr << "Error opening file: " << filename << std::endl;
         return;
     }
+    if constexpr (std::is_same<T, double>::value)
+        outFile << std::setprecision(25);
     outFile << size << " 1 -- 0 0\n";
     for (int i = 0; i < size; ++i) {
-        outFile << " " << array[i] << "\n";
+        outFile << " " << internal_array[i] << "\n";
     }
     outFile.close();
 }

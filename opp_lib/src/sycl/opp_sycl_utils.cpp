@@ -44,7 +44,7 @@ void opp_create_dat_device_arrays(opp_dat dat, bool create_new)
 
     const size_t alloc_count = (size_t)(dat->set->set_capacity * dat->size);
     dat->data_d = opp_mem::dev_malloc<char>(alloc_count);
-    if (OPP_fill_type != OPP_HoleFill_All)
+    // if (OPP_fill_type != OPP_HoleFill_All)
         dat->data_swap_d = opp_mem::dev_malloc<char>(alloc_count);
 
     if (OPP_DBG) 

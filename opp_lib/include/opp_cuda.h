@@ -531,3 +531,32 @@ public:
 #define OPP_ATOMIC_FETCH_ADD(address, value) atomicAdd(address, value)
 
 /*******************************************************************************/
+template <typename T>
+inline void write_array_to_file(const T* array, size_t size, const std::string& filename, bool is_host = true) {
+    const T* internal_array = nullptr;
+    std::vector<T> host_vec;
+    if (!is_host) {
+        host_vec.resize(size);
+        opp_mem::copy_dev_to_host<T>(host_vec.data(), array, size);
+        internal_array = host_vec.data();
+    }
+    else {
+        internal_array = array;
+    }
+    const std::string modified_file_name = filename + "_cuda_r" + std::to_string(OPP_rank) + 
+                                                "_i" + std::to_string(OPP_main_loop_iter);
+    std::ofstream outFile(modified_file_name);
+    if (!outFile) {
+        std::cerr << "Error opening file: " << filename << std::endl;
+        return;
+    }
+    if constexpr (std::is_same<T, double>::value)
+        outFile << std::setprecision(25);
+    outFile << size << " 1 -- 0 0\n";
+    for (int i = 0; i < size; ++i) {
+        outFile << " " << internal_array[i] << "\n";
+    }
+    outFile.close();
+}
+
+/*******************************************************************************/

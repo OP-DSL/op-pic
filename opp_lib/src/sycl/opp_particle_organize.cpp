@@ -32,9 +32,6 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <opp_sycl.h>
 
-constexpr int opp_const_threads_per_block = 192;
-constexpr int const_blocks = 200;
-
 size_t hf_from_indices_size = 0;
 OPP_INT* hf_from_indices_dp = nullptr; // holefill from indices - starting in reverse order
 size_t ps_swap_indices_size = 0;
@@ -57,7 +54,7 @@ void sort_dat_according_to_index(opp_dat dat, const OPP_INT* swap_indices,
     
     // NOTE: Both commented thrust routine and device_kernel function has approx same performance
     // copy_according_to_index<T>((const T*)dat->data_d, (T*)dat->data_swap_d, 
-    //         (const int *)dpct::get_raw_pointer(swap_indices.data()), set_capacity, 
+    //         swap_indices, set_capacity, 
     //         set_capacity, 0, out_start_idx, size, dat->dim);
 
     T *dat_data = (T *)(dat->data_d);

@@ -277,6 +277,14 @@ void opp_part_pack_device(opp_set set)
         return;
     }
 
+    // Uncomment below if comparing cuda_mpi with sycl_mpi or hip_mpi
+    if (debugger) {
+        thrust::sort_by_key(cellIdx_dv.begin(), cellIdx_dv.end(), i_dv.begin());
+            thrust::sort_by_key(
+                OPP_thrust_move_particle_indices_d.begin(), OPP_thrust_move_particle_indices_d.begin() + OPP_move_count_h, 
+                OPP_thrust_move_cell_indices_d.begin());
+    }
+
     // Since cuda kernel threads are not synced, there could be a random order
     // thrust::sort(OPP_thrust_move_particle_indices_d.begin(), 
     //     OPP_thrust_move_particle_indices_d.begin() + OPP_move_count_h);

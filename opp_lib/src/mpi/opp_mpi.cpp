@@ -378,6 +378,9 @@ void opp_init_particle_move(opp_set set, int nargs, opp_arg *args)
         }
     }
 
+    if (OPP_DBG) opp_printf("opp_init_particle_move", "comm_iter=%d start=%d end=%d", 
+                OPP_comm_iteration, OPP_iter_start, OPP_iter_end);
+
     OPP_mesh_relation_data = ((int *)set->mesh_relation_dat->data); 
 }
 
@@ -480,7 +483,9 @@ void opp_partition(std::string lib_name, opp_set prime_set, opp_map prime_map, o
 //*******************************************************************************
 void opp_mpi_print_dat_to_txtfile(opp_dat dat, const char *file_name) 
 {
-    const std::string prefixed_file_name = std::string("mpi_files/MPI_") + std::to_string(OPP_comm_size) + std::string("_") + file_name;
+    const std::string prefixed_file_name = std::string("mpi_files/MPI_") + 
+                std::to_string(OPP_comm_size) + std::string("_iter") + 
+                std::to_string(OPP_main_loop_iter) + std::string("_") + file_name;
     // rearrange data back to original order in mpi
     opp_dat temp = opp_mpi_get_data(dat);
     

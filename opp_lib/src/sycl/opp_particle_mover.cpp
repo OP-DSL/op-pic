@@ -33,7 +33,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #define MPI_COUNT_EXCHANGE 0
 #define MPI_TAG_PART_EX 1
-const bool verbose_profile = false;
+constexpr bool verbose_profile = false;
 
 int *OPP_move_count_d = nullptr;
 int OPP_move_count_h = 0;
@@ -211,6 +211,9 @@ void opp_init_particle_move(opp_set set, int nargs, opp_arg *args)
         }
     }
 
+    if (OPP_DBG) opp_printf("opp_init_particle_move", "comm_iter=%d start=%d end=%d", 
+                    OPP_comm_iteration, OPP_iter_start, OPP_iter_end);
+
     OPP_mesh_relation_data = ((OPP_INT *)set->mesh_relation_dat->data); 
     OPP_mesh_relation_data_d = ((OPP_INT *)set->mesh_relation_dat->data_d); 
 }
@@ -230,13 +233,41 @@ void opp_part_pack_device(opp_set set)
         return;
     }
 
+    // use this routine if comparing dat values of sycl_mpi vs cuda_mpi
+    if (debugger) {
+        dpl::sort_by_key(dpl::execution::make_device_policy(*opp_queue), 
+            OPP_move_particle_indices_d, OPP_move_particle_indices_d + OPP_move_count_h,
+            OPP_move_cell_indices_d);
+    }
+
     if (verbose_profile) opp_profiler->start("Mv_Pack1");
     std::vector<OPP_INT> send_part_cell_idx_hv(OPP_move_count_h);
     opp_mem::copy_dev_to_host<OPP_INT>(send_part_cell_idx_hv.data(), 
                             OPP_move_cell_indices_d, OPP_move_count_h);
     if (verbose_profile) opp_profiler->end("Mv_Pack1");
 
-    // TODO : Mv_Pack2 (CPU) and Mv_Pack3 (GPU/CPU Copy) could be overlapped!!!
+    std::map<int, std::vector<char>> move_dat_data_map;
+
+    // copy the particles to send (to device arrays)
+    if (verbose_profile) opp_profiler->start("Mv_Pack3");
+    for (auto& dat : *(set->particle_dats)) {
+
+        const size_t bytes_to_copy = (OPP_move_count_h * dat->size);  
+        auto& move_dat_data = move_dat_data_map[dat->index];
+        move_dat_data.resize(bytes_to_copy);
+
+        if (strcmp(dat->type, "double") == 0) {
+            copy_according_to_index<OPP_REAL>((OPP_REAL*)dat->data_d, 
+                    (OPP_REAL*)dat->data_swap_d, OPP_move_particle_indices_d, 
+                    dat->set->set_capacity, OPP_move_count_h, OPP_move_count_h, dat->dim);
+        }
+        else if (strcmp(dat->type, "int") == 0) {
+            copy_according_to_index<OPP_INT>((OPP_INT*)dat->data_d, 
+                    (OPP_INT*)dat->data_swap_d, OPP_move_particle_indices_d, 
+                    dat->set->set_capacity, OPP_move_count_h, OPP_move_count_h, dat->dim);
+        }
+    }      
+    if (verbose_profile) opp_profiler->end("Mv_Pack3");
 
     // enrich the particles to communicate with the correct external cell index and mpi rank
     if (verbose_profile) opp_profiler->start("Mv_Pack2");
@@ -256,36 +287,18 @@ void opp_part_pack_device(opp_set set)
         opp_part_mark_move(set, index, it->second); // it->second is the local cell index in foreign rank
     }
     if (verbose_profile) opp_profiler->end("Mv_Pack2");
-    
-    std::map<int, std::vector<char>> move_dat_data_map;
 
     // download the particles to send
     if (verbose_profile) opp_profiler->start("Mv_Pack3");
+    OPP_DEVICE_SYNCHRONIZE();
     for (auto& dat : *(set->particle_dats)) {
 
         const size_t bytes_to_copy = (OPP_move_count_h * dat->size);
-        
         auto& move_dat_data = move_dat_data_map[dat->index];
         move_dat_data.resize(bytes_to_copy);
 
-        if (strcmp(dat->type, "double") == 0) {
-
-            copy_according_to_index<OPP_REAL>((OPP_REAL*)dat->data_d, 
-                    (OPP_REAL*)dat->data_swap_d, OPP_move_particle_indices_d, 
-                    dat->set->set_capacity, OPP_move_count_h, OPP_move_count_h, dat->dim);
-
-            opp_mem::copy_dev_to_host<char>(
-                        move_dat_data.data(), dat->data_swap_d, bytes_to_copy);
-        }
-        else if (strcmp(dat->type, "int") == 0) {
-
-            copy_according_to_index<OPP_INT>((OPP_INT*)dat->data_d, 
-                    (OPP_INT*)dat->data_swap_d, OPP_move_particle_indices_d, 
-                    dat->set->set_capacity, OPP_move_count_h, OPP_move_count_h, dat->dim);
-
-            opp_mem::copy_dev_to_host<char>(
-                        move_dat_data.data(), dat->data_swap_d, bytes_to_copy);
-        }
+        opp_mem::copy_dev_to_host<char>(
+                move_dat_data.data(), dat->data_swap_d, bytes_to_copy, true);
     }      
     if (verbose_profile) opp_profiler->end("Mv_Pack3");
 
@@ -323,6 +336,8 @@ void opp_part_pack_device(opp_set set)
     }
     if (verbose_profile) opp_profiler->end("Mv_Pack4");
 
+    OPP_DEVICE_SYNCHRONIZE();
+
     // iterate over all the ranks and pack to mpi buffers using SOA
     if (verbose_profile) opp_profiler->start("Mv_Pack5");
     for (auto& move_indices_per_rank : opp_part_move_indices[set->index]) {
@@ -340,6 +355,7 @@ void opp_part_pack_device(opp_set set)
             int64_t element_size = (int64_t)(dat->size / dat->dim);
 
             if (dat->is_cell_index) {
+                int* tmp = (int*)&(send_rank_buf.buf_export[send_rank_buf.buf_export_index + disp]);
                 for (const auto& move_info : move_indices_vec) {
                     
                     // Need to copy the cell index of the foreign rank, to correctly unpack in the foreign rank
@@ -348,6 +364,7 @@ void opp_part_pack_device(opp_set set)
                  
                     disp += dat_size;
                 }
+
             }
             else {
                 for (int d = 0; d < dat->dim; d++) {
@@ -373,17 +390,19 @@ void opp_part_pack_device(opp_set set)
 
     // This particle is already packed, Need to remove from the current rank
     if (verbose_profile) opp_profiler->start("Mv_Pack6");
-    struct CopyMaxCellIndexFunctor {
-        OPP_INT* arr;
-        CopyMaxCellIndexFunctor(int* arr) : arr(arr) {}
-        void operator()(int index) const {
-            arr[index] = MAX_CELL_INDEX;
-        }
-    };
-    std::for_each(oneapi::dpl::execution::make_device_policy(*opp_queue),
-        OPP_move_particle_indices_d,
-        OPP_move_particle_indices_d + OPP_move_count_h,
-        CopyMaxCellIndexFunctor((OPP_INT*)set->mesh_relation_dat->data_d));
+    const OPP_INT size = OPP_move_count_h;
+    OPP_INT* cid_mapping = (OPP_INT*)set->mesh_relation_dat->data_d;
+    const OPP_INT* move_particle_indices = OPP_move_particle_indices_d;
+    opp_queue->submit([&](sycl::handler& cgh) {
+        cgh.parallel_for(sycl::nd_range<1>(OPP_gpu_threads_per_block * const_blocks, OPP_gpu_threads_per_block),
+            [=](sycl::nd_item<1> item) {
+                for (int i = item.get_global_linear_id(); i < size; i += item.get_global_range()[0] ){
+                    const int idx = move_particle_indices[i];
+                    cid_mapping[idx] = MAX_CELL_INDEX;
+                }
+            }
+        );
+    }).wait();
     if (verbose_profile) opp_profiler->end("Mv_Pack6");
 
     opp_profiler->end("Mv_Pack");
