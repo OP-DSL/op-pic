@@ -58,6 +58,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #define cutilCheckMsg(msg) __cutilCheckMsg(msg, __FILE__, __LINE__)
 
 #define OPP_GPU_THREADS_PER_BLOCK 32
+constexpr bool debugger = false;
 
 #define OPP_PARTICLE_MOVE_DONE { m.move_status = OPP_MOVE_DONE; }
 #define OPP_PARTICLE_NEED_MOVE { m.move_status = OPP_NEED_MOVE; }

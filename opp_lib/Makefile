@@ -24,7 +24,7 @@ HIPCC      = $(HIP_COMPILER)
 SYCLCC     = icpx
 
 CPPFLAGS   = -std=c++17 -Wall -fPIC -march=native $(CPPFLAGS_ADD)
-NVCCFLAGS  = -std=c++17 --extended-lambda -m64 -Xptxas -dlcm=ca -Xptxas=-v $(NVCCFLAGS_ADD)
+NVCCFLAGS  = -std=c++17 --extended-lambda -m64 -Xptxas -dlcm=ca $(NVCCFLAGS_ADD)
 HIPCCFLAGS = $(HIPCCFLAGS_ADD) -std=c++17 -isystem -D__HIP_PLATFORM_AMD__ -munsafe-fp-atomics -march=native 
 SYCLFLAGS  = -w -fsycl -std=c++17 $(SYCLFLAGS_ADD) -DUSE_SYCL
 
@@ -64,6 +64,7 @@ ifeq ($(EXT_HALOS), 0)
 	CPPFLAGS   += -DNO_EXTENDED_HALOS
 	NVCCFLAGS  += -DNO_EXTENDED_HALOS
 	HIPCCFLAGS += -DNO_EXTENDED_HALOS
+	SYCLFLAGS  += -DNO_EXTENDED_HALOS
 endif
 
 PETSC ?= 0
@@ -318,6 +319,7 @@ omp_mpi: clean mklib
 clean: 
 	     rm -rf *.o *.d *.a
 	     rm -rf $(OBJ)/*
-	     rm -rf $(LIB)/*
+
+#  rm -rf $(LIB)/*
 
 # ------------------------------------------------------------------------------------------
