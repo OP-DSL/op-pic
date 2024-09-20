@@ -299,10 +299,14 @@ opp_map opp_decl_map(opp_set from, opp_set to, int dim, int *imap, char const *n
 }
 
 //****************************************
-// TODO : Remove once API of mpi/opp_mpi_core.cpp:168 is fixed
+// TODO : Remove once API of mpi/opp_mpi_core.cpp:168 and hdf5/opp_mpi_hdf5.cpp:508 is fixed
 opp_dat opp_decl_mesh_dat(opp_set set, int dim, opp_data_type dtype, void *data, char const *name)
 {
     return opp_decl_dat(set, dim, dtype, data, name);
+}
+opp_dat opp_decl_part_dat(opp_set set, int dim, opp_data_type dtype, void *data, char const *name, bool cell_index)
+{
+    return opp_decl_dat(set, dim, dtype, data, name, cell_index);
 }
 
 //****************************************
@@ -448,7 +452,7 @@ void opp_print_dat_to_txtfile(opp_dat dat, const char *file_name_prefix, const c
     if (OPP_DBG) opp_printf("opp_print_dat_to_txtfile", "writing file [%s %s] data %p data_d %p", 
                     file_name_prefix, file_name_suffix, dat->data, dat->data_d);
 
-    if (dat->dirty_hd == Dirty::Host) 
+    // if (dat->dirty_hd == Dirty::Host) 
         opp_download_dat(dat);
 
     std::string prefix = std::string(file_name_prefix) + "_sycl";

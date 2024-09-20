@@ -15,7 +15,7 @@ NVCC       = nvcc
 HIPCC      = $(HIP_COMPILER)
 SYCLCC     = icpx
 
-CPPFLAGS   = -std=c++14 -Wall -fPIC -march=native $(CPPFLAGS_ADD) 
+CPPFLAGS   = -std=c++17 -Wall -fPIC -march=native $(CPPFLAGS_ADD) 
 NVCCFLAGS  = --extended-lambda -m64 -Xptxas -dlcm=ca $(NVCCFLAGS_ADD) -DUSE_THRUST 
 HIPCCFLAGS = $(HIPCCFLAGS_ADD) -std=c++17 -isystem -D__HIP_PLATFORM_AMD__ -munsafe-fp-atomics -DUSE_THRUST -march=native
 SYCLFLAGS  = -w -fsycl -std=c++17 $(SYCLFLAGS_ADD) -DUSE_SYCL 
@@ -270,6 +270,8 @@ opp_kernels+sycl_mpi:
 		 $(MPICPP) $(SYCLFLAGS) -DUSE_MPI -c sycl/opp_kernels.cpp -o $(OBJ)/opp_kernels_sycl_mpi.o $(ALL_INC) 
 field_solver+sycl_mpi:
 		 $(MPICPP) $(SYCLFLAGS) -DUSE_MPI -c field_solver/field_solver.cpp -o $(OBJ)/field_solver_sycl_mpi.o $(ALL_INC) 
+fempic_opp_hdf5+sycl_mpi:
+		 $(MPICPP) $(SYCLFLAGS) -DUSE_MPI -c fempic_hdf5_opp.cpp -o $(OBJ)/fempic_hdf5_opp_sycl_mpi.o $(ALL_INC)
 opp_mpi_hdf5+sycl_mpi:
 		 $(MPICPP) $(SYCLFLAGS) -DUSE_MPI -c $(OPP_PATH)/src/hdf5/opp_mpi_hdf5.cpp -o $(OBJ)/opp_mpi_hdf5_sycl_mpi_hdf5.o $(ALL_INC)
 
@@ -280,12 +282,12 @@ sycl_mpi: mklib fempic_opp+sycl_mpi opp_kernels+sycl_mpi field_solver+sycl_mpi
 			$(OBJ)/field_solver_sycl_mpi.o \
 			$(ALL_LIBS) $(SYCL_LIB) -lopp_sycl_mpi
 
-sycl_mpi_hdf5: mklib fempic_opp+sycl_mpi opp_kernels+sycl_mpi field_solver+sycl_mpi opp_mpi_hdf5+sycl_mpi
+sycl_mpi_hdf5: mklib fempic_opp_hdf5+sycl_mpi opp_kernels+sycl_mpi field_solver+sycl_mpi opp_mpi_hdf5+sycl_mpi
 		 $(MPICPP) $(SYCLFLAGS) -DUSE_MPI -o $(BIN)/sycl_mpi_hdf5 \
-		 	$(OBJ)/fempic_hdf5_opp_sycl_mpi_hdf5.o \
-			$(OBJ)/opp_kernels_sycl_mpi_hdf5.o \
+		 	$(OBJ)/fempic_hdf5_opp_sycl_mpi.o \
+			$(OBJ)/opp_kernels_sycl_mpi.o \
 			$(OBJ)/opp_mpi_hdf5_sycl_mpi_hdf5.o \
-			$(OBJ)/field_solver_sycl_mpi_hdf5.o \
+			$(OBJ)/field_solver_sycl_mpi.o \
 			$(ALL_LIBS) $(SYCL_LIB) -lopp_sycl_mpi -lhdf5
 
 # ----------------------------------------------------------------------------------------------------------------------
