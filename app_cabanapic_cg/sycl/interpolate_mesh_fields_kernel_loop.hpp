@@ -226,7 +226,7 @@ void opp_par_loop_all__interpolate_mesh_fields_kernel(opp_set set, opp_iterate_t
     }
 
     opp_set_dirtybit_grouped(nargs, args, Device_GPU);
-    opp_queue->wait();   
+    OPP_DEVICE_SYNCHRONIZE();   
  
     opp_profiler->end("interpolate_mesh_fields_kernel");
 }

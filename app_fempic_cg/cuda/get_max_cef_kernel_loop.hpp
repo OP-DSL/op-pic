@@ -133,7 +133,7 @@ void opp_par_loop_all__get_max_cef_kernel(opp_set set, opp_iterate_type,
     opp_mpi_reduce(&args[1], arg1_host_data);
 
     opp_set_dirtybit_grouped(nargs, args, Device_GPU);
-    cutilSafeCall(cudaDeviceSynchronize());   
+    OPP_DEVICE_SYNCHRONIZE();   
  
     opp_profiler->end("get_max_cef_kernel");
 }

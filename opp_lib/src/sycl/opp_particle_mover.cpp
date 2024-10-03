@@ -31,18 +31,73 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "opp_sycl.h"
 
-#define MPI_COUNT_EXCHANGE 0
-#define MPI_TAG_PART_EX 1
 constexpr bool verbose_profile = false;
-
-int *OPP_move_count_d = nullptr;
-int OPP_move_count_h = 0;
 
 void opp_part_pack_device(opp_set set);
 void opp_part_unpack_device(opp_set set);
 void particle_hole_fill_device(opp_set set);
 void opp_part_pack_and_exchange_device_direct(opp_set set);
 void opp_part_unpack_device_direct(opp_set set);
+
+//*******************************************************************************
+OPP_INT *OPP_move_count_d = nullptr;
+OPP_INT OPP_move_count_h = 0;
+
+OPP_INT *OPP_move_particle_indices_d = nullptr;
+size_t opp_move_particle_indices_h = 0;
+
+OPP_INT *OPP_move_cell_indices_d = nullptr;
+size_t opp_move_cell_indices_size_h = 0;
+
+OPP_INT *OPP_remove_particle_indices_d = nullptr;
+size_t opp_remove_particle_indices_size_h = 0;
+
+//*******************************************************************************
+void opp_init_particle_move(opp_set set, int nargs, opp_arg *args)
+{ 
+    opp_init_particle_move_core(set);
+
+    opp_mem::copy_host_to_dev<OPP_INT>(set->particle_remove_count_d, &(set->particle_remove_count), 1);
+
+    const size_t buffer_alloc_size = (size_t)(set->set_capacity / 4);
+    if (buffer_alloc_size > opp_move_particle_indices_h) {     
+
+        opp_mem::dev_resize<OPP_INT>(OPP_move_particle_indices_d, 
+                        opp_move_particle_indices_h, buffer_alloc_size);
+        
+        opp_mem::dev_resize<OPP_INT>(OPP_move_cell_indices_d,  
+                        opp_move_cell_indices_size_h, buffer_alloc_size);
+
+        opp_mem::dev_resize<OPP_INT>(OPP_remove_particle_indices_d, 
+                        opp_remove_particle_indices_size_h, buffer_alloc_size);
+    }
+
+    if (OPP_move_count_d == nullptr)
+        OPP_move_count_d = opp_mem::dev_malloc<OPP_INT>(1);
+    OPP_move_count_h = 0;
+    opp_mem::copy_host_to_dev<OPP_INT>(OPP_move_count_d, &OPP_move_count_h, 1);
+
+    if (OPP_comm_iteration == 0) {
+        OPP_iter_start               = 0;
+        OPP_iter_end                 = set->size;
+        OPP_part_comm_count_per_iter = 0;    
+    }
+    else {
+        // need to change the arg pointers since communication could change due to realloc
+        for (int i = 0; i < nargs; i++) {
+            if (args[i].argtype == OPP_ARG_DAT && args[i].dat->set->is_particle) {
+                args[i].data = args[i].dat->data;
+                args[i].data_d = args[i].dat->data_d;
+            }
+        }
+    }
+
+    if (OPP_DBG) opp_printf("opp_init_particle_move", "comm_iter=%d start=%d end=%d", 
+                    OPP_comm_iteration, OPP_iter_start, OPP_iter_end);
+
+    OPP_mesh_relation_data = ((OPP_INT *)set->mesh_relation_dat->data); 
+    OPP_mesh_relation_data_d = ((OPP_INT *)set->mesh_relation_dat->data_d); 
+}
 
 //*******************************************************************************
 bool opp_finalize_particle_move(opp_set set)
@@ -88,6 +143,7 @@ bool opp_finalize_particle_move(opp_set set)
 
             if (OPP_DBG) 
                 opp_printf("opp_finalize_particle_move", "hole fill set [%s]", set->name);
+            
             opp_profiler->start("Mv_holefill");
             particle_hole_fill_device(set);
             opp_profiler->end("Mv_holefill");
@@ -160,64 +216,6 @@ bool opp_finalize_particle_move(opp_set set)
 #endif
 }
 
-//*******************************************************************************
-
-OPP_INT *OPP_move_particle_indices_d = nullptr;
-size_t opp_move_particle_indices_h = 0;
-
-OPP_INT *OPP_move_cell_indices_d = nullptr;
-size_t opp_move_cell_indices_size_h = 0;
-
-OPP_INT *OPP_remove_particle_indices_d = nullptr;
-size_t opp_remove_particle_indices_size_h = 0;
-
-//*******************************************************************************
-void opp_init_particle_move(opp_set set, int nargs, opp_arg *args)
-{ 
-    opp_init_particle_move_core(set);
-
-    opp_mem::dev_memcpy<OPP_INT>(set->particle_remove_count_d, &(set->particle_remove_count), 1);
-
-    const size_t buffer_alloc_size = (size_t)(set->set_capacity / 4);
-    if (buffer_alloc_size > opp_move_particle_indices_h) {     
-
-        opp_mem::dev_resize<OPP_INT>(OPP_move_particle_indices_d, 
-                        opp_move_particle_indices_h, buffer_alloc_size);
-        
-        opp_mem::dev_resize<OPP_INT>(OPP_move_cell_indices_d,  
-                        opp_move_cell_indices_size_h, buffer_alloc_size);
-
-        opp_mem::dev_resize<OPP_INT>(OPP_remove_particle_indices_d, 
-                        opp_remove_particle_indices_size_h, buffer_alloc_size);
-    }
-
-    if (OPP_move_count_d == nullptr)
-        OPP_move_count_d = opp_mem::dev_malloc<OPP_INT>(1);
-    OPP_move_count_h = 0;
-    opp_mem::dev_memcpy<OPP_INT>(OPP_move_count_d, &OPP_move_count_h, 1);
-
-    if (OPP_comm_iteration == 0) {
-        OPP_iter_start               = 0;
-        OPP_iter_end                 = set->size;
-        OPP_part_comm_count_per_iter = 0;    
-    }
-    else {
-        // need to change the arg pointers since communication could change due to realloc
-        for (int i = 0; i < nargs; i++) {
-            if (args[i].argtype == OPP_ARG_DAT && args[i].dat->set->is_particle) {
-                args[i].data = args[i].dat->data;
-                args[i].data_d = args[i].dat->data_d;
-            }
-        }
-    }
-
-    if (OPP_DBG) opp_printf("opp_init_particle_move", "comm_iter=%d start=%d end=%d", 
-                    OPP_comm_iteration, OPP_iter_start, OPP_iter_end);
-
-    OPP_mesh_relation_data = ((OPP_INT *)set->mesh_relation_dat->data); 
-    OPP_mesh_relation_data_d = ((OPP_INT *)set->mesh_relation_dat->data_d); 
-}
-
 // Cannot use multiple packs before sending them, if opp_part_pack() is called multiple times 
 // with PACK_SOA, the communication data may get currupted
 //*******************************************************************************
@@ -233,7 +231,7 @@ void opp_part_pack_device(opp_set set)
         return;
     }
 
-    // use this routine if comparing dat values of sycl_mpi vs cuda_mpi
+    // Uncomment below if comparing sycl_mpi with cuda_mpi or hip_mpi
     if (debugger) {
         dpl::sort_by_key(dpl::execution::make_device_policy(*opp_queue), 
             OPP_move_particle_indices_d, OPP_move_particle_indices_d + OPP_move_count_h,
@@ -351,11 +349,10 @@ void opp_part_pack_device(opp_set set)
         for (auto& dat : *(set->particle_dats)) {
             auto& move_dat_data = move_dat_data_map[dat->index];
 
-            int64_t dat_size = (int64_t)dat->size;
-            int64_t element_size = (int64_t)(dat->size / dat->dim);
+            const int64_t dat_size = (int64_t)dat->size;
+            const int64_t element_size = (int64_t)(dat->size / dat->dim);
 
             if (dat->is_cell_index) {
-                int* tmp = (int*)&(send_rank_buf.buf_export[send_rank_buf.buf_export_index + disp]);
                 for (const auto& move_info : move_indices_vec) {
                     
                     // Need to copy the cell index of the foreign rank, to correctly unpack in the foreign rank
@@ -364,7 +361,6 @@ void opp_part_pack_device(opp_set set)
                  
                     disp += dat_size;
                 }
-
             }
             else {
                 for (int d = 0; d < dat->dim; d++) {
@@ -449,7 +445,7 @@ void opp_part_unpack_device(opp_set set)
 
             opp_part_neigh_buffers& recv_rank_buf = recv_buffers->buffers[recv_rank];
 
-            int64_t receive_count = recv_buffers->import_counts[recv_rank];
+            const int64_t recv_count = recv_buffers->import_counts[recv_rank];
             int64_t disp = 0;
 
             for (size_t dat_idx = 0; dat_idx < particle_dats.size(); dat_idx++) {
@@ -461,20 +457,20 @@ void opp_part_unpack_device(opp_set set)
 
                 for (int i = 0; i < dat->dim; i++) {
                     memcpy(&(temp_data[element_size * (i * new_part_count + current_recv_count)]), 
-                        &(recv_rank_buf.buf_import[disp]), element_size * receive_count);
+                        &(recv_rank_buf.buf_import[disp]), element_size * recv_count);
 
-                    disp += element_size * receive_count; 
+                    disp += element_size * recv_count; 
                 }                
             }
 
-            current_recv_count += receive_count;
+            current_recv_count += recv_count;
         }
 
         // copy to device
         for (size_t dat_idx = 0; dat_idx < particle_dats.size(); dat_idx++) {
 
             opp_dat dat = particle_dats[dat_idx];
-            std::vector<char>& temp_data = temp_data_vec[dat_idx];
+            const std::vector<char>& temp_data = temp_data_vec[dat_idx];
 
             const size_t bytes_to_copy_per_dim = new_part_count * dat->size / dat->dim;
             const int element_size = dat->size / dat->dim;
@@ -505,7 +501,8 @@ void opp_part_unpack_device(opp_set set)
 
 // Below is for MPI GPU direct comms
 //*******************************************************************************
-
+#define MPI_COUNT_EXCHANGE 0
+#define MPI_TAG_PART_EX 1
 
 void copy_intX(const int* in_dat_d, int* out_dat_d, const int* indices,
                     const int in_stride, const int out_stride, const int dim, const int size,

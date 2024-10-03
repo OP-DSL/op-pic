@@ -45,17 +45,11 @@ ifeq ($(IEEE), 1)
 	HIPCCFLAGS  += -fmad=false -ftz=false -prec-div=true -prec-sqrt=true
 endif
 
-CUDA ?= 0
-ifeq ($(CUDA), 1)
-	CUDA_INC   = -I$(CUDA_INSTALL_PATH)/include
-	CUDA_LIB   = -L$(CUDA_INSTALL_PATH)/lib64 -lcudart -lcuda
-endif
+CUDA_INC   = -I$(CUDA_INSTALL_PATH)/include
+CUDA_LIB   = -L$(CUDA_INSTALL_PATH)/lib64 -lcudart -lcuda
 
-HIP ?= 0
-ifeq ($(HIP), 1)
-	HIP_INC   = -I$(ROCM_INSTALL_DIR)/include -I$(ROCM_THRUST_DIR)/include -I$(ROCM_PRIM_DIR)/include
-	HIP_LIB   = -L$(ROCM_INSTALL_DIR)/lib -lamdhip64
-endif
+HIP_INC   = -I$(ROCM_INSTALL_DIR)/include -I$(ROCM_THRUST_DIR)/include -I$(ROCM_PRIM_DIR)/include
+HIP_LIB   = -L$(ROCM_INSTALL_DIR)/lib -lamdhip64
 
 ALL_INC    += -I$(OPP_PATH)/include
 ALL_LIBS   += -L$(OPP_PATH)/lib
@@ -112,7 +106,7 @@ omp_mpi: mklib $(OBJ)/advec_opp_omp_mpi.o $(OBJ)/opp_kernels_omp_mpi.o
 # ------------------------------------------------------------------------------------------
 $(OBJ)/advec_opp_cuda.o: advec_opp.cpp
 	 $(CPP) $(CPPFLAGS) -DUSE_CUDA -c advec_opp.cpp -o $@ $(ALL_INC)
-$(OBJ)/opp_kernels_cuda.o: cuda/opp_kernels.cpp
+$(OBJ)/opp_kernels_cuda.o: cuda/opp_kernels.cu
 	 $(NVCC) $(NVCCFLAGS) -DUSE_CUDA -c $< -o $@ $(ALL_INC) $(CUDA_INC)
 cuda: mklib $(OBJ)/advec_opp_cuda.o $(OBJ)/opp_kernels_cuda.o
 	 $(CPP) $(CPPFLAGS) -o $(BIN)/cuda \
@@ -123,7 +117,7 @@ cuda: mklib $(OBJ)/advec_opp_cuda.o $(OBJ)/opp_kernels_cuda.o
 # ------------------------------------------------------------------------------------------
 $(OBJ)/advec_opp_cuda_mpi.o: advec_opp.cpp
 	 $(MPICPP) $(CPPFLAGS) -DUSE_CUDA -DUSE_MPI -c advec_opp.cpp -o $@ $(ALL_INC) $(CUDA_INC)
-$(OBJ)/opp_kernels_cuda_mpi.o: cuda/opp_kernels.cpp
+$(OBJ)/opp_kernels_cuda_mpi.o: cuda/opp_kernels.cu
 	 $(NVCC) $(NVCCFLAGS) -DUSE_CUDA -DUSE_MPI -c $< -o $@ $(ALL_INC) $(CUDA_INC)
 cuda_mpi: mklib $(OBJ)/advec_opp_cuda_mpi.o $(OBJ)/opp_kernels_cuda_mpi.o
 	 $(MPICPP) $(CPPFLAGS) -DUSE_MPI -o $(BIN)/cuda_mpi \

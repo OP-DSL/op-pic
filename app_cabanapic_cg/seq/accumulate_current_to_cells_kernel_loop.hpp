@@ -4,16 +4,16 @@
 //*********************************************
 
 namespace opp_k3 {
-enum CellAcc {
-    jfx = 0 * 4,
-    jfy = 1 * 4,
-    jfz = 2 * 4,
-};
-
 enum Dim {
     x = 0,
     y = 1,
     z = 2,
+};
+
+enum CellAcc {
+    jfx = 0 * 4,
+    jfy = 1 * 4,
+    jfz = 2 * 4,
 };
 
 inline void accumulate_current_to_cells_kernel(

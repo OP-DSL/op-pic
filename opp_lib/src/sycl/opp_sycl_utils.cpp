@@ -68,7 +68,7 @@ void opp_download_dat(opp_dat dat)
         std::vector<char> tmp_data(dat->size * set_size);
         opp_mem::copy_dev_to_host<char>(tmp_data.data(), dat->data_d, set_size * dat->size);
 
-        int element_size = dat->size / dat->dim;
+        const int element_size = dat->size / dat->dim;
         for (int i = 0; i < dat->dim; i++) {
             for (int j = 0; j < set_size; j++) {
                 for (int c = 0; c < element_size; c++) {
@@ -192,33 +192,3 @@ void opp_upload_particle_set(opp_set particles_set, bool realloc)
         opp_upload_dat(current_dat);
     }  
 }
-
-
-
-
-
-
-// TO BE DISCARDED --- Use opp_mem:: routines
-//****************************************
-
-//*******************************************************************************
-void* opp_host_malloc(size_t size)
-{
-    return malloc(size);
-}
-
-//*******************************************************************************
-void* opp_host_realloc(void* ptr, size_t new_size)
-{
-    return realloc(ptr, new_size);
-}
-
-//*******************************************************************************
-void opp_host_free(void* ptr)
-{
-    if (ptr)
-        free(ptr);
-    ptr = nullptr;
-}
-
-//*******************************************************************************

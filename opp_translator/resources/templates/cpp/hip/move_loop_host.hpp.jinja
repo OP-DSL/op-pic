@@ -44,6 +44,93 @@ __device__ inline bool opp_part_check_status_hip(char& move_flag, bool& iter_one
     // cell_id is an own cell and move_flag == OPP_NEED_MOVE
     return true;
 }
+
+{% if lh is indirect and lh.args|dat|indirect|reduction|length > 0 and config.seg_red %}
+// Segmented Reductions Routines 
+// --------------------------------------------------------------
+__global__ void assign_values( 
+    const OPP_INT *__restrict keys,
+    const OPP_REAL *__restrict values,
+    OPP_REAL *__restrict dat,
+    const int start,
+    const int end) 
+{
+    const int tid = threadIdx.x + blockIdx.x * blockDim.x;
+
+    if (tid + start < end) 
+    {
+        const int n = tid + start;
+        const int mapping = keys[n];  
+        dat[mapping] += values[n];
+    }
+}
+
+//--------------------------------------------------------------
+__global__ void sequence_OPP_INT_values( 
+    OPP_INT *__restrict values,
+    const int start,
+    const int end) 
+{
+    const int tid = threadIdx.x + blockIdx.x * blockDim.x;
+
+    if (tid + start < end) 
+    {
+        const int n = tid + start;
+        values[n] = n; 
+    }
+}
+
+//--------------------------------------------------------------
+__global__ void reset_OPP_INT_values( 
+    OPP_INT *__restrict values,
+    const int start,
+    const int end) 
+{
+    const int tid = threadIdx.x + blockIdx.x * blockDim.x;
+
+    if (tid + start < end) 
+    {
+        const int n = tid + start;
+        values[n] = 0; 
+    }
+}
+
+//--------------------------------------------------------------
+__global__ void reset_OPP_REAL_values( 
+    OPP_REAL *__restrict values,
+    const int start,
+    const int end) 
+{
+    const int tid = threadIdx.x + blockIdx.x * blockDim.x;
+
+    if (tid + start < end) 
+    {
+        const int n = tid + start;
+        values[n] = 0.0; 
+    }
+}
+
+//--------------------------------------------------------------
+__global__ void assign_values_by_key( 
+    const OPP_INT *__restrict indices,
+    const OPP_REAL *__restrict values_in,
+    OPP_REAL *__restrict values_out,
+    const int start, const int end, const int dim) 
+{
+    const int tid = threadIdx.x + blockIdx.x * blockDim.x;
+
+    if (tid + start < end) 
+    {
+        const int n = tid + start;
+        const int idx = indices[n];
+
+        for (int d = 0; d < dim; d++) {
+            values_out[n + d * opp_k2_sr_set_stride_d] = values_in[idx + d * opp_k2_sr_set_stride_d];
+        }
+    }
+}
+
+{% endif %}
 }
 
 {% endblock %}
@@ -166,27 +253,38 @@ __constant__ OPP_INT opp_k{{kernel_idx}}_dat{{dat.id}}_stride_d;
 __constant__ OPP_INT opp_k{{kernel_idx}}_map{{map.id}}_stride_d;
     {% endfor %}
 __constant__ OPP_INT opp_k{{kernel_idx}}_c2c_map_stride_d;
+
+    {% if lh is indirect and lh.args|dat|indirect|reduction|length > 0 and config.seg_red %}
+// Segmented Reductions Structures 
+// --------------------------------------------------------------
+OPP_INT opp_k{{kernel_idx}}_sr_set_stride = -1;
+__constant__ OPP_INT opp_k{{kernel_idx}}_sr_set_stride_d;
+    {% endif%}
+
+    {% for arg in lh.args|dat|indirect|reduction|not_already_mapped(lh) if config.seg_red %}
+thrust::device_vector<OPP_INT> sr_dat{{lh.dat(arg).id}}_keys_dv;
+thrust::device_vector<{{lh.dat(arg).typ}}> sr_dat{{lh.dat(arg).id}}_values_dv;
+
+thrust::device_vector<OPP_INT> sr_dat{{lh.dat(arg).id}}_keys_dv2;
+thrust::device_vector<{{lh.dat(arg).typ}}> sr_dat{{lh.dat(arg).id}}_values_dv2;
+// --------------------------------------------------------------
+    {% endfor %}
 {% endblock %}
 
-{% block kernel_wrapper %}
+{% macro atomic_kernel_wrapper() -%}
 __global__ void opp_dev_{{lh.kernel}}(
     {{-"\n    const unsigned optflags," if lh.args|opt|length > 0}}
     {% for dat in lh.dats %}
     {{"const " if dat is read_in(lh)}}{{dat.typ}} *__restrict__ dat{{dat.id}},     // {{dat.ptr}}
     {% endfor %}
-    {% if lh is p2c_mapped %}
     OPP_INT *__restrict__ p2c_map,
     const OPP_INT *__restrict__ c2c_map,
-    {% endif %}
     {% for map in lh.maps %}
     const OPP_INT *__restrict__ map{{map.id}},     // {{map.ptr}}
     {% endfor %}
     {% for arg in lh.args|gbl %}
     {{"const " if arg.access_type == OP.AccessType.Read}}{{arg.typ}} *gbl{{arg.id}},
     {% endfor %}
-    {% if lh is injected_loop %}
-    const OPP_INT inj_start,
-    {% endif %}
     OPP_INT *__restrict__ particle_remove_count,
     OPP_INT *__restrict__ particle_remove_indices,
     OPP_INT *__restrict__ move_particle_indices,
@@ -262,13 +360,126 @@ __global__ void opp_dev_{{lh.kernel}}(
     for (int d = 0; {{opt_hip_cond_comp(arg)}}d < {{arg.dim}}; ++d)
         opp_reduction<OPP_{{arg.access_type.name}}>(gbl{{arg.id}} + blockIdx.x * {{arg.dim}} + d, gbl{{arg.id}}_local[d]);
     {% endfor %}
+    {{ caller() }}
 }
+{% endmacro %}
+
+{% macro seg_red_kernel_wrapper() -%}
+__global__ void opp_dev_sr_{{lh.kernel}}( // Used for Segmented Reductions
+    {% for dat in lh.dats %}
+    {{"const " if dat is read_in(lh)}}{{dat.typ}} *__restrict__ dat{{dat.id}},     // {{dat.ptr}}
+    {% endfor %}
+    OPP_INT *__restrict__ p2c_map,
+    const OPP_INT *__restrict__ c2c_map,
+    {% for map in lh.maps %}
+    const OPP_INT *__restrict__ map{{map.id}},     // {{map.ptr}}
+    {% endfor %}
+    {% for arg in lh.args|gbl %}
+    {{"const " if arg.access_type == OP.AccessType.Read}}{{arg.typ}} *gbl{{arg.id}},
+    {% endfor %}
+    OPP_INT *__restrict__ particle_remove_count,
+    OPP_INT *__restrict__ particle_remove_indices,
+    OPP_INT *__restrict__ move_particle_indices,
+    OPP_INT *__restrict__ move_cell_indices,
+    OPP_INT *__restrict__ move_count,
+    {% for dat in lh.dats %}
+        {% if dat is indirect_reduction(lh) %}
+    {{dat.typ}} *__restrict__ sr_dat{{dat.id}}_values,     // sr values for {{dat.ptr}}
+    OPP_INT *__restrict__ sr_dat{{dat.id}}_keys,     // sr keys for {{dat.ptr}}
+        {% endif -%}  
+    {% endfor %}
+    const OPP_INT start,
+    const OPP_INT end
+) 
+{
+    const int thread_id = threadIdx.x + blockIdx.x * blockDim.x;
+
+    if (thread_id + start < end) {
+
+        const int n = thread_id + start;
+
+        OPP_INT *opp_p2c = (p2c_map + n);
+        char move_flag = OPP_NEED_MOVE;
+        bool iter_one_flag = (OPP_comm_iteration_d > 0) ? false : true;
+        bool on_old_cell = true;
+
+        {% for arg in lh.args_expanded|dat|indirect|reduction if config.seg_red %}
+            {% if arg is p2c_mapped and not double_indirect %}
+        {{lh.dat(arg).typ}} arg{{arg.id}}_p2c_local[{{lh.dat(arg).dim}}];
+            {% else %}
+        {{lh.dat(arg).typ}} arg{{arg.id}}_{{arg.map_idx}}_local[{{lh.dat(arg).dim}}];
+            {% endif %}
+
+        {% endfor %}
+        do
+        {
+            const OPP_INT p2c = opp_p2c[0]; // get the value here, since the kernel might change it
+            const OPP_INT* opp_c2c = c2c_map + p2c;           
+
+        {% for arg in lh.args_expanded|dat|indirect|reduction if config.seg_red %}
+            for (int d = 0; {{opt_hip_cond_comp(arg)}}d < {{lh.dat(arg).dim}}; ++d)
+            {% if arg is p2c_mapped and not double_indirect %}
+                arg{{arg.id}}_p2c_local[d] = {{lh.dat(arg).typ}}_ZERO;
+            {% else %}
+                arg{{arg.id}}_{{arg.map_idx}}_local[d] = {{lh.dat(arg).typ}}_ZERO;
+            {% endif %}
+
+        {% endfor %}
+            opp_k{{kernel_idx}}::{{lh.kernel}}(
+                move_flag, iter_one_flag, opp_c2c, opp_p2c,
+                {% for arg in lh.args %}
+                {%+ call opt_hip_tern(arg) %}{{arg_to_pointer_hip(arg)}}{% endcall %}{{"," if not loop.last}} // {% if arg is dat %}{{lh.dat(arg).ptr}} {% endif +%}
+                {% endfor %}          
+            );
+
+        {% for arg in lh.args_expanded|dat|indirect|reduction if config.seg_red %}
+            if (on_old_cell)
+            {
+                int offset = 0;
+                for (int d = 0; d < {{lh.dat(arg).dim}}; ++d, ++offset) {
+                    sr_dat{{arg.dat_id}}_values[n + opp_k{{kernel_idx}}_sr_set_stride_d * offset] = arg{{arg.dat_id}}_p2c_local[d];              
+                }
+                sr_dat{{arg.dat_id}}_keys[n] = p2c; // TODO : Generate for double indirections too!
+            }
+            else
+            {
+                for (int d = 0; {{opt_hip_cond_comp(arg)}}d < {{lh.dat(arg).dim}}; ++d)
+            {% if arg is p2c_mapped and not double_indirect %}
+                    atomicAdd(dat{{arg.dat_id}} + {{map_lookup(arg, kernel_idx)}} + (d{{stride_hip(arg)}}), arg{{arg.id}}_p2c_local[d]);
+            {% else %}
+                    atomicAdd(dat{{arg.dat_id}} + {{map_lookup(arg, kernel_idx)}} + (d{{stride_hip(arg)}}), arg{{arg.id}}_{{arg.map_idx}}_local[d]); // TODO: this looks incorrect
+            {% endif %}
+            }
+
+            on_old_cell = false;
+        
+        {% endfor %}
+        } while (opp_k{{kernel_idx}}::opp_part_check_status_hip(move_flag, iter_one_flag, opp_p2c, n, 
+            *particle_remove_count, particle_remove_indices, move_particle_indices, 
+            move_cell_indices, move_count));        
+    }
+    {{ caller() }}
+}
+{% endmacro %}
+
+{% block kernel_wrapper %}
+    {% if lh is direct or config.atomics %}
+//--------------------------------------------------------------
+        {% call atomic_kernel_wrapper() %}
+        {% endcall %}
+    {% endif %}
+
+//--------------------------------------------------------------
+    {% if lh is indirect and lh.args|dat|indirect|reduction|length > 0 and config.seg_red %}
+        {% call seg_red_kernel_wrapper() %}
+        {% endcall %}
+    {% endif %}
 
 {% endblock %}
 
 {% block host_prologue_early_exit_cleanup %}
         opp_set_dirtybit_grouped(nargs, args, Device_GPU);
-        cutilSafeCall(hipDeviceSynchronize());   
+        OPP_DEVICE_SYNCHRONIZE();   
 {% endblock %}
 
 {% block host_prologue %}
@@ -294,7 +505,7 @@ void opp_particle_move__{{lh.kernel}}(opp_set set, opp_map c2c_map, opp_map p2c_
     {% if lh is double_indirect_reduc %}
 
 #ifdef USE_MPI
-    opp_init_double_indirect_reductions_hip(nargs, args);
+    opp_init_double_indirect_reductions_device(nargs, args);
 #endif
     {% endif %} 
     if (OPP_cells_set_size != set->cells_set->size) {
@@ -447,13 +658,171 @@ opp_dev_{{lh.kernel}}<<<num_blocks, block_size
 );
 {%- endmacro %}
 
+{% macro seg_red_kernel_call(shared_size) %}
+opp_dev_sr_{{lh.kernel}}<<<num_blocks, block_size{{-(", %s" % shared_size) if lh.args|gbl|reduction|length > 0}}>>>( 
+    {% for dat in lh.dats %}
+    ({{dat.typ}} *)args[{{dat.arg_id}}].data_d,     // {{dat.ptr}}
+    {% endfor %}
+    (OPP_INT *)args[{{lh.args|length}}].data_d,    // p2c_map
+    (OPP_INT *)c2c_map->map_d,    // c2c_map
+    {% for map in lh.maps %}
+    args[{{map.arg_id}}].map_data_d,     // {{map.ptr}}
+    {% endfor %}
+    {% for arg in lh.args|gbl %}
+    ({{arg.typ}} *)args[{{arg.id}}].data_d,
+    {% endfor %}
+    (OPP_INT *)set->particle_remove_count_d,
+    (OPP_INT *)OPP_remove_particle_indices_d,
+    (OPP_INT *)OPP_move_particle_indices_d,
+    (OPP_INT *)OPP_move_cell_indices_d,
+    (OPP_INT *)OPP_move_count_d,
+    {% for dat in lh.dats %}
+        {% if dat is indirect_reduction(lh) %}
+    opp_get_dev_raw_ptr<{{dat.typ}}>(sr_dat{{dat.id}}_values_dv),     // sr values for {{dat.ptr}}
+    opp_get_dev_raw_ptr<OPP_INT>(sr_dat{{dat.id}}_keys_dv),     // sr keys for {{dat.ptr}}
+        {% endif %}
+    {% endfor %}
+    {% for extra_arg in varargs %}
+    {{extra_arg}}{{"," if not loop.last}}
+    {% endfor %}
+);
+{%- endmacro %}
+
 {% block host_loop %}
     {% if lh.args|gbl|reduction|length <= 0 %}
         num_blocks = (OPP_iter_end - OPP_iter_start - 1) / block_size + 1;
     {% endif %}
 
-        {{kernel_call("(reduction_size * block_size)",
-            "OPP_iter_start", "OPP_iter_end")|indent(8)}}
+    {% if lh is indirect and lh.args|dat|indirect|reduction|length > 0 and config.atomics and config.seg_red %}
+        if (!opp_params->get<OPP_BOOL>("use_reg_red")) // Do atomics ----------       
+    {% endif %}
+    {% if lh is direct or config.atomics %}
+        {
+            {{kernel_call("(reduction_size * block_size)",
+                "OPP_iter_start", "OPP_iter_end")|indent(12)}}
+        }
+    {% endif %}
+    {% if lh is indirect and lh.args|dat|indirect|reduction|length > 0 and config.atomics and config.seg_red %}     
+        else // Do segmented reductions ----------       
+    {% endif %}
+    {% if lh is indirect and lh.args|dat|indirect|reduction|length > 0 and config.seg_red %}
+        {
+            if (opp_k{{kernel_idx}}_sr_set_stride != set->size) {
+                opp_k{{kernel_idx}}_sr_set_stride = set->size;
+                cutilSafeCall(hipMemcpyToSymbol(HIP_SYMBOL(opp_k{{kernel_idx}}_sr_set_stride_d), &opp_k{{kernel_idx}}_sr_set_stride, sizeof(OPP_INT)));
+            }
+
+        {% for arg in lh.args|dat|indirect|reduction|not_already_mapped(lh) %}
+            size_t operating_size_dat{{arg.dat_id}} = 0, resize_size_dat{{arg.dat_id}} = 0;
+        {% endfor %}
+
+        {% for arg in lh.args|dat|indirect|reduction %}
+            operating_size_dat{{arg.dat_id}} += (size_t)1;
+            resize_size_dat{{arg.dat_id}} += (size_t)1;
+        {% endfor %}
+
+        {% for arg in lh.args|dat|indirect|reduction|not_already_mapped(lh) %}
+            operating_size_dat{{arg.dat_id}} *= (size_t)(set->size);
+            resize_size_dat{{arg.dat_id}} *= (size_t)(set->set_capacity);
+        {% endfor %}
+
+            // Resize the key/value device arrays only if current vector is small
+            opp_profiler->start("SRM_Resize");
+        {% for arg in lh.args|dat|indirect|reduction|not_already_mapped(lh) %}
+            if (resize_size_dat{{arg.dat_id}} > sr_dat{{arg.dat_id}}_keys_dv.size()) {
+                sr_dat{{arg.dat_id}}_keys_dv.resize(resize_size_dat{{arg.dat_id}}, 0);
+                sr_dat{{arg.dat_id}}_keys_dv2.resize(resize_size_dat{{arg.dat_id}}, 0);
+                sr_dat{{arg.dat_id}}_values_dv.resize(resize_size_dat{{arg.dat_id}} * (args[{{arg.id}}].dat->dim), 0);
+                sr_dat{{arg.dat_id}}_values_dv2.resize(resize_size_dat{{arg.dat_id}} * (args[{{arg.id}}].dat->dim), 0);
+            }
+        {% endfor %}
+            opp_profiler->end("SRM_Resize");
+
+            // Reset the key/value device arrays
+            opp_profiler->start("SRM_Init");
+        {% for arg in lh.args|dat|indirect|reduction|not_already_mapped(lh) %}
+            opp_k{{kernel_idx}}::reset_OPP_INT_values<<<num_blocks, block_size>>>(
+                opp_get_dev_raw_ptr<OPP_INT>(sr_dat{{arg.dat_id}}_keys_dv), 0, sr_dat{{arg.dat_id}}_keys_dv.size());
+            opp_k{{kernel_idx}}::sequence_OPP_INT_values<<<num_blocks, block_size>>>(
+                opp_get_dev_raw_ptr<OPP_INT>(sr_dat{{arg.dat_id}}_keys_dv2), 0, sr_dat{{arg.dat_id}}_keys_dv2.size());
+            
+            const int num_blocks2 = (sr_dat{{arg.dat_id}}_values_dv.size() - 1) / block_size + 1;
+            opp_k{{kernel_idx}}::reset_{{lh.dat(arg).typ}}_values<<<num_blocks2, block_size>>>(
+                opp_get_dev_raw_ptr<{{lh.dat(arg).typ}}>(sr_dat{{arg.dat_id}}_values_dv), 0, sr_dat{{arg.dat_id}}_values_dv.size());
+            // opp_k{{kernel_idx}}::reset_{{lh.dat(arg).typ}}_values<<<num_blocks2, block_size>>>(
+            //     opp_get_dev_raw_ptr<{{lh.dat(arg).typ}}>(sr_dat{{arg.dat_id}}_values_dv2), 0, sr_dat{{arg.dat_id}}_values_dv2.size());
+            OPP_DEVICE_SYNCHRONIZE();
+        {% endfor %}
+            opp_profiler->end("SRM_Init");
+
+            // Create key/value pairs
+            opp_profiler->start("SRM_CrKeyVal");
+            {{seg_red_kernel_call("(reduction_size * block_size)",
+                "OPP_iter_start", "OPP_iter_end")|indent(12)}}
+            OPP_DEVICE_SYNCHRONIZE();
+            opp_profiler->end("SRM_CrKeyVal");
+
+        {% for arg in lh.args|dat|indirect|reduction|not_already_mapped(lh) %}
+            // Sort by keys to bring the identical keys together and store the order in sr_dat{{arg.dat_id}}_keys_dv2
+            opp_profiler->start("SRM_SortByKey");
+            thrust::sort_by_key(thrust::device,
+                sr_dat{{arg.dat_id}}_keys_dv.begin(), sr_dat{{arg.dat_id}}_keys_dv.begin() + operating_size_dat{{arg.dat_id}}, 
+                sr_dat{{arg.dat_id}}_keys_dv2.begin());
+            opp_profiler->end("SRM_SortByKey"); 
+
+            // Sort values according to sr_dat{{arg.dat_id}}_keys_dv2
+            opp_profiler->start("SRM_AssignByKey"); 
+            opp_k{{kernel_idx}}::assign_values_by_key<<<num_blocks, block_size>>>(
+                opp_get_dev_raw_ptr<OPP_INT>(sr_dat{{arg.dat_id}}_keys_dv2),
+                opp_get_dev_raw_ptr<{{lh.dat(arg).typ}}>(sr_dat{{arg.dat_id}}_values_dv),
+                opp_get_dev_raw_ptr<{{lh.dat(arg).typ}}>(sr_dat{{arg.dat_id}}_values_dv2),
+                0, operating_size_dat{{arg.dat_id}}, {{lh.dat(arg).dim}});
+            OPP_DEVICE_SYNCHRONIZE();
+            opp_profiler->end("SRM_AssignByKey"); 
+
+            // Compute the unique keys and their corresponding values
+            opp_profiler->start("SRM_RedByKey");
+            auto new_end = thrust::reduce_by_key(thrust::device,
+                sr_dat{{arg.dat_id}}_keys_dv.begin(), sr_dat{{arg.dat_id}}_keys_dv.begin() + operating_size_dat{{arg.dat_id}},
+                sr_dat{{arg.dat_id}}_values_dv2.begin(),
+                sr_dat{{arg.dat_id}}_keys_dv2.begin(),
+                sr_dat{{arg.dat_id}}_values_dv.begin());  
+            const size_t reduced_size = (new_end.first - sr_dat{{arg.dat_id}}_keys_dv2.begin());
+
+            {% if lh.dat(arg).dim > 1 %}
+            for (int d = 1; d < {{lh.dat(arg).dim}}; ++d) {
+                auto new_end = thrust::reduce_by_key(thrust::device,
+                    sr_dat{{arg.dat_id}}_keys_dv.begin(), sr_dat{{arg.dat_id}}_keys_dv.begin() + operating_size_dat{{arg.dat_id}},
+                    sr_dat{{arg.dat_id}}_values_dv2.begin() + d * opp_k{{kernel_idx}}_sr_set_stride,
+                    thrust::make_discard_iterator(), sr_dat{{arg.dat_id}}_values_dv.begin() + d * opp_k{{kernel_idx}}_sr_set_stride);     
+            }      
+            {% endif %}
+            opp_profiler->end("SRM_RedByKey");
+
+            // Assign reduced values to the nodes using keys/values
+            opp_profiler->start("SRM_Assign");
+            num_blocks = reduced_size / block_size + 1;
+            for (int d = 0; d < {{lh.dat(arg).dim}}; ++d) { // Could invoke the kernel once and have all dims updated with that
+                opp_k{{kernel_idx}}::assign_values<<<num_blocks, block_size>>> ( 
+                    opp_get_dev_raw_ptr<OPP_INT>(sr_dat{{arg.dat_id}}_keys_dv2),
+                    (opp_get_dev_raw_ptr<{{lh.dat(arg).typ}}>(sr_dat{{arg.dat_id}}_values_dv) + d * opp_k{{kernel_idx}}_sr_set_stride),
+                    (({{lh.dat(arg).typ}} *) args[{{arg.dat_id}}].data_d) + d * opp_k{{kernel_idx}}_dat{{arg.dat_id}}_stride,
+                    0, reduced_size);
+            }
+            OPP_DEVICE_SYNCHRONIZE();
+            opp_profiler->end("SRM_Assign");
+
+            // Last: clear the thrust vectors if this is the last iteration (avoid crash)
+            opp_profiler->start("SRM_Clear");
+            if (opp_params->get<OPP_INT>("num_steps") == (OPP_main_loop_iter + 1)) {
+                OPP_DEVICE_SYNCHRONIZE();
+                sr_dat{{arg.dat_id}}_values_dv.clear(); sr_dat{{arg.dat_id}}_values_dv.shrink_to_fit();
+                sr_dat{{arg.dat_id}}_keys_dv.clear(); sr_dat{{arg.dat_id}}_keys_dv.shrink_to_fit();
+            } 
+            opp_profiler->end("SRM_Clear");
+        {% endfor %}
+        }    
+    {% endif %}
 
     } while (opp_finalize_particle_move(set)); 
 
@@ -491,12 +860,12 @@ opp_dev_{{lh.kernel}}<<<num_blocks, block_size
 
     {% endfor %}
     opp_set_dirtybit_grouped(nargs, args, Device_GPU);
-    cutilSafeCall(hipDeviceSynchronize());   
+    OPP_DEVICE_SYNCHRONIZE();   
     {% if lh is double_indirect_reduc %}
 
 #ifdef USE_MPI    
-    opp_exchange_double_indirect_reductions_hip(nargs, args);
-    opp_complete_double_indirect_reductions_hip(nargs, args);
+    opp_exchange_double_indirect_reductions_device(nargs, args);
+    opp_complete_double_indirect_reductions_device(nargs, args);
 #endif
     {% endif %} 
 {{super()}}

@@ -241,7 +241,7 @@ void opp_particle_move__move_kernel(opp_set set, opp_map c2c_map, opp_map p2c_ma
     } while (opp_finalize_particle_move(set)); 
 
     opp_set_dirtybit_grouped(nargs, args, Device_GPU);
-    cutilSafeCall(cudaDeviceSynchronize());   
+    OPP_DEVICE_SYNCHRONIZE();   
  
     opp_profiler->end("move_kernel");
 }

@@ -140,15 +140,15 @@ __constant__ OPP_INT opp_k{{kernel_idx}}_dat{{dat.id}}_stride_d;
 __constant__ OPP_INT opp_k{{kernel_idx}}_map{{map.id}}_stride_d;
     {% endfor %}
 
-{% if lh is indirect and lh.args|dat|indirect|reduction|length > 0 and config.seg_red %}
+    {% if lh is indirect and lh.args|dat|indirect|reduction|length > 0 and config.seg_red %}
 OPP_INT opp_k{{kernel_idx}}_sr_set_stride = -1;
 __constant__ OPP_INT opp_k{{kernel_idx}}_sr_set_stride_d;
-{% endif%}
+    {% endif%}
 
-{% for arg in lh.args|dat|indirect|reduction|not_already_mapped(lh) if config.seg_red %}
+    {% for arg in lh.args|dat|indirect|reduction|not_already_mapped(lh) if config.seg_red %}
 thrust::device_vector<OPP_INT> sr_dat{{lh.dat(arg).id}}_keys_dv;
 thrust::device_vector<{{lh.dat(arg).typ}}> sr_dat{{lh.dat(arg).id}}_values_dv;
-{% endfor %}
+    {% endfor %}
 {% endblock %}
 
 {% macro atomic_kernel_wrapper() -%}
@@ -343,7 +343,7 @@ __global__ void opp_dev_sr_{{lh.kernel}}( // Used for Segmented Reductions
 
 {% block host_prologue_early_exit_cleanup %}
         opp_set_dirtybit_grouped(nargs, args, Device_GPU);
-        cutilSafeCall(hipDeviceSynchronize());   
+        OPP_DEVICE_SYNCHRONIZE();  
 {% endblock %}
 
 {% block host_prologue %}
@@ -373,7 +373,7 @@ void opp_par_loop_{{lh.iterator_type}}__{{lh.kernel}}(opp_set set, opp_iterate_t
         {% if lh is double_indirect_reduc %}
 
 #ifdef USE_MPI
-    opp_init_double_indirect_reductions_hip(nargs, args);
+    opp_init_double_indirect_reductions_device(nargs, args);
 #endif
         {% endif %} 
     {% endif %} 
@@ -517,13 +517,13 @@ opp_dev_{{lh.kernel}}<<<num_blocks, block_size{{-(", %s" % shared_size) if lh.ar
 opp_dev_sr_{{lh.kernel}}<<<num_blocks, block_size{{-(", %s" % shared_size) if lh.args|gbl|reduction|length > 0}}>>>( 
     {% for dat in lh.dats %}
         {% if dat is sr_both_direct_and_indirect_reduction(lh) %}
-    (OPP_INT *)thrust::raw_pointer_cast(sr_dat{{dat.id}}_keys_dv.data()),     // sr keys for {{dat.ptr}}
-    ({{dat.typ}} *)thrust::raw_pointer_cast(sr_dat{{dat.id}}_values_dv.data()),     // sr values for {{dat.ptr}}
+    opp_get_dev_raw_ptr<OPP_INT>(sr_dat{{dat.id}}_keys_dv),     // sr keys for {{dat.ptr}}
+    opp_get_dev_raw_ptr<{{dat.typ}}>(sr_dat{{dat.id}}_values_dv),     // sr values for {{dat.ptr}}
     ({{dat.typ}} *)args[{{dat.arg_id}}].data_d,     // {{dat.ptr}}
         {% else %}
             {% if dat is indirect_reduction(lh) %}
-    (OPP_INT *)thrust::raw_pointer_cast(sr_dat{{dat.id}}_keys_dv.data()),     // sr keys for {{dat.ptr}}
-    ({{dat.typ}} *)thrust::raw_pointer_cast(sr_dat{{dat.id}}_values_dv.data()),     // sr values for {{dat.ptr}}
+    opp_get_dev_raw_ptr<OPP_INT>(sr_dat{{dat.id}}_keys_dv),     // sr keys for {{dat.ptr}}
+    opp_get_dev_raw_ptr<{{dat.typ}}>(sr_dat{{dat.id}}_values_dv),     // sr values for {{dat.ptr}}
             {% else %}
     ({{dat.typ}} *)args[{{dat.arg_id}}].data_d,     // {{dat.ptr}}
             {% endif %}
@@ -600,7 +600,7 @@ opp_dev_sr_{{lh.kernel}}<<<num_blocks, block_size{{-(", %s" % shared_size) if lh
             opp_profiler->start("SR_CrKeyVal");
             {{seg_red_kernel_call("(reduction_size * block_size)",
                 "start", "end")|indent(12)}}
-            cutilSafeCall(hipDeviceSynchronize());
+            OPP_DEVICE_SYNCHRONIZE();
             opp_profiler->end("SR_CrKeyVal");
 
         {% for arg in lh.args|dat|indirect|reduction|not_already_mapped(lh) %}
@@ -624,16 +624,16 @@ opp_dev_sr_{{lh.kernel}}<<<num_blocks, block_size{{-(", %s" % shared_size) if lh
             // Assign reduced values to the nodes using keys/values
             opp_profiler->start("SR_Assign");                
             opp_k{{kernel_idx}}::assign_values<<<num_blocks, block_size>>> ( // TODO : check whether num_blocks is correct
-                (OPP_INT *) thrust::raw_pointer_cast(sr_dat{{arg.dat_id}}_keys_dv.data()),
-                (OPP_REAL *) thrust::raw_pointer_cast(sr_dat{{arg.dat_id}}_values_dv.data()),
+                opp_get_dev_raw_ptr<OPP_INT>(sr_dat{{arg.dat_id}}_keys_dv),
+                opp_get_dev_raw_ptr<OPP_REAL>(sr_dat{{arg.dat_id}}_values_dv),
                 (OPP_REAL *) args[{{arg.dat_id}}].data_d,
                 0, reduced_size);
-            cutilSafeCall(hipDeviceSynchronize());
+            OPP_DEVICE_SYNCHRONIZE();
             opp_profiler->end("SR_Assign");
 
             // Last: clear the thrust vectors if this is the last iteration (avoid crash)
             if (opp_params->get<OPP_INT>("num_steps") == (OPP_main_loop_iter + 1)) {
-                cutilSafeCall(hipDeviceSynchronize());
+                OPP_DEVICE_SYNCHRONIZE();
                 sr_dat{{arg.dat_id}}_values_dv.clear(); sr_dat{{arg.dat_id}}_values_dv.shrink_to_fit();
                 sr_dat{{arg.dat_id}}_keys_dv.clear(); sr_dat{{arg.dat_id}}_keys_dv.shrink_to_fit();
             }        
@@ -680,12 +680,12 @@ opp_dev_sr_{{lh.kernel}}<<<num_blocks, block_size{{-(", %s" % shared_size) if lh
 
     {% endfor %}
     opp_set_dirtybit_grouped(nargs, args, Device_GPU);
-    cutilSafeCall(hipDeviceSynchronize());   
+    OPP_DEVICE_SYNCHRONIZE();   
     {% if lh is double_indirect_reduc %}
 
 #ifdef USE_MPI    
-    opp_exchange_double_indirect_reductions_hip(nargs, args);
-    opp_complete_double_indirect_reductions_hip(nargs, args);
+    opp_exchange_double_indirect_reductions_device(nargs, args);
+    opp_complete_double_indirect_reductions_device(nargs, args);
 #endif
     {% endif %} 
 {{super()}}

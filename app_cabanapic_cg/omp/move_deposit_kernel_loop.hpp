@@ -10,6 +10,12 @@ enum CellAcc {
     jfz = 2 * 4,
 };
 
+enum Dim {
+    x = 0,
+    y = 1,
+    z = 2,
+};
+
 inline void weight_current_to_accumulator_kernel(
         double* cell_acc,
         const double* q,
@@ -38,12 +44,6 @@ inline void weight_current_to_accumulator_kernel(
     cell_acc[CellAcc::jfz + 2] += v2;
     cell_acc[CellAcc::jfz + 3] += v3;
 }
-
-enum Dim {
-    x = 0,
-    y = 1,
-    z = 2,
-};
 
 enum CellInterp {
     ex = 0,

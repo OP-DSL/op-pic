@@ -118,9 +118,9 @@ void opp_halo_destroy();
 
 /*******************************************************************************/
 
-void opp_init_double_indirect_reductions_hip(int nargs, opp_arg *args);
-void opp_exchange_double_indirect_reductions_hip(int nargs, opp_arg *args) ;
-void opp_complete_double_indirect_reductions_hip(int nargs, opp_arg *args);
+void opp_init_double_indirect_reductions_device(int nargs, opp_arg *args);
+void opp_exchange_double_indirect_reductions_device(int nargs, opp_arg *args) ;
+void opp_complete_double_indirect_reductions_device(int nargs, opp_arg *args);
 
 /*******************************************************************************/
 
@@ -530,6 +530,16 @@ public:
 #define OPP_DEVICE_FUNCTION __device__ 
 #define ADDITIONAL_PARAMETERS 
 #define OPP_ATOMIC_FETCH_ADD(address, value) atomicAdd(address, value)
+
+/*******************************************************************************/
+template <typename T>
+T* opp_get_dev_raw_ptr(thrust::device_vector<T>& dv) {
+    return (T*)thrust::raw_pointer_cast(dv.data());
+}
+template <typename T>
+const T* opp_get_dev_raw_ptr(const thrust::device_vector<T>& dv) {
+    return (const T*)thrust::raw_pointer_cast(dv.data());
+}
 
 /*******************************************************************************/
 template <typename T>

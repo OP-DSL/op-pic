@@ -241,8 +241,8 @@ void opp_par_loop_all__update_ghosts_kernel(opp_set set, opp_iterate_type,
             opp_profiler->start("SR_CrKeyVal");
             opp_dev_sr_update_ghosts_kernel<<<num_blocks, block_size>>>( 
                 (OPP_INT *)args[0].data_d,     // c_mask_ug
-                (OPP_INT *)thrust::raw_pointer_cast(sr_dat1_keys_dv.data()),     // sr keys for c_j
-                (OPP_REAL *)thrust::raw_pointer_cast(sr_dat1_values_dv.data()),     // sr values for c_j
+                opp_get_dev_raw_ptr<OPP_INT>(sr_dat1_keys_dv),     // sr keys for c_j
+                opp_get_dev_raw_ptr<OPP_REAL>(sr_dat1_values_dv),     // sr values for c_j
                 (OPP_REAL *)args[1].data_d,     // c_j
                 args[2].map_data_d,     // c2cug0_map
                 (OPP_INT *)args[3].data_d,
@@ -250,7 +250,7 @@ void opp_par_loop_all__update_ghosts_kernel(opp_set set, opp_iterate_type,
                 start,
                 end
             );
-            cutilSafeCall(cudaDeviceSynchronize());
+            OPP_DEVICE_SYNCHRONIZE();
             opp_profiler->end("SR_CrKeyVal");
 
             // Sort by keys to bring the identical keys together
@@ -273,16 +273,16 @@ void opp_par_loop_all__update_ghosts_kernel(opp_set set, opp_iterate_type,
             // Assign reduced values to the nodes using keys/values
             opp_profiler->start("SR_Assign");                
             opp_k6::assign_values<<<num_blocks, block_size>>> ( // TODO : check whether num_blocks is correct
-                (OPP_INT *) thrust::raw_pointer_cast(sr_dat1_keys_dv.data()),
-                (OPP_REAL *) thrust::raw_pointer_cast(sr_dat1_values_dv.data()),
+                opp_get_dev_raw_ptr<OPP_INT>(sr_dat1_keys_dv),
+                opp_get_dev_raw_ptr<OPP_REAL>(sr_dat1_values_dv),
                 (OPP_REAL *) args[1].data_d,
                 0, reduced_size);
-            cutilSafeCall(cudaDeviceSynchronize());
+            OPP_DEVICE_SYNCHRONIZE();
             opp_profiler->end("SR_Assign");
 
             // Last: clear the thrust vectors if this is the last iteration (avoid crash)
             if (opp_params->get<OPP_INT>("num_steps") == (OPP_main_loop_iter + 1)) {
-                cutilSafeCall(cudaDeviceSynchronize());
+                OPP_DEVICE_SYNCHRONIZE();
                 sr_dat1_values_dv.clear(); sr_dat1_values_dv.shrink_to_fit();
                 sr_dat1_keys_dv.clear(); sr_dat1_keys_dv.shrink_to_fit();
             }        
@@ -293,7 +293,7 @@ void opp_par_loop_all__update_ghosts_kernel(opp_set set, opp_iterate_type,
 
 
     opp_set_dirtybit_grouped(nargs, args, Device_GPU);
-    cutilSafeCall(cudaDeviceSynchronize());   
+    OPP_DEVICE_SYNCHRONIZE();   
  
     opp_profiler->end("update_ghosts_kernel");
 }

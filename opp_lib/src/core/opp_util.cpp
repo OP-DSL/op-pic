@@ -54,7 +54,7 @@ char *copy_str(char const *src)
 }
 
 //********************************************************************************
-std::string getTimeStr()
+std::string get_time_str()
 {
     std::time_t now = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
 

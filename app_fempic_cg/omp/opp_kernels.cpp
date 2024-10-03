@@ -46,6 +46,9 @@ OPP_REAL CONST_wall_potential[1];
 
 void opp_decl_const_impl(int dim, int size, char* data, const char* name) {
     
+    if (OPP_DBG)
+        opp_printf("opp_decl_const_impl", "Registering %s", name);
+
     if (!strcmp(name, "CONST_spwt")) {
         std::memcpy(&CONST_spwt, data, (size*dim));
         return;
@@ -75,8 +78,7 @@ void opp_decl_const_impl(int dim, int size, char* data, const char* name) {
         return;
     }
 
-    opp_printf("Error: unknown const name %s", name);
-    opp_abort("Error: unknown const name");
+    opp_abort(std::string("Error: unknown const name") + std::string(name));
 }
 
 #include "init_boundary_pot_kernel_loop.hpp"

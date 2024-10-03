@@ -342,13 +342,13 @@ inline void gen_dh_structured_mesh(opp_set set, const opp_dat c_gbl_id, opp_map 
         removed_coords_keys.push_back(pair.first);
 
     std::vector<std::vector<std::pair<int, int>>> tmp_add_per_thr;
-    tmp_add_per_thr.resize(OPP_nthreads);
+    tmp_add_per_thr.resize(opp_nthreads);
 
     #pragma omp parallel for
-    for (int thr = 0; thr < OPP_nthreads; thr++)
+    for (int thr = 0; thr < opp_nthreads; thr++)
     {
-        const size_t start  = (removed_coords_keys.size() * thr) / OPP_nthreads;
-        const size_t finish = (removed_coords_keys.size() * (thr+1)) / OPP_nthreads;
+        const size_t start  = (removed_coords_keys.size() * thr) / opp_nthreads;
+        const size_t finish = (removed_coords_keys.size() * (thr+1)) / opp_nthreads;
       
         for (size_t i = start; i < finish; i++)
         {

@@ -52,13 +52,14 @@ constexpr int const_blocks = 200;
 
 #define OPP_GPU_THREADS_PER_BLOCK 32
 
-#define OPP_PARTICLE_MOVE_DONE { m.move_status = OPP_MOVE_DONE; }
-#define OPP_PARTICLE_NEED_MOVE { m.move_status = OPP_NEED_MOVE; }
-#define OPP_PARTICLE_NEED_REMOVE { m.move_status = OPP_NEED_REMOVE; }
-#define OPP_DO_ONCE (m.iteration_one)
-#define OPP_MOVE_RESET_FLAGS { m.move_status = OPP_MOVE_DONE; m.iteration_one = true; }
+#define OPP_PARTICLE_MOVE_DONE { opp_move_status_flag = OPP_MOVE_DONE; }
+#define OPP_PARTICLE_NEED_MOVE { opp_move_status_flag = OPP_NEED_MOVE; }
+#define OPP_PARTICLE_NEED_REMOVE { opp_move_status_flag = OPP_NEED_REMOVE; }
+#define OPP_DO_ONCE (opp_move_hop_iter_one_flag)
+#define OPP_MOVE_RESET_FLAGS { opp_move_status_flag = OPP_MOVE_DONE; opp_move_hop_iter_one_flag = true; }
 
 #define OPP_DEVICE_SYNCHRONIZE()  opp_queue->wait()
+
 #define OPP_DEVICE_GLOBAL_LINEAR_ID (item.get_global_linear_id())
 #define OPP_GLOBAL_FUNCTION inline
 #define OPP_DEVICE_FUNCTION 
@@ -68,7 +69,7 @@ constexpr int const_blocks = 200;
 extern int* opp_saved_mesh_relation_d;
 
 extern OPP_INT* hf_from_indices_dp;
-extern OPP_INT* ps_swap_indices_dp;
+extern OPP_INT* ps_from_indices_dp;
 
 extern int *OPP_move_particle_indices_d;
 extern int *OPP_move_cell_indices_d;
@@ -109,7 +110,7 @@ void opp_complete_double_indirect_reductions_cuda(int nargs, opp_arg *args);
 void print_dat_to_txtfile_mpi(opp_dat dat, const char *file_name);
 void opp_mpi_print_dat_to_txtfile(opp_dat dat, const char *file_name);
 
-void opp_finalize_particle_move_cuda(opp_set set);
+/*******************************************************************************/
 void particle_sort_device(opp_set set, bool hole_filling);
 
 /*******************************************************************************/

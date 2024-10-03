@@ -101,7 +101,7 @@ void opp_par_loop_all__update_pos_kernel(opp_set set, opp_iterate_type,
     }
 
     opp_set_dirtybit_grouped(nargs, args, Device_GPU);
-    cutilSafeCall(cudaDeviceSynchronize());   
+    OPP_DEVICE_SYNCHRONIZE();   
  
     opp_profiler->end("update_pos_kernel");
 }

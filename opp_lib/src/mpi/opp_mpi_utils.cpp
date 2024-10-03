@@ -476,10 +476,12 @@ int get_partition(int global_index, int *part_range, int *local_index, int comm_
         std::string log = "";
         for (int i = 0; i < comm_size; i++) 
         {
-            log += std::to_string(i) + "|" + std::to_string(part_range[2 * i]) + "|" + std::to_string(part_range[2 * i + 1]) + "\n";
+            log += std::to_string(i) + "|" + std::to_string(part_range[2 * i]) + "|" + 
+                    std::to_string(part_range[2 * i + 1]) + "\n";
         }
 
-        opp_printf("get_partition()", OPP_rank, "Error: orphan global index %d part_range->\n%s", global_index, log.c_str());
+        opp_printf("get_partition()", "Error: orphan global index %d part_range->\n%s", 
+            global_index, log.c_str());
     }
 
     opp_abort("get_partition");

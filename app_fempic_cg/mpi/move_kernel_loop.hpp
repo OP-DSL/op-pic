@@ -91,7 +91,7 @@ void opp_particle_move__move_kernel(opp_set set, opp_map c2c_map, opp_map p2c_ma
             return;
         }
 
-        opp_move_status_flag = OPPX_MOVE_DONE; 
+        opp_move_status_flag = OPP_MOVE_DONE; 
         opp_move_hop_iter_one_flag = true;
 
         do {

@@ -40,26 +40,10 @@ ifeq ($(DEBUG_LOG), 1)
 	NVCCFLAGS  += -DDEBUG_LOG
 endif
 
-PETSC ?= 0
-ifeq ($(PETSC), 1)
-	CPPFLAGS   += -DUSE_PETSC
-	NVCCFLAGS += -DUSE_PETSC
-	HIPCCFLAGS += -DUSE_PETSC
- 	PETSC_INC  = -I$(PETSC_INSTALL_PATH)/include
- 	PETSC_LIB  = -Wl,-rpath,$(PETSC_INSTALL_PATH)/lib -L$(PETSC_INSTALL_PATH)/lib -lpetsc
-	# PETSC_LIB  = -lpetsc
-endif
+CUDA_INC   = -I$(CUDA_INSTALL_PATH)/include
+CUDA_LIB   = -L$(CUDA_INSTALL_PATH)/lib64 -lcudart -lcuda
 
-CUDA ?= 1
-ifeq ($(CUDA), 1)
-	CUDA_INC   = -I$(CUDA_INSTALL_PATH)/include
-	CUDA_LIB   = -L$(CUDA_INSTALL_PATH)/lib64 -lcudart -lcuda
-endif
-
-HIP ?= 1
-ifeq ($(HIP), 1)
-	HIP_INC   = -I$(ROCM_INSTALL_DIR)/include -I$(ROCM_THRUST_DIR)/include -I$(ROCM_PRIM_DIR)/include
-endif
+HIP_INC   = -I$(ROCM_INSTALL_DIR)/include -I$(ROCM_THRUST_DIR)/include -I$(ROCM_PRIM_DIR)/include
 
 ALL_INC    = -I$(OPP_PATH)/include $(PETSC_INC) $(CUDA_INC)
 ALL_LIBS   = -L$(OPP_PATH)/lib $(PETSC_LIB) $(CUDA_LIB)

@@ -136,7 +136,7 @@ void opp_par_loop_all__deposit_charge_on_nodes_kernel(opp_set set, opp_iterate_t
     }
 
     opp_set_dirtybit_grouped(nargs, args, Device_GPU);
-    opp_queue->wait();   
+    OPP_DEVICE_SYNCHRONIZE();   
 
 #ifdef USE_MPI    
     opp_exchange_double_indirect_reductions_cuda(nargs, args);

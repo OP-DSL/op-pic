@@ -84,8 +84,6 @@ void opp_init(int argc, char **argv)
     opp_params->write(std::cout);
     opp_sycl_init(argc, argv);
 
-    OPP_auto_soa = 1; // TODO : Make this configurable with args
-
     const int threads_per_block = opp_params->get<OPP_INT>("opp_threads_per_block");   
     if (threads_per_block > 0 && threads_per_block < INT_MAX)
         OPP_gpu_threads_per_block = threads_per_block;
@@ -205,6 +203,7 @@ void opp_sycl_init(int argc, char **argv) {
         sycl::device selected_device = selected_devices[int_rank % selected_devices.size()];
         opp_queue = new sycl::queue(selected_device);
 
+        // Test we have access to a device
         float *test = opp_mem::dev_malloc<float>(1);
         opp_mem::dev_free(test);
         OPP_hybrid_gpu = 1;
@@ -220,18 +219,18 @@ void opp_sycl_init(int argc, char **argv) {
 //****************************************
 void opp_sycl_exit() 
 {
-    for (auto& a : opp_sets) {
-        if (a->is_particle) 
-            opp_mem::dev_free(a->particle_remove_count_d);
+    for (auto& set : opp_sets) {
+        if (set->is_particle) 
+            opp_mem::dev_free(set->particle_remove_count_d);
     }
 
-    for (auto& a : opp_maps) {
-        opp_mem::dev_free(a->map_d);
+    for (auto& map : opp_maps) {
+        opp_mem::dev_free(map->map_d);
     }
 
-    for (auto& a : opp_dats) {
-        opp_mem::dev_free(a->data_d);
-        opp_mem::dev_free(a->data_swap_d);
+    for (auto& dat : opp_dats) {
+        opp_mem::dev_free(dat->data_d);
+        opp_mem::dev_free(dat->data_swap_d);
     }
 
     opp_mem::dev_free(opp_saved_mesh_relation_d);
@@ -242,7 +241,7 @@ void opp_sycl_exit()
     opp_mem::dev_free(OPP_move_count_d);
 
     opp_mem::dev_free(hf_from_indices_dp);
-    opp_mem::dev_free(ps_swap_indices_dp);
+    opp_mem::dev_free(ps_from_indices_dp);
 
     opp_mem::dev_free(OPP_reduct_d);
     opp_mem::dev_free(OPP_consts_d);
@@ -251,8 +250,10 @@ void opp_sycl_exit()
         opp_mem::dev_free(a);
 
     // below are for GPU direct particle communication
-    for (auto it = particle_indices_hv.begin(); it != particle_indices_hv.end(); it++) it->second.clear();
-    for (auto it = cell_indices_hv.begin(); it != cell_indices_hv.end(); it++) it->second.clear();
+    for (auto it = particle_indices_hv.begin(); it != particle_indices_hv.end(); it++) 
+        it->second.clear();
+    for (auto it = cell_indices_hv.begin(); it != cell_indices_hv.end(); it++) 
+        it->second.clear();
     for (auto it = particle_indices_dv.begin(); it != particle_indices_dv.end(); it++) {
         it->second.clear(); it->second.shrink_to_fit();
     }
@@ -299,29 +300,13 @@ opp_map opp_decl_map(opp_set from, opp_set to, int dim, int *imap, char const *n
 }
 
 //****************************************
-// TODO : Remove once API of mpi/opp_mpi_core.cpp:168 and hdf5/opp_mpi_hdf5.cpp:508 is fixed
-opp_dat opp_decl_mesh_dat(opp_set set, int dim, opp_data_type dtype, void *data, char const *name)
+opp_dat opp_decl_dat(opp_set set, int dim, opp_data_type dtype, void *data, char const *name)
 {
-    return opp_decl_dat(set, dim, dtype, data, name);
-}
-opp_dat opp_decl_part_dat(opp_set set, int dim, opp_data_type dtype, void *data, char const *name, bool cell_index)
-{
-    return opp_decl_dat(set, dim, dtype, data, name, cell_index);
-}
-
-//****************************************
-// TODO : remove bool cell_index
-opp_dat opp_decl_dat(opp_set set, int dim, opp_data_type dtype, void *data, char const *name, bool cell_index)
-{
-    opp_dat dat = nullptr;
     std::string type = "";
     int size = -1;
     getDatTypeSize(dtype, type, size);
 
-    if (set->is_particle) 
-        dat = opp_decl_particle_dat_core(set, dim, type.c_str(), size, (char*)data, name, cell_index);
-    else
-        dat = opp_decl_dat_core(set, dim, type.c_str(), size, (char*)data, name);
+    opp_dat dat = opp_decl_dat_core(set, dim, type.c_str(), size, (char*)data, name);
 
     opp_create_dat_device_arrays(dat);
     opp_upload_dat(dat);
@@ -340,20 +325,15 @@ opp_map opp_decl_map_txt(opp_set from, opp_set to, int dim, const char* file_nam
 }
 
 //****************************************
-opp_dat opp_decl_dat_txt(opp_set set, int dim, opp_data_type dtype, const char* file_name, 
-                                char const *name)
+opp_dat opp_decl_dat_txt(opp_set set, int dim, opp_data_type dtype, const char* file_name, char const *name)
 {
-    opp_dat dat = nullptr;
     std::string type = "";
     int size = -1;
     getDatTypeSize(dtype, type, size);
 
     char* dat_data = (char*)opp_load_from_file_core(file_name, set->size, dim, type.c_str(), size);
 
-    if (set->is_particle) 
-        dat = opp_decl_particle_dat_core(set, dim, type.c_str(), size, (char*)dat_data, name, false);
-    else
-        dat = opp_decl_dat_core(set, dim, type.c_str(), size, (char*)dat_data, name);
+    opp_dat dat = opp_decl_dat_core(set, dim, type.c_str(), size, dat_data, name);
 
     opp_mem::host_free(dat_data);
 
@@ -430,29 +410,13 @@ opp_arg opp_arg_dat(opp_map data_map, int idx, opp_map map, opp_map p2c_map, opp
     return opp_arg_dat_core(data_map, idx, map, p2c_map->p2c_dat, acc);
 }
 
-
-//********************************************************************************
-// template <class T> opp_arg opp_arg_gbl(T *data, int dim, char const *typ, opp_access acc);
-opp_arg opp_arg_gbl(double *data, int dim, char const *typ, opp_access acc)
-{
-    return opp_arg_gbl_core(data, dim, typ, acc);
-}
-opp_arg opp_arg_gbl(int *data, int dim, char const *typ, opp_access acc)
-{
-    return opp_arg_gbl_core(data, dim, typ, acc);
-}
-opp_arg opp_arg_gbl(const bool *data, int dim, char const *typ, opp_access acc)
-{
-    return opp_arg_gbl_core(data, dim, typ, acc);
-}
-
 //********************************************************************************
 void opp_print_dat_to_txtfile(opp_dat dat, const char *file_name_prefix, const char *file_name_suffix)
 {
     if (OPP_DBG) opp_printf("opp_print_dat_to_txtfile", "writing file [%s %s] data %p data_d %p", 
                     file_name_prefix, file_name_suffix, dat->data, dat->data_d);
 
-    // if (dat->dirty_hd == Dirty::Host) 
+    if (dat->dirty_hd == Dirty::Host) 
         opp_download_dat(dat);
 
     std::string prefix = std::string(file_name_prefix) + "_sycl";
@@ -469,6 +433,54 @@ void opp_print_map_to_txtfile(opp_map map, const char *file_name_prefix, const c
     opp_print_map_to_txtfile_core(map, prefix.c_str(), file_name_suffix);
 }
 
+//****************************************
+opp_dat opp_fetch_data(opp_dat dat) 
+{
+    if (dat->set->is_particle) {
+        opp_printf("opp_fetch_data", "Error Cannot rearrange particle dats");
+        opp_abort();
+    }
+
+    if (dat->dirty_hd == Dirty::Host) 
+        opp_download_dat(dat);
+
+#ifdef USE_MPI
+    return opp_mpi_get_data(dat); // rearrange data back to original order in mpi
+#else
+    return dat;
+#endif
+}
+
+//****************************************
+void opp_mpi_print_dat_to_txtfile(opp_dat dat, const char *file_name) 
+{
+    OPP_DEVICE_SYNCHRONIZE();
+
+#ifdef USE_MPI
+    const std::string prefixed_file_name = std::string("mpi_files/SYCL_") + 
+                std::to_string(OPP_comm_size) + std::string("_iter") + 
+                std::to_string(OPP_main_loop_iter) + std::string("_") + file_name;
+
+    opp_dat temp = opp_fetch_data(dat); // rearrange data back to original order in mpi
+    
+    print_dat_to_txtfile_mpi(temp, prefixed_file_name.c_str());
+
+    opp_mem::host_free(temp->data);
+    opp_mem::host_free(temp->set);
+    opp_mem::host_free(temp);
+#endif
+}
+
+//****************************************
+void opp_dump_dat(opp_dat dat)
+{
+    OPP_DEVICE_SYNCHRONIZE();
+
+    if (dat->dirty_hd == Dirty::Host) opp_download_dat(dat);
+
+    opp_dump_dat_core(dat);
+}
+
 //********************************************************************************
 // Set the complete dat to zero (upto array capacity)
 void opp_reset_dat_impl(opp_dat dat, char* val, opp_reset reset)
@@ -481,10 +493,9 @@ void opp_reset_dat_impl(opp_dat dat, char* val, opp_reset reset)
     int start = 0, end = dat->set->size;
     opp_get_start_end(dat->set, reset, start, end);
 
-    size_t element_size = dat->size / dat->dim;
+    const size_t element_size = dat->size / dat->dim;
 
-    for (int64_t i = 0; i < dat->dim; i++) 
-    { 
+    for (int64_t i = 0; i < dat->dim; i++) { 
         size_t data_d_offset = (i * dat->set->set_capacity + start) * element_size;
 
         if (OPP_DBG) 
@@ -500,7 +511,6 @@ void opp_reset_dat_impl(opp_dat dat, char* val, opp_reset reset)
     dat->dirty_hd = Dirty::Host;
     dat->dirtybit = 1;
 }
-
 
 //*******************************************************************************
 // This routine assumes that the host data structures are clean
@@ -527,55 +537,6 @@ void opp_partition(std::string lib_name, opp_set prime_set, opp_map prime_map, o
         opp_upload_map(map, true);
 #endif
 }
-
-//*******************************************************************************
-opp_dat opp_fetch_data(opp_dat dat) {
-
-    if (dat->set->is_particle) {
-        opp_printf("opp_fetch_data", "Error Cannot rearrange particle dats");
-        opp_abort();
-    }
-
-    if (dat->dirty_hd == Dirty::Host) opp_download_dat(dat);
-
-#ifdef USE_MPI
-    return opp_mpi_get_data(dat); // rearrange data back to original order in mpi
-#else
-    return dat;
-#endif
-}
-
-
-//*******************************************************************************
-void opp_mpi_print_dat_to_txtfile(opp_dat dat, const char *file_name) 
-{
-    OPP_DEVICE_SYNCHRONIZE();
-
-#ifdef USE_MPI
-    const std::string prefixed_file_name = std::string("mpi_files/SYCL_") + 
-                std::to_string(OPP_comm_size) + std::string("_iter") + 
-                std::to_string(OPP_main_loop_iter) + std::string("_") + file_name;
-
-    opp_dat temp = opp_fetch_data(dat); // rearrange data back to original order in mpi
-    
-    print_dat_to_txtfile_mpi(temp, prefixed_file_name.c_str());
-
-    opp_mem::host_free(temp->data);
-    opp_mem::host_free(temp->set);
-    opp_mem::host_free(temp);
-#endif
-}
-
-//********************************************************************************
-void opp_dump_dat(opp_dat dat)
-{
-    OPP_DEVICE_SYNCHRONIZE();
-
-    if (dat->dirty_hd == Dirty::Host) opp_download_dat(dat);
-
-    opp_dump_dat_core(dat);
-}
-
 
 
 //*******************************************************************************
@@ -681,10 +642,8 @@ void opp_mvReductArraysToHost(int reduct_bytes)
 //*******************************************************************************
 void opp_reallocConstArrays(int consts_bytes) 
 {
-    if (consts_bytes > OPP_consts_bytes) 
-    {
-        if (OPP_consts_bytes > 0) 
-        {
+    if (consts_bytes > OPP_consts_bytes) {
+        if (OPP_consts_bytes > 0) {
             opp_mem::host_free(OPP_consts_h);
             opp_mem::dev_free(OPP_consts_d);
         }

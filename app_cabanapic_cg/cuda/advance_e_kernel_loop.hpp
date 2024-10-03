@@ -160,7 +160,7 @@ void opp_par_loop_all__advance_e_kernel(opp_set set, opp_iterate_type,
     }
 
     opp_set_dirtybit_grouped(nargs, args, Device_GPU);
-    cutilSafeCall(cudaDeviceSynchronize());   
+    OPP_DEVICE_SYNCHRONIZE();   
  
     opp_profiler->end("advance_e_kernel");
 }

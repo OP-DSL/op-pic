@@ -189,7 +189,7 @@ OPP_INT* opp_k{{kernel_idx}}_map{{map.id}}_stride_s = nullptr;
 
 {% block host_prologue_early_exit_cleanup %}
         opp_set_dirtybit_grouped(nargs, args, Device_GPU);
-        opp_queue->wait();
+        OPP_DEVICE_SYNCHRONIZE();
 {% endblock %}
 
 {% block host_prologue %}
@@ -402,7 +402,7 @@ void opp_par_loop_{{lh.iterator_type}}__{{lh.kernel}}(opp_set set, opp_iterate_t
 
     {% endfor %}
     opp_set_dirtybit_grouped(nargs, args, Device_GPU);
-    opp_queue->wait();   
+    OPP_DEVICE_SYNCHRONIZE();   
     {% if lh is double_indirect_reduc %}
 
 #ifdef USE_MPI    

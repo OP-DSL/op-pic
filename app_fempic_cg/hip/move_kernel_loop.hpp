@@ -15,6 +15,8 @@ __constant__ OPP_INT opp_k4_dat2_stride_d;
 __constant__ OPP_INT opp_k4_dat3_stride_d;
 __constant__ OPP_INT opp_k4_c2c_map_stride_d;
 
+
+
 namespace opp_k4 {
 __device__ inline void move_kernel(
     char& opp_move_status_flag, const bool opp_move_hop_iter_one_flag, // Added by code-gen
@@ -108,8 +110,10 @@ __device__ inline bool opp_part_check_status_hip(char& move_flag, bool& iter_one
     // cell_id is an own cell and move_flag == OPP_NEED_MOVE
     return true;
 }
+
 }
 
+//--------------------------------------------------------------
 __global__ void opp_dev_move_kernel(
     const OPP_REAL *__restrict__ dat0,     // p_pos
     OPP_REAL *__restrict__ dat1,     // p_lc
@@ -154,7 +158,10 @@ __global__ void opp_dev_move_kernel(
             *particle_remove_count, particle_remove_indices, move_particle_indices, 
             move_cell_indices, move_count));        
     }
+    
 }
+
+//--------------------------------------------------------------
 
 void opp_particle_move__move_kernel(opp_set set, opp_map c2c_map, opp_map p2c_map,
     opp_arg arg0,   // p_pos | OPP_READ
@@ -222,26 +229,28 @@ void opp_particle_move__move_kernel(opp_set set, opp_map c2c_map, opp_map p2c_ma
 
         num_blocks = (OPP_iter_end - OPP_iter_start - 1) / block_size + 1;
 
-        opp_dev_move_kernel<<<num_blocks, block_size>>>(
-            (OPP_REAL *)args[0].data_d,    // p_pos
-            (OPP_REAL *)args[1].data_d,    // p_lc
-            (OPP_REAL *)args[2].data_d,    // c_volume
-            (OPP_REAL *)args[3].data_d,    // c_det
-            (OPP_INT *)args[4].data_d,    // p2c_map
-            (OPP_INT *)c2c_map->map_d,    // c2c_map
-            (OPP_INT *)set->particle_remove_count_d,
-            (OPP_INT *)OPP_remove_particle_indices_d,
-            (OPP_INT *)OPP_move_particle_indices_d,
-            (OPP_INT *)OPP_move_cell_indices_d,
-            (OPP_INT *)OPP_move_count_d,
-            OPP_iter_start,
-            OPP_iter_end
-        );
+        {
+            opp_dev_move_kernel<<<num_blocks, block_size>>>(
+                (OPP_REAL *)args[0].data_d,    // p_pos
+                (OPP_REAL *)args[1].data_d,    // p_lc
+                (OPP_REAL *)args[2].data_d,    // c_volume
+                (OPP_REAL *)args[3].data_d,    // c_det
+                (OPP_INT *)args[4].data_d,    // p2c_map
+                (OPP_INT *)c2c_map->map_d,    // c2c_map
+                (OPP_INT *)set->particle_remove_count_d,
+                (OPP_INT *)OPP_remove_particle_indices_d,
+                (OPP_INT *)OPP_move_particle_indices_d,
+                (OPP_INT *)OPP_move_cell_indices_d,
+                (OPP_INT *)OPP_move_count_d,
+                OPP_iter_start,
+                OPP_iter_end
+            );
+        }
 
     } while (opp_finalize_particle_move(set)); 
 
     opp_set_dirtybit_grouped(nargs, args, Device_GPU);
-    cutilSafeCall(hipDeviceSynchronize());   
+    OPP_DEVICE_SYNCHRONIZE();   
  
     opp_profiler->end("move_kernel");
 }

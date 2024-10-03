@@ -222,7 +222,7 @@ namespace opp {
                 ss << "Rank [" << (fromAllRanks ? std::to_string(m_myRank) : std::string("FINAL")) << "]"; 
                 ss << "--------------------------------------------------------" << std::endl;
 
-                ss << "'Profile'                'Count'\t'TotalTime'\t'AverageTime'\t'MeshTransferSize'\t'MeshCommunicationTime'";
+                ss << "'Profile'                      'Count'\t'TotalTime'\t'AverageTime'\t'MeshTransferSize'\t'MeshCommunicationTime'";
                 ss << "\t'ParticleTransferSize'\t'ParticleTransferCount'\t'ParticleCommunicationTime'" << std::endl;
             }
 
@@ -242,7 +242,7 @@ namespace opp {
                 const double particleCommunicationTime = this->getParticleCommunicationTime(profName, fromAllRanks);
 
                 if (fromAllRanks || m_myRank == 0) { 
-                    ss << fromAllRanks << " " << m_myRank << " " << this->adjustString(profName, 20) << "\t" << this->adjustString(std::to_string(count), 6) << "\t"; 
+                    ss << fromAllRanks << " " << m_myRank << " " << this->adjustString(profName, 30) << "\t" << this->adjustString(std::to_string(count), 6) << "\t"; 
                     ss << std::fixed << std::setprecision(10) << elapsedTime << "\t" << averageTime; 
                     std::stringstream so;
                     so << "\t" << meshTransferSize << "\t" << meshCommunicationTime;

@@ -52,8 +52,8 @@ void opp_par_loop_all__calculate_new_pos_vel_kernel(opp_set set, opp_iterate_typ
             const OPP_INT* opp_k3_dat1_stride_sycl = opp_k3_dat1_stride_s;
             const OPP_INT* opp_k3_dat2_stride_sycl = opp_k3_dat2_stride_s;
     
-            const OPP_REAL* CONST_dt_sycl = CONST_dt_s;
             const OPP_REAL* CONST_mass_sycl = CONST_mass_s;
+            const OPP_REAL* CONST_dt_sycl = CONST_dt_s;
             const OPP_REAL* CONST_charge_sycl = CONST_charge_s;
 
             OPP_REAL* dat0_sycl = (OPP_REAL*)args[0].data_d;     // c_ef
@@ -104,7 +104,7 @@ void opp_par_loop_all__calculate_new_pos_vel_kernel(opp_set set, opp_iterate_typ
     }
 
     opp_set_dirtybit_grouped(nargs, args, Device_GPU);
-    opp_queue->wait();   
+    OPP_DEVICE_SYNCHRONIZE();   
  
     opp_profiler->end("calculate_new_pos_vel_kernel");
 }

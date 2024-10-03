@@ -491,22 +491,7 @@ char* opp_get_hdf5_dat_data(opp_set set, int dim, char const *type, char const *
     return data;
 }
 
-// opp_dat opp_decl_dat_hdf5(opp_set set, int dim, opp_data_type dtype, char const *file, char const *name) {
-    
-//     std::string type = "";
-//     int size = -1;
-//     getDatTypeSize(dtype, type, size);
-
-//     char* data = opp_get_hdf5_dat_data(set, dim, type.c_str(), file, name);
-
-//     opp_dat new_dat = opp_decl_dat(set, dim, dtype, (void*)data, name);
-//     free(data);
-    
-//     return new_dat;
-// }
-
-opp_dat opp_decl_dat_hdf5(opp_set set, int dim, opp_data_type dtype, char const *file, char const *name, 
-                                bool cell_index) {
+opp_dat opp_decl_dat_hdf5(opp_set set, int dim, opp_data_type dtype, char const *file, char const *name) {
     
     std::string type = "";
     int size = -1;
@@ -515,10 +500,7 @@ opp_dat opp_decl_dat_hdf5(opp_set set, int dim, opp_data_type dtype, char const 
     char* data = opp_get_hdf5_dat_data(set, dim, type.c_str(), file, name);
 
     opp_dat new_dat = nullptr;
-    if (set->is_particle) 
-        new_dat = opp_decl_part_dat(set, dim, dtype, data, name, cell_index);
-    else
-        new_dat = opp_decl_mesh_dat(set, dim, dtype, data, name);    
+    new_dat = opp_decl_dat(set, dim, dtype, data, name);
 
     free(data);
     

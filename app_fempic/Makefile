@@ -15,10 +15,10 @@ NVCC       = nvcc
 HIPCC      = $(HIP_COMPILER)
 SYCLCC     = icpx
 
-CPPFLAGS   = -std=c++17 -Wall -fPIC -march=native $(CPPFLAGS_ADD) 
-NVCCFLAGS  = --extended-lambda -m64 -Xptxas -dlcm=ca $(NVCCFLAGS_ADD) -DUSE_THRUST 
-HIPCCFLAGS = $(HIPCCFLAGS_ADD) -std=c++17 -isystem -D__HIP_PLATFORM_AMD__ -munsafe-fp-atomics -DUSE_THRUST -march=native
-SYCLFLAGS  = -w -fsycl -std=c++17 $(SYCLFLAGS_ADD) -DUSE_SYCL 
+CPPFLAGS   = -std=c++17 -Wall -fPIC -march=native -DUSE_PETSC $(CPPFLAGS_ADD) 
+NVCCFLAGS  = -std=c++17 --extended-lambda -m64 -Xptxas -dlcm=ca -DUSE_PETSC $(NVCCFLAGS_ADD) -DUSE_THRUST 
+HIPCCFLAGS = $(HIPCCFLAGS_ADD) -std=c++17 -isystem -D__HIP_PLATFORM_AMD__ -munsafe-fp-atomics -DUSE_THRUST -DUSE_PETSC -march=native
+SYCLFLAGS  = -w -fsycl -std=c++17 $(SYCLFLAGS_ADD) -DUSE_PETSC -DUSE_SYCL 
 
 DEBUG ?= 0
 ifeq ($(DEBUG), 1)
@@ -49,15 +49,8 @@ ifeq ($(DEBUG_LOG), 1)
 	SYCLFLAGS  += -DDEBUG_LOG
 endif
 
-PETSC ?= 1
-ifeq ($(PETSC), 1)
-	CPPFLAGS   += -DUSE_PETSC
-	NVCCFLAGS  += -DUSE_PETSC
-	HIPCCFLAGS += -DUSE_PETSC
-	SYCLFLAGS  += -DUSE_PETSC
- 	PETSC_INC  = -I$(PETSC_INSTALL_PATH)/include
- 	PETSC_LIB  = -Wl,-rpath,$(PETSC_INSTALL_PATH)/lib -L$(PETSC_INSTALL_PATH)/lib -lpetsc
-endif
+PETSC_INC  = -I$(PETSC_INSTALL_PATH)/include
+PETSC_LIB  = -Wl,-rpath,$(PETSC_INSTALL_PATH)/lib -L$(PETSC_INSTALL_PATH)/lib -lpetsc
 
 CUDA_INC   = -I$(CUDA_INSTALL_PATH)/include
 CUDA_LIB   = -L$(CUDA_INSTALL_PATH)/lib64 -lcudart -lcuda
@@ -122,7 +115,7 @@ omp: mklib opp_kernels+omp fempic_opp+omp field_solver+omp
 fempic_opp+omp_mpi: 
 	     $(MPICPP) $(CPPFLAGS) -fopenmp -DUSE_OMP -DUSE_MPI -c fempic_opp.cpp -o $(OBJ)/fempic_opp_omp_mpi.o $(ALL_INC)
 field_solver+omp_mpi: 
-		 $(MPICPP) $(CPPFLAGS) -fopenmp -DUSE_OMP -DUSE_MPI -c field_solver/cpu.cpp -o $(OBJ)/field_solver_cpu_omp_mpi.o $(ALL_INC)
+		 $(MPICPP) $(CPPFLAGS) -fopenmp -DUSE_OMP -DUSE_MPI -c field_solver/field_solver.cpp -o $(OBJ)/field_solver_cpu_omp_mpi.o $(ALL_INC)
 opp_kernels+omp_mpi: 
 		 $(MPICPP) $(CPPFLAGS) -fopenmp -DUSE_OMP -DUSE_MPI -c omp/opp_kernels.cpp -o $(OBJ)/opp_kernels_omp_mpi.o $(ALL_INC)
 opp_mpi_hdf5+omp_mpi:

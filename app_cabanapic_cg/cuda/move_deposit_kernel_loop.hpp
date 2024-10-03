@@ -26,6 +26,12 @@ enum CellAcc {
     jfz = 2 * 4,
 };
 
+enum Dim {
+    x = 0,
+    y = 1,
+    z = 2,
+};
+
 __device__ inline void weight_current_to_accumulator_kernel(
         double* cell_acc,
         const double* q,
@@ -54,12 +60,6 @@ __device__ inline void weight_current_to_accumulator_kernel(
     cell_acc[CellAcc::jfz + 2] += v2;
     cell_acc[CellAcc::jfz + 3] += v3;
 }
-
-enum Dim {
-    x = 0,
-    y = 1,
-    z = 2,
-};
 
 enum CellInterp {
     ex = 0,
@@ -498,7 +498,7 @@ void opp_particle_move__move_deposit_kernel(opp_set set, opp_map c2c_map, opp_ma
     } while (opp_finalize_particle_move(set)); 
 
     opp_set_dirtybit_grouped(nargs, args, Device_GPU);
-    cutilSafeCall(cudaDeviceSynchronize());   
+    OPP_DEVICE_SYNCHRONIZE();   
  
     opp_profiler->end("move_deposit_kernel");
 }

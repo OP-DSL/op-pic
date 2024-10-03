@@ -130,7 +130,7 @@ OPP_INT* opp_k{{kernel_idx}}_c2c_map_stride_s = nullptr;
 
 {% block host_prologue_early_exit_cleanup %}
         opp_set_dirtybit_grouped(nargs, args, Device_GPU);
-        opp_queue->wait();
+        OPP_DEVICE_SYNCHRONIZE();
 {% endblock %}
 
 {% block host_prologue %}
@@ -461,7 +461,7 @@ auto opp_part_check_status =
 
     {% endfor %}
     opp_set_dirtybit_grouped(nargs, args, Device_GPU);
-    opp_queue->wait();
+    OPP_DEVICE_SYNCHRONIZE();
     {% if lh is double_indirect_reduc %}
 
 #ifdef USE_MPI    

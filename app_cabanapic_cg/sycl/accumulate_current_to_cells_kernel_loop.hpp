@@ -82,16 +82,16 @@ void opp_par_loop_all__accumulate_current_to_cells_kernel(opp_set set, opp_itera
 
             // user provided elemental kernel
             // -----------------------------------------------------------------------------------------
-            enum CellAcc {
-                jfx = 0 * 4,
-                jfy = 1 * 4,
-                jfz = 2 * 4,
-            };
-
             enum Dim {
                 x = 0,
                 y = 1,
                 z = 2,
+            };
+
+            enum CellAcc {
+                jfx = 0 * 4,
+                jfy = 1 * 4,
+                jfz = 2 * 4,
             };
 
             auto  accumulate_current_to_cells_kernel_sycl = [=](
@@ -153,7 +153,7 @@ void opp_par_loop_all__accumulate_current_to_cells_kernel(opp_set set, opp_itera
     }
 
     opp_set_dirtybit_grouped(nargs, args, Device_GPU);
-    opp_queue->wait();   
+    OPP_DEVICE_SYNCHRONIZE();   
  
     opp_profiler->end("accumulate_current_to_cells_kernel");
 }

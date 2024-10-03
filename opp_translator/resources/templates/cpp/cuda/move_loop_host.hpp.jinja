@@ -266,7 +266,7 @@ __global__ void opp_dev_{{lh.kernel}}(
 
 {% block host_prologue_early_exit_cleanup %}
         opp_set_dirtybit_grouped(nargs, args, Device_GPU);
-        cutilSafeCall(cudaDeviceSynchronize());   
+        OPP_DEVICE_SYNCHRONIZE();   
 {% endblock %}
 
 {% block host_prologue %}
@@ -292,7 +292,7 @@ void opp_particle_move__{{lh.kernel}}(opp_set set, opp_map c2c_map, opp_map p2c_
     {% if lh is double_indirect_reduc %}
 
 #ifdef USE_MPI
-    opp_init_double_indirect_reductions_cuda(nargs, args);
+    opp_init_double_indirect_reductions_device(nargs, args);
 #endif
     {% endif %} 
     if (OPP_cells_set_size != set->cells_set->size) {
@@ -489,12 +489,12 @@ opp_dev_{{lh.kernel}}<<<num_blocks, block_size
 
     {% endfor %}
     opp_set_dirtybit_grouped(nargs, args, Device_GPU);
-    cutilSafeCall(cudaDeviceSynchronize());   
+    OPP_DEVICE_SYNCHRONIZE();   
     {% if lh is double_indirect_reduc %}
 
 #ifdef USE_MPI    
-    opp_exchange_double_indirect_reductions_cuda(nargs, args);
-    opp_complete_double_indirect_reductions_cuda(nargs, args);
+    opp_exchange_double_indirect_reductions_device(nargs, args);
+    opp_complete_double_indirect_reductions_device(nargs, args);
 #endif
     {% endif %} 
 {{super()}}

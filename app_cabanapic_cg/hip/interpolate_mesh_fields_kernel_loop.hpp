@@ -18,12 +18,6 @@ __constant__ OPP_INT opp_k1_map0_stride_d;
 
 
 namespace opp_k1 {
-enum Dim {
-    x = 0,
-    y = 1,
-    z = 2,
-};
-
 enum CellInterp {
     ex = 0,
     dexdy,
@@ -43,6 +37,12 @@ enum CellInterp {
     dcbydy,
     cbz,
     dcbzdz,
+};
+
+enum Dim {
+    x = 0,
+    y = 1,
+    z = 2,
 };
 
 __device__ inline void interpolate_mesh_fields_kernel(
@@ -246,7 +246,7 @@ void opp_par_loop_all__interpolate_mesh_fields_kernel(opp_set set, opp_iterate_t
     }
 
     opp_set_dirtybit_grouped(nargs, args, Device_GPU);
-    cutilSafeCall(hipDeviceSynchronize());   
+    OPP_DEVICE_SYNCHRONIZE();   
  
     opp_profiler->end("interpolate_mesh_fields_kernel");
 }

@@ -169,7 +169,7 @@ void opp_par_loop_all__accumulate_current_to_cells_kernel(opp_set set, opp_itera
     }
 
     opp_set_dirtybit_grouped(nargs, args, Device_GPU);
-    cutilSafeCall(hipDeviceSynchronize());   
+    OPP_DEVICE_SYNCHRONIZE();   
  
     opp_profiler->end("accumulate_current_to_cells_kernel");
 }

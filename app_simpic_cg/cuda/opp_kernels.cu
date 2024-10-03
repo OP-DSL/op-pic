@@ -56,6 +56,9 @@ __constant__ int OPP_comm_iteration_d;
 
 void opp_decl_const_impl(int dim, int size, char* data, const char* name) {
     
+    if (OPP_DBG)
+        opp_printf("opp_decl_const_impl", "Registering %s", name);
+
     if (!strcmp(name, "CONST_lhs_voltage")) {
         cutilSafeCall(cudaMemcpyToSymbol(CONST_lhs_voltage_d, data, dim * size));
         return;
@@ -101,8 +104,7 @@ void opp_decl_const_impl(int dim, int size, char* data, const char* name) {
         return;
     }
 
-    opp_printf("Error: unknown const name %s", name);
-    opp_abort("Error: unknown const name");
+    opp_abort(std::string("Error: unknown const name") + std::string(name));
 }
 
 #include "weight_f2p_kernel_loop.hpp"

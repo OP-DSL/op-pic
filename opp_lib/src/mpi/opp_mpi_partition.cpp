@@ -38,10 +38,7 @@
  *
  * written by: Gihan R. Mudalige, (Started 07-04-2011)
  */
-// export PARMETIS_INSTALL_PATH=$HOME/lib
-// export LD_LIBRARY_PATH=$HOME/lib/lib:$LD_LIBRARY_PATH
 
-// mpi header
 #include <mpi.h>
 #include <stdint.h>
 #include <stdio.h>

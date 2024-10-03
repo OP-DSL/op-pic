@@ -43,6 +43,9 @@ OPP_INT CONST_ndimcells[2];
 
 void opp_decl_const_impl(int dim, int size, char* data, const char* name) {
     
+    if (OPP_DBG)
+        opp_printf("opp_decl_const_impl", "Registering %s", name);
+
     if (!strcmp(name, "CONST_extents")) {
         std::memcpy(&CONST_extents, data, (size*dim));
         return;
@@ -60,8 +63,7 @@ void opp_decl_const_impl(int dim, int size, char* data, const char* name) {
         return;
     }
 
-    opp_printf("Error: unknown const name %s", name);
-    opp_abort("Error: unknown const name");
+    opp_abort(std::string("Error: unknown const name") + std::string(name));
 }
 
 #include "update_pos_kernel_loop.hpp"

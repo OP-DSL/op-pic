@@ -32,14 +32,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #pragma once
 
-#include <vector>
-#include <algorithm>
-#include <random>
-#include <string>
-#include <cstring>
-#include <sys/time.h>
-
-typedef struct opp_set_core *opp_set;
+#include <opp_defs.h>
 
 #ifndef MIN
 #define MIN(a, b) ((a < b) ? (a) : (b))
@@ -52,7 +45,7 @@ typedef struct opp_set_core *opp_set;
 #define ROUND_UP_64(bytes) (((bytes) + 63) & ~63)
 
 //********************************************************************************
-std::string getTimeStr();
+std::string get_time_str();
 
 //********************************************************************************
 char *copy_str(char const *src);
@@ -203,3 +196,67 @@ inline void get_decomp_1d(const T N_compute_units, const T N_work_items,
     *rstart = start;
     *rend = end;
 }
+
+//*************************************************************************************************
+template <typename T>
+std::vector<T> sort_iota_by_key(const T* keys, size_t size) 
+{ 
+    std::vector<T> idx(size);
+    std::iota(idx.begin(), idx.end(), 0);
+
+    std::sort(idx.begin(), idx.end(),
+        [keys](T i1, T i2) { return keys[i1] < keys[i2]; });
+
+    return idx;
+}
+
+//*************************************************************************************************
+template <typename T>
+std::vector<T> shuffle_iota_by_key(const T* keys, size_t size) 
+{
+    std::vector<T> idx(size);
+    std::iota(idx.begin(), idx.end(), 0);
+
+    // Partition the indices based on whether the key is MAX_CELL_INDEX
+    auto partition_point = std::partition(idx.begin(), idx.end(), 
+        [keys](T i) { return keys[i] != MAX_CELL_INDEX; });
+    idx.resize(partition_point - idx.begin());
+
+    // TODO : Since relative order is not preserved in std::partition, 
+    // we might be able to remove below shuffle
+    // std::random_device rd;
+    // std::mt19937 g(rd());
+    // std::shuffle(idx.begin(), idx.end(), g);
+
+    return idx;
+}
+
+//*************************************************************************************************
+inline void getDatTypeSize(opp_data_type dtype, std::string& type, int& size)
+{
+    if (dtype == DT_REAL) {
+        type = "double";
+        size = sizeof(OPP_REAL);
+    }
+    else if (dtype == DT_INT) {
+        type = "int";
+        size = sizeof(OPP_INT);       
+    }
+    else {
+        std::cerr << "Data type in Dat not supported" << std::endl;
+    }
+}
+
+//*************************************************************************************************
+inline void opp_printf(const char* function, const char *format, ...)
+{
+    char buf[LOG_STR_LEN];
+    va_list args;
+    va_start(args, format);
+    vsnprintf(buf, LOG_STR_LEN, format, args);
+    va_end(args);
+
+    printf("%s[%d][%d] - %s\n", function, OPP_rank, OPP_main_loop_iter, buf);
+}
+
+//*************************************************************************************************

@@ -12,7 +12,7 @@ HIPCC      = $(HIP_COMPILER)
 SYCLCC     = icpx
 
 CPPFLAGS   = -std=c++17 -Wall -fPIC -march=native $(CPPFLAGS_ADD)
-NVCCFLAGS  = -std=c++14 -m64 -Xptxas -dlcm=ca -Xptxas=-v $(NVCCFLAGS_ADD)
+NVCCFLAGS  = -std=c++17 -m64 -Xptxas -dlcm=ca $(NVCCFLAGS_ADD)
 HIPCCFLAGS = $(HIPCCFLAGS_ADD) -std=c++17 -Wall -isystem -D__HIP_PLATFORM_AMD__ -munsafe-fp-atomics -march=native
 SYCLFLAGS  = -w -fsycl -std=c++17 $(SYCLFLAGS_ADD) -DUSE_SYCL 
 
@@ -45,20 +45,14 @@ ifeq ($(IEEE), 1)
 	HIPCCFLAGS  += -fmad=false -ftz=false -prec-div=true -prec-sqrt=true
 endif
 
-CUDA ?= 0
-ifeq ($(CUDA), 1)
-	CUDA_INC   = -I$(CUDA_INSTALL_PATH)/include
-	CUDA_LIB   = -L$(CUDA_INSTALL_PATH)/lib64 -lcudart -lcuda
-endif
+CUDA_INC   = -I$(CUDA_INSTALL_PATH)/include
+CUDA_LIB   = -L$(CUDA_INSTALL_PATH)/lib64 -lcudart -lcuda
 
-HIP ?= 0
-ifeq ($(HIP), 1)
-	HIP_INC   = -I$(ROCM_INSTALL_DIR)/include -I$(ROCM_THRUST_DIR)/include -I$(ROCM_PRIM_DIR)/include
-	HIP_LIB   = -L$(ROCM_INSTALL_DIR)/lib -lamdhip64
-# for archer2 gpus
-#	HIP_INC   = -I${CRAY_MPICH_DIR}/include
-#	HIP_LIB   = -L$(CRAY_MPICH_DIR)/lib -lmpi ${PE_MPICH_GTL_DIR_amd_gfx90a} ${PE_MPICH_GTL_LIBS_amd_gfx90a} -lamdhip64
-endif
+HIP_INC   = -I$(ROCM_INSTALL_DIR)/include -I$(ROCM_THRUST_DIR)/include -I$(ROCM_PRIM_DIR)/include
+HIP_LIB   = -L$(ROCM_INSTALL_DIR)/lib -lamdhip64
+# # for archer2 gpus
+# HIP_INC   = -I${CRAY_MPICH_DIR}/include
+# HIP_LIB   = -L$(CRAY_MPICH_DIR)/lib -lmpi ${PE_MPICH_GTL_DIR_amd_gfx90a} ${PE_MPICH_GTL_LIBS_amd_gfx90a} -lamdhip64
 
 PARMETIS ?= 0
 ifeq ($(PARMETIS), 1)

@@ -10,6 +10,12 @@ enum CellAcc {
     jfz = 2 * 4,
 };
 
+enum Dim {
+    x = 0,
+    y = 1,
+    z = 2,
+};
+
 inline void weight_current_to_accumulator_kernel(
         double* cell_acc,
         const double* q,
@@ -38,12 +44,6 @@ inline void weight_current_to_accumulator_kernel(
     cell_acc[CellAcc::jfz + 2] += v2;
     cell_acc[CellAcc::jfz + 3] += v3;
 }
-
-enum Dim {
-    x = 0,
-    y = 1,
-    z = 2,
-};
 
 enum CellInterp {
     ex = 0,
@@ -318,7 +318,7 @@ void opp_particle_move__move_deposit_kernel(opp_set set, opp_map c2c_map, opp_ma
             return;
         }
 
-        opp_move_status_flag = OPPX_MOVE_DONE; 
+        opp_move_status_flag = OPP_MOVE_DONE; 
         opp_move_hop_iter_one_flag = true;
 
         do {

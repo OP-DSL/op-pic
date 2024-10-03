@@ -99,10 +99,10 @@ void opp_par_loop_injected__inject_ions_kernel(opp_set set, opp_iterate_type,
             const OPP_INT* opp_k2_dat9_stride_sycl = opp_k2_dat9_stride_s;
             const OPP_INT* opp_k2_map0_stride_sycl = opp_k2_map0_stride_s;
     
-            const OPP_REAL* CONST_dt_sycl = CONST_dt_s;
-            const OPP_REAL* CONST_mass_sycl = CONST_mass_s;
-            const OPP_REAL* CONST_charge_sycl = CONST_charge_s;
             const OPP_REAL* CONST_ion_velocity_sycl = CONST_ion_velocity_s;
+            const OPP_REAL* CONST_mass_sycl = CONST_mass_s;
+            const OPP_REAL* CONST_dt_sycl = CONST_dt_s;
+            const OPP_REAL* CONST_charge_sycl = CONST_charge_s;
 
             OPP_REAL* dat0_sycl = (OPP_REAL*)args[0].data_d;     // p_pos
             OPP_REAL* dat1_sycl = (OPP_REAL*)args[1].data_d;     // p_vel
@@ -187,7 +187,7 @@ void opp_par_loop_injected__inject_ions_kernel(opp_set set, opp_iterate_type,
     }
 
     opp_set_dirtybit_grouped(nargs, args, Device_GPU);
-    opp_queue->wait();   
+    OPP_DEVICE_SYNCHRONIZE();   
  
     opp_profiler->end("inject_ions_kernel");
 }

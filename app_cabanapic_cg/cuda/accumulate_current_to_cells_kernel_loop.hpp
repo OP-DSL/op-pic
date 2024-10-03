@@ -16,16 +16,16 @@ __constant__ OPP_INT opp_k3_map0_stride_d;
 
 
 namespace opp_k3 {
-enum CellAcc {
-    jfx = 0 * 4,
-    jfy = 1 * 4,
-    jfz = 2 * 4,
-};
-
 enum Dim {
     x = 0,
     y = 1,
     z = 2,
+};
+
+enum CellAcc {
+    jfx = 0 * 4,
+    jfy = 1 * 4,
+    jfz = 2 * 4,
 };
 
 __device__ inline void accumulate_current_to_cells_kernel(
@@ -169,7 +169,7 @@ void opp_par_loop_all__accumulate_current_to_cells_kernel(opp_set set, opp_itera
     }
 
     opp_set_dirtybit_grouped(nargs, args, Device_GPU);
-    cutilSafeCall(cudaDeviceSynchronize());   
+    OPP_DEVICE_SYNCHRONIZE();   
  
     opp_profiler->end("accumulate_current_to_cells_kernel");
 }

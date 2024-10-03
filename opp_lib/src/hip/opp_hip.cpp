@@ -269,42 +269,44 @@ opp_map opp_decl_map(opp_set from, opp_set to, int dim, int *imap, char const *n
 {
     opp_map map = opp_decl_map_core(from, to, dim, imap, name);
 
-    if (from->is_particle)
-    {
+    if (from->is_particle) {
         opp_create_device_arrays(map->p2c_dat);
         opp_upload_dat(map->p2c_dat);
     }
-    else
-    {
+    else {
         opp_upload_map(map, true);
     }
 
     return map;
 }
 
-//****************************************
-opp_dat opp_decl_mesh_dat(opp_set set, int dim, opp_data_type dtype, void *data, char const *name)
+// //****************************************
+// opp_dat opp_decl_mesh_dat(opp_set set, int dim, opp_data_type dtype, void *data, char const *name)
+// {
+//     std::string type = "";
+//     int size = -1;
+//     getDatTypeSize(dtype, type, size);
+    
+//     opp_dat dat = opp_decl_dat_core(set, dim, type.c_str(), size, (char*)data, name);
+
+//     opp_create_device_arrays(dat);
+//     opp_upload_dat(dat);
+
+//     return dat;
+// }
+
+opp_dat opp_decl_dat(opp_set set, int dim, opp_data_type dtype, void *data, char const *name)
 {
     std::string type = "";
     int size = -1;
-
     getDatTypeSize(dtype, type, size);
     
     opp_dat dat = opp_decl_dat_core(set, dim, type.c_str(), size, (char*)data, name);
 
     opp_create_device_arrays(dat);
-
     opp_upload_dat(dat);
 
     return dat;
-}
-
-opp_dat opp_decl_dat(opp_set set, int dim, opp_data_type dtype, void *data, char const *name, bool cell_index)
-{
-    if (set->is_particle) 
-        return opp_decl_part_dat(set, dim, dtype, data, name, cell_index);
-    else
-        return opp_decl_mesh_dat(set, dim, dtype, data, name);
 }
 
 //****************************************
@@ -405,22 +407,6 @@ opp_arg opp_arg_dat(opp_map data_map, int idx, opp_map map, opp_map p2c_map, opp
     return opp_arg_dat_core(data_map, idx, map, p2c_map->p2c_dat, acc);
 }
 
-
-//****************************************
-// template <class T> opp_arg opp_arg_gbl(T *data, int dim, char const *typ, opp_access acc);
-opp_arg opp_arg_gbl(double *data, int dim, char const *typ, opp_access acc)
-{
-    return opp_arg_gbl_core(data, dim, typ, acc);
-}
-opp_arg opp_arg_gbl(int *data, int dim, char const *typ, opp_access acc)
-{
-    return opp_arg_gbl_core(data, dim, typ, acc);
-}
-opp_arg opp_arg_gbl(const bool *data, int dim, char const *typ, opp_access acc)
-{
-    return opp_arg_gbl_core(data, dim, typ, acc);
-}
-
 //****************************************
 opp_set opp_decl_particle_set(int size, char const *name, opp_set cells_set)
 {
@@ -436,39 +422,39 @@ opp_set opp_decl_particle_set(char const *name, opp_set cells_set)
     return opp_decl_particle_set(0, name, cells_set);
 }
 
-//****************************************
-opp_dat opp_decl_part_dat(opp_set set, int dim, opp_data_type dtype, void *data, char const *name, 
-                            bool cell_index)
-{
-    std::string type = "";
-    int size = -1;
-    getDatTypeSize(dtype, type, size);
+// //****************************************
+// opp_dat opp_decl_part_dat(opp_set set, int dim, opp_data_type dtype, void *data, char const *name, 
+//                             bool cell_index)
+// {
+//     std::string type = "";
+//     int size = -1;
+//     getDatTypeSize(dtype, type, size);
 
-    opp_dat dat = opp_decl_particle_dat_core(set, dim, type.c_str(), size, (char*)data, name, cell_index);
+//     opp_dat dat = opp_decl_dat_core(set, dim, type.c_str(), size, (char*)data, name, cell_index);
 
-    opp_create_device_arrays(dat);
+//     opp_create_device_arrays(dat);
 
-    opp_upload_dat(dat);
+//     opp_upload_dat(dat);
 
-    return dat;
-}
+//     return dat;
+// }
 
-//****************************************
-opp_dat opp_decl_particle_dat_txt(opp_set set, int dim, opp_data_type dtype, const char* file_name, 
-                                        char const *name, bool cell_index)
-{
-    std::string type = "";
-    int size = -1;
-    getDatTypeSize(dtype, type, size);
+// //****************************************
+// opp_dat opp_decl_particle_dat_txt(opp_set set, int dim, opp_data_type dtype, const char* file_name, 
+//                                         char const *name, bool cell_index)
+// {
+//     std::string type = "";
+//     int size = -1;
+//     getDatTypeSize(dtype, type, size);
 
-    char* dat_data = (char*)opp_load_from_file_core(file_name, set->size, dim, type.c_str(), size);
+//     char* dat_data = (char*)opp_load_from_file_core(file_name, set->size, dim, type.c_str(), size);
 
-    opp_dat dat = opp_decl_particle_dat_core(set, dim, type.c_str(), size, dat_data, name, cell_index);
+//     opp_dat dat = opp_decl_dat_core(set, dim, type.c_str(), size, dat_data, name, cell_index);
 
-    opp_host_free(dat_data);
+//     opp_host_free(dat_data);
 
-    return dat;
-}
+//     return dat;
+// }
 
 //****************************************
 void opp_increase_particle_count(opp_set part_set, const int num_particles_to_insert)
@@ -818,7 +804,7 @@ void opp_upload_particle_set(opp_set particles_set, bool realloc)
 //*******************************************************************************
 
 //****************************************
-void opp_init_double_indirect_reductions_hip(int nargs, opp_arg *args)
+void opp_init_double_indirect_reductions_device(int nargs, opp_arg *args)
 {
 #ifdef USE_MPI
     opp_init_double_indirect_reductions(nargs, args);
@@ -826,11 +812,11 @@ void opp_init_double_indirect_reductions_hip(int nargs, opp_arg *args)
 }
 
 //****************************************
-void opp_exchange_double_indirect_reductions_hip(int nargs, opp_arg *args)
+void opp_exchange_double_indirect_reductions_device(int nargs, opp_arg *args)
 {
 #ifdef USE_MPI
 
-    if (OPP_DBG) opp_printf("opp_exchange_double_indirect_reductions_hip", "ALL START");
+    if (OPP_DBG) opp_printf("opp_exchange_double_indirect_reductions_device", "ALL START");
 
     cutilSafeCall(hipDeviceSynchronize());
 
@@ -857,15 +843,15 @@ void opp_exchange_double_indirect_reductions_hip(int nargs, opp_arg *args)
 
     opp_exchange_double_indirect_reductions(nargs, args);
 
-    if (OPP_DBG) opp_printf("opp_exchange_double_indirect_reductions_hip", "ALL END");
+    if (OPP_DBG) opp_printf("opp_exchange_double_indirect_reductions_device", "ALL END");
 #endif
 }
 
 //****************************************
-void opp_complete_double_indirect_reductions_hip(int nargs, opp_arg *args)
+void opp_complete_double_indirect_reductions_device(int nargs, opp_arg *args)
 {
 #ifdef USE_MPI
-    if (OPP_DBG) opp_printf("opp_complete_double_indirect_reductions_hip", "ALL START");
+    if (OPP_DBG) opp_printf("opp_complete_double_indirect_reductions_device", "ALL START");
 
     opp_complete_double_indirect_reductions(nargs, args);
 
@@ -890,7 +876,7 @@ void opp_complete_double_indirect_reductions_hip(int nargs, opp_arg *args)
         }
     }  
 
-    if (OPP_DBG) opp_printf("opp_complete_double_indirect_reductions_hip", "ALL END");  
+    if (OPP_DBG) opp_printf("opp_complete_double_indirect_reductions_device", "ALL END");  
 #endif
 }
 
@@ -1043,32 +1029,6 @@ void opp_colour_cartesian_mesh(const int ndim, std::vector<int> cell_counts, opp
     __opp_colour_cartesian_mesh(ndim, cell_counts, cell_index, cell_colors, cell_ghosts);
 #endif
 }
-
-
-
-//*******************************************************************************
-void* opp_host_malloc(size_t size)
-{
-    return malloc(size);
-}
-
-//*******************************************************************************
-void* opp_host_realloc(void* ptr, size_t new_size)
-{
-    return realloc(ptr, new_size);
-}
-
-//*******************************************************************************
-void opp_host_free(void* ptr)
-{
-    free(ptr);
-}
-
-
-
-
-
-
 
 //*******************************************************************************
 void opp_reallocReductArrays(int reduct_bytes) 

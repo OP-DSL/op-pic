@@ -138,7 +138,7 @@ void opp_par_loop_all__compute_electric_field_kernel(opp_set set, opp_iterate_ty
     }
 
     opp_set_dirtybit_grouped(nargs, args, Device_GPU);
-    cutilSafeCall(cudaDeviceSynchronize());   
+    OPP_DEVICE_SYNCHRONIZE();   
  
     opp_profiler->end("compute_electric_field_kernel");
 }
