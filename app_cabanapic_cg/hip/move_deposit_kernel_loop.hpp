@@ -38,33 +38,6 @@ enum CellAcc {
     jfz = 2 * 4,
 };
 
-enum CellInterp {
-    ex = 0,
-    dexdy,
-    dexdz,
-    d2exdydz,
-    ey,
-    deydz,
-    deydx,
-    d2eydzdx,
-    ez,
-    dezdx,
-    dezdy,
-    d2ezdxdy,
-    cbx,
-    dcbxdx,
-    cby,
-    dcbydy,
-    cbz,
-    dcbzdz,
-};
-
-enum Dim {
-    x = 0,
-    y = 1,
-    z = 2,
-};
-
 __device__ inline void weight_current_to_accumulator_kernel(
         double* cell_acc,
         const double* q,
@@ -93,6 +66,33 @@ __device__ inline void weight_current_to_accumulator_kernel(
     cell_acc[CellAcc::jfz + 2] += v2;
     cell_acc[CellAcc::jfz + 3] += v3;
 }
+
+enum Dim {
+    x = 0,
+    y = 1,
+    z = 2,
+};
+
+enum CellInterp {
+    ex = 0,
+    dexdy,
+    dexdz,
+    d2exdydz,
+    ey,
+    deydz,
+    deydx,
+    d2eydzdx,
+    ez,
+    dezdx,
+    dezdy,
+    d2ezdxdy,
+    cbx,
+    dcbxdx,
+    cby,
+    dcbydy,
+    cbz,
+    dcbzdz,
+};
 
 __device__ inline void move_deposit_kernel(
     char& opp_move_status_flag, const bool opp_move_hop_iter_one_flag, // Added by code-gen
@@ -421,8 +421,7 @@ __global__ void assign_values_by_key(
     const OPP_INT *__restrict indices,
     const OPP_REAL *__restrict values_in,
     OPP_REAL *__restrict values_out,
-    const int start,
-    const int end) 
+    const int start, const int end, const int dim) 
 {
     const int tid = threadIdx.x + blockIdx.x * blockDim.x;
 
@@ -431,7 +430,7 @@ __global__ void assign_values_by_key(
         const int n = tid + start;
         const int idx = indices[n];
 
-        for (int d = 0; d < 12; d++) {
+        for (int d = 0; d < dim; d++) {
             values_out[n + d * opp_k2_sr_set_stride_d] = values_in[idx + d * opp_k2_sr_set_stride_d];
         }
     }
@@ -496,7 +495,7 @@ __global__ void opp_dev_move_deposit_kernel(
             *particle_remove_count, particle_remove_indices, move_particle_indices, 
             move_cell_indices, move_count));        
     }
-
+    
 }
 
 //--------------------------------------------------------------
@@ -673,6 +672,7 @@ void opp_particle_move__move_deposit_kernel(opp_set set, opp_map c2c_map, opp_ma
                 OPP_iter_end
             );
         }
+     
         else // Do segmented reductions ----------       
         {
             if (opp_k2_sr_set_stride != set->size) {
@@ -689,32 +689,32 @@ void opp_particle_move__move_deposit_kernel(opp_set set, opp_map c2c_map, opp_ma
             resize_size_dat5 *= (size_t)(set->set_capacity);
 
             // Resize the key/value device arrays only if current vector is small
-            opp_profiler->start("SR1_ResizeX");
+            opp_profiler->start("SRM_Resize");
             if (resize_size_dat5 > sr_dat5_keys_dv.size()) {
                 sr_dat5_keys_dv.resize(resize_size_dat5, 0);
                 sr_dat5_keys_dv2.resize(resize_size_dat5, 0);
                 sr_dat5_values_dv.resize(resize_size_dat5 * (args[5].dat->dim), 0);
                 sr_dat5_values_dv2.resize(resize_size_dat5 * (args[5].dat->dim), 0);
             }
-            opp_profiler->end("SR1_ResizeX");
+            opp_profiler->end("SRM_Resize");
 
             // Reset the key/value device arrays
-            opp_profiler->start("SR2_InitX");
+            opp_profiler->start("SRM_Init");
             opp_k2::reset_OPP_INT_values<<<num_blocks, block_size>>>(
-                (OPP_INT *)thrust::raw_pointer_cast(sr_dat5_keys_dv.data()), 0, sr_dat5_keys_dv.size());
+                opp_get_dev_raw_ptr<OPP_INT>(sr_dat5_keys_dv), 0, sr_dat5_keys_dv.size());
             opp_k2::sequence_OPP_INT_values<<<num_blocks, block_size>>>(
-                (OPP_INT *)thrust::raw_pointer_cast(sr_dat5_keys_dv2.data()), 0, sr_dat5_keys_dv2.size());
+                opp_get_dev_raw_ptr<OPP_INT>(sr_dat5_keys_dv2), 0, sr_dat5_keys_dv2.size());
             
             const int num_blocks2 = (sr_dat5_values_dv.size() - 1) / block_size + 1;
             opp_k2::reset_OPP_REAL_values<<<num_blocks2, block_size>>>(
-                (OPP_REAL *)thrust::raw_pointer_cast(sr_dat5_values_dv.data()), 0, sr_dat5_values_dv.size());
+                opp_get_dev_raw_ptr<OPP_REAL>(sr_dat5_values_dv), 0, sr_dat5_values_dv.size());
             // opp_k2::reset_OPP_REAL_values<<<num_blocks2, block_size>>>(
-            //     (OPP_REAL *)thrust::raw_pointer_cast(sr_dat5_values_dv2.data()), 0, sr_dat5_values_dv2.size());
+            //     opp_get_dev_raw_ptr<OPP_REAL>(sr_dat5_values_dv2), 0, sr_dat5_values_dv2.size());
             OPP_DEVICE_SYNCHRONIZE();
-            opp_profiler->end("SR2_InitX");
+            opp_profiler->end("SRM_Init");
 
             // Create key/value pairs
-            opp_profiler->start("SR3_CrKeyValX");
+            opp_profiler->start("SRM_CrKeyVal");
             opp_dev_sr_move_deposit_kernel<<<num_blocks, block_size>>>( 
                 (OPP_REAL *)args[0].data_d,     // p_vel
                 (OPP_REAL *)args[1].data_d,     // p_pos
@@ -729,33 +729,33 @@ void opp_particle_move__move_deposit_kernel(opp_set set, opp_map c2c_map, opp_ma
                 (OPP_INT *)OPP_move_particle_indices_d,
                 (OPP_INT *)OPP_move_cell_indices_d,
                 (OPP_INT *)OPP_move_count_d,
-                (OPP_REAL *)thrust::raw_pointer_cast(sr_dat5_values_dv.data()),     // sr values for c_acc
-                (OPP_INT *)thrust::raw_pointer_cast(sr_dat5_keys_dv.data()),     // sr keys for c_acc
+                opp_get_dev_raw_ptr<OPP_REAL>(sr_dat5_values_dv),     // sr values for c_acc
+                opp_get_dev_raw_ptr<OPP_INT>(sr_dat5_keys_dv),     // sr keys for c_acc
                 OPP_iter_start,
                 OPP_iter_end
             );
             OPP_DEVICE_SYNCHRONIZE();
-            opp_profiler->end("SR3_CrKeyValX");
+            opp_profiler->end("SRM_CrKeyVal");
 
             // Sort by keys to bring the identical keys together and store the order in sr_dat5_keys_dv2
-            opp_profiler->start("SR4_SortByKeyX");
+            opp_profiler->start("SRM_SortByKey");
             thrust::sort_by_key(thrust::device,
                 sr_dat5_keys_dv.begin(), sr_dat5_keys_dv.begin() + operating_size_dat5, 
                 sr_dat5_keys_dv2.begin());
-            opp_profiler->end("SR4_SortByKeyX"); 
+            opp_profiler->end("SRM_SortByKey"); 
 
             // Sort values according to sr_dat5_keys_dv2
-            opp_profiler->start("SR5_AssignByKeyX"); 
+            opp_profiler->start("SRM_AssignByKey"); 
             opp_k2::assign_values_by_key<<<num_blocks, block_size>>>(
-                (OPP_INT *)thrust::raw_pointer_cast(sr_dat5_keys_dv2.data()),
-                (OPP_REAL *)thrust::raw_pointer_cast(sr_dat5_values_dv.data()),
-                (OPP_REAL *)thrust::raw_pointer_cast(sr_dat5_values_dv2.data()),
-                0, operating_size_dat5);
+                opp_get_dev_raw_ptr<OPP_INT>(sr_dat5_keys_dv2),
+                opp_get_dev_raw_ptr<OPP_REAL>(sr_dat5_values_dv),
+                opp_get_dev_raw_ptr<OPP_REAL>(sr_dat5_values_dv2),
+                0, operating_size_dat5, 12);
             OPP_DEVICE_SYNCHRONIZE();
-            opp_profiler->end("SR5_AssignByKeyX"); 
+            opp_profiler->end("SRM_AssignByKey"); 
 
             // Compute the unique keys and their corresponding values
-            opp_profiler->start("SR6_RedByKeyX");
+            opp_profiler->start("SRM_RedByKey");
             auto new_end = thrust::reduce_by_key(thrust::device,
                 sr_dat5_keys_dv.begin(), sr_dat5_keys_dv.begin() + operating_size_dat5,
                 sr_dat5_values_dv2.begin(),
@@ -769,29 +769,29 @@ void opp_particle_move__move_deposit_kernel(opp_set set, opp_map c2c_map, opp_ma
                     sr_dat5_values_dv2.begin() + d * opp_k2_sr_set_stride,
                     thrust::make_discard_iterator(), sr_dat5_values_dv.begin() + d * opp_k2_sr_set_stride);     
             }      
-            opp_profiler->end("SR6_RedByKeyX");
+            opp_profiler->end("SRM_RedByKey");
 
             // Assign reduced values to the nodes using keys/values
-            opp_profiler->start("SR7_AssignX");
+            opp_profiler->start("SRM_Assign");
             num_blocks = reduced_size / block_size + 1;
             for (int d = 0; d < 12; ++d) { // Could invoke the kernel once and have all dims updated with that
                 opp_k2::assign_values<<<num_blocks, block_size>>> ( 
-                    (OPP_INT *) thrust::raw_pointer_cast(sr_dat5_keys_dv2.data()),
-                    (OPP_REAL *) thrust::raw_pointer_cast(sr_dat5_values_dv.data() + d * opp_k2_sr_set_stride),
+                    opp_get_dev_raw_ptr<OPP_INT>(sr_dat5_keys_dv2),
+                    (opp_get_dev_raw_ptr<OPP_REAL>(sr_dat5_values_dv) + d * opp_k2_sr_set_stride),
                     ((OPP_REAL *) args[5].data_d) + d * opp_k2_dat5_stride,
                     0, reduced_size);
             }
             OPP_DEVICE_SYNCHRONIZE();
-            opp_profiler->end("SR7_AssignX");
+            opp_profiler->end("SRM_Assign");
 
             // Last: clear the thrust vectors if this is the last iteration (avoid crash)
-            opp_profiler->start("SR8_ClearX");
+            opp_profiler->start("SRM_Clear");
             if (opp_params->get<OPP_INT>("num_steps") == (OPP_main_loop_iter + 1)) {
                 OPP_DEVICE_SYNCHRONIZE();
                 sr_dat5_values_dv.clear(); sr_dat5_values_dv.shrink_to_fit();
                 sr_dat5_keys_dv.clear(); sr_dat5_keys_dv.shrink_to_fit();
             } 
-            opp_profiler->end("SR8_ClearX");
+            opp_profiler->end("SRM_Clear");
         }    
 
     } while (opp_finalize_particle_move(set)); 

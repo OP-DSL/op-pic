@@ -156,7 +156,7 @@ void opp_particle_move__{{lh.kernel}}(opp_set set, opp_map c2c_map, opp_map p2c_
     {% if lh is double_indirect_reduc %}
 
 #ifdef USE_MPI
-    opp_init_double_indirect_reductions_cuda(nargs, args);
+    opp_init_double_indirect_reductions_device(nargs, args);
 #endif
     {% endif %} 
     const opp_set c_set = c2c_map->from;
@@ -465,8 +465,8 @@ auto opp_part_check_status =
     {% if lh is double_indirect_reduc %}
 
 #ifdef USE_MPI    
-    opp_exchange_double_indirect_reductions_cuda(nargs, args);
-    opp_complete_double_indirect_reductions_cuda(nargs, args);
+    opp_exchange_double_indirect_reductions_device(nargs, args);
+    opp_complete_double_indirect_reductions_device(nargs, args);
 #endif
     {% endif %} 
 {{super()}}

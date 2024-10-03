@@ -32,7 +32,7 @@ void opp_par_loop_all__weight_p2f_kernel(opp_set set, opp_iterate_type,
     const int iter_size = opp_mpi_halo_exchanges_grouped(set, nargs, args, Device_GPU);
 
 #ifdef USE_MPI
-    opp_init_double_indirect_reductions_cuda(nargs, args);
+    opp_init_double_indirect_reductions_device(nargs, args);
 #endif
  
  
@@ -56,9 +56,9 @@ void opp_par_loop_all__weight_p2f_kernel(opp_set set, opp_iterate_type,
             const OPP_INT* opp_k3_dat1_stride_sycl = opp_k3_dat1_stride_s;
             const OPP_INT* opp_k3_map0_stride_sycl = opp_k3_map0_stride_s;
     
-            const OPP_REAL* CONST_xl_sycl = CONST_xl_s;
-            const OPP_REAL* CONST_dx_sycl = CONST_dx_s;
             const OPP_REAL* CONST_qscale_sycl = CONST_qscale_s;
+            const OPP_REAL* CONST_dx_sycl = CONST_dx_s;
+            const OPP_REAL* CONST_xl_sycl = CONST_xl_s;
 
             OPP_REAL* dat0_sycl = (OPP_REAL*)args[0].data_d;     // n_field_j
             OPP_REAL* dat1_sycl = (OPP_REAL*)args[2].data_d;     // p_pos_x
@@ -125,8 +125,8 @@ void opp_par_loop_all__weight_p2f_kernel(opp_set set, opp_iterate_type,
     OPP_DEVICE_SYNCHRONIZE();   
 
 #ifdef USE_MPI    
-    opp_exchange_double_indirect_reductions_cuda(nargs, args);
-    opp_complete_double_indirect_reductions_cuda(nargs, args);
+    opp_exchange_double_indirect_reductions_device(nargs, args);
+    opp_complete_double_indirect_reductions_device(nargs, args);
 #endif
  
     opp_profiler->end("weight_p2f_kernel");

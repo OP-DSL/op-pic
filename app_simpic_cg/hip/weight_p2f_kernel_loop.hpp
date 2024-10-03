@@ -158,7 +158,7 @@ void opp_par_loop_all__weight_p2f_kernel(opp_set set, opp_iterate_type,
     const int iter_size = opp_mpi_halo_exchanges_grouped(set, nargs, args, Device_GPU);
 
 #ifdef USE_MPI
-    opp_init_double_indirect_reductions_hip(nargs, args);
+    opp_init_double_indirect_reductions_device(nargs, args);
 #endif
  
  
@@ -227,15 +227,15 @@ void opp_par_loop_all__weight_p2f_kernel(opp_set set, opp_iterate_type,
             // Create key/value pairs
             opp_profiler->start("SR_CrKeyVal");
             opp_dev_sr_weight_p2f_kernel<<<num_blocks, block_size>>>( 
-                (OPP_INT *)thrust::raw_pointer_cast(sr_dat0_keys_dv.data()),     // sr keys for n_field_j
-                (OPP_REAL *)thrust::raw_pointer_cast(sr_dat0_values_dv.data()),     // sr values for n_field_j
+                opp_get_dev_raw_ptr<OPP_INT>(sr_dat0_keys_dv),     // sr keys for n_field_j
+                opp_get_dev_raw_ptr<OPP_REAL>(sr_dat0_values_dv),     // sr values for n_field_j
                 (OPP_REAL *)args[2].data_d,     // p_pos_x
                 (OPP_INT *)set->mesh_relation_dat->data_d,
                 args[0].map_data_d,     // c2n_map
                 start,
                 end
             );
-            cutilSafeCall(hipDeviceSynchronize());
+            OPP_DEVICE_SYNCHRONIZE();
             opp_profiler->end("SR_CrKeyVal");
 
             // Sort by keys to bring the identical keys together
@@ -258,16 +258,16 @@ void opp_par_loop_all__weight_p2f_kernel(opp_set set, opp_iterate_type,
             // Assign reduced values to the nodes using keys/values
             opp_profiler->start("SR_Assign");                
             opp_k3::assign_values<<<num_blocks, block_size>>> ( // TODO : check whether num_blocks is correct
-                (OPP_INT *) thrust::raw_pointer_cast(sr_dat0_keys_dv.data()),
-                (OPP_REAL *) thrust::raw_pointer_cast(sr_dat0_values_dv.data()),
+                opp_get_dev_raw_ptr<OPP_INT>(sr_dat0_keys_dv),
+                opp_get_dev_raw_ptr<OPP_REAL>(sr_dat0_values_dv),
                 (OPP_REAL *) args[0].data_d,
                 0, reduced_size);
-            cutilSafeCall(hipDeviceSynchronize());
+            OPP_DEVICE_SYNCHRONIZE();
             opp_profiler->end("SR_Assign");
 
             // Last: clear the thrust vectors if this is the last iteration (avoid crash)
             if (opp_params->get<OPP_INT>("num_steps") == (OPP_main_loop_iter + 1)) {
-                cutilSafeCall(hipDeviceSynchronize());
+                OPP_DEVICE_SYNCHRONIZE();
                 sr_dat0_values_dv.clear(); sr_dat0_values_dv.shrink_to_fit();
                 sr_dat0_keys_dv.clear(); sr_dat0_keys_dv.shrink_to_fit();
             }        
@@ -275,11 +275,11 @@ void opp_par_loop_all__weight_p2f_kernel(opp_set set, opp_iterate_type,
     }
 
     opp_set_dirtybit_grouped(nargs, args, Device_GPU);
-    cutilSafeCall(hipDeviceSynchronize());   
+    OPP_DEVICE_SYNCHRONIZE();   
 
 #ifdef USE_MPI    
-    opp_exchange_double_indirect_reductions_hip(nargs, args);
-    opp_complete_double_indirect_reductions_hip(nargs, args);
+    opp_exchange_double_indirect_reductions_device(nargs, args);
+    opp_complete_double_indirect_reductions_device(nargs, args);
 #endif
  
     opp_profiler->end("weight_p2f_kernel");

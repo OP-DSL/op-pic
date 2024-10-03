@@ -36,7 +36,7 @@ void opp_par_loop_all__deposit_charge_on_nodes_kernel(opp_set set, opp_iterate_t
     const int iter_size = opp_mpi_halo_exchanges_grouped(set, nargs, args, Device_GPU);
 
 #ifdef USE_MPI
-    opp_init_double_indirect_reductions_cuda(nargs, args);
+    opp_init_double_indirect_reductions_device(nargs, args);
 #endif
  
  
@@ -139,8 +139,8 @@ void opp_par_loop_all__deposit_charge_on_nodes_kernel(opp_set set, opp_iterate_t
     OPP_DEVICE_SYNCHRONIZE();   
 
 #ifdef USE_MPI    
-    opp_exchange_double_indirect_reductions_cuda(nargs, args);
-    opp_complete_double_indirect_reductions_cuda(nargs, args);
+    opp_exchange_double_indirect_reductions_device(nargs, args);
+    opp_complete_double_indirect_reductions_device(nargs, args);
 #endif
  
     opp_profiler->end("deposit_charge_on_nodes_kernel");
