@@ -352,6 +352,7 @@ int opp_mpi_halo_exchanges_grouped(opp_set set, int nargs, opp_arg *args, Device
     return size;
 }
 
+/*******************************************************************************/
 void opp_mpi_force_halo_update_if_dirty(opp_set set, std::vector<opp_dat> dats, DeviceType device) {
     
     const int nargs = (int)dats.size();

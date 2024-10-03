@@ -81,6 +81,8 @@ void opp_init_core(int argc, char **argv)
     opp_params = std::make_unique<opp::Params>(argv[1]);
     opp_profiler = std::make_unique<opp::Profiler>();
 
+    // OPP_auto_sort = opp_params->get<OPP_BOOL>("opp_auto_sort");
+
     // these will be overidden by args
     OPP_part_alloc_mult = opp_params->get<OPP_REAL>("opp_allocation_multiple");
 
