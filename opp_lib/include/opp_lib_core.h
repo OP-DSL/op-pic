@@ -34,6 +34,8 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <opp_defs.h>
 #include <opp_util.h>
+#include <opp_params.h>
+#include <opp_profiler.h>
 
 //*************************************************************************************************
 void opp_init_core(int argc, char **argv);
@@ -135,6 +137,28 @@ inline void opp_reduce_dat_element(T* out_dat, const T* in_dat, int dim, opp_red
         }  
     }   
 }
+
+//*******************************************************************************
+template <typename T>
+inline void opp_write_array_to_file(const T* array, size_t size, const std::string& filename) {
+    
+    std::stringstream modified_file_name;
+    modified_file_name << "files/" << filename << "_r" << OPP_rank << "_i" << OPP_main_loop_iter;
+    std::ofstream outFile(modified_file_name.str());
+    if (!outFile) {
+        std::cerr << "Error opening file: " << filename << std::endl;
+        return;
+    }
+    if constexpr (std::is_same<T, double>::value)
+        outFile << std::setprecision(25);
+    outFile << size << " 1 -- 0 0\n";
+    for (int i = 0; i < size; ++i) {
+        outFile << " " << array[i] << "\n";
+    }
+    outFile.close();
+}
+
+//*******************************************************************************
 
 #ifdef USE_MPI
     #include <opp_mpi_core.h>

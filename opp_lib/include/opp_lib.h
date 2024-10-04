@@ -33,6 +33,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #pragma once
 
 #include <opp_lib_core.h>
+#include "opp_direct_hop_core.h"
 
 void opp_init(int argc, char **argv);
 void opp_exit();

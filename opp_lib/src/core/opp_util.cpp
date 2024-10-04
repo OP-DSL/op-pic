@@ -357,6 +357,7 @@ int compare_sets(opp_set set1, opp_set set2)
         return 0;
 }
 
+//********************************************************************************
 void op_timers(double *cpu, double *et) 
 {
     (void)cpu;

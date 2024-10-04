@@ -254,23 +254,23 @@ Comm::Comm(MPI_Comm comm_parent) {
     this->comm_parent = comm_parent;
 
     int rank_parent;
-    CHECK(MPI_Comm_rank(comm_parent, &rank_parent))
-    CHECK(MPI_Comm_split_type(comm_parent, MPI_COMM_TYPE_SHARED, 0,
+    MPI_CHECK(MPI_Comm_rank(comm_parent, &rank_parent))
+    MPI_CHECK(MPI_Comm_split_type(comm_parent, MPI_COMM_TYPE_SHARED, 0,
                             MPI_INFO_NULL, &this->comm_intra))
 
     int rank_intra;
-    CHECK(MPI_Comm_rank(this->comm_intra, &rank_intra))
+    MPI_CHECK(MPI_Comm_rank(this->comm_intra, &rank_intra))
     const int colour_intra = (rank_intra == 0) ? 1 : MPI_UNDEFINED;
-    CHECK(MPI_Comm_split(comm_parent, colour_intra, 0, &this->comm_inter))
+    MPI_CHECK(MPI_Comm_split(comm_parent, colour_intra, 0, &this->comm_inter))
 
-    CHECK(MPI_Comm_rank(this->comm_parent, &this->rank_parent))
-    CHECK(MPI_Comm_rank(this->comm_intra, &this->rank_intra))
-    CHECK(MPI_Comm_size(this->comm_parent, &this->size_parent))
-    CHECK(MPI_Comm_size(this->comm_intra, &this->size_intra))
+    MPI_CHECK(MPI_Comm_rank(this->comm_parent, &this->rank_parent))
+    MPI_CHECK(MPI_Comm_rank(this->comm_intra, &this->rank_intra))
+    MPI_CHECK(MPI_Comm_size(this->comm_parent, &this->size_parent))
+    MPI_CHECK(MPI_Comm_size(this->comm_intra, &this->size_intra))
     
     if (comm_inter != MPI_COMM_NULL) {
-        CHECK(MPI_Comm_rank(this->comm_inter, &this->rank_inter))
-        CHECK(MPI_Comm_size(this->comm_inter, &this->size_inter))
+        MPI_CHECK(MPI_Comm_rank(this->comm_inter, &this->rank_inter))
+        MPI_CHECK(MPI_Comm_size(this->comm_inter, &this->size_inter))
     }
 
     if (OPP_DBG)
@@ -283,13 +283,13 @@ Comm::~Comm() {
 
     if ((this->comm_intra != MPI_COMM_NULL) && (this->comm_intra != MPI_COMM_WORLD)) {
         
-        CHECK(MPI_Comm_free(&this->comm_intra))
+        MPI_CHECK(MPI_Comm_free(&this->comm_intra))
         this->comm_intra = MPI_COMM_NULL;
     }
 
     if ((this->comm_inter != MPI_COMM_NULL) && (this->comm_inter != MPI_COMM_WORLD)) {
 
-        CHECK(MPI_Comm_free(&this->comm_inter))
+        MPI_CHECK(MPI_Comm_free(&this->comm_inter))
         this->comm_intra = MPI_COMM_NULL;
     }
 }

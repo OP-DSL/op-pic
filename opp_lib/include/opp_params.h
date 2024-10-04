@@ -1,18 +1,6 @@
 #pragma once
 
-#include <string>
-#include <map>
-#include <limits.h>
-#include <float.h>
-
-#ifndef OPP_INT
-    #define OPP_INT int
-    #define OPP_REAL double
-    #define OPP_BOOL bool
-    #define OPP_STRING std::string
-#endif
-
-#define UNUSED(expr) do { (void)(expr); } while (0)
+#include "opp_defs.h"
 
 namespace opp
 {
@@ -24,7 +12,7 @@ namespace opp
             template <typename T>
             inline void add(std::string key, T value) // refer specilized template functions
             {
-                UNUSED(value);
+                UNUSED_VAR(value);
                 std::cerr << "Params add not implemented for type of : " << key << std::endl;
                 // exit(-1);
             }

@@ -206,7 +206,6 @@ void opp_sycl_init(int argc, char **argv) {
         // Test we have access to a device
         float *test = opp_mem::dev_malloc<float>(1);
         opp_mem::dev_free(test);
-        OPP_hybrid_gpu = 1;
     }
     catch (sycl::exception const &exc) {
         

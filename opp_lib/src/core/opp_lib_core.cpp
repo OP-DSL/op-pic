@@ -46,12 +46,11 @@ std::vector<opp_set> opp_sets;
 std::vector<opp_map> opp_maps;
 std::vector<opp_dat> opp_dats;
 
-int OPP_hybrid_gpu                   = 0;
+// int OPP_hybrid_gpu                   = 0;
 int OPP_maps_base_index              = 0;
 int OPP_auto_soa                     = 0;
 int OPP_gpu_direct                   = 0;
 double OPP_part_alloc_mult           = 1;
-// int OPP_auto_sort                    = 0;
 int OPP_fill_period                 = 2;
 opp_fill_type OPP_fill_type         = OPP_HoleFill_All;
 int OPP_mpi_part_alloc_mult         = 1;
@@ -82,8 +81,6 @@ void opp_init_core(int argc, char **argv)
 
     opp_params = std::make_unique<opp::Params>(argv[1]);
     opp_profiler = std::make_unique<opp::Profiler>();
-
-    // OPP_auto_sort = opp_params->get<OPP_BOOL>("opp_auto_sort");
 
     // these will be overidden by args
     OPP_part_alloc_mult = opp_params->get<OPP_REAL>("opp_allocation_multiple");
@@ -161,18 +158,6 @@ void opp_set_args_core(char *argv)
         
         printf("\topp_set_args_core OPP_part_alloc_mult = %lf\n", OPP_part_alloc_mult);
     }
-
-    // pch = strstr(argv, "OPP_AUTO_SORT=");
-    // if (pch != NULL) 
-    // {
-    //     strncpy(temp, pch, 20);
-    //     OPP_auto_sort = atoi(temp + 14);
-        
-    //     printf("\topp_set_args_core OPP_auto_sort = %d\n", OPP_auto_sort);
-        
-    //     if (!(OPP_auto_sort == 1 || OPP_auto_sort == 0))
-    //         std::cerr << "OPP_AUTO_SORT should be 0 or 1, Not Auto Sorting" << std::endl;
-    // }
 
     pch = strstr(argv, "OPP_MPI_ALLOC_MULT=");
     if (pch != NULL) {

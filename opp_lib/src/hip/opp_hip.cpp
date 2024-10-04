@@ -178,9 +178,6 @@ void opp_abort(std::string s)
 //****************************************
 void opp_hip_exit() 
 {
-    if (!OPP_hybrid_gpu)
-        return;
-
     for (auto& a : opp_maps) 
     {
         cutilSafeCall(hipFree(a->map_d));
@@ -977,41 +974,35 @@ void opp_create_device_arrays(opp_dat dat, bool create_new)
 //****************************************
 void cutilDeviceInit(int argc, char **argv) 
 {
-    (void)argc;
-    (void)argv;
-    int deviceCount;
+    (void)argc; (void)argv;
 
+    int deviceCount;
     cutilSafeCall(hipGetDeviceCount(&deviceCount));
-    if (deviceCount == 0) 
-    {
-        opp_printf("cutilDeviceInit", "cutil error: no devices supporting DEVICE");
-        opp_abort();
+    if (deviceCount == 0) {
+        opp_abort("cutilDeviceInit: Error: no devices supporting DEVICE");
     }
   
-    int int_rank = OPP_rank;
 #ifdef USE_MPI
-        opp::Comm comm(MPI_COMM_WORLD);
-        int_rank = comm.rank_intra;
+    opp::Comm comm(MPI_COMM_WORLD);
+    const int int_rank = comm.rank_intra;
+#else
+    const int int_rank = OPP_rank;
 #endif
 
     // Test we have access to a device
-    hipError_t err = hipSetDevice(int_rank % deviceCount);
-    if (err == hipSuccess) 
-    {
-        float *test;
-        if (hipMalloc((void **)&test, sizeof(float)) != hipSuccess) {
-            OPP_hybrid_gpu = 0;
-        }
-        else {
-            cutilSafeCall(hipFree(test));
-            OPP_hybrid_gpu = 1;
-        }
+    if (hipSetDevice(int_rank % deviceCount) != hipSuccess) {
+        opp_abort("cutilDeviceInit: Error: hipSetDevice Failed"); 
     }
 
-    if (OPP_hybrid_gpu == 0) 
-    {
-        opp_printf("cutilDeviceInit", "Error... Init device Device Failed");
-        opp_abort();
+    // Test we have access to a device 
+    try {
+        float *test = opp_mem::dev_malloc<float>(1);
+        opp_mem::dev_free(test);
+    }
+    catch (const std::runtime_error& exc) {
+        std::cerr << exc.what() << "Exception caught at file:" << __FILE__
+                    << ", line:" << __LINE__ << std::endl;
+        opp_abort("cutilDeviceInit: Error: Test Device Failed");  
     }
 }
 

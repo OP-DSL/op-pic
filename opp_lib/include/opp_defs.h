@@ -1,6 +1,40 @@
+
+/* 
+BSD 3-Clause License
+
+Copyright (c) 2022, OP-DSL
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions are met:
+
+1. Redistributions of source code must retain the above copyright notice, this
+   list of conditions and the following disclaimer.
+
+2. Redistributions in binary form must reproduce the above copyright notice,
+   this list of conditions and the following disclaimer in the documentation
+   and/or other materials provided with the distribution.
+
+3. Neither the name of the copyright holder nor the names of its
+   contributors may be used to endorse or promote products derived from
+   this software without specific prior written permission.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+*/
+
 #pragma once
 
 #include <limits>
+#include <limits.h>
+#include <float.h>
 #include <array>
 #include <string>
 #include <algorithm>
@@ -20,7 +54,20 @@
 #include <random>
 #include <unistd.h>
 
+#define OPP_INT int
+#define OPP_REAL double
+#define OPP_BOOL bool
+#define OPP_STRING std::string
+
+namespace opp {
+    class BoundingBox;
+    class CellMapper;
+    class Params; 
+    class Profiler;
+};
+
 #ifdef USE_MPI
+    #include <mpi.h>
     namespace opp {
         class Comm;
         class GlobalParticleMover;
@@ -37,8 +84,8 @@
 #ifdef USE_THRUST
     #include <thrust/device_vector.h>
     #include <thrust/host_vector.h>
-    #define THRUST_REAL thrust::device_vector<double>
-    #define THRUST_INT thrust::device_vector<int>
+    #define THRUST_REAL thrust::device_vector<OPP_REAL>
+    #define THRUST_INT thrust::device_vector<OPP_INT>
 #elif defined(USE_SYCL)
     #include <sycl/sycl.hpp>
     #define THRUST_REAL void
@@ -48,9 +95,6 @@
     #define THRUST_REAL void
     #define THRUST_INT void
 #endif
-
-#include <opp_params.h>
-#include <opp_profiler.h>
 
 constexpr double MAX_REAL = std::numeric_limits<double>::max();
 constexpr double MIN_REAL = std::numeric_limits<double>::min();
@@ -62,15 +106,24 @@ constexpr int MIN_INT = std::numeric_limits<int>::min();
 
 #define OPP_RUN_ON_ROOT(command) if (OPP_rank == OPP_ROOT command)
 
+#define UNUSED_VAR(expr) { (void)(expr); }
+
 #define ASSIGN_CENTROID_TO_DIM(K)                                   \
     if (coordinate.K + this->gridSpacing <= maxCoordinate.K) {      \
-        centroid.K = coordinate.K + this->gridSpacing * 0.5;         \
+        centroid.K = coordinate.K + this->gridSpacing * 0.5;        \
     }                                                               \
     else {                                                          \
         centroid.K = (coordinate.K + maxCoordinate.K) * 0.5;        \
     }                                                               \
 
-#define CHECK(cmd) { int err = cmd; if (err != MPI_SUCCESS) opp_abort(std::to_string(err)); }
+#define MPI_CHECK(cmd) { \
+    int err = cmd; \
+    if (err != MPI_SUCCESS) { \
+        std::stringstream ss; \
+        ss << "MPI error " << err << " at " << __FILE__ << ":" << __LINE__; \
+        opp_abort(ss.str()); \
+    } \
+}
 
 //*************************************************************************************************
 #ifdef DEBUG_LOG
@@ -314,92 +367,6 @@ struct opp_ipoint {
 constexpr double opp_zero_double16[16] = { 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0 };
 constexpr int opp_zero_int16[16] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
 
-//*******************************************************************************
-namespace opp {
-
-    //*******************************************************************************
-    class BoundingBox {
-
-    public:
-        BoundingBox(int dim, opp_point minCoordinate, opp_point maxCoordinate);
-        BoundingBox(const opp_dat node_pos_dat, int dim);
-        ~BoundingBox();
-
-        const opp_point& getLocalMin() const;
-        const opp_point& getLocalMax() const;
-        const opp_point& getGlobalMin() const;
-        const opp_point& getGlobalMax() const;
-        bool isCoordinateInBoundingBox(const opp_point& point);
-        bool isCoordinateInGlobalBoundingBox(const opp_point& point);
-        inline int getDim() const { return dim; }
-
-    private:
-        void generateGlobalBoundingBox(int count);
-        int dim = 0;
-
-        std::array<opp_point,2> boundingBox; // index 0 is min, index 1 is max
-        std::array<opp_point,2> globalBoundingBox; // index 0 is min, index 1 is max
-    };
-
-    //*******************************************************************************
-    class GlobalToLocalCellIndexMapper {
-    
-    public:
-        //*******************************************************************************
-        // This will contain mappings for halo indices too
-        GlobalToLocalCellIndexMapper(const opp_dat global_cell_id_dat);
-        virtual ~GlobalToLocalCellIndexMapper();
-
-        int map(const int globalIndex);
-        
-    private:
-        std::map<int,int> globalToLocalCellIndexMap;
-    };
-
-    //*******************************************************************************
-    class CellMapper {
-    
-    public:
-        CellMapper(const std::shared_ptr<BoundingBox> boundingBox, const double gridSpacing, 
-            const std::shared_ptr<Comm> comm = nullptr);
-        ~CellMapper();
-
-        opp_point getCentroidOfBox(const opp_point& coordinate);
-        size_t findStructuredCellIndex2D(const opp_point& position);
-        size_t findStructuredCellIndex3D(const opp_point& position);
-        int findClosestCellIndex(const size_t& structCellIdx);
-        int findClosestCellRank(const size_t& structCellIdx);
-        void reduceInterNodeMappings(int callID);
-        void convertToLocalMappings(const opp_dat global_cell_id_dat);
-        void enrichStructuredMesh(const int index, const int cell_index, const int rank = 0);
-        void printStructuredMesh(const std::string msg, int *array, size_t size, bool printToFile = true);
-        void createStructMeshMappingArrays();
-        void waitBarrier();
-        void lockWindows();
-        void unlockWindows();
-
-    // private:
-        const std::shared_ptr<BoundingBox> boundingBox = nullptr;
-        const double gridSpacing = 0.0;
-        const double oneOverGridSpacing = 0.0;
-        const opp_point& minGlbCoordinate;  
-        const std::shared_ptr<Comm> comm = nullptr;
-
-        opp_ipoint globalGridDims;
-        opp_ipoint localGridStart, localGridEnd;
-
-        size_t globalGridSize = 0;
-        
-        int* structMeshToCellMapping = nullptr;         // This contain mapping to local cell indices
-        int* structMeshToRankMapping = nullptr;         // This contain mapping to residing mpi rank
-
-#ifdef USE_MPI        
-        MPI_Win win_structMeshToCellMapping;
-        MPI_Win win_structMeshToRankMapping;
-#endif
-    };
-};
-
 extern std::shared_ptr<opp::BoundingBox> boundingBox;
 extern std::shared_ptr<opp::CellMapper> cellMapper;
 extern bool useGlobalMove;
@@ -412,13 +379,12 @@ extern bool useGlobalMove;
     extern std::unique_ptr<GlobalParticleMover> globalMover;
 #endif
 
-extern int OPP_hybrid_gpu;
+// extern int OPP_hybrid_gpu;
 extern double OPP_hybrid_balance;
 extern int OPP_maps_base_index;
 extern int OPP_auto_soa;
 extern int OPP_gpu_direct;
 extern double OPP_part_alloc_mult;
-// extern int OPP_auto_sort;
 extern int OPP_fill_period;
 extern opp_fill_type OPP_fill_type;
 extern int OPP_mpi_part_alloc_mult;

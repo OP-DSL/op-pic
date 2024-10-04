@@ -118,24 +118,21 @@ void opp_halo_destroy()
 #ifdef USE_MPI
     __opp_halo_destroy();
 
-    if (OPP_hybrid_gpu) 
+    for (auto& dat : opp_dats) 
     {
-        for (auto& dat : opp_dats) 
+        if (strstr(dat->type, ":soa") != NULL || (OPP_auto_soa && dat->dim > 1)) 
         {
-            if (strstr(dat->type, ":soa") != NULL || (OPP_auto_soa && dat->dim > 1)) 
-            {
-                cutilSafeCall(hipFree(dat->buffer_d_r));
-            }
-            cutilSafeCall(hipFree(dat->buffer_d));
+            cutilSafeCall(hipFree(dat->buffer_d_r));
         }
+        cutilSafeCall(hipFree(dat->buffer_d));
+    }
 
-        for (int i = 0; i < (int)opp_sets.size(); i++) 
-        {
-            if (export_exec_list_d[i] != NULL)
-                cutilSafeCall(hipFree(export_exec_list_d[i]));
-            if (export_nonexec_list_d[i] != NULL)
-                cutilSafeCall(hipFree(export_nonexec_list_d[i]));
-        }
+    for (int i = 0; i < (int)opp_sets.size(); i++) 
+    {
+        if (export_exec_list_d[i] != NULL)
+            cutilSafeCall(hipFree(export_exec_list_d[i]));
+        if (export_nonexec_list_d[i] != NULL)
+            cutilSafeCall(hipFree(export_nonexec_list_d[i]));
     }
 #endif
 }

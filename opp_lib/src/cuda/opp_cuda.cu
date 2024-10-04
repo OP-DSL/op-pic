@@ -165,23 +165,19 @@ void opp_cuda_init(int argc, char **argv)
     const int int_rank = OPP_rank;
 #endif
 
-    if (cudaSetDevice(int_rank % deviceCount) == cudaSuccess) {
-        
-        // Test we have access to a device 
-        try {
-            float *test = opp_mem::dev_malloc<float>(1);
-            opp_mem::dev_free(test);
-            OPP_hybrid_gpu = 1;
-        }
-        catch (const std::runtime_error& exc) {
-            std::cerr << exc.what() << "Exception caught at file:" << __FILE__
-                        << ", line:" << __LINE__ << std::endl;
-        }
+    if (cudaSetDevice(int_rank % deviceCount) != cudaSuccess) {
+        opp_abort("opp_cuda_init: Error: cudaSetDevice Failed");        
     }
 
-    if (OPP_hybrid_gpu == 0) {
-        opp_printf("opp_cuda_init", "Error... Init device Device Failed");
-        opp_abort();
+    // Test we have access to a device 
+    try {
+        float *test = opp_mem::dev_malloc<float>(1);
+        opp_mem::dev_free(test);
+    }
+    catch (const std::runtime_error& exc) {
+        std::cerr << exc.what() << "Exception caught at file:" << __FILE__
+                    << ", line:" << __LINE__ << std::endl;
+        opp_abort("opp_cuda_init: Error: Test Device Failed");  
     }
 }
 

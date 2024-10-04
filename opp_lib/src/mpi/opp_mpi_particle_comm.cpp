@@ -924,7 +924,7 @@ void dh_particle_packer::unpack(opp_set set, const std::map<int, std::vector<cha
 GlobalParticleMover::GlobalParticleMover(MPI_Comm comm) 
     : comm(comm) {
 
-    CHECK(MPI_Win_allocate(sizeof(int), sizeof(int), MPI_INFO_NULL, this->comm,
+    MPI_CHECK(MPI_Win_allocate(sizeof(int), sizeof(int), MPI_INFO_NULL, this->comm,
                     &this->recv_win_data, &this->recv_win));
     
     dh_part_move_data.clear();
@@ -948,7 +948,7 @@ GlobalParticleMover::GlobalParticleMover(MPI_Comm comm)
 GlobalParticleMover::~GlobalParticleMover() { 
     
     MPI_Barrier(this->comm);
-    CHECK(MPI_Win_free(&this->recv_win));
+    MPI_CHECK(MPI_Win_free(&this->recv_win));
 }
 
 //*******************************************************************************
@@ -993,7 +993,7 @@ void GlobalParticleMover::initGlobalMove() {
         x.second.clear();
 
     this->recv_win_data[0] = 0;
-    CHECK(MPI_Ibarrier(this->comm, &this->mpi_request));
+    MPI_CHECK(MPI_Ibarrier(this->comm, &this->mpi_request));
 
     opp_profiler->end("MvDH_Init");
 }
@@ -1006,7 +1006,7 @@ void GlobalParticleMover::communicateParticleSendRecvRankCounts() {
     const int one[1] = {1};
     int recv[1];
 
-    CHECK(MPI_Wait(&this->mpi_request, MPI_STATUS_IGNORE));
+    MPI_CHECK(MPI_Wait(&this->mpi_request, MPI_STATUS_IGNORE));
 
     for (auto& x : this->h_send_ranks) {
         
@@ -1015,13 +1015,13 @@ void GlobalParticleMover::communicateParticleSendRecvRankCounts() {
         if (OPP_DBG)
             opp_printf("GlobalParticleMover", "locking rank %d", rank);
 
-        CHECK(MPI_Win_lock(MPI_LOCK_SHARED, rank, 0, this->recv_win));
-        CHECK(MPI_Get_accumulate(one, 1, MPI_INT, recv, 1, MPI_INT, rank, 0, 1,
+        MPI_CHECK(MPI_Win_lock(MPI_LOCK_SHARED, rank, 0, this->recv_win));
+        MPI_CHECK(MPI_Get_accumulate(one, 1, MPI_INT, recv, 1, MPI_INT, rank, 0, 1,
                                     MPI_INT, MPI_SUM, this->recv_win));
-        CHECK(MPI_Win_unlock(rank, this->recv_win));
+        MPI_CHECK(MPI_Win_unlock(rank, this->recv_win));
     }
 
-    CHECK(MPI_Ibarrier(this->comm, &this->mpi_request));   
+    MPI_CHECK(MPI_Ibarrier(this->comm, &this->mpi_request));   
 
     opp_profiler->end("MvDH_WaitRanks");
 }
@@ -1059,7 +1059,7 @@ void GlobalParticleMover::communicate(opp_set set) {
     communicateParticleSendRecvRankCounts();
 
     opp_profiler->start("MvDH_WaitEx1");
-    CHECK(MPI_Wait(&this->mpi_request, MPI_STATUS_IGNORE));
+    MPI_CHECK(MPI_Wait(&this->mpi_request, MPI_STATUS_IGNORE));
     opp_profiler->end("MvDH_WaitEx1");
 
     // At this point, the current rank knows how many particles to recv
@@ -1073,13 +1073,13 @@ void GlobalParticleMover::communicate(opp_set set) {
     // non-blocking recv of particle counts
     for (int rankx = 0; rankx < this->numRemoteRecvRanks; rankx++) {
 
-        CHECK(MPI_Irecv(&(this->h_recv_rank_npart[rankx]), 1, MPI_INT64_T, MPI_ANY_SOURCE, 
+        MPI_CHECK(MPI_Irecv(&(this->h_recv_rank_npart[rankx]), 1, MPI_INT64_T, MPI_ANY_SOURCE, 
             42, this->comm, &(this->h_recv_requests[rankx])));
     }
 
     // non-blocking send of particle counts
     for (int rankx = 0; rankx < this->numRemoteSendRanks; rankx++) {
-        CHECK(MPI_Isend(&this->h_send_rank_npart[rankx], 1, MPI_INT64_T, this->h_send_ranks[rankx], 
+        MPI_CHECK(MPI_Isend(&this->h_send_rank_npart[rankx], 1, MPI_INT64_T, this->h_send_ranks[rankx], 
             42, this->comm, &this->h_send_requests[rankx]));
     }
 
@@ -1087,7 +1087,7 @@ void GlobalParticleMover::communicate(opp_set set) {
     this->h_recv_status.resize(this->numRemoteRecvRanks);
 
     opp_profiler->start("MvDH_WaitEx2");
-    CHECK(MPI_Waitall(this->numRemoteRecvRanks, &(this->h_recv_requests[0]), &(this->h_recv_status[0])));
+    MPI_CHECK(MPI_Waitall(this->numRemoteRecvRanks, &(this->h_recv_requests[0]), &(this->h_recv_status[0])));
     opp_profiler->end("MvDH_WaitEx2");
 
     for (int rankx = 0; rankx < this->numRemoteRecvRanks; rankx++) {
@@ -1114,7 +1114,7 @@ void GlobalParticleMover::communicate(opp_set set) {
         opp_printf("GlobalMove", "communicate %lld", this->totalParticlesToRecv);
 
     opp_profiler->start("MvDH_WaitEx3");
-    CHECK(MPI_Waitall(this->numRemoteSendRanks, &(this->h_send_requests[0]), MPI_STATUSES_IGNORE));
+    MPI_CHECK(MPI_Waitall(this->numRemoteSendRanks, &(this->h_send_requests[0]), MPI_STATUSES_IGNORE));
     opp_profiler->end("MvDH_WaitEx3");
 
     // (3) send and receive the particles -----------------------------------------------------------
@@ -1133,7 +1133,7 @@ void GlobalParticleMover::communicate(opp_set set) {
         // opp_printf("Communicate", "Expected to recv %d bytes from rank %d, buffer size %zu", 
         //     recvSize, recvRank, partRecvBufferPerRank.size());
 
-        CHECK(MPI_Irecv(&(partRecvBufferPerRank[0]), recvSize, MPI_CHAR, recvRank, 43, 
+        MPI_CHECK(MPI_Irecv(&(partRecvBufferPerRank[0]), recvSize, MPI_CHAR, recvRank, 43, 
                 this->comm, &this->h_recv_requests[rankx]));
     }
 
@@ -1147,7 +1147,7 @@ void GlobalParticleMover::communicate(opp_set set) {
         // opp_printf("Communicate", "Trying to send %d bytes to rank %d buffer %p", 
         //     sendSize, sendRank, sendBuffer);
 
-        CHECK(MPI_Isend(sendBuffer, sendSize, MPI_CHAR, sendRank, 43, this->comm, 
+        MPI_CHECK(MPI_Isend(sendBuffer, sendSize, MPI_CHAR, sendRank, 43, this->comm, 
                 &this->h_send_requests[rankx]));
     }   
 
@@ -1165,7 +1165,7 @@ int64_t GlobalParticleMover::finalize(opp_set set) {
     opp_profiler->start("MvDH_Finalize");
 
     opp_profiler->start("MvDH_WaitFin1");
-    CHECK(MPI_Waitall(this->numRemoteRecvRanks, &(this->h_recv_requests[0]), &(this->h_recv_status[0])));
+    MPI_CHECK(MPI_Waitall(this->numRemoteRecvRanks, &(this->h_recv_requests[0]), &(this->h_recv_status[0])));
     opp_profiler->end("MvDH_WaitFin1");
 
     // if (OPP_DBG) 
@@ -1174,7 +1174,7 @@ int64_t GlobalParticleMover::finalize(opp_set set) {
         for (int rankx = 0; rankx < this->numRemoteRecvRanks; rankx++) {
         
             int bytesRecvd = -1;
-            CHECK(MPI_Get_count(&this->h_recv_status[rankx], MPI_CHAR, &bytesRecvd));
+            MPI_CHECK(MPI_Get_count(&this->h_recv_status[rankx], MPI_CHAR, &bytesRecvd));
             int bytesExpected = (this->h_recv_rank_npart[rankx] * set->particle_size);
 
             if (bytesRecvd != bytesExpected) {
@@ -1191,7 +1191,7 @@ int64_t GlobalParticleMover::finalize(opp_set set) {
     // Note : The mesh relations received will be global cell indices and need to be converted to local
 
     opp_profiler->start("MvDH_WaitFin2");
-    CHECK(MPI_Waitall(this->numRemoteSendRanks, &(this->h_send_requests[0]), MPI_STATUSES_IGNORE));
+    MPI_CHECK(MPI_Waitall(this->numRemoteSendRanks, &(this->h_send_requests[0]), MPI_STATUSES_IGNORE));
     opp_profiler->end("MvDH_WaitFin2");
 
     // Since packer->unpack might realloc dats, need to set the correct OPP_mesh_relation_data ptr

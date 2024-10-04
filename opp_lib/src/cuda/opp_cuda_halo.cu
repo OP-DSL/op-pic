@@ -137,25 +137,23 @@ void opp_halo_destroy()
 #ifdef USE_MPI
     __opp_halo_destroy();
 
-    if (OPP_hybrid_gpu) {
-        if (OPP_DBG) opp_printf("opp_halo_destroy", "Destroying sycl halo buffers START");
+    if (OPP_DBG) opp_printf("opp_halo_destroy", "Destroying sycl halo buffers START");
 
-        for (auto& dat : opp_dats) {
-            opp_mem::dev_free(dat->buffer_d_r);
-            opp_mem::dev_free(dat->buffer_d);
-        }
-
-        for (size_t i = 0; i < opp_sets.size(); i++) {
-            opp_mem::dev_free(export_exec_list_d[i]);
-            opp_mem::dev_free(export_nonexec_list_d[i]);
-            opp_mem::dev_free(export_exec_list_disps_d[i]);
-            opp_mem::dev_free(export_nonexec_list_disps_d[i]);
-            opp_mem::dev_free(import_exec_list_disps_d[i]);
-            opp_mem::dev_free(import_nonexec_list_disps_d[i]);
-        }
-
-        if (OPP_DBG) opp_printf("opp_halo_destroy", "Destroying sycl halo buffers END");
+    for (auto& dat : opp_dats) {
+        opp_mem::dev_free(dat->buffer_d_r);
+        opp_mem::dev_free(dat->buffer_d);
     }
+
+    for (size_t i = 0; i < opp_sets.size(); i++) {
+        opp_mem::dev_free(export_exec_list_d[i]);
+        opp_mem::dev_free(export_nonexec_list_d[i]);
+        opp_mem::dev_free(export_exec_list_disps_d[i]);
+        opp_mem::dev_free(export_nonexec_list_disps_d[i]);
+        opp_mem::dev_free(import_exec_list_disps_d[i]);
+        opp_mem::dev_free(import_nonexec_list_disps_d[i]);
+    }
+
+    if (OPP_DBG) opp_printf("opp_halo_destroy", "Destroying sycl halo buffers END");
 #endif
 }
 
