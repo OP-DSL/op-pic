@@ -71,11 +71,11 @@ seq: mklib $(OBJ)/advec_opp_seq.o $(OBJ)/opp_kernels_seq.o
 		$(ALL_INC) $(ALL_LIBS) -lopp_seq
 
 # ------------------------------------------------------------------------------------------
-$(OBJ)/advec_opp_mpi.o: advec_opp.cpp
-	 $(MPICPP) $(CPPFLAGS) -DUSE_MPI -c advec_opp.cpp -o $@ $(ALL_INC)
-$(OBJ)/opp_kernels_mpi.o: mpi/opp_kernels.cpp
-	 $(MPICPP) $(CPPFLAGS) -DUSE_MPI -c $< -o $@ $(ALL_INC)
-mpi: mklib $(OBJ)/advec_opp_mpi.o $(OBJ)/opp_kernels_mpi.o
+advec_opp+mpi:
+	 $(MPICPP) $(CPPFLAGS) -DUSE_MPI -c advec_opp.cpp -o $(OBJ)/advec_opp_mpi.o $(ALL_INC)
+opp_kernels+mpi:
+	 $(MPICPP) $(CPPFLAGS) -DUSE_MPI -c mpi/opp_kernels.cpp -o $(OBJ)/opp_kernels_mpi.o $(ALL_INC)
+mpi: mklib advec_opp+mpi opp_kernels+mpi
 	 $(MPICPP) $(CPPFLAGS) -DUSE_MPI -o $(BIN)/mpi \
 		$(OBJ)/advec_opp_mpi.o \
 		$(OBJ)/opp_kernels_mpi.o \

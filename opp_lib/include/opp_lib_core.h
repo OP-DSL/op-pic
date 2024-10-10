@@ -152,7 +152,7 @@ inline void opp_write_array_to_file(const T* array, size_t size, const std::stri
     if constexpr (std::is_same<T, double>::value)
         outFile << std::setprecision(25);
     outFile << size << " 1 -- 0 0\n";
-    for (int i = 0; i < size; ++i) {
+    for (size_t i = 0; i < size; ++i) {
         outFile << " " << array[i] << "\n";
     }
     outFile.close();

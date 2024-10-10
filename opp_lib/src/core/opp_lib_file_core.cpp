@@ -51,7 +51,7 @@ void opp_print_dat_to_txtfile_core(opp_dat dat, const char *file_prefix, const c
     }
 
     const size_t row_count = (size_t)dat->set->size + dat->set->exec_size + dat->set->nonexec_size;
-    for (int i = 0; i < row_count; i++) {
+    for (size_t i = 0; i < row_count; i++) {
         for (int j = 0; j < dat->dim; j++) {
             if (strcmp(dat->type, "double") == 0) {
                 if (((double *)dat->data)[i * dat->dim + j] == -0.0) { 
@@ -90,9 +90,9 @@ void opp_print_dat_to_txtfile_core(opp_dat dat, const char *file_prefix, const c
 
         fprintf(fp, "\n");
 
-        if ((i + 1) == dat->set->size) 
+        if ((i + 1) == (size_t)dat->set->size) 
             fprintf(fp, "import_exec_below ****************************************\n");
-        if ((i + 1) == (dat->set->size + dat->set->exec_size)) 
+        if ((i + 1) == (size_t)(dat->set->size + dat->set->exec_size)) 
             fprintf(fp, "import_non_exec_below ****************************************\n");
     }
     

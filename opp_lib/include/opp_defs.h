@@ -364,6 +364,19 @@ struct opp_ipoint {
     int z = 0;
 };
 
+struct opp_uipoint {
+    opp_uipoint(size_t _x, size_t _y, size_t _z) {
+        x = _x; 
+        y = _y;
+        z = _z;
+    };
+    opp_uipoint() { };
+
+    size_t x = 0;
+    size_t y = 0;
+    size_t z = 0;
+};
+
 constexpr double opp_zero_double16[16] = { 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0 };
 constexpr int opp_zero_int16[16] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
 

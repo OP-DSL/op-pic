@@ -16,28 +16,33 @@ enum CellMap {
     x_yu
 };
 
-inline void move_kernel(const double* part_pos, const double* cell_pos_ll)
+inline void move_kernel(const double* p_pos, int* p_mdir, const double* c_pos_ll)
 {
     // check for x direction movement
-    const double part_pos_x = part_pos[Dim::x];
-    if (part_pos_x < cell_pos_ll[Dim::x]) {
-        opp_p2c[0] = opp_c2c[CellMap::xd_y];
-
+    const double p_pos_x_diff = (p_pos[Dim::x] - c_pos_ll[Dim::x]);
+    if ((p_pos_x_diff >= 0.0) && (p_pos_x_diff <= CONST_cell_width[0])) {
+        p_mdir[Dim::x] = 0; // within cell in x direction
+    }
+    else if (p_mdir[Dim::x] > 0) {
+        opp_p2c[0] = opp_c2c[CellMap::xu_y];
         { opp_move_status_flag = OPP_NEED_MOVE; }; return;
     }
-    if (part_pos_x > (cell_pos_ll[Dim::x] + CONST_cell_width[0])) {
-        opp_p2c[0] = opp_c2c[CellMap::xu_y];
+    else if (p_mdir[Dim::x] < 0) {
+        opp_p2c[0] = opp_c2c[CellMap::xd_y];
         { opp_move_status_flag = OPP_NEED_MOVE; }; return;
     }
 
     // check for y direction movement
-    const double part_pos_y = part_pos[Dim::y];
-    if (part_pos_y < cell_pos_ll[Dim::y]) {
-        opp_p2c[0] = opp_c2c[CellMap::x_yd];
+    const double p_pos_y_diff = (p_pos[Dim::y] - c_pos_ll[Dim::y]);
+    if ((p_pos_y_diff >= 0.0) && (p_pos_y_diff <= CONST_cell_width[0])) {
+        p_mdir[Dim::y] = 0; // within cell in y direction
+    }
+    else if (p_mdir[Dim::y] > 0) {
+        opp_p2c[0] = opp_c2c[CellMap::x_yu];
         { opp_move_status_flag = OPP_NEED_MOVE; }; return;
     }
-    if (part_pos_y > (cell_pos_ll[Dim::y] + CONST_cell_width[0])) {
-        opp_p2c[0] = opp_c2c[CellMap::x_yu];
+    else if (p_mdir[Dim::y] < 0) {
+        opp_p2c[0] = opp_c2c[CellMap::x_yd];
         { opp_move_status_flag = OPP_NEED_MOVE; }; return;
     }
 
@@ -47,19 +52,21 @@ inline void move_kernel(const double* part_pos, const double* cell_pos_ll)
 
 void opp_particle_move__move_kernel(opp_set set, opp_map c2c_map, opp_map p2c_map,
     opp_arg arg0, // p_pos | OPP_READ
-    opp_arg arg1 // c_pos_ll | OPP_READ
+    opp_arg arg1, // p_mdir | OPP_RW
+    opp_arg arg2 // c_pos_ll | OPP_READ
 ) 
 {
     if (OPP_DBG) opp_printf("APP", "opp_particle_move__move_kernel set_size %d", set->size);
 
     opp_profiler->start("move_kernel");
 
-    const int nargs = 3;
+    const int nargs = 4;
     opp_arg args[nargs];
 
     args[0] = arg0;
     args[1] = arg1;
-    args[2] = opp_arg_dat(p2c_map->p2c_dat, OPP_RW); // required to make dirty or should manually make it dirty
+    args[2] = arg2;
+    args[3] = opp_arg_dat(p2c_map->p2c_dat, OPP_RW); // required to make dirty or should manually make it dirty
 
     OPP_mesh_relation_data = (OPP_INT*)p2c_map->p2c_dat->data;
 
@@ -80,7 +87,8 @@ void opp_particle_move__move_kernel(opp_set set, opp_map c2c_map, opp_map p2c_ma
 
             opp_k2::move_kernel(
                 (const OPP_REAL *)args[0].data + (n * 2),
-                (const OPP_REAL *)args[1].data + (opp_p2c[0] * 2)
+                (OPP_INT *)args[1].data + (n * 2),
+                (const OPP_REAL *)args[2].data + (opp_p2c[0] * 2)
             );
 
         } while (opp_check_part_move_status(opp_p2c[0], n, set->particle_remove_count));
@@ -135,7 +143,7 @@ inline void gen_dh_structured_mesh(opp_set set, const opp_dat c_gbl_id, opp_map 
         const int nargs, opp_arg* args) { 
 
     if (OPP_rank == 0)            
-        opp_printf("APP", "gen_dh_structured_mesh cells [%s] global grid dims %d %d %d",
+        opp_printf("APP", "gen_dh_structured_mesh START cells [%s] global grid dims %d %d %d",
             set->name, cellMapper->globalGridDims.x, cellMapper->globalGridDims.y, cellMapper->globalGridDims.z);
 
     const int set_size_inc_halo = set->size + set->exec_size + set->nonexec_size;
@@ -152,7 +160,9 @@ inline void gen_dh_structured_mesh(opp_set set, const opp_dat c_gbl_id, opp_map 
 
     // lambda function for dh mesh search loop
     auto all_cell_checker = [&](const opp_point& point, int& cid) {          
-
+ 
+        // we dont want to change the original arrays during dh mesh generation, hence duplicate except OPP_READ
+        OPP_INT arg1_temp[2];
 
         for (int ci = 0; ci < set->size; ++ci) {
             opp_move_status_flag = OPP_MOVE_DONE;  
@@ -162,13 +172,16 @@ inline void gen_dh_structured_mesh(opp_set set, const opp_dat c_gbl_id, opp_map 
             opp_p2c = &(temp_ci);           
             opp_c2c = &((c2c_map->map)[temp_ci * 4]);
     
+            // arg1 is OPP_RW, hence get a copy just incase
+            std::memcpy(&arg1_temp, (OPP_INT *)args[1].data, (sizeof(OPP_INT) * 2));
 
             opp_k2::move_kernel(
                 (const OPP_REAL*)&point,
-                (const OPP_REAL *)args[1].data + (temp_ci * 2) // c_pos_ll| OPP_READ
+                arg1_temp, // p_mdir| OPP_RW
+                (const OPP_REAL *)args[2].data + (temp_ci * 2) // c_pos_ll| OPP_READ
             );
             if (opp_move_status_flag == OPP_MOVE_DONE) {       
-                cid = ci;
+                cid = temp_ci;
                 break;
             }
         }
@@ -198,8 +211,9 @@ inline void gen_dh_structured_mesh(opp_set set, const opp_dat c_gbl_id, opp_map 
                 if (cid == MAX_CELL_INDEX) {
                     removed_coords.insert(std::make_pair(index, opp_point(x, y ,z)));
                 }
-                else if (cid < set->size) // write only if the structured cell belong to the current MPI rank                    
+                else if (cid < set->size) { // write only if the structured cell belong to the current MPI rank                    
                     cellMapper->enrichStructuredMesh(index, ((int*)c_gbl_id->data)[cid], OPP_rank);
+                }
             }
         }
     }
@@ -219,8 +233,9 @@ inline void gen_dh_structured_mesh(opp_set set, const opp_dat c_gbl_id, opp_map 
             it = removed_coords.erase(it); // This structured index is already written by another rank
             // opp_printf("APP", "index %zu already in %d", this->structMeshToRankMapping[removed_idx], removed_idx);
         } 
-        else
-            ++it; 
+        else {
+            ++it;
+        } 
     }
 
     cellMapper->waitBarrier();    
@@ -239,15 +254,11 @@ inline void gen_dh_structured_mesh(opp_set set, const opp_dat c_gbl_id, opp_map 
         const double gs = cellMapper->gridSpacing;
         int most_suitable_cid = MAX_CELL_INDEX, most_suitable_gbl_cid = MAX_CELL_INDEX;
 
-        std::array<opp_point,8> vertices = {
+        std::array<opp_point,4> vertices = {
             opp_point(GET_VERT(x,x),    GET_VERT(y,y),    GET_VERT(z,z)),
             opp_point(GET_VERT(x,x),    GET_VERT(y,y+gs), GET_VERT(z,z)),
-            opp_point(GET_VERT(x,x),    GET_VERT(y,y+gs), GET_VERT(z,z+gs)),
-            opp_point(GET_VERT(x,x),    GET_VERT(y,y),    GET_VERT(z,z+gs)),
             opp_point(GET_VERT(x,x+gs), GET_VERT(y,y),    GET_VERT(z,z)),
             opp_point(GET_VERT(x,x+gs), GET_VERT(y,y+gs), GET_VERT(z,z)),
-            opp_point(GET_VERT(x,x+gs), GET_VERT(y,y),    GET_VERT(z,z+gs)),
-            opp_point(GET_VERT(x,x+gs), GET_VERT(y,y+gs), GET_VERT(z,z+gs)),
         };
 
         for (const auto& point : vertices) {
@@ -255,7 +266,7 @@ inline void gen_dh_structured_mesh(opp_set set, const opp_dat c_gbl_id, opp_map 
 
             all_cell_checker(point, cid);
 
-            if ((cid != MAX_CELL_INDEX) && (cid < set_size_inc_halo)) { 
+            if ((cid != MAX_CELL_INDEX) && (cid < set->size)) { 
                 const int gbl_cid = ((OPP_INT*)c_gbl_id->data)[cid];
                 if (most_suitable_gbl_cid > gbl_cid) {
                     most_suitable_gbl_cid = gbl_cid;
@@ -266,7 +277,7 @@ inline void gen_dh_structured_mesh(opp_set set, const opp_dat c_gbl_id, opp_map 
 
         // Allow neighbours to write on-behalf of the current rank, to reduce issues
         cellMapper->lockWindows();
-        int avail_gbl_cid = cellMapper->structMeshToCellMapping[index]; 
+        const int avail_gbl_cid = cellMapper->structMeshToCellMapping[index]; 
         if ((most_suitable_gbl_cid != MAX_CELL_INDEX) && (most_suitable_gbl_cid < avail_gbl_cid) && 
                     (most_suitable_cid < set->size)) {        
             cellMapper->enrichStructuredMesh(index, most_suitable_gbl_cid, OPP_rank);      
@@ -297,7 +308,8 @@ inline void gen_dh_structured_mesh(opp_set set, const opp_dat c_gbl_id, opp_map 
 void opp_init_direct_hop_cg(double grid_spacing, int dim, const opp_dat c_gbl_id, const opp::BoundingBox& b_box, 
     opp_map c2c_map, opp_map p2c_map,
     opp_arg arg0, // p_pos | OPP_READ
-    opp_arg arg1 // c_pos_ll | OPP_READ
+    opp_arg arg1, // p_mdir | OPP_RW
+    opp_arg arg2 // c_pos_ll | OPP_READ
 ) {
     opp_profiler->start("Setup_Mover");
     
@@ -305,11 +317,12 @@ void opp_init_direct_hop_cg(double grid_spacing, int dim, const opp_dat c_gbl_id
 
     if (useGlobalMove) {
 
-        const int nargs = 2;
+        const int nargs = 3;
         opp_arg args[nargs];
 
         args[0] = arg0;
         args[1] = arg1;
+        args[2] = arg2;
 
 #ifdef USE_MPI
         opp_mpi_halo_exchanges(c_gbl_id->set, nargs, args);

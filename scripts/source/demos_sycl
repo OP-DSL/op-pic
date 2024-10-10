@@ -31,7 +31,7 @@ export CUDA_ARCH=90
  
 export PETSC_INSTALL_PATH=/home/zl/lib_install/petsc-3.20.5-oneapi-2024.2.1_demos
 
-export HDF5_INSTALL_PATH=$(spack location -i hdf5@1.14.3)
+export HDF5_INSTALL_PATH=$(spack location -i hdf5@1.14.3/gi6awm3)
 export LD_LIBRARY_PATH=$HDF5_INSTALL_PATH/lib:$LD_LIBRARY_PATH
 
 # install cuda plugin!
@@ -52,4 +52,16 @@ export LD_LIBRARY_PATH=$HDF5_INSTALL_PATH/lib:$LD_LIBRARY_PATH
 # module load nvhpc/23.7
 # export PETSC_INSTALL_PATH=/home/zl/lib_install/petsc-3.20.5-oneapi-2024.2.1_demos
 # export HDF5_INSTALL_PATH=$(spack location -i hdf5@1.14.3)
+# export LD_LIBRARY_PATH=$HDF5_INSTALL_PATH/lib:$LD_LIBRARY_PATH
+
+
+# # Use below for GCC-12.2.0 builds
+# export OPP=/home/zl/phd/OP-PIC
+# export OPP_INSTALL_PATH=$OPP/opp_install
+# export OPP_TRANSLATOR=$OPP/opp_translator/translator
+# export OPP_PATH=$OPP/opp_lib
+# export CC_COMPILER=g++
+# export MPI_COMPILER=mpicxx
+# export PETSC_INSTALL_PATH=/home/zl/lib_install/petsc-3.20.5-gcc-12.2.0_demos
+# export HDF5_INSTALL_PATH=$(spack location -i hdf5@1.14.3/6zzf37d)
 # export LD_LIBRARY_PATH=$HDF5_INSTALL_PATH/lib:$LD_LIBRARY_PATH

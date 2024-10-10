@@ -143,17 +143,17 @@ void init_mesh(std::shared_ptr<DataPointers> m) {
 
 //*************************************************************************************************
 /**
- * @brief Initializes the particles in to the particle dats in the arguments, using the cell_pos_ll dat
+ * @brief Initializes the particles in to the particle dats in the arguments, using the c_pos_ll dat
  *          Expect this to run on every MPI rank
- * @param part_index - opp_dat : Particle index relative to rank. TODO: make this global
- * @param part_pos - opp_dat : Particle 2D position (x,y)
- * @param part_vel - opp_dat : Particle 2D velocity (x,y)
- * @param part_mesh_rel - opp_map : Particle belonging cell index 
- * @param cell_pos_ll - opp_dat : Lower left 2D position coordicate of the cell
+ * @param p_id - opp_dat : Particle index relative to rank. TODO: make this global
+ * @param p_pos - opp_dat : Particle 2D position (x,y)
+ * @param p_vel - opp_dat : Particle 2D velocity (x,y)
+ * @param p_cid - opp_map : Particle belonging cell index 
+ * @param c_pos_ll - opp_dat : Lower left 2D position coordicate of the cell
  * @return (void)
  */
-void init_particles(opp_dat part_index, opp_dat part_pos, opp_dat part_vel, opp_map part_mesh_rel, 
-                    opp_dat cell_pos_ll, opp_dat gcid) 
+void init_particles(opp_dat p_id, opp_dat p_pos, opp_dat p_vel, opp_dat p_mdir, opp_map p_cid, 
+                    opp_dat c_pos_ll, opp_dat gcid) 
 {
     if (OPP_rank == OPP_ROOT)
         opp_printf("Setup", "Init particles START");
@@ -163,7 +163,7 @@ void init_particles(opp_dat part_index, opp_dat part_pos, opp_dat part_vel, opp_
     std::mt19937 rng_pos(52234234 + OPP_rank);
     std::mt19937 rng_vel(52234231 + OPP_rank);
 
-    const int cell_count = cell_pos_ll->set->size;
+    const int cell_count = c_pos_ll->set->size;
     const int rank_npart = npart_per_cell * cell_count;
 
     if (rank_npart <= 0) {
@@ -176,7 +176,7 @@ void init_particles(opp_dat part_index, opp_dat part_pos, opp_dat part_vel, opp_
     // Sample particles randomly in each local cell.
     opp_profiler->start("Init_get_pos");
     const double extents[] = { opp_params->get<OPP_REAL>("cell_width"), opp_params->get<OPP_REAL>("cell_width")};
-    uniform_within_cartesian_cells(DIM, extents, (OPP_REAL*)cell_pos_ll->data, cell_count, npart_per_cell, 
+    uniform_within_cartesian_cells(DIM, extents, (OPP_REAL*)c_pos_ll->data, cell_count, npart_per_cell, 
                                 positions, cells, rng_pos);
     opp_profiler->end("Init_get_pos");
 
@@ -190,7 +190,7 @@ void init_particles(opp_dat part_index, opp_dat part_pos, opp_dat part_vel, opp_
 
     // Host/Device space to store the particles.
     opp_profiler->start("Init_inc_parts");
-    opp_increase_particle_count(part_index->set, rank_npart);
+    opp_increase_particle_count(p_id->set, rank_npart);
     opp_profiler->end("Init_inc_parts");
 
     if (OPP_rank == OPP_ROOT)
@@ -200,13 +200,15 @@ void init_particles(opp_dat part_index, opp_dat part_pos, opp_dat part_vel, opp_
     // Populate the host space with particle data.
     for (int px = 0; px < rank_npart; px++) {
         
-        opp_get_data<OPP_REAL>(part_pos)[px * DIM + Dim::x] = positions.at(Dim::x).at(px);
-        opp_get_data<OPP_REAL>(part_pos)[px * DIM + Dim::y] = positions.at(Dim::y).at(px);
-        opp_get_data<OPP_REAL>(part_vel)[px * DIM + Dim::x] = velocities.at(Dim::x).at(px);
-        opp_get_data<OPP_REAL>(part_vel)[px * DIM + Dim::y] = velocities.at(Dim::y).at(px);
+        opp_get_data<OPP_REAL>(p_pos)[px * DIM + Dim::x] = positions.at(Dim::x).at(px);
+        opp_get_data<OPP_REAL>(p_pos)[px * DIM + Dim::y] = positions.at(Dim::y).at(px);
+        opp_get_data<OPP_REAL>(p_vel)[px * DIM + Dim::x] = velocities.at(Dim::x).at(px);
+        opp_get_data<OPP_REAL>(p_vel)[px * DIM + Dim::y] = velocities.at(Dim::y).at(px);
+        opp_get_data<OPP_INT>(p_mdir)[px * DIM + Dim::x] = 1;
+        opp_get_data<OPP_INT>(p_mdir)[px * DIM + Dim::y] = 1;
 
-        opp_get_data(part_mesh_rel)[px]       = cells.at(px);
-        opp_get_data<OPP_INT>(part_index)[px] = px; //((int*)gcid->data)[cells.at(px)]; 
+        opp_get_data(p_cid)[px]       = cells.at(px);
+        opp_get_data<OPP_INT>(p_id)[px] = px; //((int*)gcid->data)[cells.at(px)]; 
     }
     opp_profiler->end("Init_assign");
 
@@ -214,7 +216,7 @@ void init_particles(opp_dat part_index, opp_dat part_pos, opp_dat part_vel, opp_
         opp_printf("Setup", "Init particles Uploading Start");
 
     opp_profiler->start("Init_upload");
-    opp_upload_particle_set(part_index->set);
+    opp_upload_particle_set(p_id->set);
     opp_profiler->end("Init_upload");
 
 #ifdef USE_MPI

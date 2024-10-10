@@ -1,5 +1,5 @@
 
-// Auto-generated at 2024-10-02 19:07:04.729178 by opp-translator
+// Auto-generated at 2024-10-10 12:39:15.799900 by opp-translator
 /* 
 BSD 3-Clause License
 
@@ -74,6 +74,7 @@ int main(int argc, char **argv)
         const std::string file         = opp_params->get<OPP_STRING>("hdf_filename");
         const OPP_BOOL print_final_log = opp_params->get<OPP_BOOL>("print_final");
         int64_t total_part_iter        = 0;
+        const OPP_REAL expansion[3]    = { 4*grid_spacing, 4*grid_spacing, 4*grid_spacing };
 
         opp_set node_set       = opp_decl_set_hdf5(file.c_str(), "mesh_nodes");
         opp_set cell_set       = opp_decl_set_hdf5(file.c_str(), "mesh_cells");
@@ -141,7 +142,7 @@ int main(int argc, char **argv)
         opp_inc_part_count_with_distribution(particle_set, inject_count, if_distrib, false);
 
         // these two lines are only required if we plan to use direct_hop
-        opp::BoundingBox bounding_box = opp::BoundingBox(n_pos, DIM);
+        opp::BoundingBox bounding_box = opp::BoundingBox(n_pos, DIM, expansion);
         opp_init_direct_hop_cg(grid_spacing, DIM, c_gbl_id, bounding_box, c2c_map, p2c_map,
 			opp_arg_dat(p_pos, OPP_READ),
 			opp_arg_dat(p_lc, OPP_WRITE),

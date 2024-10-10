@@ -34,7 +34,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <opp_lib_core.h>
 
-#define BOUNDING_TOLERENCE 1e-12
+#define BOUND_OFFSET 1e-12
 
 namespace opp {
 
@@ -65,14 +65,15 @@ public:
     }
 
     //***********************************
-    BoundingBox(const opp_dat node_pos_dat, int dim) : dim(dim) {
+    BoundingBox(const opp_dat node_pos_dat, int dim, const OPP_REAL expansion[3]) : dim(dim) {
         if (dim != 3 && dim != 2) {
             opp_abort(std::string("For now, only 2D/3D BoundingBox is implemented"));
         }
 
         const double* node_pos_data = (const double*)node_pos_dat->data;
-        const int node_count = node_pos_dat->set->size + node_pos_dat->set->exec_size + 
-                                    node_pos_dat->set->nonexec_size;
+        const int node_count = node_pos_dat->set->size;
+        // const int node_count = node_pos_dat->set->size + node_pos_dat->set->exec_size + 
+        //                             node_pos_dat->set->nonexec_size;
 
         opp_point minCoordinate = opp_point(MAX_REAL, MAX_REAL, MAX_REAL);
         opp_point maxCoordinate = opp_point(MIN_REAL, MIN_REAL, MIN_REAL);
@@ -94,14 +95,15 @@ public:
             }
         }
 
+        // Why BOUND_OFFSET? to overcome overlapping == nodes
         if (node_count != 0) {
-            minCoordinate.x -= BOUNDING_TOLERENCE;
-            maxCoordinate.x += BOUNDING_TOLERENCE;
-            minCoordinate.y -= BOUNDING_TOLERENCE;
-            maxCoordinate.y += BOUNDING_TOLERENCE;
+            minCoordinate.x -= (expansion[0] + BOUND_OFFSET);
+            minCoordinate.y -= (expansion[0] + BOUND_OFFSET);
+            maxCoordinate.x += (expansion[1] - BOUND_OFFSET);
+            maxCoordinate.y += (expansion[1] - BOUND_OFFSET);
             if (dim == 3) {
-                minCoordinate.z -= BOUNDING_TOLERENCE;
-                maxCoordinate.z += BOUNDING_TOLERENCE;
+                minCoordinate.z -= (expansion[2] + BOUND_OFFSET);
+                maxCoordinate.z += (expansion[2] - BOUND_OFFSET);
             }
         }
 
@@ -150,21 +152,16 @@ public:
     }
 
     //***********************************
-    inline bool isCoordinateInBoundingBox(const opp_point& point) { 
-        if ((this->boundingBox[0].x > point.x) || (this->boundingBox[1].x < point.x) ||
-            (this->boundingBox[0].y > point.y) || (this->boundingBox[1].y < point.y) || 
-            (this->boundingBox[0].z > point.z) || (this->boundingBox[1].z < point.z)) 
-            return false;      
-        return true;
+    inline bool isCoordinateInBoundingBox(const opp_point& point) {
+        return !((point.x < boundingBox[0].x) || (point.x > boundingBox[1].x) ||
+                (point.y < boundingBox[0].y) || (point.y > boundingBox[1].y) ||
+                (point.z < boundingBox[0].z) || (point.z > boundingBox[1].z));
     }
 
-    //***********************************
-    inline bool isCoordinateInGlobalBoundingBox(const opp_point& point) { 
-        if ((this->globalBoundingBox[0].x > point.x) || (this->globalBoundingBox[1].x < point.x) ||
-            (this->globalBoundingBox[0].y > point.y) || (this->globalBoundingBox[1].y < point.y) ||
-            (this->globalBoundingBox[0].z > point.z) || (this->globalBoundingBox[1].z < point.z))
-            return false;         
-        return true;
+    inline bool isCoordinateInGlobalBoundingBox(const opp_point& point) {
+        return !((point.x < globalBoundingBox[0].x) || (point.x > globalBoundingBox[1].x) ||
+                (point.y < globalBoundingBox[0].y) || (point.y > globalBoundingBox[1].y) ||
+                (point.z < globalBoundingBox[0].z) || (point.z > globalBoundingBox[1].z));
     }
 
     //***********************************
@@ -194,10 +191,6 @@ private:
             this->boundingBox[1].y = this->globalBoundingBox[0].y;
             this->boundingBox[1].z = this->globalBoundingBox[0].z;
         }
-
-        // opp_printf("Local BoundingBox", "Min[%2.6lE %2.6lE %2.6lE] Max[%2.6lE %2.6lE %2.6lE]", 
-        //     this->boundingBox[0].x, this->boundingBox[0].y, this->boundingBox[0].z, 
-        //     this->boundingBox[1].x, this->boundingBox[1].y, this->boundingBox[1].z);
 
         if (OPP_rank == OPP_ROOT)
             opp_printf("Global BoundingBox", "Min[%2.6lE %2.6lE %2.6lE] Max[%2.6lE %2.6lE %2.6lE]", 
@@ -276,56 +269,27 @@ public:
     //***********************************
     inline size_t findStructuredCellIndex3D(const opp_point& position)  // Returns the global cell index
     { 
-        // Perform the calculations in higher precision (double)
-        double xDiff = position.x - this->minGlbCoordinate.x;
-        double yDiff = position.y - this->minGlbCoordinate.y;
-        double zDiff = position.z - this->minGlbCoordinate.z;
-
-        xDiff = xDiff * this->oneOverGridSpacing;
-        yDiff = yDiff * this->oneOverGridSpacing;
-        zDiff = zDiff * this->oneOverGridSpacing;
-
         // Round to the nearest integer to minimize rounding errors
-        const int xIndex = static_cast<int>(xDiff);
-        const int yIndex = static_cast<int>(yDiff);
-        const int zIndex = static_cast<int>(zDiff);
+        const size_t xIndex = static_cast<size_t>((position.x - minGlbCoordinate.x) * oneOverGridSpacing);
+        const size_t yIndex = static_cast<size_t>((position.y - minGlbCoordinate.y) * oneOverGridSpacing);
+        const size_t zIndex = static_cast<size_t>((position.z - minGlbCoordinate.z) * oneOverGridSpacing);
 
         // Calculate the cell index mapping index
-        size_t index = ((size_t)(xIndex) + (size_t)(yIndex * globalGridDims.x) + 
-                    (size_t)(zIndex * globalGridDims.x * globalGridDims.y));
+        const size_t index = xIndex + (yIndex * globalGridDimsX) + (zIndex * globalGridDimsXY);
 
-        if (index >= globalGridSize) {
-            // opp_printf("CellMapper", "Error index %zu generated is larger than globalGridSize %zu", 
-            //     index, globalGridSize);
-            return MAX_CELL_INDEX;
-        }
-
-        return index;
+        return (index >= globalGridSize || index < 0) ? MAX_CELL_INDEX : index;
     }
     //***********************************
     inline size_t findStructuredCellIndex2D(const opp_point& position) // Returns the global cell index
     { 
-        // Perform the calculations in higher precision (double)
-        double xDiff = position.x - this->minGlbCoordinate.x;
-        double yDiff = position.y - this->minGlbCoordinate.y;
-
-        xDiff = xDiff * this->oneOverGridSpacing;
-        yDiff = yDiff * this->oneOverGridSpacing;
-
         // Round to the nearest integer to minimize rounding errors
-        const int xIndex = static_cast<int>(xDiff);
-        const int yIndex = static_cast<int>(yDiff);
+        const int xIndex = static_cast<int>((position.x - minGlbCoordinate.x) * oneOverGridSpacing);
+        const int yIndex = static_cast<int>((position.y - minGlbCoordinate.y) * oneOverGridSpacing);
 
         // Calculate the cell index mapping index
-        size_t index = ((size_t)(xIndex) + (size_t)(yIndex * globalGridDims.x));
+        const size_t index = ((size_t)(xIndex) + ((size_t)yIndex * globalGridDimsX));
 
-        if (index >= globalGridSize) {
-            // opp_printf("CellMapper", "Error %zu is larger than globalGridSize %zu", 
-            //     index, globalGridSize);
-            return MAX_CELL_INDEX;
-        }
-
-        return index;
+        return (index >= globalGridSize || index < 0) ? MAX_CELL_INDEX : index;
     }
 
     //***********************************
@@ -338,7 +302,7 @@ public:
                 return MAX_CELL_INDEX;
             }
         }   
-        return this->structMeshToCellMapping[structCellIdx];
+        return structMeshToCellMapping[structCellIdx];
     }
 
     //***********************************
@@ -352,7 +316,7 @@ public:
                 return MAX_CELL_INDEX;
             }
         }
-        return this->structMeshToRankMapping[structCellIdx];
+        return structMeshToRankMapping[structCellIdx];
     #else
         return OPP_rank;
     #endif
@@ -362,25 +326,26 @@ public:
     inline void enrichStructuredMesh(const int index, const int cell_index, const int rank) 
     {
     #ifdef USE_MPI
-        MPI_CHECK(MPI_Put(&cell_index, 1, MPI_INT, 0, index, 1, MPI_INT, this->win_structMeshToCellMapping));
-        MPI_CHECK(MPI_Put(&rank, 1, MPI_INT, 0, index, 1, MPI_INT, this->win_structMeshToRankMapping));
+        MPI_CHECK(MPI_Put(&cell_index, 1, MPI_INT, 0, index, 1, MPI_INT, win_structMeshToCellMapping));
+        MPI_CHECK(MPI_Put(&rank, 1, MPI_INT, 0, index, 1, MPI_INT, win_structMeshToRankMapping));
     #else
-        this->structMeshToCellMapping[index] = cell_index;
+        structMeshToCellMapping[index] = cell_index;
     #endif
     }
 
     //***********************************
-    inline void printStructuredMesh(const std::string msg, int *array, size_t size, bool file = true) 
+    inline void printStructuredMesh(const std::string msg, int *array, size_t size, bool file = true, int line_break = 50) 
     {    
         if (!file) {
             opp_printf("structMeshToCellMapping", "%s - size=%zu", msg.c_str(), size);
 
+            std::stringstream ss;
             for (size_t i = 0; i < size; i++) {
-                printf("%zu|%d ", i, array[i]);
-                if (i % 50 == 0) 
-                    printf("\n");
+                ss << array[i] << ",";
+                if ((i + 1) % line_break == 0) 
+                    ss << "\n";
             }   
-            printf("\n");
+            printf("%s\n", ss.str().c_str());
         }
         else {
             opp_write_array_to_file(array, size, msg);
@@ -392,8 +357,8 @@ public:
     {
     #ifdef USE_MPI
         MPI_CHECK(MPI_Barrier(MPI_COMM_WORLD));
-        MPI_CHECK(MPI_Win_fence(0, this->win_structMeshToCellMapping)); 
-        MPI_CHECK(MPI_Win_fence(0, this->win_structMeshToRankMapping)); 
+        MPI_CHECK(MPI_Win_fence(0, win_structMeshToCellMapping)); 
+        MPI_CHECK(MPI_Win_fence(0, win_structMeshToRankMapping)); 
     #endif
     }
 
@@ -401,8 +366,8 @@ public:
     inline void lockWindows() 
     {
     #ifdef USE_MPI
-        MPI_CHECK(MPI_Win_lock(MPI_LOCK_EXCLUSIVE, 0, 0, this->win_structMeshToCellMapping));
-        MPI_CHECK(MPI_Win_lock(MPI_LOCK_EXCLUSIVE, 0, 0, this->win_structMeshToRankMapping));
+        MPI_CHECK(MPI_Win_lock(MPI_LOCK_EXCLUSIVE, 0, 0, win_structMeshToCellMapping));
+        MPI_CHECK(MPI_Win_lock(MPI_LOCK_EXCLUSIVE, 0, 0, win_structMeshToRankMapping));
     #endif
     }
 
@@ -410,8 +375,8 @@ public:
     inline void unlockWindows() 
     {
     #ifdef USE_MPI
-        MPI_CHECK(MPI_Win_unlock(0, this->win_structMeshToCellMapping));
-        MPI_CHECK(MPI_Win_unlock(0, this->win_structMeshToRankMapping));
+        MPI_CHECK(MPI_Win_unlock(0, win_structMeshToCellMapping));
+        MPI_CHECK(MPI_Win_unlock(0, win_structMeshToRankMapping));
     #endif
     }
 
@@ -422,8 +387,11 @@ public:
     const opp_point& minGlbCoordinate;  
     const std::shared_ptr<Comm> comm = nullptr;
 
-    opp_ipoint globalGridDims;
-    opp_ipoint localGridStart, localGridEnd;
+    size_t globalGridDimsX = 0;
+    size_t globalGridDimsY = 0;
+    size_t globalGridDimsZ = 0;
+    size_t globalGridDimsXY = 0;
+    opp_uipoint localGridStart, localGridEnd;
 
     size_t globalGridSize = 0;
     

@@ -143,17 +143,17 @@ void init_mesh(std::shared_ptr<DataPointers> m) {
 
 //*************************************************************************************************
 /**
- * @brief Initializes the particles in to the particle dats in the arguments, using the cell_pos_ll dat
+ * @brief Initializes the particles in to the particle dats in the arguments, using the c_pos_ll dat
  *          Expect this to run on every MPI rank
- * @param part_index - opp_dat : Particle index relative to rank. TODO: make this global
- * @param part_pos - opp_dat : Particle 2D position (x,y)
- * @param part_vel - opp_dat : Particle 2D velocity (x,y)
- * @param part_mesh_rel - opp_map : Particle belonging cell index 
- * @param cell_pos_ll - opp_dat : Lower left 2D position coordicate of the cell
+ * @param p_id - opp_dat : Particle index relative to rank. TODO: make this global
+ * @param p_pos - opp_dat : Particle 2D position (x,y)
+ * @param p_vel - opp_dat : Particle 2D velocity (x,y)
+ * @param p_cid - opp_map : Particle belonging cell index 
+ * @param c_pos_ll - opp_dat : Lower left 2D position coordicate of the cell
  * @return (void)
  */
-void init_particles(opp_dat part_index, opp_dat part_pos, opp_dat part_vel, opp_map part_mesh_rel, 
-                    opp_dat cell_pos_ll, opp_dat gcid) 
+void init_particles(opp_dat p_id, opp_dat p_pos, opp_dat p_vel, opp_dat p_mdir, opp_map p_cid, 
+                    opp_dat c_pos_ll, opp_dat gcid) 
 {
     if (OPP_rank == OPP_ROOT)
         opp_printf("Setup", "Init particles START");
@@ -163,7 +163,7 @@ void init_particles(opp_dat part_index, opp_dat part_pos, opp_dat part_vel, opp_
     std::mt19937 rng_pos(52234234 + OPP_rank);
     std::mt19937 rng_vel(52234231 + OPP_rank);
 
-    const int cell_count = cell_pos_ll->set->size;
+    const int cell_count = c_pos_ll->set->size;
     const int rank_npart = npart_per_cell * cell_count;
 
     if (rank_npart <= 0) {
@@ -176,7 +176,7 @@ void init_particles(opp_dat part_index, opp_dat part_pos, opp_dat part_vel, opp_
     // Sample particles randomly in each local cell.
     opp_profiler->start("Init_get_pos");
     const double extents[] = { opp_params->get<OPP_REAL>("cell_width"), opp_params->get<OPP_REAL>("cell_width")};
-    uniform_within_cartesian_cells(DIM, extents, (OPP_REAL*)cell_pos_ll->data, cell_count, npart_per_cell, 
+    uniform_within_cartesian_cells(DIM, extents, (OPP_REAL*)c_pos_ll->data, cell_count, npart_per_cell, 
                                 positions, cells, rng_pos);
     opp_profiler->end("Init_get_pos");
 
@@ -190,7 +190,7 @@ void init_particles(opp_dat part_index, opp_dat part_pos, opp_dat part_vel, opp_
 
     // Host/Device space to store the particles.
     opp_profiler->start("Init_inc_parts");
-    opp_increase_particle_count(part_index->set, rank_npart);
+    opp_increase_particle_count(p_id->set, rank_npart);
     opp_profiler->end("Init_inc_parts");
 
     if (OPP_rank == OPP_ROOT)
@@ -200,13 +200,15 @@ void init_particles(opp_dat part_index, opp_dat part_pos, opp_dat part_vel, opp_
     // Populate the host space with particle data.
     for (int px = 0; px < rank_npart; px++) {
         
-        opp_get_data<OPP_REAL>(part_pos)[px * DIM + Dim::x] = positions.at(Dim::x).at(px);
-        opp_get_data<OPP_REAL>(part_pos)[px * DIM + Dim::y] = positions.at(Dim::y).at(px);
-        opp_get_data<OPP_REAL>(part_vel)[px * DIM + Dim::x] = velocities.at(Dim::x).at(px);
-        opp_get_data<OPP_REAL>(part_vel)[px * DIM + Dim::y] = velocities.at(Dim::y).at(px);
+        opp_get_data<OPP_REAL>(p_pos)[px * DIM + Dim::x] = positions.at(Dim::x).at(px);
+        opp_get_data<OPP_REAL>(p_pos)[px * DIM + Dim::y] = positions.at(Dim::y).at(px);
+        opp_get_data<OPP_REAL>(p_vel)[px * DIM + Dim::x] = velocities.at(Dim::x).at(px);
+        opp_get_data<OPP_REAL>(p_vel)[px * DIM + Dim::y] = velocities.at(Dim::y).at(px);
+        opp_get_data<OPP_INT>(p_mdir)[px * DIM + Dim::x] = 1;
+        opp_get_data<OPP_INT>(p_mdir)[px * DIM + Dim::y] = 1;
 
-        opp_get_data(part_mesh_rel)[px]       = cells.at(px);
-        opp_get_data<OPP_INT>(part_index)[px] = px; //((int*)gcid->data)[cells.at(px)]; 
+        opp_get_data(p_cid)[px]       = cells.at(px);
+        opp_get_data<OPP_INT>(p_id)[px] = px; //((int*)gcid->data)[cells.at(px)]; 
     }
     opp_profiler->end("Init_assign");
 
@@ -214,7 +216,7 @@ void init_particles(opp_dat part_index, opp_dat part_pos, opp_dat part_vel, opp_
         opp_printf("Setup", "Init particles Uploading Start");
 
     opp_profiler->start("Init_upload");
-    opp_upload_particle_set(part_index->set);
+    opp_upload_particle_set(p_id->set);
     opp_profiler->end("Init_upload");
 
 #ifdef USE_MPI
@@ -255,15 +257,64 @@ void distribute_data_over_ranks(std::shared_ptr<DataPointers>& g_m, std::shared_
 }
 
 /*************************************************************************************************
- * This is a utility function to get the total particles iterated during the simulation
+ * This is a utility function to gather from all MPI ranks
 */
-inline int64_t get_global_parts_iterated(int64_t total_part_iter) {
-
-    int64_t gbl_total_part_iter = 0;
+inline void get_global_values(const int64_t total_part_iter, int64_t& gbl_total_part_iter, 
+    int64_t& gbl_max_iter, int64_t& gbl_min_iter) 
+{
 #ifdef USE_MPI
-        MPI_Reduce(&total_part_iter, &gbl_total_part_iter, 1, MPI_INT64_T, MPI_SUM, OPP_ROOT, MPI_COMM_WORLD);
+    MPI_Reduce(&total_part_iter, &gbl_total_part_iter, 1, MPI_INT64_T, MPI_SUM, OPP_ROOT, MPI_COMM_WORLD);
+    MPI_Reduce(&total_part_iter, &gbl_max_iter, 1, MPI_INT64_T, MPI_MAX, OPP_ROOT, MPI_COMM_WORLD);
+    MPI_Reduce(&total_part_iter, &gbl_min_iter, 1, MPI_INT64_T, MPI_MIN, OPP_ROOT, MPI_COMM_WORLD);
 #else
-        gbl_total_part_iter = total_part_iter;
+    gbl_total_part_iter = total_part_iter;
+    gbl_max_iter = total_part_iter;
+    gbl_min_iter = total_part_iter;
 #endif
-    return gbl_total_part_iter;
+}
+
+/*************************************************************************************************
+ * This is a utility function to get the final log print
+*/
+inline std::string get_global_level_log(const opp_set part_set, const int incorrect_part_count)
+{
+    int64_t glb_parts, gbl_max_parts, gbl_min_parts;
+    int64_t glb_part_comms, gbl_max_part_comms, gbl_min_part_comms;
+    int64_t glb_max_hops, gbl_max_max_hops, gbl_min_max_hops;
+
+    get_global_values(part_set->size, glb_parts, gbl_max_parts, gbl_min_parts);   
+    get_global_values(OPP_part_comm_count_per_iter, glb_part_comms, gbl_max_part_comms, gbl_min_part_comms);
+    get_global_values(OPP_move_max_hops, glb_max_hops, gbl_max_max_hops, gbl_min_max_hops);
+
+    std::string log = str(incorrect_part_count, "errors: %d | ");
+    log += str(OPP_max_comm_iteration, "max_comm_iteration: %d | ");
+
+    log += str(glb_parts, "**** Gbl parts: %" PRId64 "");
+    log += str(gbl_min_parts, " Min %" PRId64 "");
+    log += str(gbl_max_parts, " Max %" PRId64 " | ");
+    log += str(glb_part_comms, "**** Gbl comms: %" PRId64 "");
+    log += str(gbl_max_part_comms, " Min %" PRId64 "");
+    log += str(gbl_min_part_comms, " Max %" PRId64 " | ");
+    log += str(gbl_max_max_hops, "**** Hops: Min %" PRId64 "");
+    log += str(gbl_min_max_hops, " Max %" PRId64 " | ");
+        
+    return log;
+}
+
+/***************************************************************************************************
+ * @brief This uses block colouring to colour the cell dats according to global index
+ * @param cell_index - cell index dat of the current rank, this includes the global cell indices
+ * @param cell_colors - cell colours to be enriched for partitioning
+ * @return (void)
+ */
+inline void advec_color_block(const opp_dat cell_index, opp_dat cell_colors) 
+{
+#ifdef USE_MPI
+    // used global id of cell and assign the color to the correct MPI rank
+    // const OPP_INT* gcid = ((OPP_INT*)cell_index->data);
+    for (OPP_INT i = 0; i < cell_index->set->size; i++)
+    {
+        ((OPP_INT*)cell_colors->data)[i] = OPP_rank; 
+    }
+#endif
 }

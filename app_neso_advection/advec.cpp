@@ -89,7 +89,7 @@ int main(int argc, char **argv)
         opp_partition(std::string("EXTERNAL"), cell_set, nullptr, c_colors);
 #endif
         
-        init_particles(p_idx, p_pos, p_vel, p2c_map, c_pos_ll, c_idx);
+        init_particles(p_idx, p_pos, p_vel, p_mdir, p2c_map, c_pos_ll, c_idx);
         
         // these two lines are only required if we plan to use direct_hop
         opp::BoundingBox bounding_box = opp::BoundingBox(c_pos_ll, DIM);

@@ -73,8 +73,8 @@ void opp_par_loop_all__verify_kernel(opp_set set, opp_iterate_type,
             const OPP_INT* opp_k3_dat0_stride_sycl = opp_k3_dat0_stride_s;
             const OPP_INT* opp_k3_dat1_stride_sycl = opp_k3_dat1_stride_s;
     
-            const OPP_INT* CONST_ndimcells_sycl = CONST_ndimcells_s;
             const OPP_REAL* CONST_cell_width_sycl = CONST_cell_width_s;
+            const OPP_INT* CONST_ndimcells_sycl = CONST_ndimcells_s;
 
             OPP_REAL* dat0_sycl = (OPP_REAL*)args[0].data_d;     // p_pos
             OPP_INT* dat1_sycl = (OPP_INT*)args[1].data_d;     // c_idx
@@ -94,19 +94,19 @@ void opp_par_loop_all__verify_kernel(opp_set set, opp_iterate_type,
             };
 
             auto  verify_kernel_sycl = [=](
-                    const double* part_pos,
-                    const int* cell_global_idx,
-                    int* incorrect_part_count)
+                    const double* p_pos,
+                    const int* c_gbl_idx,
+                    int* incorrect_count)
             {
                 // get the cell boundaries for the current cell_index - using global cell index
                 int ix = -1, iy = -1;
-                int _ix, _iy; _ix  = ((*cell_global_idx)); _iy  = _ix/int(CONST_ndimcells_sycl[Dim::x]); _ix -= _iy*int(CONST_ndimcells_sycl[Dim::x]); (ix) = _ix; (iy) = _iy;;
+                int _ix, _iy; _ix  = ((*c_gbl_idx)); _iy  = _ix/int(CONST_ndimcells_sycl[Dim::x]); _ix -= _iy*int(CONST_ndimcells_sycl[Dim::x]); (ix) = _ix; (iy) = _iy;;
 
                 if (ix < 0 || iy < 0)
                 {
                     // opp_printf("VERIFY", "Incorrect ix[%d] iy[%d] for global cell[%d] nx[%d]",
-                    //     ix, iy, (*cell_global_idx), CONST_ndimcells[Dim::x]);
-                    (*incorrect_part_count)++;
+                    //     ix, iy, (*c_gbl_idx), CONST_ndimcells[Dim::x]);
+                    (*incorrect_count)++;
                     return;
                 }
 
@@ -114,19 +114,19 @@ void opp_par_loop_all__verify_kernel(opp_set set, opp_iterate_type,
                 const double boundary_ll[2] = { (ix * CONST_cell_width_sycl[0]), (iy * CONST_cell_width_sycl[0]) };
 
                 // check whether the current particle is within those boundaries or not!
-                const double part_pos_x = part_pos[(Dim::x) * opp_k3_dat0_stride_sycl[0]];
-                if (part_pos_x < boundary_ll[Dim::x] ||
-                        part_pos_x > (boundary_ll[Dim::x] + CONST_cell_width_sycl[0])) {
+                const double p_pos_x = p_pos[(Dim::x) * opp_k3_dat0_stride_sycl[0]];
+                if (p_pos_x < boundary_ll[Dim::x] ||
+                        p_pos_x > (boundary_ll[Dim::x] + CONST_cell_width_sycl[0])) {
 
-                    (*incorrect_part_count)++;
+                    (*incorrect_count)++;
                     return;
                 }
 
-                const double part_pos_y = part_pos[(Dim::y) * opp_k3_dat0_stride_sycl[0]];
-                if (part_pos_y < boundary_ll[Dim::y] ||
-                        part_pos_y > (boundary_ll[Dim::y] + CONST_cell_width_sycl[0])) {
+                const double p_pos_y = p_pos[(Dim::y) * opp_k3_dat0_stride_sycl[0]];
+                if (p_pos_y < boundary_ll[Dim::y] ||
+                        p_pos_y > (boundary_ll[Dim::y] + CONST_cell_width_sycl[0])) {
 
-                    (*incorrect_part_count)++;
+                    (*incorrect_count)++;
                     return;
                 }
             };

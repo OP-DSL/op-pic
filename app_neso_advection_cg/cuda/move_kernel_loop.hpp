@@ -5,10 +5,12 @@
 
 OPP_INT opp_k2_dat0_stride = -1;
 OPP_INT opp_k2_dat1_stride = -1;
+OPP_INT opp_k2_dat2_stride = -1;
 OPP_INT opp_k2_c2c_map_stride = -1;
 
 __constant__ OPP_INT opp_k2_dat0_stride_d;
 __constant__ OPP_INT opp_k2_dat1_stride_d;
+__constant__ OPP_INT opp_k2_dat2_stride_d;
 __constant__ OPP_INT opp_k2_c2c_map_stride_d;
 
 namespace opp_k2 {
@@ -26,28 +28,33 @@ enum CellMap {
 
 __device__ inline void move_kernel(char& opp_move_status_flag, const bool opp_move_hop_iter_one_flag, // Added by code-gen
     const OPP_INT* opp_c2c, OPP_INT* opp_p2c, // Added by code-gen
-    const double* part_pos, const double* cell_pos_ll)
+    const double* p_pos, int* p_mdir, const double* c_pos_ll)
 {
     // check for x direction movement
-    const double part_pos_x = part_pos[(Dim::x) * opp_k2_dat0_stride_d];
-    if (part_pos_x < cell_pos_ll[(Dim::x) * opp_k2_dat1_stride_d]) {
-        opp_p2c[0] = opp_c2c[(CellMap::xd_y) * opp_k2_c2c_map_stride_d];
-
+    const double p_pos_x_diff = (p_pos[(Dim::x) * opp_k2_dat0_stride_d] - c_pos_ll[(Dim::x) * opp_k2_dat2_stride_d]);
+    if ((p_pos_x_diff >= 0.0) && (p_pos_x_diff <= CONST_cell_width_d[0])) {
+        p_mdir[(Dim::x) * opp_k2_dat1_stride_d] = 0; // within cell in x direction
+    }
+    else if (p_mdir[(Dim::x) * opp_k2_dat1_stride_d] > 0) {
+        opp_p2c[0] = opp_c2c[(CellMap::xu_y) * opp_k2_c2c_map_stride_d];
         { opp_move_status_flag = OPP_NEED_MOVE; }; return;
     }
-    if (part_pos_x > (cell_pos_ll[(Dim::x) * opp_k2_dat1_stride_d] + CONST_cell_width_d[0])) {
-        opp_p2c[0] = opp_c2c[(CellMap::xu_y) * opp_k2_c2c_map_stride_d];
+    else if (p_mdir[(Dim::x) * opp_k2_dat1_stride_d] < 0) {
+        opp_p2c[0] = opp_c2c[(CellMap::xd_y) * opp_k2_c2c_map_stride_d];
         { opp_move_status_flag = OPP_NEED_MOVE; }; return;
     }
 
     // check for y direction movement
-    const double part_pos_y = part_pos[(Dim::y) * opp_k2_dat0_stride_d];
-    if (part_pos_y < cell_pos_ll[(Dim::y) * opp_k2_dat1_stride_d]) {
-        opp_p2c[0] = opp_c2c[(CellMap::x_yd) * opp_k2_c2c_map_stride_d];
+    const double p_pos_y_diff = (p_pos[(Dim::y) * opp_k2_dat0_stride_d] - c_pos_ll[(Dim::y) * opp_k2_dat2_stride_d]);
+    if ((p_pos_y_diff >= 0.0) && (p_pos_y_diff <= CONST_cell_width_d[0])) {
+        p_mdir[(Dim::y) * opp_k2_dat1_stride_d] = 0; // within cell in y direction
+    }
+    else if (p_mdir[(Dim::y) * opp_k2_dat1_stride_d] > 0) {
+        opp_p2c[0] = opp_c2c[(CellMap::x_yu) * opp_k2_c2c_map_stride_d];
         { opp_move_status_flag = OPP_NEED_MOVE; }; return;
     }
-    if (part_pos_y > (cell_pos_ll[(Dim::y) * opp_k2_dat1_stride_d] + CONST_cell_width_d[0])) {
-        opp_p2c[0] = opp_c2c[(CellMap::x_yu) * opp_k2_c2c_map_stride_d];
+    else if (p_mdir[(Dim::y) * opp_k2_dat1_stride_d] < 0) {
+        opp_p2c[0] = opp_c2c[(CellMap::x_yd) * opp_k2_c2c_map_stride_d];
         { opp_move_status_flag = OPP_NEED_MOVE; }; return;
     }
 
@@ -97,7 +104,8 @@ __device__ inline bool opp_part_check_status_cuda(char& move_flag, bool& iter_on
 
 __global__ void opp_dev_move_kernel(
     const OPP_REAL *__restrict__ dat0,     // p_pos
-    const OPP_REAL *__restrict__ dat1,     // c_pos_ll
+    OPP_INT *__restrict__ dat1,     // p_mdir
+    const OPP_REAL *__restrict__ dat2,     // c_pos_ll
     OPP_INT *__restrict__ p2c_map,
     const OPP_INT *__restrict__ c2c_map,
     OPP_INT *__restrict__ particle_remove_count,
@@ -127,7 +135,8 @@ __global__ void opp_dev_move_kernel(
             opp_k2::move_kernel(
                 move_flag, iter_one_flag, opp_c2c, opp_p2c,
                 dat0 + n, // p_pos 
-                dat1 + p2c // c_pos_ll 
+                dat1 + n, // p_mdir 
+                dat2 + p2c // c_pos_ll 
           
             );
 
@@ -139,19 +148,21 @@ __global__ void opp_dev_move_kernel(
 
 void opp_particle_move__move_kernel(opp_set set, opp_map c2c_map, opp_map p2c_map,
     opp_arg arg0,   // p_pos | OPP_READ
-    opp_arg arg1   // c_pos_ll | OPP_READ
+    opp_arg arg1,   // p_mdir | OPP_RW
+    opp_arg arg2   // c_pos_ll | OPP_READ
 ) 
 {
     if (OPP_DBG) opp_printf("APP", "opp_particle_move__move_kernel set_size %d", set->size);
 
     opp_profiler->start("move_kernel");
 
-    const int nargs = 3;
+    const int nargs = 4;
     opp_arg args[nargs];
 
     args[0] = arg0;
     args[1] = arg1;
-    args[2] = opp_arg_dat(p2c_map->p2c_dat, OPP_RW); // required to make dirty or should manually make it dirty
+    args[2] = arg2;
+    args[3] = opp_arg_dat(p2c_map->p2c_dat, OPP_RW); // required to make dirty or should manually make it dirty
 
     const int iter_size = opp_mpi_halo_exchanges_grouped(set, nargs, args, Device_GPU);
  
@@ -185,6 +196,10 @@ void opp_particle_move__move_kernel(opp_set set, opp_map c2c_map, opp_map p2c_ma
             opp_k2_dat1_stride = args[1].dat->set->set_capacity;
             cutilSafeCall(cudaMemcpyToSymbol(opp_k2_dat1_stride_d, &opp_k2_dat1_stride, sizeof(OPP_INT)));
         }
+        if (opp_k2_dat2_stride != args[2].dat->set->set_capacity) {
+            opp_k2_dat2_stride = args[2].dat->set->set_capacity;
+            cutilSafeCall(cudaMemcpyToSymbol(opp_k2_dat2_stride_d, &opp_k2_dat2_stride, sizeof(OPP_INT)));
+        }
 
         opp_init_particle_move(set, nargs, args);
         cutilSafeCall(cudaMemcpyToSymbol(OPP_comm_iteration_d, &OPP_comm_iteration, sizeof(int)));
@@ -193,8 +208,9 @@ void opp_particle_move__move_kernel(opp_set set, opp_map c2c_map, opp_map p2c_ma
 
         opp_dev_move_kernel<<<num_blocks, block_size>>>(
             (OPP_REAL *)args[0].data_d,    // p_pos
-            (OPP_REAL *)args[1].data_d,    // c_pos_ll
-            (OPP_INT *)args[2].data_d,    // p2c_map
+            (OPP_INT *)args[1].data_d,    // p_mdir
+            (OPP_REAL *)args[2].data_d,    // c_pos_ll
+            (OPP_INT *)args[3].data_d,    // p2c_map
             (OPP_INT *)c2c_map->map_d,    // c2c_map
             (OPP_INT *)set->particle_remove_count_d,
             (OPP_INT *)OPP_remove_particle_indices_d,
@@ -215,7 +231,8 @@ void opp_particle_move__move_kernel(opp_set set, opp_map c2c_map, opp_map p2c_ma
 void opp_init_direct_hop_cg(double grid_spacing, int dim, const opp_dat c_gbl_id, const opp::BoundingBox& b_box, 
     opp_map c2c_map, opp_map p2c_map,
     opp_arg arg0, // p_pos | OPP_READ
-    opp_arg arg1 // c_pos_ll | OPP_READ
+    opp_arg arg1, // p_mdir | OPP_RW
+    opp_arg arg2 // c_pos_ll | OPP_READ
 ) {
     opp_profiler->start("Setup_Mover");
     

@@ -51,64 +51,70 @@ CellMapper::CellMapper(const std::shared_ptr<BoundingBox> boundingBox, const dou
     const opp_point& minGblCoordinate = boundingBox->getGlobalMin();
     const opp_point& maxGblCoordinate = boundingBox->getGlobalMax();
 
-    int ax = 0, ay = 0, az = 0;
+    size_t ax = 0, ay = 0, az = 0;
 
     { // removed this and added below due to decimal point issues
-        // this->globalGridDims.x = std::ceil((maxGblCoordinate.x - minGblCoordinate.x) * oneOverGridSpacing);
-        // this->globalGridDims.y = std::ceil((maxGblCoordinate.y - minGblCoordinate.y) * oneOverGridSpacing);
-        // this->globalGridDims.z = std::ceil((maxGblCoordinate.z - minGblCoordinate.z) * oneOverGridSpacing);   
+        // globalGridDimsX = std::ceil((maxGblCoordinate.x - minGblCoordinate.x) * oneOverGridSpacing);
+        // globalGridDimsY = std::ceil((maxGblCoordinate.y - minGblCoordinate.y) * oneOverGridSpacing);
+        // globalGridDimsZ = std::ceil((maxGblCoordinate.z - minGblCoordinate.z) * oneOverGridSpacing);   
     }
     {
-        for (double z = minGblCoordinate.z; z < maxGblCoordinate.z; z += this->gridSpacing) az++;
-        for (double y = minGblCoordinate.y; y < maxGblCoordinate.y; y += this->gridSpacing) ay++;
-        for (double x = minGblCoordinate.x; x < maxGblCoordinate.x; x += this->gridSpacing) ax++; 
-        this->globalGridDims.x = ax + 1;
-        this->globalGridDims.y = ay + 1;
-        this->globalGridDims.z = az + 1; 
+        for (double z = minGblCoordinate.z; z < maxGblCoordinate.z; z += gridSpacing) az++;
+        for (double y = minGblCoordinate.y; y < maxGblCoordinate.y; y += gridSpacing) ay++;
+        for (double x = minGblCoordinate.x; x < maxGblCoordinate.x; x += gridSpacing) ax++; 
+        globalGridDimsX = ax + 1;
+        globalGridDimsY = ay + 1;
+        globalGridDimsZ = az + 1; 
     }
 
+    globalGridDimsXY = (globalGridDimsX * globalGridDimsY);
+    globalGridSize = (globalGridDimsX * globalGridDimsY * globalGridDimsZ);
+
     if (OPP_rank == OPP_ROOT)
-        opp_printf("CellMapper", "Global Grid Size - [%d %d %d] gridSpacing [%2.10lE]", 
-            this->globalGridDims.x, this->globalGridDims.y, this->globalGridDims.z, this->gridSpacing); 
+        opp_printf("CellMapper", "Global Grid Size - [%zu %zu %zu] gridSpacing [%2.10lE]", 
+            globalGridDimsX, globalGridDimsY, globalGridDimsZ, gridSpacing); 
     
     const opp_point& minLocalCoordinate = boundingBox->getLocalMin();
     const opp_point& maxLocalCoordinate = boundingBox->getLocalMax();
 
     // Find the local ranks grid start indices
     ax = 0; ay = 0; az = 0;
-    for (double z = minGblCoordinate.z; (z < minLocalCoordinate.z); z += this->gridSpacing) az++;
-    for (double y = minGblCoordinate.y; (y < minLocalCoordinate.y); y += this->gridSpacing) ay++; 
-    for (double x = minGblCoordinate.x; (x < minLocalCoordinate.x); x += this->gridSpacing) ax++; 
-    this->localGridStart.x = ((ax == 0) ? 0 : (ax - 1));
-    this->localGridStart.y = ((ay == 0) ? 0 : (ay - 1));
-    this->localGridStart.z = ((az == 0) ? 0 : (az - 1));         
+    for (double z = minGblCoordinate.z; (z < minLocalCoordinate.z); z += gridSpacing) az++;
+    for (double y = minGblCoordinate.y; (y < minLocalCoordinate.y); y += gridSpacing) ay++; 
+    for (double x = minGblCoordinate.x; (x < minLocalCoordinate.x); x += gridSpacing) ax++; 
+    localGridStart.x = ((ax == 0) ? 0 : (ax - 1));
+    localGridStart.y = ((ay == 0) ? 0 : (ay - 1));
+    localGridStart.z = ((az == 0) ? 0 : (az - 1));         
 
     // Find the local ranks grid end indices
     ax = 0; ay = 0; az = 0;
-    for (double z = minGblCoordinate.z; (z <= maxLocalCoordinate.z); z += this->gridSpacing) az++; 
-    for (double y = minGblCoordinate.y; (y <= maxLocalCoordinate.y); y += this->gridSpacing) ay++; 
-    for (double x = minGblCoordinate.x; (x <= maxLocalCoordinate.x); x += this->gridSpacing) ax++; 
-    this->localGridEnd.x = ((this->globalGridDims.x == ax) ? ax : (ax + 1));
-    this->localGridEnd.y = ((this->globalGridDims.y == ay) ? ay : (ay + 1));
-    this->localGridEnd.z = ((this->globalGridDims.z == az) ? az : (az + 1));     
+    for (double z = minGblCoordinate.z; (z <= maxLocalCoordinate.z); z += gridSpacing) az++; 
+    for (double y = minGblCoordinate.y; (y <= maxLocalCoordinate.y); y += gridSpacing) ay++; 
+    for (double x = minGblCoordinate.x; (x <= maxLocalCoordinate.x); x += gridSpacing) ax++; 
+    localGridEnd.x = ((globalGridDimsX == ax) ? ax : (ax + 1));
+    localGridEnd.y = ((globalGridDimsY == ay) ? ay : (ay + 1));
+    localGridEnd.z = ((globalGridDimsZ == az) ? az : (az + 1));     
 
+    const size_t local_grid_size = (size_t)(localGridEnd.x - localGridStart.x) * (size_t)(localGridEnd.y - localGridStart.y) * 
+                                    (size_t)(localGridEnd.z - localGridStart.z);
     if (OPP_DBG)
-        opp_printf("CellMapper", "Local Grid - Min[%d %d %d] Max[%d %d %d]", 
-            this->localGridStart.x, this->localGridStart.y, this->localGridStart.z, 
-            this->localGridEnd.x, this->localGridEnd.y, this->localGridEnd.z); 
+        opp_printf("CellMapper", "Local Grid - Size [%zu] Min[%d %d %d] Max[%d %d %d]", 
+            local_grid_size, localGridStart.x, localGridStart.y, localGridStart.z, 
+            localGridEnd.x, localGridEnd.y, localGridEnd.z); 
 }
 
 //*******************************************************************************
 CellMapper::~CellMapper() 
 { 
 #ifdef USE_MPI
-    MPI_CHECK(MPI_Win_free(&this->win_structMeshToCellMapping));
-    this->structMeshToCellMapping = nullptr;
+    MPI_CHECK(MPI_Win_free(&win_structMeshToCellMapping));
+    structMeshToCellMapping = nullptr;
 
-    MPI_CHECK(MPI_Win_free(&this->win_structMeshToRankMapping));
-    this->structMeshToRankMapping = nullptr;           
+    MPI_CHECK(MPI_Win_free(&win_structMeshToRankMapping));
+    structMeshToRankMapping = nullptr;           
 #else
-    delete[] this->structMeshToCellMapping;
+    delete[] structMeshToCellMapping;
+    structMeshToCellMapping = nullptr;
 #endif
 };
 
@@ -142,15 +148,12 @@ opp_point CellMapper::getCentroidOfBox(const opp_point& coordinate)
 //*******************************************************************************
 void CellMapper::createStructMeshMappingArrays() 
 {
-    globalGridSize = (size_t)(globalGridDims.x * globalGridDims.y * globalGridDims.z);
-    
 #ifdef USE_MPI 
     MPI_CHECK(MPI_Barrier(MPI_COMM_WORLD));
 
     //*************************** // One per shared memory (node)
     auto createPerNodeSharedMemArrays = [&](int*& mapping, MPI_Win& win) {
-
-        globalGridSize = (size_t)(globalGridDims.x * globalGridDims.y * globalGridDims.z);     
+   
         const MPI_Aint size = ((comm->rank_intra == 0) ? (globalGridSize * sizeof(int)) : 0);
 
         MPI_CHECK(MPI_Win_allocate_shared(size, sizeof(int), MPI_INFO_NULL, comm->comm_intra, 
@@ -180,13 +183,14 @@ void CellMapper::createStructMeshMappingArrays()
         MPI_CHECK(MPI_Win_fence(0, win));
     };
 
-    createPerNodeSharedMemArrays(this->structMeshToCellMapping, this->win_structMeshToCellMapping);
-    createPerNodeSharedMemArrays(this->structMeshToRankMapping, this->win_structMeshToRankMapping);
+    createPerNodeSharedMemArrays(structMeshToCellMapping, win_structMeshToCellMapping);
+    createPerNodeSharedMemArrays(structMeshToRankMapping, win_structMeshToRankMapping);
 
+    MPI_CHECK(MPI_Barrier(MPI_COMM_WORLD));
 #else
-    this->structMeshToCellMapping = new int[globalGridSize];
+    structMeshToCellMapping = new int[globalGridSize];
     for (size_t i = 0; i < globalGridSize; i++)
-        this->structMeshToCellMapping[i] = MAX_CELL_INDEX;
+        structMeshToCellMapping[i] = MAX_CELL_INDEX;
 #endif
 }
 
@@ -198,8 +202,8 @@ void CellMapper::reduceInterNodeMappings(int callID)
 
     if (comm->rank_intra == 0) {
 
-        MPI_CHECK(MPI_Win_lock(MPI_LOCK_EXCLUSIVE, 0, 0, this->win_structMeshToCellMapping));
-        MPI_CHECK(MPI_Win_lock(MPI_LOCK_EXCLUSIVE, 0, 0, this->win_structMeshToRankMapping));
+        MPI_CHECK(MPI_Win_lock(MPI_LOCK_EXCLUSIVE, 0, 0, win_structMeshToCellMapping));
+        MPI_CHECK(MPI_Win_lock(MPI_LOCK_EXCLUSIVE, 0, 0, win_structMeshToRankMapping));
 
         if (OPP_DBG) 
             opp_printf("CellMapper", "reduceInterNodeMappings Start size_inter %d", comm->size_inter);
@@ -213,8 +217,8 @@ void CellMapper::reduceInterNodeMappings(int callID)
         std::vector<int> recvDisplacements(comm->size_inter);
 
         for (int i = 0; i < comm->size_inter; ++i) {
-            const int remainder = (int)(this->globalGridSize % comm->size_inter);
-            sendCounts[i] = (this->globalGridSize / comm->size_inter) + (i < remainder ? 1 : 0);
+            const int remainder = (int)(globalGridSize % comm->size_inter);
+            sendCounts[i] = (globalGridSize / comm->size_inter) + (i < remainder ? 1 : 0);
             sendDisplacements[i] = totalSent;
             totalSent += sendCounts[i];
 
@@ -261,13 +265,13 @@ void CellMapper::reduceInterNodeMappings(int callID)
 
                 sendRequests.emplace_back(MPI_Request());
                 MPI_CHECK(MPI_Isend(
-                            &(this->structMeshToRankMapping[sendDisplacements[rank] + i * INTS_PER_BATCH]), 
+                            &(structMeshToRankMapping[sendDisplacements[rank] + i * INTS_PER_BATCH]), 
                             sendCount, MPI_INT, rank, (10000 + i), 
                             comm->comm_inter, &sendRequests[sendRequests.size() - 1])); 
 
                 sendRequests.emplace_back(MPI_Request());
                 MPI_CHECK(MPI_Isend(
-                            &(this->structMeshToCellMapping[sendDisplacements[rank] + i * INTS_PER_BATCH]), 
+                            &(structMeshToCellMapping[sendDisplacements[rank] + i * INTS_PER_BATCH]), 
                             sendCount, MPI_INT, rank, (20000 + i), 
                             comm->comm_inter, &sendRequests[sendRequests.size() - 1])); 
 
@@ -316,8 +320,8 @@ void CellMapper::reduceInterNodeMappings(int callID)
             const int recv_disp = recvDisplacements[comm->rank_inter];
             const int send_disp = sendDisplacements[comm->rank_inter];
 
-            ranksRecv[recv_disp + i] = this->structMeshToRankMapping[send_disp + i];
-            cellMappingsRecv[recv_disp + i] = this->structMeshToCellMapping[send_disp + i];
+            ranksRecv[recv_disp + i] = structMeshToRankMapping[send_disp + i];
+            cellMappingsRecv[recv_disp + i] = structMeshToCellMapping[send_disp + i];
         }
 
         MPI_CHECK(MPI_Waitall(sendRequests.size(), sendRequests.data(), MPI_STATUS_IGNORE));
@@ -372,8 +376,8 @@ void CellMapper::reduceInterNodeMappings(int callID)
         }
 
         // Since we are about to write to data mapped by windows, release the lock here
-        MPI_CHECK(MPI_Win_unlock(0, this->win_structMeshToCellMapping));
-        MPI_CHECK(MPI_Win_unlock(0, this->win_structMeshToRankMapping));
+        MPI_CHECK(MPI_Win_unlock(0, win_structMeshToCellMapping));
+        MPI_CHECK(MPI_Win_unlock(0, win_structMeshToRankMapping));
 
         recvRequests.clear();
         for (int rank = 0; rank < comm->size_inter; rank++) {
@@ -393,13 +397,13 @@ void CellMapper::reduceInterNodeMappings(int callID)
 
                 recvRequests.emplace_back(MPI_Request());
                 MPI_CHECK(MPI_Irecv(
-                            &(this->structMeshToCellMapping[sendDisplacements[rank] + i * INTS_PER_BATCH]), 
+                            &(structMeshToCellMapping[sendDisplacements[rank] + i * INTS_PER_BATCH]), 
                             recvCount, MPI_INT, rank, (30000 + i), comm->comm_inter, 
                             &recvRequests[recvRequests.size() - 1]));
 
                 recvRequests.emplace_back(MPI_Request());
                 MPI_CHECK(MPI_Irecv(
-                            &(this->structMeshToRankMapping[sendDisplacements[rank] + i * INTS_PER_BATCH]), 
+                            &(structMeshToRankMapping[sendDisplacements[rank] + i * INTS_PER_BATCH]), 
                             recvCount, MPI_INT, rank, (40000 + i), comm->comm_inter, 
                             &recvRequests[recvRequests.size() - 1]));
 
@@ -411,8 +415,8 @@ void CellMapper::reduceInterNodeMappings(int callID)
         for (int i = 0; i < sendCounts[comm->rank_inter]; i++) {
             
             const int send_disp = sendDisplacements[comm->rank_inter];
-            this->structMeshToRankMapping[send_disp + i] = ranksRecv[i];
-            this->structMeshToCellMapping[send_disp + i] = cellMappingsRecv[i];
+            structMeshToRankMapping[send_disp + i] = ranksRecv[i];
+            structMeshToCellMapping[send_disp + i] = cellMappingsRecv[i];
         }
 
         MPI_CHECK(MPI_Waitall(sendRequests.size(), sendRequests.data(), MPI_STATUS_IGNORE));
@@ -437,32 +441,37 @@ void CellMapper::convertToLocalMappings(const opp_dat global_cell_id_dat) {
 
 #ifdef USE_MPI
     if (comm->rank_intra == 0) {    
-        MPI_CHECK(MPI_Win_lock(MPI_LOCK_EXCLUSIVE, 0, 0, this->win_structMeshToCellMapping));
+        MPI_CHECK(MPI_Win_lock(MPI_LOCK_EXCLUSIVE, 0, 0, win_structMeshToCellMapping));
 
         for (size_t i = 0; i < globalGridSize; i++) {         
-            if (this->structMeshToCellMapping[i] != MAX_CELL_INDEX)
-                this->structMeshToCellMapping[i] = (-1 * this->structMeshToCellMapping[i]);
+            if (structMeshToCellMapping[i] != MAX_CELL_INDEX)
+                structMeshToCellMapping[i] = (-1 * structMeshToCellMapping[i]);
+            
+            // if (structMeshToCellMapping[i] == 14874 || structMeshToCellMapping[i] == -14874) {
+            //     opp_printf("XXXXXX", "%d cell %d rank %d", i, structMeshToCellMapping[i], structMeshToRankMapping[i]);
+            // }
         }
 
-        MPI_CHECK(MPI_Win_unlock(0, this->win_structMeshToCellMapping));
+        MPI_CHECK(MPI_Win_unlock(0, win_structMeshToCellMapping));
     }
 
-    MPI_CHECK(MPI_Win_fence(0, this->win_structMeshToCellMapping)); 
+    // MPI_CHECK(MPI_Win_fence(0, win_structMeshToCellMapping)); 
+    waitBarrier();
 #endif
 
     for (size_t i = 0; i < globalGridSize; i++) {
-        if (this->structMeshToRankMapping[i] == OPP_rank) {   
+        if (structMeshToRankMapping[i] == OPP_rank) {   
 
-            const int globalCID = (-1 * this->structMeshToCellMapping[i]);
+            const int globalCID = (-1 * structMeshToCellMapping[i]);
             if ((globalCID != MAX_CELL_INDEX) || (globalCID != (-1 * MAX_CELL_INDEX))) {               
                 
                 const int localCID = globalToLocalCellIndexMapper.map(globalCID);             
                 if (localCID != MAX_CELL_INDEX) {
-                    this->structMeshToCellMapping[i] = localCID;
+                    structMeshToCellMapping[i] = localCID;
                 }
                 else {
                     opp_printf("CellMapper::convertToLocalMappings", 
-                        "Error: cell mapping at %d is invalid [gcid:%d]", i, this->structMeshToCellMapping[i]);
+                        "Error: cell mapping at %d is invalid [gcid:%d] rank_map %d rank %d", i, structMeshToCellMapping[i], structMeshToRankMapping[i], OPP_rank);
                 }
             }
         }
@@ -472,7 +481,7 @@ void CellMapper::convertToLocalMappings(const opp_dat global_cell_id_dat) {
     MPI_CHECK(MPI_Barrier(MPI_COMM_WORLD));
 
     if (comm->rank_intra == 0) {
-        MPI_CHECK(MPI_Allreduce(MPI_IN_PLACE, this->structMeshToCellMapping, globalGridSize, 
+        MPI_CHECK(MPI_Allreduce(MPI_IN_PLACE, structMeshToCellMapping, globalGridSize, 
                         MPI_INT, MPI_MAX, comm->comm_inter));
     }
 

@@ -10,19 +10,19 @@ enum Dim {
 };
 
 inline void verify_kernel(
-        const double* part_pos,
-        const int* cell_global_idx,
-        int* incorrect_part_count)
+        const double* p_pos,
+        const int* c_gbl_idx,
+        int* incorrect_count)
 {
     // get the cell boundaries for the current cell_index - using global cell index
     int ix = -1, iy = -1;
-    int _ix, _iy; _ix  = ((*cell_global_idx)); _iy  = _ix/int(CONST_ndimcells[Dim::x]); _ix -= _iy*int(CONST_ndimcells[Dim::x]); (ix) = _ix; (iy) = _iy;;
+    int _ix, _iy; _ix  = ((*c_gbl_idx)); _iy  = _ix/int(CONST_ndimcells[Dim::x]); _ix -= _iy*int(CONST_ndimcells[Dim::x]); (ix) = _ix; (iy) = _iy;;
 
     if (ix < 0 || iy < 0)
     {
         // opp_printf("VERIFY", "Incorrect ix[%d] iy[%d] for global cell[%d] nx[%d]",
-        //     ix, iy, (*cell_global_idx), CONST_ndimcells[Dim::x]);
-        (*incorrect_part_count)++;
+        //     ix, iy, (*c_gbl_idx), CONST_ndimcells[Dim::x]);
+        (*incorrect_count)++;
         return;
     }
 
@@ -30,19 +30,19 @@ inline void verify_kernel(
     const double boundary_ll[2] = { (ix * CONST_cell_width[0]), (iy * CONST_cell_width[0]) };
 
     // check whether the current particle is within those boundaries or not!
-    const double part_pos_x = part_pos[Dim::x];
-    if (part_pos_x < boundary_ll[Dim::x] ||
-            part_pos_x > (boundary_ll[Dim::x] + CONST_cell_width[0])) {
+    const double p_pos_x = p_pos[Dim::x];
+    if (p_pos_x < boundary_ll[Dim::x] ||
+            p_pos_x > (boundary_ll[Dim::x] + CONST_cell_width[0])) {
 
-        (*incorrect_part_count)++;
+        (*incorrect_count)++;
         return;
     }
 
-    const double part_pos_y = part_pos[Dim::y];
-    if (part_pos_y < boundary_ll[Dim::y] ||
-            part_pos_y > (boundary_ll[Dim::y] + CONST_cell_width[0])) {
+    const double p_pos_y = p_pos[Dim::y];
+    if (p_pos_y < boundary_ll[Dim::y] ||
+            p_pos_y > (boundary_ll[Dim::y] + CONST_cell_width[0])) {
 
-        (*incorrect_part_count)++;
+        (*incorrect_count)++;
         return;
     }
 }

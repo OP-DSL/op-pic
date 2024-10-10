@@ -507,24 +507,18 @@ int get_global_index(int local_index, int partition, int *part_range, int comm_s
  *******************************************************************************/
 void find_neighbors_set(halo_list List, int *neighbors, int *sizes, int *ranks_size, int my_rank, int comm_size, MPI_Comm Comm) 
 {
-    int *temp = (int *)opp_host_malloc(comm_size * sizeof(int));
-    int *r_temp = (int *)opp_host_malloc(comm_size * comm_size * sizeof(int));
-
-    for (int r = 0; r < comm_size * comm_size; r++)
-        r_temp[r] = -99;
-    for (int r = 0; r < comm_size; r++)
-        temp[r] = -99;
-
-    int n = 0;
+    std::vector<int> temp(comm_size, -99);
+    std::vector<int> r_temp(comm_size * comm_size, -99);
 
     for (int r = 0; r < comm_size; r++) 
     {
         if (List->ranks[r] >= 0)
-        temp[List->ranks[r]] = List->sizes[r];
+            temp[List->ranks[r]] = List->sizes[r];
     }
 
-    MPI_Allgather(temp, comm_size, MPI_INT, r_temp, comm_size, MPI_INT, Comm);
+    MPI_Allgather(temp.data(), comm_size, MPI_INT, r_temp.data(), comm_size, MPI_INT, Comm);
 
+    int n = 0;
     for (int i = 0; i < comm_size; i++) 
     {
         if (i != my_rank)
@@ -538,8 +532,6 @@ void find_neighbors_set(halo_list List, int *neighbors, int *sizes, int *ranks_s
         }
     }
     *ranks_size = n;
-    opp_host_free(temp);
-    opp_host_free(r_temp);
 }
 
 bool is_double_indirect_reduction(opp_arg& arg)

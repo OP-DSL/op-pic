@@ -64,7 +64,6 @@ inline void move_kernel(const OPP_REAL* p_pos, OPP_INT* p_mdir, const OPP_REAL* 
     }
     else if (p_mdir[Dim::x] > 0) {
         opp_p2c[0] = opp_c2c[CellMap::xu_y];
-
         OPP_PARTICLE_NEED_MOVE; return;
     }
     else if (p_mdir[Dim::x] < 0) {
@@ -79,7 +78,6 @@ inline void move_kernel(const OPP_REAL* p_pos, OPP_INT* p_mdir, const OPP_REAL* 
     }
     else if (p_mdir[Dim::y] > 0) {
         opp_p2c[0] = opp_c2c[CellMap::x_yu];
-
         OPP_PARTICLE_NEED_MOVE; return;
     }
     else if (p_mdir[Dim::y] < 0) {

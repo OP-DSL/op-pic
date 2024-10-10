@@ -43,7 +43,9 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 MPI_Comm OPP_MPI_HDF5_WORLD;
 
 int compute_local_size_weight(int global_size, int mpi_comm_size, int mpi_rank) {
-  
+    
+    // TODO : refactor: Remove OPP_hybrid_gpu and OPP_hybrid_balance
+    int OPP_hybrid_gpu = 1;
     int *hybrid_flags = (int *)malloc(mpi_comm_size * sizeof(int));
     MPI_Allgather(&OPP_hybrid_gpu, 1, MPI_INT, hybrid_flags, 1, MPI_INT,
                     OPP_MPI_HDF5_WORLD);

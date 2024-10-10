@@ -102,6 +102,7 @@ inline bool opp_part_checkForGlobalMove_util(opp_set set, const opp_point& point
             "Remove %d [Struct cell index invalid - strCellIdx:%zu] [%2.16lE, %2.16lE, %2.16lE]", 
                 partIndex, structCellIdx, point.x, point.y, point.z);
         cellIdx = MAX_CELL_INDEX;
+        set->particle_remove_count++;
         return true;
     }
 
@@ -114,9 +115,10 @@ inline bool opp_part_checkForGlobalMove_util(opp_set set, const opp_point& point
         if (structCellRank == MAX_CELL_INDEX) {
             if (OPP_DBG)
                 opp_printf("opp_part_checkForGlobalMove", 
-                "Remove %d [Rank invalid - strCellRank:%d loclCellIdx:%zu strCellIdx:%zu] [%2.16lE, %2.16lE, %2.16lE]", 
+                "Remove %d [Rank invalid - cellRank:%d loclCellIdx:%zu strCellIdx:%zu] [%2.16lE, %2.16lE, %2.16lE]", 
                     partIndex, structCellRank, cellMapper->findClosestCellIndex(structCellIdx), structCellIdx, 
                     point.x, point.y, point.z);
+            set->particle_remove_count++;
             cellIdx = MAX_CELL_INDEX;
             return true;
         }
@@ -127,8 +129,9 @@ inline bool opp_part_checkForGlobalMove_util(opp_set set, const opp_point& point
         if (globalCellIndex == MAX_CELL_INDEX) {
             if (OPP_DBG)
                 opp_printf("opp_part_checkForGlobalMove", 
-                "Remove %d [CellIdx invalid - strCellRank:%d loclCellIdx:%zu strCellIdx:%zu] [%2.16lE, %2.16lE, %2.16lE]", 
+                "Remove %d [CellIdx invalid - cellRank:%d loclCellIdx:%zu strCellIdx:%zu] [%2.16lE, %2.16lE, %2.16lE]", 
                     partIndex, structCellRank, globalCellIndex, structCellIdx, point.x, point.y, point.z);
+            set->particle_remove_count++;
             cellIdx = MAX_CELL_INDEX;
             return true;
         }
@@ -139,6 +142,7 @@ inline bool opp_part_checkForGlobalMove_util(opp_set set, const opp_point& point
         // if (OPP_DBG)
         //     opp_printf("opp_part_checkForGlobalMove", "Mark part %d [Move to rank %d gblCellIdx %d]", 
         //         partIndex, structCellRank, globalCellIndex);
+        set->particle_remove_count++;
         cellIdx = MAX_CELL_INDEX;
         return true;
     }

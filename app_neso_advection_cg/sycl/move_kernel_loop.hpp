@@ -5,28 +5,32 @@
 
 OPP_INT opp_k2_dat0_stride = -1;
 OPP_INT opp_k2_dat1_stride = -1;
+OPP_INT opp_k2_dat2_stride = -1;
 OPP_INT opp_k2_c2c_map_stride = -1;
 
 OPP_INT* opp_k2_dat0_stride_s = nullptr;
 OPP_INT* opp_k2_dat1_stride_s = nullptr;
+OPP_INT* opp_k2_dat2_stride_s = nullptr;
 OPP_INT* opp_k2_c2c_map_stride_s = nullptr;
 
 //--------------------------------------------------------------
 void opp_particle_move__move_kernel(opp_set set, opp_map c2c_map, opp_map p2c_map,
     opp_arg arg0,   // p_pos | OPP_READ
-    opp_arg arg1   // c_pos_ll | OPP_READ
+    opp_arg arg1,   // p_mdir | OPP_RW
+    opp_arg arg2   // c_pos_ll | OPP_READ
 ) 
 {
     if (OPP_DBG) opp_printf("APP", "opp_particle_move__move_kernel set_size %d", set->size);
 
     opp_profiler->start("move_kernel");
 
-    const int nargs = 3;
+    const int nargs = 4;
     opp_arg args[nargs];
 
     args[0] = arg0;
     args[1] = arg1;
-    args[2] = opp_arg_dat(p2c_map->p2c_dat, OPP_RW); // required to make dirty or should manually make it dirty
+    args[2] = arg2;
+    args[3] = opp_arg_dat(p2c_map->p2c_dat, OPP_RW); // required to make dirty or should manually make it dirty
 
     opp_mpi_halo_exchanges_grouped(set, nargs, args, Device_GPU);
  
@@ -50,6 +54,7 @@ void opp_particle_move__move_kernel(opp_set set, opp_map c2c_map, opp_map p2c_ma
         opp_set_stride(comm_iteration_s, comm_iteration, OPP_comm_iteration);
         opp_set_stride(opp_k2_dat0_stride_s, opp_k2_dat0_stride, args[0].dat->set->set_capacity);
         opp_set_stride(opp_k2_dat1_stride_s, opp_k2_dat1_stride, args[1].dat->set->set_capacity);
+        opp_set_stride(opp_k2_dat2_stride_s, opp_k2_dat2_stride, args[2].dat->set->set_capacity);
 
         opp_init_particle_move(set, nargs, args);
 
@@ -69,11 +74,13 @@ void opp_particle_move__move_kernel(opp_set set, opp_map c2c_map, opp_map p2c_ma
             const OPP_INT* opp_k2_c2c_map_stride_sycl = opp_k2_c2c_map_stride_s;
             const OPP_INT* opp_k2_dat0_stride_sycl = opp_k2_dat0_stride_s;
             const OPP_INT* opp_k2_dat1_stride_sycl = opp_k2_dat1_stride_s;
+            const OPP_INT* opp_k2_dat2_stride_sycl = opp_k2_dat2_stride_s;
    
             const OPP_REAL* CONST_cell_width_sycl = CONST_cell_width_s;
 
             OPP_REAL* dat0_sycl = (OPP_REAL*)args[0].data_d;     // p_pos
-            OPP_REAL* dat1_sycl = (OPP_REAL*)args[1].data_d;     // c_pos_ll
+            OPP_INT* dat1_sycl = (OPP_INT*)args[1].data_d;     // p_mdir
+            OPP_REAL* dat2_sycl = (OPP_REAL*)args[2].data_d;     // c_pos_ll
             
             OPP_INT *p2c_map_sycl = (OPP_INT *)p2c_map->p2c_dat->data_d;
             const OPP_INT *c2c_map_sycl = (OPP_INT *)c2c_map->map_d; 
@@ -97,28 +104,33 @@ void opp_particle_move__move_kernel(opp_set set, opp_map c2c_map, opp_map p2c_ma
 
             auto  move_kernel_sycl = [=](char& opp_move_status_flag, const bool opp_move_hop_iter_one_flag, // Added by code-gen
                 const OPP_INT* opp_c2c, OPP_INT* opp_p2c, // Added by code-gen
-                const double* part_pos, const double* cell_pos_ll)
+                const double* p_pos, int* p_mdir, const double* c_pos_ll)
             {
                 // check for x direction movement
-                const double part_pos_x = part_pos[(Dim::x) * opp_k2_dat0_stride_sycl[0]];
-                if (part_pos_x < cell_pos_ll[(Dim::x) * opp_k2_dat1_stride_sycl[0]]) {
-                    opp_p2c[0] = opp_c2c[(CellMap::xd_y) * opp_k2_c2c_map_stride_sycl[0]];
-
+                const double p_pos_x_diff = (p_pos[(Dim::x) * opp_k2_dat0_stride_sycl[0]] - c_pos_ll[(Dim::x) * opp_k2_dat2_stride_sycl[0]]);
+                if ((p_pos_x_diff >= 0.0) && (p_pos_x_diff <= CONST_cell_width_sycl[0])) {
+                    p_mdir[(Dim::x) * opp_k2_dat1_stride_sycl[0]] = 0; // within cell in x direction
+                }
+                else if (p_mdir[(Dim::x) * opp_k2_dat1_stride_sycl[0]] > 0) {
+                    opp_p2c[0] = opp_c2c[(CellMap::xu_y) * opp_k2_c2c_map_stride_sycl[0]];
                     { opp_move_status_flag = OPP_NEED_MOVE; }; return;
                 }
-                if (part_pos_x > (cell_pos_ll[(Dim::x) * opp_k2_dat1_stride_sycl[0]] + CONST_cell_width_sycl[0])) {
-                    opp_p2c[0] = opp_c2c[(CellMap::xu_y) * opp_k2_c2c_map_stride_sycl[0]];
+                else if (p_mdir[(Dim::x) * opp_k2_dat1_stride_sycl[0]] < 0) {
+                    opp_p2c[0] = opp_c2c[(CellMap::xd_y) * opp_k2_c2c_map_stride_sycl[0]];
                     { opp_move_status_flag = OPP_NEED_MOVE; }; return;
                 }
 
                 // check for y direction movement
-                const double part_pos_y = part_pos[(Dim::y) * opp_k2_dat0_stride_sycl[0]];
-                if (part_pos_y < cell_pos_ll[(Dim::y) * opp_k2_dat1_stride_sycl[0]]) {
-                    opp_p2c[0] = opp_c2c[(CellMap::x_yd) * opp_k2_c2c_map_stride_sycl[0]];
+                const double p_pos_y_diff = (p_pos[(Dim::y) * opp_k2_dat0_stride_sycl[0]] - c_pos_ll[(Dim::y) * opp_k2_dat2_stride_sycl[0]]);
+                if ((p_pos_y_diff >= 0.0) && (p_pos_y_diff <= CONST_cell_width_sycl[0])) {
+                    p_mdir[(Dim::y) * opp_k2_dat1_stride_sycl[0]] = 0; // within cell in y direction
+                }
+                else if (p_mdir[(Dim::y) * opp_k2_dat1_stride_sycl[0]] > 0) {
+                    opp_p2c[0] = opp_c2c[(CellMap::x_yu) * opp_k2_c2c_map_stride_sycl[0]];
                     { opp_move_status_flag = OPP_NEED_MOVE; }; return;
                 }
-                if (part_pos_y > (cell_pos_ll[(Dim::y) * opp_k2_dat1_stride_sycl[0]] + CONST_cell_width_sycl[0])) {
-                    opp_p2c[0] = opp_c2c[(CellMap::x_yu) * opp_k2_c2c_map_stride_sycl[0]];
+                else if (p_mdir[(Dim::y) * opp_k2_dat1_stride_sycl[0]] < 0) {
+                    opp_p2c[0] = opp_c2c[(CellMap::x_yd) * opp_k2_c2c_map_stride_sycl[0]];
                     { opp_move_status_flag = OPP_NEED_MOVE; }; return;
                 }
 
@@ -174,7 +186,8 @@ void opp_particle_move__move_kernel(opp_set set, opp_map c2c_map, opp_map p2c_ma
                         move_kernel_sycl(
                             move_flag, iter_one_flag, opp_c2c, opp_p2c,
                             dat0_sycl + n, // p_pos 
-                            dat1_sycl + p2c // c_pos_ll 
+                            dat1_sycl + n, // p_mdir 
+                            dat2_sycl + p2c // c_pos_ll 
              
                         ); 
                   
@@ -197,7 +210,8 @@ void opp_particle_move__move_kernel(opp_set set, opp_map c2c_map, opp_map p2c_ma
 void opp_init_direct_hop_cg(double grid_spacing, int dim, const opp_dat c_gbl_id, const opp::BoundingBox& b_box, 
     opp_map c2c_map, opp_map p2c_map,
     opp_arg arg0, // p_pos | OPP_READ
-    opp_arg arg1 // c_pos_ll | OPP_READ
+    opp_arg arg1, // p_mdir | OPP_RW
+    opp_arg arg2 // c_pos_ll | OPP_READ
 ) {
     opp_profiler->start("Setup_Mover");
     
