@@ -161,6 +161,10 @@ void opp_exit()
 
 #ifdef USE_PETSC
     PetscFinalize();
+#else
+    #ifdef USE_MPI
+        MPI_Finalize();
+    #endif
 #endif
 }
 

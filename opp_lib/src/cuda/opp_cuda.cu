@@ -39,6 +39,14 @@ int OPP_consts_bytes = 0, OPP_reduct_bytes = 0;
 char *OPP_reduct_h = nullptr, *OPP_reduct_d = nullptr;
 char *OPP_consts_h = nullptr, *OPP_consts_d = nullptr;
 
+char opp_move_status_flag = OPP_MOVE_DONE;
+bool opp_move_hop_iter_one_flag = true;
+OPP_INT* opp_p2c = nullptr;
+OPP_INT* opp_c2c = nullptr;
+
+opp_dh_indices dh_indices_h;
+opp_dh_indices dh_indices_d;
+
 //****************************************
 void opp_init(int argc, char **argv)
 {
@@ -133,6 +141,10 @@ void opp_exit()
 
 #ifdef USE_PETSC
     PetscFinalize();
+#else
+    #ifdef USE_MPI
+        MPI_Finalize();
+    #endif
 #endif
 }
 
@@ -386,6 +398,9 @@ void opp_print_dat_to_txtfile(opp_dat dat, const char *file_name_prefix, const c
         opp_download_dat(dat);
 
     std::string prefix = std::string(file_name_prefix) + "_cuda";
+#ifdef USE_MPI
+    prefix += "_mpi" + std::to_string(OPP_rank);
+#endif
     opp_print_dat_to_txtfile_core(dat, prefix.c_str(), file_name_suffix);
 }
 

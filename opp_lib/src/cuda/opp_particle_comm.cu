@@ -70,7 +70,8 @@ void opp_init_particle_move(opp_set set, int nargs, opp_arg *args)
 
     opp_mem::copy_host_to_dev<OPP_INT>(set->particle_remove_count_d, &(set->particle_remove_count), 1);
 
-    const size_t buffer_alloc_size = (size_t)(set->set_capacity / 4);
+    // const size_t buffer_alloc_size = (size_t)(set->set_capacity / 2);
+    const size_t buffer_alloc_size = (size_t)(set->set_capacity);
     if (buffer_alloc_size > OPP_move_particle_indices_dv.size()) {   
 
         OPP_move_particle_indices_dv.resize(buffer_alloc_size);

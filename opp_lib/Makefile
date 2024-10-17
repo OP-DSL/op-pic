@@ -26,7 +26,7 @@ SYCLCC     = icpx
 CPPFLAGS   = -std=c++17 -Wall -fPIC -march=native $(CPPFLAGS_ADD)
 NVCCFLAGS  = -std=c++17 --extended-lambda -m64 -Xptxas -dlcm=ca $(NVCCFLAGS_ADD)
 HIPCCFLAGS = $(HIPCCFLAGS_ADD) -std=c++17 -isystem -D__HIP_PLATFORM_AMD__ -munsafe-fp-atomics -march=native 
-SYCLFLAGS  = -w -fsycl -std=c++17 $(SYCLFLAGS_ADD) -DUSE_SYCL
+SYCLFLAGS  = -w -fsycl -std=c++17 $(SYCLFLAGS_ADD)
 
 OPP_INC    = -I$(OPP_PATH)/include
 
@@ -81,7 +81,7 @@ ifeq ($(PARMETIS), 1)
 	CPPFLAGS  += -DHAVE_PARMETIS
 endif
 
-CUDA_INC   += -I$(CUDA_INSTALL_PATH)/include
+CUDA_INC   += -I$(CUDA_INSTALL_PATH)/include -I$(MPI_INSTALL_PATH)/include
 HIP_INC   += -I$(ROCM_INSTALL_DIR)/include -I$(ROCM_THRUST_DIR)/include -I$(ROCM_PRIM_DIR)/include
 
 .PHONY: clean mklib
@@ -93,7 +93,8 @@ mklib:
 SRC_SEQ_CPP = 	$(SRC)/core/opp_lib_core.cpp \
 			  	$(SRC)/core/opp_util.cpp \
 			  	$(SRC)/core/opp_params.cpp \
-			  	$(SRC)/seq/opp_seq.cpp
+			  	$(SRC)/seq/opp_seq.cpp \
+				$(SRC)/seq/opp_direct_hop_seq.cpp
 OBJ_SEQ_CPP = 	$(patsubst $(SRC)/core/%.cpp,$(OBJ)/%+seq.o,$(SRC_SEQ_CPP)) \
 				$(patsubst $(SRC)/seq/%.cpp,$(OBJ)/%+seq.o,$(SRC_SEQ_CPP))
 $(OBJ)/%+seq.o: $(SRC)/core/%.cpp
@@ -110,7 +111,8 @@ seq: clean mklib
 SRC_OMP_CPP = 	$(SRC)/core/opp_lib_core.cpp \
 			  	$(SRC)/core/opp_util.cpp \
 			  	$(SRC)/core/opp_params.cpp \
-			  	$(SRC)/omp/opp_omp.cpp
+			  	$(SRC)/omp/opp_omp.cpp \
+				$(SRC)/omp/opp_direct_hop_omp.cpp
 OBJ_OMP_CPP = 	$(patsubst $(SRC)/core/%.cpp,$(OBJ)/%+omp.o,$(SRC_OMP_CPP)) \
 				$(patsubst $(SRC)/omp/%.cpp,$(OBJ)/%+omp.o,$(SRC_OMP_CPP))
 $(OBJ)/%+omp.o: $(SRC)/core/%.cpp
@@ -129,13 +131,14 @@ SRC_CUDA_CPP = 	$(SRC)/core/opp_lib_core.cpp \
            		$(SRC)/core/opp_params.cpp
 SRC_CUDA_CU = 	$(SRC)/cuda/opp_cuda.cu \
            		$(SRC)/cuda/opp_particle_sorter.cu \
-           		$(SRC)/cuda/opp_cuda_halo.cu
+           		$(SRC)/cuda/opp_cuda_halo.cu \
+				$(SRC)/cuda/opp_direct_hop_cuda.cu
 OBJ_CUDA_CPP = 	$(patsubst $(SRC)/core/%.cpp,$(OBJ)/%+cuda.o,$(SRC_CUDA_CPP))
 OBJ_CUDA_CU = 	$(patsubst $(SRC)/cuda/%.cu,$(OBJ)/%+cuda.o,$(SRC_CUDA_CU))
 $(OBJ)/%+cuda.o: $(SRC)/core/%.cpp
-	$(CPP) $(CPPFLAGS) -DUSE_THRUST -c $< -o $@ $(OPP_INC) $(CUDA_INC)
+	$(CPP) $(CPPFLAGS) -DUSE_THRUST -DUSE_CUDA -c $< -o $@ $(OPP_INC) $(CUDA_INC)
 $(OBJ)/%+cuda.o: $(SRC)/cuda/%.cu
-	$(NVCC) $(NVCCFLAGS) -DUSE_THRUST -c $< -o $@ $(OPP_INC) $(CUDA_INC)
+	$(NVCC) $(NVCCFLAGS) -DUSE_THRUST -DUSE_CUDA -c $< -o $@ $(OPP_INC) $(CUDA_INC)
 
 cuda_compile: $(OBJ_CUDA_CPP) $(OBJ_CUDA_CU)
 cuda: clean mklib
@@ -152,9 +155,9 @@ SRC_SYCL_CPP = 	$(SRC)/sycl/opp_sycl.cpp \
 OBJ_SYCL_CPP =  $(patsubst $(SRC)/core/%.cpp,$(OBJ)/%+sycl.o,$(SRC_SYCL_CPP)) \
 				$(patsubst $(SRC)/sycl/%.cpp,$(OBJ)/%+sycl.o,$(SRC_SYCL_CPP))
 $(OBJ)/%+sycl.o: $(SRC)/core/%.cpp
-	$(SYCLCC) $(SYCLFLAGS) -c $< -o $@ $(OPP_INC)
+	$(SYCLCC) $(SYCLFLAGS) -DUSE_SYCL -c $< -o $@ $(OPP_INC)
 $(OBJ)/%+sycl.o: $(SRC)/sycl/%.cpp
-	$(SYCLCC) $(SYCLFLAGS) -c $< -o $@ $(OPP_INC)
+	$(SYCLCC) $(SYCLFLAGS) -DUSE_SYCL -c $< -o $@ $(OPP_INC)
 
 sycl_compile: $(OBJ_SYCL_CPP)
 sycl: clean mklib
@@ -171,9 +174,9 @@ SRC_HIP_CPP = 	$(SRC)/core/opp_lib_core.cpp \
 OBJ_HIP_CPP =  	$(patsubst $(SRC)/core/%.cpp,$(OBJ)/%+hip.o,$(SRC_HIP_CPP)) \
 				$(patsubst $(SRC)/hip/%.cpp,$(OBJ)/%+hip.o,$(SRC_HIP_CPP))
 $(OBJ)/%+hip.o: $(SRC)/core/%.cpp
-	$(HIPCC) $(HIPCCFLAGS) -DUSE_THRUST -c $< -o $@ $(OPP_INC) $(HIP_INC)
+	$(HIPCC) $(HIPCCFLAGS) -DUSE_THRUST -DUSE_HIP -c $< -o $@ $(OPP_INC) $(HIP_INC)
 $(OBJ)/%+hip.o: $(SRC)/hip/%.cpp
-	$(HIPCC) $(HIPCCFLAGS) -DUSE_THRUST -c $< -o $@ $(OPP_INC) $(HIP_INC)
+	$(HIPCC) $(HIPCCFLAGS) -DUSE_THRUST -DUSE_HIP -c $< -o $@ $(OPP_INC) $(HIP_INC)
 
 hip_compile: $(OBJ_HIP_CPP)
 hip: clean mklib
@@ -191,7 +194,8 @@ SRC_MPI_CPP = 	$(SRC)/core/opp_lib_core.cpp \
 				$(SRC)/mpi/opp_mpi_core.cpp \
 				$(SRC)/mpi/opp_mpi_utils.cpp \
 				$(SRC)/mpi/opp_mpi_particle_comm.cpp \
-				$(SRC)/mpi/opp_mpi_double_ind_reducs.cpp 
+				$(SRC)/mpi/opp_mpi_double_ind_reducs.cpp \
+				$(SRC)/mpi/opp_direct_hop_mpi.cpp
 OBJ_MPI_CPP =  	$(patsubst $(SRC)/core/%.cpp,$(OBJ)/%+mpi.o,$(SRC_MPI_CPP)) \
 				$(patsubst $(SRC)/mpi/%.cpp,$(OBJ)/%+mpi.o,$(SRC_MPI_CPP))
 $(OBJ)/%+mpi.o: $(SRC)/core/%.cpp
@@ -221,11 +225,11 @@ OBJ_SYCL_MPI_CPP =  $(patsubst $(SRC)/core/%.cpp,$(OBJ)/%+sycl_mpi.o,$(SRC_SYCL_
 					$(patsubst $(SRC)/sycl/%.cpp,$(OBJ)/%+sycl_mpi.o,$(SRC_SYCL_MPI_CPP)) \
 					$(patsubst $(SRC)/mpi/%.cpp,$(OBJ)/%+sycl_mpi.o,$(SRC_SYCL_MPI_CPP))
 $(OBJ)/%+sycl_mpi.o: $(SRC)/core/%.cpp
-	$(MPICPP) $(SYCLFLAGS) -DUSE_MPI -c $< -o $@ $(OPP_INC)
+	$(MPICPP) $(SYCLFLAGS) -DUSE_MPI -DUSE_SYCL -c $< -o $@ $(OPP_INC)
 $(OBJ)/%+sycl_mpi.o: $(SRC)/sycl/%.cpp
-	$(MPICPP) $(SYCLFLAGS) -DUSE_MPI -c $< -o $@ $(OPP_INC)
+	$(MPICPP) $(SYCLFLAGS) -DUSE_MPI -DUSE_SYCL -c $< -o $@ $(OPP_INC)
 $(OBJ)/%+sycl_mpi.o: $(SRC)/mpi/%.cpp
-	$(MPICPP) $(SYCLFLAGS) -DUSE_MPI -c $< -o $@ $(OPP_INC)
+	$(MPICPP) $(SYCLFLAGS) -DUSE_MPI -DUSE_SYCL -c $< -o $@ $(OPP_INC)
 
 sycl_mpi_compile: $(OBJ_SYCL_MPI_CPP)
 sycl_mpi: clean mklib
@@ -244,16 +248,17 @@ SRC_CUDA_MPI_CPP = 	$(SRC)/core/opp_lib_core.cpp \
 					$(SRC)/mpi/opp_mpi_utils.cpp
 SRC_CUDA_MPI_CU = 	$(SRC)/cuda/opp_cuda.cu \
 					$(SRC)/cuda/opp_particle_sorter.cu \
-					$(SRC)/cuda/opp_cuda_halo.cu
+					$(SRC)/cuda/opp_cuda_halo.cu \
+					$(SRC)/cuda/opp_direct_hop_cuda.cu
 OBJ_CUDA_MPI_CPP = 	$(patsubst $(SRC)/core/%.cpp,$(OBJ)/%+cuda_mpi.o,$(SRC_CUDA_MPI_CPP)) \
 					$(patsubst $(SRC)/mpi/%.cpp,$(OBJ)/%+cuda_mpi.o,$(SRC_CUDA_MPI_CPP))
 OBJ_CUDA_MPI_CU = 	$(patsubst $(SRC)/cuda/%.cu,$(OBJ)/%+cuda_mpi.o,$(SRC_CUDA_MPI_CU))
 $(OBJ)/%+cuda_mpi.o: $(SRC)/core/%.cpp
-	$(CPP) $(CPPFLAGS) -DUSE_MPI -DUSE_THRUST -c $< -o $@ $(OPP_INC) $(CUDA_INC)
+	$(MPICPP) $(CPPFLAGS) -DUSE_MPI -DUSE_THRUST -DUSE_CUDA -c $< -o $@ $(OPP_INC) $(CUDA_INC)
 $(OBJ)/%+cuda_mpi.o: $(SRC)/mpi/%.cpp
-	$(CPP) $(CPPFLAGS) -DUSE_MPI -DUSE_THRUST -c $< -o $@ $(OPP_INC) $(CUDA_INC)
+	$(MPICPP) $(CPPFLAGS) -DUSE_MPI -DUSE_THRUST -DUSE_CUDA -c $< -o $@ $(OPP_INC) $(CUDA_INC)
 $(OBJ)/%+cuda_mpi.o: $(SRC)/cuda/%.cu
-	$(NVCC) $(NVCCFLAGS) -DUSE_MPI -DUSE_THRUST -c $< -o $@ $(OPP_INC) $(CUDA_INC)
+	$(NVCC) $(NVCCFLAGS) -DUSE_MPI -DUSE_THRUST -DUSE_CUDA -c $< -o $@ $(OPP_INC) $(CUDA_INC)
 
 cuda_mpi_compile: $(OBJ_CUDA_MPI_CPP) $(OBJ_CUDA_MPI_CU)
 cuda_mpi: clean mklib
@@ -277,11 +282,11 @@ OBJ_HIP_MPI_CPP = 	$(patsubst $(SRC)/core/%.cpp,$(OBJ)/%+hip_mpi.o,$(SRC_HIP_MPI
 					$(patsubst $(SRC)/mpi/%.cpp,$(OBJ)/%+hip_mpi.o,$(SRC_HIP_MPI_CPP)) \
 					$(patsubst $(SRC)/hip/%.cpp,$(OBJ)/%+hip_mpi.o,$(SRC_HIP_MPI_CPP))
 $(OBJ)/%+hip_mpi.o: $(SRC)/core/%.cpp
-	$(HIPCC) $(HIPCCFLAGS) -DUSE_MPI -DUSE_THRUST -c $< -o $@ $(OPP_INC) $(HIP_INC)
+	$(HIPCC) $(HIPCCFLAGS) -DUSE_MPI -DUSE_THRUST -DUSE_HIP -c $< -o $@ $(OPP_INC) $(HIP_INC)
 $(OBJ)/%+hip_mpi.o: $(SRC)/mpi/%.cpp
-	$(HIPCC) $(HIPCCFLAGS) -DUSE_MPI -DUSE_THRUST -c $< -o $@ $(OPP_INC) $(HIP_INC)
+	$(HIPCC) $(HIPCCFLAGS) -DUSE_MPI -DUSE_THRUST -DUSE_HIP -c $< -o $@ $(OPP_INC) $(HIP_INC)
 $(OBJ)/%+hip_mpi.o: $(SRC)/hip/%.cpp
-	$(HIPCC) $(HIPCCFLAGS) -DUSE_MPI -DUSE_THRUST -c $< -o $@ $(OPP_INC) $(HIP_INC)
+	$(HIPCC) $(HIPCCFLAGS) -DUSE_MPI -DUSE_THRUST -DUSE_HIP -c $< -o $@ $(OPP_INC) $(HIP_INC)
 
 hip_mpi_compile: $(OBJ_HIP_MPI_CPP)
 hip_mpi: clean mklib
@@ -299,7 +304,8 @@ SRC_OMP_MPI_CPP = 	$(SRC)/core/opp_lib_core.cpp \
 					$(SRC)/mpi/opp_mpi_core.cpp \
 					$(SRC)/mpi/opp_mpi_particle_comm.cpp \
 					$(SRC)/mpi/opp_mpi_double_ind_reducs.cpp \
-					$(SRC)/mpi/opp_mpi_utils.cpp 
+					$(SRC)/mpi/opp_mpi_utils.cpp \
+					$(SRC)/omp/opp_direct_hop_omp.cpp
 OBJ_OMP_MPI_CPP = 	$(patsubst $(SRC)/core/%.cpp,$(OBJ)/%+omp_mpi.o,$(SRC_OMP_MPI_CPP)) \
 					$(patsubst $(SRC)/omp/%.cpp,$(OBJ)/%+omp_mpi.o,$(SRC_OMP_MPI_CPP)) \
 					$(patsubst $(SRC)/mpi/%.cpp,$(OBJ)/%+omp_mpi.o,$(SRC_OMP_MPI_CPP))

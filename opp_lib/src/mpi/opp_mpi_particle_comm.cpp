@@ -765,140 +765,135 @@ void opp_part_comm_destroy()
 //*******************************************************************************
 using namespace opp;
 
-
-dh_particle_packer::dh_particle_packer(std::map<int, std::map<int, std::vector<opp_part_move_info>>>* part_move_data) 
-    : part_move_data(part_move_data) {
+//*******************************************************************************
+dh_particle_packer::dh_particle_packer(std::map<int, std::vector<OPP_INT>>& local_part_indices, 
+                                std::map<int, std::vector<OPP_INT>>& foreign_cell_indices) 
+    : local_part_ids(local_part_indices), foreign_cell_ids(foreign_cell_indices) {
 
 }
 
 //*******************************************************************************
 dh_particle_packer::~dh_particle_packer() {
 
-    this->part_move_data = nullptr;
     this->buffers.clear();
 };
 
 //*******************************************************************************
-void dh_particle_packer::pack(opp_set set) {
-
-    if (OPP_DBG) 
-        opp_printf("dh_particle_packer", "pack set [%s]", set->name);
-
-    if (part_move_data == nullptr) {
-        opp_abort(std::string("part_move_data is NULL in dh_particle_packer"));
-    }
-
-    std::map<int, std::vector<char>>& buffers_of_set = this->buffers[set->index];
-    for (auto& x : buffers_of_set) // try to keep the allocated vectors as it is, without deleting
-        x.second.clear();
-
-    if (part_move_data->at(set->index).size() == 0) {
-        if (OPP_DBG) 
-            opp_printf("dh_particle_packer", "Nothing to be sent for set [%s]", set->name);
-        return;
-    }     
-
-    opp_profiler->start("MvDH_Pack");
-
-    for (auto& move_idxs_per_rank : part_move_data->at(set->index)) {
-
-        const int send_rank = move_idxs_per_rank.first;
-        const std::vector<opp_part_move_info>& move_idxs_vec = move_idxs_per_rank.second;
-
-        const size_t bytes_per_rank = (size_t)set->particle_size * move_idxs_vec.size();
-        
-        std::vector<char>& buffer_per_rank = buffers_of_set[send_rank];
-        buffer_per_rank.resize(bytes_per_rank, 0);
-
-        int displacement = 0;
-        for (auto& dat : *(set->particle_dats)) {
-
-            int dat_size = dat->size;
-
-            if (dat->is_cell_index) {
-
-                for (const auto& part : move_idxs_vec) {
-
-                    memcpy(&(buffer_per_rank[displacement]), &part.foreign_cell_index, dat->size);
-                    displacement += dat_size;
-                }
-            }
-            else {
-
-                for (const auto& part : move_idxs_vec) {
-
-                    // copy the dat value to the send buffer
-                    memcpy(&(buffer_per_rank[displacement]), 
-                        &(dat->data[part.local_index * dat->size]), dat->size);
-                    displacement += dat_size;
-                }                
-            }
-        }
-
-        if (OPP_DBG)
-            opp_printf("dh_particle_packer", "Packed %zu parts to send to rank %d, displacement %d", 
-                buffer_per_rank.size(), send_rank, displacement);
-    }
-
-    opp_profiler->end("MvDH_Pack");
-}
-
-//*******************************************************************************
-char* dh_particle_packer::get_buffer(const opp_set set, const int send_rank) {
-
+char* dh_particle_packer::get_buffer(const opp_set set, const int send_rank) 
+{
     auto set_it = this->buffers.find(set->index);
 
     if (set_it == this->buffers.end()) {
-        opp_abort(std::string("Set not found in dh_particle_packer buffers"));
+        opp_abort(std::string("Set not found in dh_particle_packer_cpu buffers"));
     } 
 
     auto set_itRank = set_it->second.find(send_rank);
     if (set_itRank == set_it->second.end()) {
         
         if (OPP_DBG) 
-            opp_printf("dh_particle_packer", "get_buffer set [%s] Rank [%d] does not have a buffer created", 
+            opp_printf("dh_particle_packer_cpu", "get_buffer set [%s] Rank [%d] does not have a buffer created", 
                 set->name, send_rank);
         return nullptr;
     } 
 
     if (OPP_DBG)
-        opp_printf("dh_particle_packer", "get_buffer set [%s] Rank [%d] size %zu bytes", 
+        opp_printf("dh_particle_packer_cpu", "get_buffer set [%s] Rank [%d] size %zu bytes", 
                 set->name, send_rank, set_itRank->second.size());
 
     return &(set_itRank->second[0]);
 }
 
 //*******************************************************************************
-void dh_particle_packer::unpack(opp_set set, const std::map<int, std::vector<char>>& particleRecvBuffers,
-                    int64_t totalParticlesToRecv, const std::vector<int64_t>& recvRankPartCounts) {
+dh_particle_packer_cpu::dh_particle_packer_cpu(std::map<int, std::vector<OPP_INT>>& local_part_indices, 
+                                            std::map<int, std::vector<OPP_INT>>& foreign_cell_indices) 
+        : dh_particle_packer(local_part_indices, foreign_cell_indices) 
+{
 
+}
+
+//*******************************************************************************
+dh_particle_packer_cpu::~dh_particle_packer_cpu() 
+{
+
+}
+
+//*******************************************************************************
+void dh_particle_packer_cpu::pack(opp_set set) 
+{
     if (OPP_DBG) 
-        opp_printf("dh_particle_packer", "unpack set [%s]", set->name);
+        opp_printf("dh_particle_packer_cpu", "pack set [%s]", set->name);
+
+    std::map<int, std::vector<char>>& buffers_of_set = this->buffers[set->index];
+    for (auto& x : buffers_of_set) // try to keep the allocated vectors as it is, without deleting
+        x.second.clear();   
+
+    opp_profiler->start("MvDH_Pack");
+
+    for (const auto& [send_rank, part_ids_vec] : local_part_ids) {
+
+        const size_t bytes_per_rank = (size_t)set->particle_size * part_ids_vec.size();
+        
+        std::vector<char>& send_rank_buffer = buffers_of_set[send_rank];
+        send_rank_buffer.resize(bytes_per_rank, 0);
+
+        int displacement = 0;
+        for (auto& dat : *(set->particle_dats)) {
+
+            const int dat_size = dat->size;
+
+            if (dat->is_cell_index) {  
+                const std::vector<OPP_INT>& cell_ids_vec = foreign_cell_ids[send_rank];
+                const int copy_size = (dat_size * cell_ids_vec.size());
+
+                memcpy(&(send_rank_buffer[displacement]), cell_ids_vec.data(), copy_size);
+                displacement += copy_size;
+            }
+            else {
+                for (const auto& p_id : part_ids_vec) {
+                    // copy the dat value to the send buffer
+                    memcpy(&(send_rank_buffer[displacement]), &(dat->data[p_id * dat_size]), dat_size);
+                    displacement += dat_size;
+                }                
+            }
+        }
+
+        if (OPP_DBG)
+            opp_printf("dh_particle_packer_cpu", "Packed %zu parts to send to rank %d, displacement %d", 
+                send_rank_buffer.size(), send_rank, displacement);
+    }
+
+    opp_profiler->end("MvDH_Pack");
+}
+
+//*******************************************************************************
+void dh_particle_packer_cpu::unpack(opp_set set, const std::map<int, std::vector<char>>& part_recv_buffers,
+                    int64_t total_recv_count) 
+{
+    if (OPP_DBG) 
+        opp_printf("dh_particle_packer_cpu", "unpack set [%s]", set->name);
 
     opp_profiler->start("MvDH_Unpack");
 
-    if (totalParticlesToRecv > 0)
+    if (total_recv_count > 0)
     {
+        if (!opp_increase_particle_count_core(set, (int)total_recv_count)) // TODO : make int to int64_t
+        {
+            opp_printf("dh_particle_packer_cpu Unpack", "Error: Failed to increase particle count of set [%s]", 
+                        set->name);
+            opp_abort("dh_particle_packer_cpu Unpack error");
+        }
+
         std::vector<opp_dat>& particle_dats = *(set->particle_dats);
 
         int64_t particle_size = set->particle_size;
-
-        if (!opp_increase_particle_count_core(set, (int)totalParticlesToRecv)) // TODO : make int to int64_t
-        {
-            opp_printf("dh_particle_packer Unpack", "Error: Failed to increase particle count of particle set [%s]", 
-                        set->name);
-            opp_abort("dh_particle_packer Unpack error");
-        }
-
         int64_t newPartIndex = (int64_t)(set->size - set->diff);
-        // int rankx = 0;
 
-        for (const auto& x : particleRecvBuffers) {
+        for (const auto& x : part_recv_buffers) {
 
             // int recvRank = x.first;
             const std::vector<char>& buffer = x.second;
 
-            int64_t recvCount = ((int64_t)buffer.size() / particle_size) ; // recvRankPartCounts[rankx++];
+            int64_t recvCount = ((int64_t)buffer.size() / particle_size) ;
             int64_t displacement = 0;
 
             for (auto& dat : particle_dats)
@@ -916,9 +911,8 @@ void dh_particle_packer::unpack(opp_set set, const std::map<int, std::vector<cha
     opp_profiler->end("MvDH_Unpack");
 
     if (OPP_DBG) 
-        opp_printf("dh_particle_packer", "Unpack END");
+        opp_printf("dh_particle_packer_cpu", "Unpack END");
 }
-
 
 //*******************************************************************************
 GlobalParticleMover::GlobalParticleMover(MPI_Comm comm) 
@@ -927,9 +921,14 @@ GlobalParticleMover::GlobalParticleMover(MPI_Comm comm)
     MPI_CHECK(MPI_Win_allocate(sizeof(int), sizeof(int), MPI_INFO_NULL, this->comm,
                     &this->recv_win_data, &this->recv_win));
     
-    dh_part_move_data.clear();
+    dh_local_part_indices.clear();
+    dh_foreign_cell_indices.clear();
 
-    packer = std::make_unique<dh_particle_packer>(&dh_part_move_data);
+#if defined(USE_CUDA) || defined(USE_HIP) || defined(USE_SYCL)
+    packer = std::make_unique<dh_particle_packer_gpu>(dh_local_part_indices, dh_foreign_cell_indices);
+#else
+    packer = std::make_unique<dh_particle_packer_cpu>(dh_local_part_indices, dh_foreign_cell_indices);
+#endif
 
     opp_profiler->reg("MvDH_WaitRanks");
     opp_profiler->reg("MvDH_Init");
@@ -952,23 +951,11 @@ GlobalParticleMover::~GlobalParticleMover() {
 }
 
 //*******************************************************************************
-void GlobalParticleMover::markParticleToMove(opp_set set, int partIndex, int rankToBeMoved, int finalGlobalCellIndex) {
-    
-    // These validations should be already done
-    // if (finalGlobalCellIndex == MAX_CELL_INDEX) {
-    //     opp_printf("GlobalParticleMover", "Error markParticleToMove particle %d will be moved to rank %d but global index is invalid",
-    //         partIndex, rankToBeMoved);
-    //     return;
-    // }
+void GlobalParticleMover::markParticleToMove(opp_set set, int partIndex, int rankToBeMoved, int cellIndex) {
 
-    // if (rankToBeMoved == MAX_CELL_INDEX) {
-    //     opp_printf("GlobalParticleMover", "Error markParticleToMove particle %d will be moved to finalGlobalCellIndex %d but rank is invalid",
-    //         partIndex, rankToBeMoved);
-    //     return;
-    // }
-
-    std::vector<opp_part_move_info>& vec = this->dh_part_move_data[set->index][rankToBeMoved];
-    vec.emplace_back(partIndex, finalGlobalCellIndex);
+    // TODO : reserve these vectors!
+    this->dh_local_part_indices[rankToBeMoved].emplace_back(partIndex);
+    this->dh_foreign_cell_indices[rankToBeMoved].emplace_back(cellIndex);
 }
 
 //*******************************************************************************
@@ -1031,26 +1018,29 @@ void GlobalParticleMover::communicate(opp_set set) {
     
     opp_profiler->start("MvDH_Comm");
 
-    std::map<int, std::vector<opp_part_move_info>>& rankVsPartData = dh_part_move_data[set->index]; 
-    this->numRemoteSendRanks = rankVsPartData.size();
+    this->numRemoteSendRanks = this->dh_local_part_indices.size();
     this->h_send_requests.resize(this->numRemoteSendRanks);
     this->h_send_ranks.resize(this->numRemoteSendRanks);
     this->h_send_rank_npart.resize(this->numRemoteSendRanks);
 
     int rankx = 0;
-    for (auto& x : rankVsPartData) {
+    for (const auto& [rank, indices_vec] : this->dh_local_part_indices) {
 
-        if (x.first >= OPP_comm_size || x.first < 0) {
-            opp_printf("GlobalParticleMover", "ERROR locking rank %d [size %zu] from rank %d", x.first, OPP_rank, x.second.size());
+        if (rank >= OPP_comm_size || rank < 0) {
+            opp_printf("GlobalParticleMover", "ERROR locking rank %d [size %zu] from rank %d", 
+                        rank, OPP_rank, indices_vec.size());
             this->numRemoteSendRanks -= 1;
             continue;
         }
 
-        this->h_send_ranks[rankx] = x.first;
-        this->h_send_rank_npart[rankx] = (int64_t)x.second.size();
-        this->totalParticlesToSend += (int64_t)x.second.size();
+        this->h_send_ranks[rankx] = rank;
+        this->h_send_rank_npart[rankx] = (int64_t)indices_vec.size();
+        this->totalParticlesToSend += (int64_t)indices_vec.size();
         rankx++;
     }
+
+    if (OPP_DBG)
+        opp_printf("GlobalParticleMover", "communicate trying to communicate %lld", totalParticlesToSend);
 
     packer->pack(set);
 
@@ -1153,8 +1143,10 @@ void GlobalParticleMover::communicate(opp_set set) {
 
     // (4) Once sent, map could be cleared for the set, keep the allocations if possible -----------
 
-    for (auto& x : dh_part_move_data[set->index])
-        x.second.clear();       
+    for (auto& [rank, vec] : this->dh_local_part_indices)
+        vec.clear();       
+    for (auto& [rank, vec] : this->dh_foreign_cell_indices)
+        vec.clear();   
 
     opp_profiler->end("MvDH_Comm");  
 }
@@ -1178,7 +1170,6 @@ int64_t GlobalParticleMover::finalize(opp_set set) {
             int bytesExpected = (this->h_recv_rank_npart[rankx] * set->particle_size);
 
             if (bytesRecvd != bytesExpected) {
-                
                 opp_printf("GlobalParticleMover", "recv'd incorrect num of bytes Expected %d Received %d",
                     bytesExpected, bytesRecvd);
                 opp_abort(std::string("recv'd incorrect number of bytes"));
@@ -1186,7 +1177,7 @@ int64_t GlobalParticleMover::finalize(opp_set set) {
         }
     }
 
-    packer->unpack(set, this->particleRecvBuffers, this->totalParticlesToRecv, this->h_recv_rank_npart);
+    packer->unpack(set, this->particleRecvBuffers, this->totalParticlesToRecv);
 
     // Note : The mesh relations received will be global cell indices and need to be converted to local
 

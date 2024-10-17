@@ -265,20 +265,46 @@ namespace opp {
 
     //*******************************************************************************
     class dh_particle_packer {
-
     public:
-        dh_particle_packer(std::map<int, std::map<int, std::vector<opp_part_move_info>>>* part_move_data);
-        ~dh_particle_packer();
-        void pack(opp_set set);
-        char* get_buffer(const opp_set set, const int send_rank);
-        void unpack(opp_set set, const std::map<int, std::vector<char>>& particleRecvBuffers,
-                            int64_t totalParticlesToRecv, const std::vector<int64_t>& recvRankPartCounts);
+        dh_particle_packer(std::map<int, std::vector<OPP_INT>>& local_part_indices, 
+                            std::map<int, std::vector<OPP_INT>>& foreign_cell_indices);
+        virtual ~dh_particle_packer();
 
-    private: 
-        std::map<int, std::map<int, std::vector<opp_part_move_info>>>* part_move_data = nullptr;
+        char* get_buffer(const opp_set set, const int send_rank);
+        
+        virtual void pack(opp_set set) = 0;        
+        virtual void unpack(opp_set set, const std::map<int, std::vector<char>>& particleRecvBuffers,
+                            int64_t totalParticlesToRecv) = 0;
+    
+    protected:
         std::map<int, std::map<int, std::vector<char>>> buffers;
+        std::map<int, std::vector<OPP_INT>>& local_part_ids;
+        std::map<int, std::vector<OPP_INT>>& foreign_cell_ids;
     };
 
+    class dh_particle_packer_cpu : public dh_particle_packer { //********************
+
+    public:
+        dh_particle_packer_cpu(std::map<int, std::vector<OPP_INT>>& local_part_indices, 
+                                std::map<int, std::vector<OPP_INT>>& foreign_cell_indices);
+        ~dh_particle_packer_cpu();
+
+        void pack(opp_set set) override;
+        void unpack(opp_set set, const std::map<int, std::vector<char>>& particleRecvBuffers,
+                            int64_t totalParticlesToRecv) override;
+    };
+
+    class dh_particle_packer_gpu : public dh_particle_packer { //********************
+
+    public:
+        dh_particle_packer_gpu(std::map<int, std::vector<OPP_INT>>& local_part_indices, 
+                                std::map<int, std::vector<OPP_INT>>& foreign_cell_indices);
+        ~dh_particle_packer_gpu();
+
+        void pack(opp_set set) override;
+        void unpack(opp_set set, const std::map<int, std::vector<char>>& particleRecvBuffers,
+                            int64_t totalParticlesToRecv) override;
+    };
 
     //*******************************************************************************
     class GlobalParticleMover {
@@ -295,7 +321,11 @@ namespace opp {
     
     private:
         // this translate to std::map<particle_set_index, std::map<send_rank, std::vector<opp_part_move_info>>>
-        std::map<int, std::map<int, std::vector<opp_part_move_info>>> dh_part_move_data;
+        // std::map<int, std::map<int, std::vector<opp_part_move_info>>> dh_part_move_data;
+
+        std::map<int, std::vector<OPP_INT>> dh_local_part_indices;
+        std::map<int, std::vector<OPP_INT>> dh_foreign_cell_indices;
+
         MPI_Comm comm;
 
         int *recv_win_data;

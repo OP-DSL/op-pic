@@ -32,14 +32,9 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <opp_lib_core.h>
 
-#ifdef USE_MPI
-    #include <opp_mpi.h>
-#endif
-
 #include "opp_particle_organize_core.cpp"
 #include "opp_increase_part_count_core.cpp"
 #include "opp_lib_file_core.cpp"
-#include "opp_direct_hop_core.cpp"
 
 //****************************************
 std::vector<opp_set> opp_sets;

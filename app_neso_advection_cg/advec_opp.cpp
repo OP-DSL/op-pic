@@ -1,5 +1,5 @@
 
-// Auto-generated at 2024-10-10 12:19:56.330538 by opp-translator
+// Auto-generated at 2024-10-17 18:33:47.579352 by opp-translator
 /* 
 BSD 3-Clause License
 
@@ -37,10 +37,10 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "opp_lib.h"
 
-void opp_par_loop_all__update_pos_kernel(opp_set,opp_iterate_type,opp_arg,opp_arg,opp_arg);
-void opp_particle_move__move_kernel(opp_set,opp_map,opp_map,opp_arg,opp_arg,opp_arg);
+void opp_par_loop_all__update_pos_kernel(opp_set,opp_iterate_type,opp_arg,opp_arg);
+void opp_particle_move__move_kernel(opp_set,opp_map,opp_map,opp_arg,opp_arg);
 void opp_par_loop_all__verify_kernel(opp_set,opp_iterate_type,opp_arg,opp_arg,opp_arg);
-void opp_init_direct_hop_cg(double,int,const opp_dat,const opp::BoundingBox&,opp_map,opp_map,opp_arg,opp_arg,opp_arg);
+void opp_init_direct_hop_cg(double,int,const opp_dat,const opp::BoundingBox&,opp_map,opp_map,opp_arg,opp_arg);
 
 #include "advec_misc.h"
 // #include "kenels.h" // codegen commented...
@@ -102,7 +102,6 @@ int main(int argc, char **argv)
         opp::BoundingBox bounding_box = opp::BoundingBox(c_pos_ll, DIM, expansion);
         opp_init_direct_hop_cg(grid_spacing, DIM, c_idx, bounding_box, c2c_map, p2c_map,
 			opp_arg_dat(p_pos, OPP_READ),
-			opp_arg_dat(p_mdir, OPP_RW),
 			opp_arg_dat(c_pos_ll, p2c_map, OPP_READ));
 
         opp_printf("Setup Completed", "Cells[%d] Particles[%d] max_iter[%d]", cell_set->size, part_set->size, max_iter);
@@ -114,13 +113,11 @@ int main(int argc, char **argv)
         {
             opp_par_loop_all__update_pos_kernel(part_set, OPP_ITERATE_ALL,
                 opp_arg_dat(p_vel,  OPP_READ),
-                opp_arg_dat(p_pos,  OPP_RW),
-                opp_arg_dat(p_mdir, OPP_WRITE)
+                opp_arg_dat(p_pos,  OPP_RW)
             );
 
             opp_particle_move__move_kernel(part_set, c2c_map, p2c_map,
                 opp_arg_dat(p_pos,             OPP_READ),
-                opp_arg_dat(p_mdir,            OPP_RW),
                 opp_arg_dat(c_pos_ll, p2c_map, OPP_READ)
             );
 

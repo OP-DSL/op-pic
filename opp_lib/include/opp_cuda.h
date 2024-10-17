@@ -53,6 +53,14 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
     #include <opp_mpi_core.h>
 #endif
 
+struct opp_dh_indices {
+    OPP_INT* move_count = nullptr;
+    OPP_INT* part_indices = nullptr;
+    OPP_INT* rank_indices = nullptr;
+    OPP_INT* cell_indices = nullptr;
+    OPP_INT capacity = 0;
+};
+
 constexpr bool debug_mem = false;
 constexpr bool debugger = false;
 constexpr int opp_const_threads_per_block = 192;
@@ -120,6 +128,20 @@ extern OPP_INT OPP_consts_bytes;
 extern OPP_INT OPP_reduct_bytes;
 extern char *OPP_reduct_h, *OPP_reduct_d;
 extern char *OPP_consts_h, *OPP_consts_d;
+
+extern char opp_move_status_flag;
+extern bool opp_move_hop_iter_one_flag;
+extern OPP_INT* opp_p2c;
+extern OPP_INT* opp_c2c;
+
+extern opp_dh_indices dh_indices_d;
+extern opp_dh_indices dh_indices_h;
+
+#define OPP_PARTICLE_MOVE_DONE { opp_move_status_flag = OPP_MOVE_DONE; }
+#define OPP_PARTICLE_NEED_MOVE { opp_move_status_flag = OPP_NEED_MOVE; }
+#define OPP_PARTICLE_NEED_REMOVE { opp_move_status_flag = OPP_NEED_REMOVE; }
+#define OPP_DO_ONCE (opp_move_hop_iter_one_flag)
+#define OPP_MOVE_RESET_FLAGS { opp_move_status_flag = OPP_MOVE_DONE; opp_move_hop_iter_one_flag = true; }
 
 //*************************************************************************************************
 void opp_cuda_exit();
@@ -196,114 +218,14 @@ void opp_reallocConstArrays(int consts_bytes);
 void opp_mvConstArraysToDevice(int consts_bytes);
 void opp_mvConstArraysToHost(int consts_bytes);
 
-template <opp_access reduction, class T>
-__inline__ __device__ 
-void opp_reduction(volatile T *dat_g, T dat_l) 
-{
-    extern __shared__ volatile double temp2[];
-    __shared__ volatile T *temp;
-    temp = (T *)temp2;
-    T dat_t;
-
-    __syncthreads(); /* important to finish all previous activity */
-
-    int tid = threadIdx.x;
-    temp[tid] = dat_l;
-
-    // first, cope with blockDim.x perhaps not being a power of 2
-    __syncthreads();
-
-    int d = 1 << (31 - __clz(((int)blockDim.x - 1)));
-    // d = blockDim.x/2 rounded up to nearest power of 2
-    if (tid + d < blockDim.x) {
-        dat_t = temp[tid + d];
-
-        switch (reduction) {
-        case OPP_INC:
-            dat_l = dat_l + dat_t;
-            break;
-        case OPP_MIN:
-            if (dat_t < dat_l)
-                dat_l = dat_t;
-            break;
-        case OPP_MAX:
-            if (dat_t > dat_l)
-                dat_l = dat_t;
-            break;
-        }
-
-        temp[tid] = dat_l;
-    }
-
-    // second, do reductions involving more than one warp
-    for (d >>= 1; d > warpSize; d >>= 1) {
-        __syncthreads();
-
-        if (tid < d) {
-            dat_t = temp[tid + d];
-
-            switch (reduction) {
-            case OPP_INC:
-                dat_l = dat_l + dat_t;
-                break;
-            case OPP_MIN:
-                if (dat_t < dat_l)
-                    dat_l = dat_t;
-                break;
-            case OPP_MAX:
-                if (dat_t > dat_l)
-                    dat_l = dat_t;
-                break;
-            }
-
-            temp[tid] = dat_l;
-        }
-    }
-
-    // third, do reductions involving just one warp
-    __syncthreads();
-
-    if (tid < warpSize) {
-        for (; d > 0; d >>= 1) {
-            __syncwarp();
-            if (tid < d) {
-                dat_t = temp[tid + d];
-
-                switch (reduction) {
-                    case OPP_INC:
-                    dat_l = dat_l + dat_t;
-                    break;
-                case OPP_MIN:
-                    if (dat_t < dat_l)
-                        dat_l = dat_t;
-                    break;
-                case OPP_MAX:
-                    if (dat_t > dat_l)
-                        dat_l = dat_t;
-                    break;
-                }
-
-                temp[tid] = dat_l;
-            }
-        }
-
-        // finally, update global reduction variable
-        if (tid == 0) {
-            switch (reduction) {
-            case OPP_INC:
-                *dat_g = *dat_g + dat_l;
-                break;
-            case OPP_MIN:
-                if (dat_l < *dat_g)
-                *dat_g = dat_l;
-                break;
-            case OPP_MAX:
-                if (dat_l > *dat_g)
-                *dat_g = dat_l;
-                break;
-            }
-        }
-    }
+/*******************************************************************************/
+template <typename T>
+T* opp_get_dev_raw_ptr(thrust::device_vector<T>& dv) {
+    return (T*)thrust::raw_pointer_cast(dv.data());
+}
+template <typename T>
+const T* opp_get_dev_raw_ptr(const thrust::device_vector<T>& dv) {
+    return (const T*)thrust::raw_pointer_cast(dv.data());
 }
 
 /*******************************************************************************/
@@ -321,7 +243,7 @@ This function arranges the multi dimensional values in input array to output arr
 */
 template <class T> 
 void copy_according_to_index(thrust::device_vector<T>* in_dat_dv, thrust::device_vector<T>* out_dat_dv, 
-    const thrust::device_vector<int>& new_idx_dv, int in_capacity, int out_capacity, int in_offset, int out_offset, 
+    const thrust::device_ptr<const OPP_INT> new_idx_dp, int in_capacity, int out_capacity, int in_offset, int out_offset, 
     int size, int dimension)
 {
     switch (dimension) {
@@ -330,7 +252,7 @@ void copy_according_to_index(thrust::device_vector<T>* in_dat_dv, thrust::device
                 thrust::make_zip_iterator(
                     thrust::make_tuple(in_dat_dv->begin() + in_offset)
                 ), 
-                new_idx_dv.begin()), 
+                new_idx_dp), 
                 size, 
                 thrust::make_zip_iterator(
                     thrust::make_tuple(out_dat_dv->begin() + out_offset)));
@@ -343,7 +265,7 @@ void copy_according_to_index(thrust::device_vector<T>* in_dat_dv, thrust::device
                         (in_dat_dv->begin() + in_offset + in_capacity)
                     )
                 ), 
-                new_idx_dv.begin()), 
+                new_idx_dp), 
                 size, 
                 thrust::make_zip_iterator(
                     thrust::make_tuple(
@@ -359,7 +281,7 @@ void copy_according_to_index(thrust::device_vector<T>* in_dat_dv, thrust::device
                         (in_dat_dv->begin() + in_offset + (2 * in_capacity))
                     )
                 ), 
-                new_idx_dv.begin()), 
+                new_idx_dp), 
                 size, 
                 thrust::make_zip_iterator(
                     thrust::make_tuple(
@@ -377,7 +299,7 @@ void copy_according_to_index(thrust::device_vector<T>* in_dat_dv, thrust::device
                         (in_dat_dv->begin() + in_offset + (3 * in_capacity))
                     )
                 ), 
-                new_idx_dv.begin()), 
+                new_idx_dp), 
                 size, 
                 thrust::make_zip_iterator(
                     thrust::make_tuple(
@@ -394,10 +316,19 @@ void copy_according_to_index(thrust::device_vector<T>* in_dat_dv, thrust::device
 
 template <class T> 
 void copy_according_to_index(thrust::device_vector<T>* in_dat_dv, thrust::device_vector<T>* out_dat_dv, 
+    const thrust::device_vector<int>& new_idx_dv, int in_capacity, int out_capacity, 
+    int in_offset, int out_offset, int size, int dimension)
+{
+    copy_according_to_index<T>(in_dat_dv, out_dat_dv, new_idx_dv.data(), 
+        in_capacity, out_capacity, in_offset, out_offset, size, dimension);
+}
+
+template <class T> 
+void copy_according_to_index(thrust::device_vector<T>* in_dat_dv, thrust::device_vector<T>* out_dat_dv, 
     const thrust::device_vector<int>& new_idx_dv, int in_capacity, int out_capacity, int size, int dimension)
 {
-    copy_according_to_index<T>(in_dat_dv, out_dat_dv, new_idx_dv, in_capacity, out_capacity, 
-        0, 0, size, dimension);
+    copy_according_to_index<T>(in_dat_dv, out_dat_dv, new_idx_dv.data(), 
+        in_capacity, out_capacity, 0, 0, size, dimension);
 }
 
 /*******************************************************************************/
@@ -536,17 +467,32 @@ public:
             throw std::runtime_error(std::string("copy_dev_to_dev: ") + cudaGetErrorString(err));
         }
     }
-};
 
-/*******************************************************************************/
-template <typename T>
-T* opp_get_dev_raw_ptr(thrust::device_vector<T>& dv) {
-    return (T*)thrust::raw_pointer_cast(dv.data());
-}
-template <typename T>
-const T* opp_get_dev_raw_ptr(const thrust::device_vector<T>& dv) {
-    return (const T*)thrust::raw_pointer_cast(dv.data());
-}
+    // Copy host data to device symbol
+    template <typename T>
+    inline static void dev_copy_to_symbol(const T& symbol, T* data_h, const OPP_INT* new_data, 
+                                            size_t copy_count) {    
+        bool copy_symbol = false;
+        for (int i = 0; i < copy_count; i++) {
+            if (data_h[i] != new_data[i])
+                copy_symbol = true;
+        }
+        if (copy_symbol) {
+            memcpy(data_h, new_data, copy_count * sizeof(T));  
+            cudaError_t err = cudaMemcpyToSymbol(symbol, new_data, copy_count * sizeof(T));
+            if (err != cudaSuccess) {
+                throw std::runtime_error(std::string("dev_copy_to_symbol: ") + cudaGetErrorString(err));
+            }
+        }
+    }
+    template <typename T>
+    inline static void dev_copy_to_symbol(const T& symbol, const T* data_h, size_t copy_count) {    
+        cudaError_t err = cudaMemcpyToSymbol(symbol, data_h, copy_count * sizeof(T));
+        if (err != cudaSuccess) {
+            throw std::runtime_error(std::string("dev_copy_to_symbol: ") + cudaGetErrorString(err));
+        }
+    }
+};
 
 /*******************************************************************************/
 template <typename T>
@@ -578,3 +524,6 @@ inline void write_array_to_file(const T* array, size_t size, const std::string& 
 }
 
 /*******************************************************************************/
+// in opp_direct_hop_cuda.cu
+void opp_init_dh_device(opp_set set); 
+void opp_gather_dh_move_indices(opp_set set); // gathers all device global move info to the global mover for communication

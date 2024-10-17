@@ -255,16 +255,136 @@ public:
 //*******************************************************************************
 class CellMapper {
 
+// private:
 public:
-    // implementations in file opp_direct_hop_core.cpp
+    const std::shared_ptr<BoundingBox> boundingBox = nullptr;
+    const double gridSpacing = 0.0;
+    const double oneOverGridSpacing = 0.0;
+    const opp_point& minGlbCoordinate;  
+    const std::shared_ptr<Comm> comm = nullptr;
+    const int dim;
+
+    size_t globalGridDimsX = 0;
+    size_t globalGridDimsY = 0;
+    size_t globalGridDimsZ = 0;
+    size_t globalGridDimsXY = 0;
+    opp_uipoint localGridStart, localGridEnd;
+
+    size_t globalGridSize = 0;
+    
+    OPP_INT* structMeshToCellMapping = nullptr;         // This contain mapping to local cell indices
+    OPP_INT* structMeshToRankMapping = nullptr;         // This contain mapping to residing mpi rank
+
+    OPP_INT* structMeshToCellMapping_d = nullptr;       // This contain mapping to local cell indices
+    OPP_INT* structMeshToRankMapping_d = nullptr;       // This contain mapping to residing mpi rank
+
+    OPP_REAL* oneOverGridSpacing_d = nullptr;           // 1
+    OPP_REAL* minGlbCoordinate_d = nullptr;             // DIM
+    size_t* globalGridDims_d = nullptr;                 // DIM + 1 --> X, Y, Z, XY
+    size_t* globalGridSize_d = nullptr;                 // 1
+
+#ifdef USE_MPI        
+    MPI_Win win_structMeshToCellMapping;
+    MPI_Win win_structMeshToRankMapping;
+#endif
+
+public:
+    // implementations in file opp_direct_hop_xxx.yyy
     CellMapper(const std::shared_ptr<BoundingBox> boundingBox, const double gridSpacing, 
         const std::shared_ptr<Comm> comm = nullptr);
     ~CellMapper();
 
-    opp_point getCentroidOfBox(const opp_point& coordinate);
     void reduceInterNodeMappings(int callID);
-    void convertToLocalMappings(const opp_dat global_cell_id_dat);
     void createStructMeshMappingArrays();
+    void convertToLocalMappings(const opp_dat global_cell_id_dat);
+    void hostToDeviceTransferMappings();
+    void generateStructuredMesh(opp_set set, const opp_dat c_gbl_id, 
+            const std::function<void(const opp_point&, int&)>& all_cell_checker);
+
+    //***********************************
+    inline void init_host(const double gridSpacing)
+    {
+        const opp_point& minGblCoordinate = boundingBox->getGlobalMin();
+        const opp_point& maxGblCoordinate = boundingBox->getGlobalMax();
+
+        size_t ax = 0, ay = 0, az = 0;
+
+        { // removed this and added below due to decimal point issues
+            // globalGridDimsX = std::ceil((maxGblCoordinate.x - minGblCoordinate.x) * oneOverGridSpacing);
+            // globalGridDimsY = std::ceil((maxGblCoordinate.y - minGblCoordinate.y) * oneOverGridSpacing);
+            // globalGridDimsZ = std::ceil((maxGblCoordinate.z - minGblCoordinate.z) * oneOverGridSpacing);   
+        }
+        {
+            for (double z = minGblCoordinate.z; z < maxGblCoordinate.z; z += gridSpacing) az++;
+            for (double y = minGblCoordinate.y; y < maxGblCoordinate.y; y += gridSpacing) ay++;
+            for (double x = minGblCoordinate.x; x < maxGblCoordinate.x; x += gridSpacing) ax++; 
+            globalGridDimsX = ax + 1;
+            globalGridDimsY = ay + 1;
+            globalGridDimsZ = az + 1; 
+        }
+
+        globalGridDimsXY = (globalGridDimsX * globalGridDimsY);
+        globalGridSize = (globalGridDimsX * globalGridDimsY * globalGridDimsZ);
+
+        if (OPP_rank == OPP_ROOT)
+            opp_printf("CellMapper", "Global Grid Size - [%zu %zu %zu] gridSpacing [%2.10lE]", 
+                globalGridDimsX, globalGridDimsY, globalGridDimsZ, gridSpacing); 
+        
+        const opp_point& minLocalCoordinate = boundingBox->getLocalMin();
+        const opp_point& maxLocalCoordinate = boundingBox->getLocalMax();
+
+        // Find the local ranks grid start indices
+        ax = 0; ay = 0; az = 0;
+        for (double z = minGblCoordinate.z; (z < minLocalCoordinate.z); z += gridSpacing) az++;
+        for (double y = minGblCoordinate.y; (y < minLocalCoordinate.y); y += gridSpacing) ay++; 
+        for (double x = minGblCoordinate.x; (x < minLocalCoordinate.x); x += gridSpacing) ax++; 
+        localGridStart.x = ((ax == 0) ? 0 : (ax - 1));
+        localGridStart.y = ((ay == 0) ? 0 : (ay - 1));
+        localGridStart.z = ((az == 0) ? 0 : (az - 1));         
+
+        // Find the local ranks grid end indices
+        ax = 0; ay = 0; az = 0;
+        for (double z = minGblCoordinate.z; (z <= maxLocalCoordinate.z); z += gridSpacing) az++; 
+        for (double y = minGblCoordinate.y; (y <= maxLocalCoordinate.y); y += gridSpacing) ay++; 
+        for (double x = minGblCoordinate.x; (x <= maxLocalCoordinate.x); x += gridSpacing) ax++; 
+        localGridEnd.x = ((globalGridDimsX == ax) ? ax : (ax + 1));
+        localGridEnd.y = ((globalGridDimsY == ay) ? ay : (ay + 1));
+        localGridEnd.z = ((globalGridDimsZ == az) ? az : (az + 1));     
+
+        const size_t local_grid_size = (size_t)(localGridEnd.x - localGridStart.x) * (size_t)(localGridEnd.y - localGridStart.y) * 
+                                        (size_t)(localGridEnd.z - localGridStart.z);
+        if (OPP_DBG)
+            opp_printf("CellMapper", "Local Grid - Size [%zu] Min[%d %d %d] Max[%d %d %d]", 
+                local_grid_size, localGridStart.x, localGridStart.y, localGridStart.z, 
+                localGridEnd.x, localGridEnd.y, localGridEnd.z); 
+    }
+
+    //***********************************
+    inline opp_point getCentroidOfBox(const opp_point& coordinate) 
+    { 
+        opp_point centroid(MIN_REAL, MIN_REAL, MIN_REAL);
+        const opp_point& maxCoordinate = boundingBox->getGlobalMax();
+
+        switch (boundingBox->getDim()) {
+            case 1:
+                ASSIGN_CENTROID_TO_DIM(x); 
+                break;
+            case 2:
+                ASSIGN_CENTROID_TO_DIM(x);
+                ASSIGN_CENTROID_TO_DIM(y);
+                break;
+            case 3:
+                ASSIGN_CENTROID_TO_DIM(x);
+                ASSIGN_CENTROID_TO_DIM(y);
+                ASSIGN_CENTROID_TO_DIM(z);
+                break;
+            default:
+                std::cerr << "Error getCentroidOfBox: Dimension invalid " << 
+                                boundingBox->getDim() << std::endl;
+        }
+
+        return centroid;
+    }
 
     //***********************************
     inline size_t findStructuredCellIndex3D(const opp_point& position)  // Returns the global cell index
@@ -277,19 +397,19 @@ public:
         // Calculate the cell index mapping index
         const size_t index = xIndex + (yIndex * globalGridDimsX) + (zIndex * globalGridDimsXY);
 
-        return (index >= globalGridSize || index < 0) ? MAX_CELL_INDEX : index;
+        return (index >= globalGridSize) ? MAX_CELL_INDEX : index;
     }
     //***********************************
     inline size_t findStructuredCellIndex2D(const opp_point& position) // Returns the global cell index
     { 
         // Round to the nearest integer to minimize rounding errors
-        const int xIndex = static_cast<int>((position.x - minGlbCoordinate.x) * oneOverGridSpacing);
-        const int yIndex = static_cast<int>((position.y - minGlbCoordinate.y) * oneOverGridSpacing);
+        const size_t xIndex = static_cast<size_t>((position.x - minGlbCoordinate.x) * oneOverGridSpacing);
+        const size_t yIndex = static_cast<size_t>((position.y - minGlbCoordinate.y) * oneOverGridSpacing);
 
         // Calculate the cell index mapping index
-        const size_t index = ((size_t)(xIndex) + ((size_t)yIndex * globalGridDimsX));
+        const size_t index = xIndex + (yIndex * globalGridDimsX);
 
-        return (index >= globalGridSize || index < 0) ? MAX_CELL_INDEX : index;
+        return (index >= globalGridSize) ? MAX_CELL_INDEX : index;
     }
 
     //***********************************
@@ -345,7 +465,7 @@ public:
                 if ((i + 1) % line_break == 0) 
                     ss << "\n";
             }   
-            printf("%s\n", ss.str().c_str());
+            printf("[RANK - %d]\n%s\n", OPP_rank, ss.str().c_str());
         }
         else {
             opp_write_array_to_file(array, size, msg);
@@ -380,28 +500,27 @@ public:
     #endif
     }
 
-// private:
-    const std::shared_ptr<BoundingBox> boundingBox = nullptr;
-    const double gridSpacing = 0.0;
-    const double oneOverGridSpacing = 0.0;
-    const opp_point& minGlbCoordinate;  
-    const std::shared_ptr<Comm> comm = nullptr;
+    inline void convertToLocalMappings_seq(GlobalToLocalCellIndexMapper mapper)
+    {
+        for (size_t i = 0; i < globalGridSize; i++) {
+            if (structMeshToRankMapping[i] == OPP_rank) {   
 
-    size_t globalGridDimsX = 0;
-    size_t globalGridDimsY = 0;
-    size_t globalGridDimsZ = 0;
-    size_t globalGridDimsXY = 0;
-    opp_uipoint localGridStart, localGridEnd;
-
-    size_t globalGridSize = 0;
-    
-    int* structMeshToCellMapping = nullptr;         // This contain mapping to local cell indices
-    int* structMeshToRankMapping = nullptr;         // This contain mapping to residing mpi rank
-
-#ifdef USE_MPI        
-    MPI_Win win_structMeshToCellMapping;
-    MPI_Win win_structMeshToRankMapping;
-#endif
+                const int globalCID = (-1 * structMeshToCellMapping[i]);
+                if ((globalCID != MAX_CELL_INDEX) || (globalCID != (-1 * MAX_CELL_INDEX))) {               
+                    
+                    const int localCID = mapper.map(globalCID);             
+                    if (localCID != MAX_CELL_INDEX) {
+                        structMeshToCellMapping[i] = localCID;
+                    }
+                    else {
+                        opp_printf("CellMapper::convertToLocalMappings", 
+                            "Error: cell mapping at %d is invalid [gcid:%d] rank_map %d rank %d", 
+                            i, structMeshToCellMapping[i], structMeshToRankMapping[i], OPP_rank);
+                    }
+                }
+            }
+        }
+    }
 };
 
 }; // end namespace opp

@@ -72,11 +72,14 @@ class Scheme(Findable):
             "lang": self.lang,
             "config": self.getConfig(loop, config_overrides),
             "kernel_func": None,
+            "host_kernel_func": None,
         }
 
         try:
             if (not loop.fallback and self.canGenLoopHost(loop)) or force_generate:
+                args["host_kernel_func"] = self.translateHostKernel(loop, program, app, args["config"], kernel_idx)
                 args["kernel_func"] = self.translateKernel(loop, program, app, args["config"], kernel_idx)
+
         except Exception as e:
             print(f"Error: kernel translation for kernel {kernel_idx} ({loop.name}) failed ({self}):")
             print(f"  fallback: {loop.fallback}, can generate: {self.canGenLoopHost(loop)}, force_generate: {force_generate}")
@@ -212,6 +215,16 @@ class Scheme(Findable):
         kernel_idx: int,
     ) -> str:
         pass
+    
+    def translateHostKernel(
+        self,
+        loop: OP.Loop,
+        program: Program,
+        app: Application,
+        config: Dict[str, Any],
+        kernel_idx: int,
+    ) -> str:
+        return "// Host kernel not used"
 
     def matches(self, key: Tuple[Lang, Target]) -> bool:
         if not (isinstance(key, tuple) and len(key) == 2 and isinstance(key[0], Lang) and isinstance(key[1], Target)):

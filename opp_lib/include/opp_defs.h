@@ -53,6 +53,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <sys/time.h>
 #include <random>
 #include <unistd.h>
+#include <functional>
 
 #define OPP_INT int
 #define OPP_REAL double

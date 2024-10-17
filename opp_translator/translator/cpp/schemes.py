@@ -149,6 +149,21 @@ class CppCuda(Scheme):
 
         return ctk.writeSource(extracted_entities)
 
+    def translateHostKernel(
+        self,
+        loop: OP.Loop,
+        program: Program,
+        app: Application,
+        config: Dict[str, Any],
+        kernel_idx: int,
+    ) -> str:
+        kernel_entities = app.findEntities(loop.kernel, program)
+        if len(kernel_entities) == 0:
+            raise ParseError(f"unable to find kernel: {loop.kernel}")
+
+        extracted_entities = ctk.extractDependencies(kernel_entities, app)
+        return ctk.writeSource(extracted_entities)
+    
 Scheme.register(CppCuda)
 
 class CppHip(Scheme):
@@ -200,6 +215,16 @@ class CppHip(Scheme):
 
         return ctk.writeSource(extracted_entities)
 
+    def translateHostKernel(
+        self,
+        loop: OP.Loop,
+        program: Program,
+        app: Application,
+        config: Dict[str, Any],
+        kernel_idx: int,
+    ) -> str:
+        return "// Implement the hip host kernel"
+    
 Scheme.register(CppHip)
 
 class CppSycl(Scheme):
@@ -252,4 +277,14 @@ class CppSycl(Scheme):
 
         return ctk.writeSource(extracted_entities, ";")
 
+    def translateHostKernel(
+        self,
+        loop: OP.Loop,
+        program: Program,
+        app: Application,
+        config: Dict[str, Any],
+        kernel_idx: int,
+    ) -> str:
+        return "// Implement the sycl host kernel"
+    
 Scheme.register(CppSycl)

@@ -137,7 +137,7 @@ void opp_halo_destroy()
 #ifdef USE_MPI
     __opp_halo_destroy();
 
-    if (OPP_DBG) opp_printf("opp_halo_destroy", "Destroying sycl halo buffers START");
+    if (OPP_DBG) opp_printf("opp_halo_destroy", "Destroying cuda halo buffers START");
 
     for (auto& dat : opp_dats) {
         opp_mem::dev_free(dat->buffer_d_r);
@@ -153,7 +153,7 @@ void opp_halo_destroy()
         opp_mem::dev_free(import_nonexec_list_disps_d[i]);
     }
 
-    if (OPP_DBG) opp_printf("opp_halo_destroy", "Destroying sycl halo buffers END");
+    if (OPP_DBG) opp_printf("opp_halo_destroy", "Destroying cuda halo buffers END");
 #endif
 }
 
