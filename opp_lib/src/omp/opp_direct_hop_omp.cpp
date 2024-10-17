@@ -384,7 +384,6 @@ void CellMapper::convertToLocalMappings(const opp_dat global_cell_id_dat) {
 
     waitBarrier();
 #endif
-
     if (OPP_DBG) 
         opp_printf("CellMapper", "convertToLocalMappings END");
 }
