@@ -71,14 +71,8 @@ void opp_par_loop_all__init_boundary_pot_kernel(opp_set set, opp_iterate_type,
     const int iter_size = opp_mpi_halo_exchanges_grouped(set, nargs, args, Device_GPU);
  
  
-    if (opp_k1_dat0_stride != args[0].dat->set->set_capacity) {
-        opp_k1_dat0_stride = args[0].dat->set->set_capacity;
-        cutilSafeCall(cudaMemcpyToSymbol(opp_k1_dat0_stride_d, &opp_k1_dat0_stride, sizeof(OPP_INT)));
-    }
-    if (opp_k1_dat1_stride != args[1].dat->set->set_capacity) {
-        opp_k1_dat1_stride = args[1].dat->set->set_capacity;
-        cutilSafeCall(cudaMemcpyToSymbol(opp_k1_dat1_stride_d, &opp_k1_dat1_stride, sizeof(OPP_INT)));
-    }
+    opp_mem::dev_copy_to_symbol<OPP_INT>(opp_k1_dat0_stride_d, &opp_k1_dat0_stride, &(args[0].dat->set->set_capacity), 1);
+    opp_mem::dev_copy_to_symbol<OPP_INT>(opp_k1_dat1_stride_d, &opp_k1_dat1_stride, &(args[1].dat->set->set_capacity), 1);
 
 #ifdef OPP_BLOCK_SIZE_1
     const int block_size = OPP_BLOCK_SIZE_1;

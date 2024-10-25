@@ -295,7 +295,7 @@ void opp_particle_move__{{lh.kernel}}(opp_set set, opp_map c2c_map, opp_map p2c_
     const OPP_INT c2c_stride = c2c_map->from->size + c2c_map->from->exec_size + c2c_map->from->nonexec_size;
 
     opp_mem::dev_copy_to_symbol<OPP_INT>(OPP_cells_set_size_d, &OPP_cells_set_size, &(set->cells_set->size), 1);
-    opp_mem::dev_copy_to_symbol<OPP_INT>(opp_k2_c2c_map_stride_d, &opp_k2_c2c_map_stride, &c2c_stride, 1);
+    opp_mem::dev_copy_to_symbol<OPP_INT>(opp_k{{kernel_idx}}_c2c_map_stride_d, &opp_k{{kernel_idx}}_c2c_map_stride, &c2c_stride, 1);
 
     opp_mpi_halo_wait_all(nargs, args);
     {% for arg in lh.args|gbl %}

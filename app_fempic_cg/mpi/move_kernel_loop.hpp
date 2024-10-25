@@ -214,177 +214,6 @@ void opp_particle_move__move_kernel(opp_set set, opp_map c2c_map, opp_map p2c_ma
     opp_profiler->end("move_kernel");
 }
 
-// ----------------------------------------------------------------------------
-inline void gen_dh_structured_mesh(opp_set set, const opp_dat c_gbl_id, opp_map c2c_map,
-        const int nargs, opp_arg* args) { 
-
-    if (OPP_rank == 0)            
-        opp_printf("APP", "gen_dh_structured_mesh START cells [%s] global grid dims %zu %zu %zu",
-            set->name, cellMapper->globalGridDimsX, cellMapper->globalGridDimsY, cellMapper->globalGridDimsZ);
-
-    const int set_size_inc_halo = set->size + set->exec_size + set->nonexec_size;
-    if (set_size_inc_halo <= 0) {
-        opp_printf("APP", "Error... set_size_inc_halo <= 0 for set %s", set->name);
-        opp_abort("Error... APP set_size_inc_halo <= 0");
-    }
-
-
-    std::map<size_t, opp_point> removed_coords;
-    const opp_point& min_glb_coords = boundingBox->getGlobalMin();
-    const opp_point& maxCoordinate = boundingBox->getLocalMax(); // required for GET_VERT define
-    opp_move_hop_iter_one_flag = true;
-
-    // lambda function for dh mesh search loop
-    auto all_cell_checker = [&](const opp_point& point, int& cid) {          
- 
-        // we dont want to change the original arrays during dh mesh generation, hence duplicate except OPP_READ
-        OPP_REAL arg1_temp[4];
-
-        for (int ci = 0; ci < set->size; ++ci) {
-            opp_move_status_flag = OPP_NEED_MOVE;  
-
-            int temp_ci = ci; // we dont want to get iterating ci changed within the kernel, hence get a copy
-            
-            opp_p2c = &(temp_ci);           
-            opp_c2c = &((c2c_map->map)[temp_ci * 4]);
-    
-
-            opp_k4::move_kernel(
-                (const OPP_REAL*)&point,
-                arg1_temp, // p_lc| OPP_WRITE
-                (const OPP_REAL *)args[2].data + (temp_ci * 1), // c_volume| OPP_READ
-                (const OPP_REAL *)args[3].data + (temp_ci * 16) // c_det| OPP_READ
-            );
-            if (opp_move_status_flag == OPP_MOVE_DONE) {       
-                cid = temp_ci;
-                break;
-            }
-        }
-    };
-
-    cellMapper->createStructMeshMappingArrays();
-
-    // Step 1 : Get centroids of the structured mesh cells and try to relate them to unstructured mesh indices
-    if (OPP_rank == 0) opp_printf("APP", "gen_dh_structured_mesh Step 1 Start");
-    opp_profiler->start("Setup_Mover_s1");
-    double x = 0.0, y = 0.0, z = 0.0;
-    
-    for (size_t dz = cellMapper->localGridStart.z; dz < cellMapper->localGridEnd.z; dz++) {       
-        z = min_glb_coords.z + dz * cellMapper->gridSpacing;        
-        for (size_t dy = cellMapper->localGridStart.y; dy < cellMapper->localGridEnd.y; dy++) {            
-            y = min_glb_coords.y + dy * cellMapper->gridSpacing;           
-            for (size_t dx = cellMapper->localGridStart.x; dx < cellMapper->localGridEnd.x; dx++) {                
-                x = min_glb_coords.x + dx * cellMapper->gridSpacing;               
-                
-                size_t index = (dx + dy * cellMapper->globalGridDimsX + dz * cellMapper->globalGridDimsXY); 
-
-                const opp_point centroid = cellMapper->getCentroidOfBox(opp_point(x, y ,z));
-                int cid = MAX_CELL_INDEX;
-
-                all_cell_checker(centroid, cid); // Find in which cell this centroid lies
-
-                if (cid == MAX_CELL_INDEX) {
-                    removed_coords.insert(std::make_pair(index, opp_point(x, y ,z)));
-                }
-                else if (cid < set->size) { // write only if the structured cell belong to the current MPI rank                    
-                    cellMapper->enrichStructuredMesh(index, ((int*)c_gbl_id->data)[cid], OPP_rank);
-                }
-            }
-        }
-    }
-    opp_profiler->end("Setup_Mover_s1");
-
-    // Step 2 : For MPI, get the inter-node values reduced to the structured mesh
-    if (OPP_rank == 0) opp_printf("APP", "gen_dh_structured_mesh Step 2 Start");
-    opp_profiler->start("Setup_Mover_s2");
-#ifdef USE_MPI
-    cellMapper->reduceInterNodeMappings(1);
-
-    // The marked structured cells from this rank might be filled by another rank, so if already filled, 
-    // no need to recalculate from current rank
-    for (auto it = removed_coords.begin(); it != removed_coords.end(); ) {
-        size_t removed_idx = it->first;
-        if (cellMapper->structMeshToRankMapping[removed_idx] != MAX_CELL_INDEX) {
-            it = removed_coords.erase(it); // This structured index is already written by another rank
-            // opp_printf("APP", "index %zu already in %d", this->structMeshToRankMapping[removed_idx], removed_idx);
-        } 
-        else {
-            ++it;
-        } 
-    }
-
-    cellMapper->waitBarrier();    
-#endif
-    opp_profiler->end("Setup_Mover_s2");
-
-    // Step 3 : Iterate over NEED_REMOVE points, Check whether atleast one vertex of the structured mesh is within 
-    //          an unstructured mesh cell. If multiple are found, get the minimum cell index to match with MPI
-    if (OPP_rank == 0) opp_printf("APP", "gen_dh_structured_mesh Step 3 Start");
-    opp_profiler->start("Setup_Mover_s3");
-    for (auto& p : removed_coords) {
-
-        const size_t index = p.first;
-        double &x = p.second.x, &y = p.second.y, &z = p.second.z;
-        
-        const double gs = cellMapper->gridSpacing;
-        int most_suitable_cid = MAX_CELL_INDEX, most_suitable_gbl_cid = MAX_CELL_INDEX;
-
-        std::array<opp_point,8> vertices = {
-            opp_point(GET_VERT(x,x),    GET_VERT(y,y),    GET_VERT(z,z)),
-            opp_point(GET_VERT(x,x),    GET_VERT(y,y+gs), GET_VERT(z,z)),
-            opp_point(GET_VERT(x,x+gs), GET_VERT(y,y),    GET_VERT(z,z)),
-            opp_point(GET_VERT(x,x+gs), GET_VERT(y,y+gs), GET_VERT(z,z)),       
-            opp_point(GET_VERT(x,x),    GET_VERT(y,y),    GET_VERT(z,z+gs)),
-            opp_point(GET_VERT(x,x),    GET_VERT(y,y+gs), GET_VERT(z,z+gs)),
-            opp_point(GET_VERT(x,x+gs), GET_VERT(y,y),    GET_VERT(z,z+gs)),
-            opp_point(GET_VERT(x,x+gs), GET_VERT(y,y+gs), GET_VERT(z,z+gs)),
-
-        };
-
-        for (const auto& point : vertices) {
-            int cid = MAX_CELL_INDEX;
-
-            all_cell_checker(point, cid);
-
-            if ((cid != MAX_CELL_INDEX) && (cid < set->size)) { 
-                const int gbl_cid = ((OPP_INT*)c_gbl_id->data)[cid];
-                if (most_suitable_gbl_cid > gbl_cid) {
-                    most_suitable_gbl_cid = gbl_cid;
-                    most_suitable_cid = cid;
-                }
-            }
-        }    
-
-        // Allow neighbours to write on-behalf of the current rank, to reduce issues
-        cellMapper->lockWindows();
-        const int avail_gbl_cid = cellMapper->structMeshToCellMapping[index]; 
-        if ((most_suitable_gbl_cid != MAX_CELL_INDEX) && (most_suitable_gbl_cid < avail_gbl_cid) && 
-                    (most_suitable_cid < set->size)) {        
-            cellMapper->enrichStructuredMesh(index, most_suitable_gbl_cid, OPP_rank);      
-        }
-        cellMapper->unlockWindows();
-    }
-    opp_profiler->end("Setup_Mover_s3");
-
-    // Step 4 : For MPI, get the inter-node values reduced to the structured mesh
-    if (OPP_rank == 0) opp_printf("APP", "gen_dh_structured_mesh Step 4 Start");
-    opp_profiler->start("Setup_Mover_s4");
-#ifdef USE_MPI
-    cellMapper->reduceInterNodeMappings(2);
-#endif
-    opp_profiler->end("Setup_Mover_s4");
-
-    // Step 5 : For MPI, convert the global cell coordinates to rank local coordinates for increased performance
-    if (OPP_rank == 0) opp_printf("APP", "gen_dh_structured_mesh Step 5 Start");
-    opp_profiler->start("Setup_Mover_s5");
-#ifdef USE_MPI
-    cellMapper->convertToLocalMappings(c_gbl_id);
-#endif
-    opp_profiler->end("Setup_Mover_s5");
-
-    if (OPP_rank == 0) opp_printf("APP", "gen_dh_structured_mesh DONE");
-}
-
 void opp_init_direct_hop_cg(double grid_spacing, int dim, const opp_dat c_gbl_id, const opp::BoundingBox& b_box, 
     opp_map c2c_map, opp_map p2c_map,
     opp_arg arg0, // p_pos | OPP_READ
@@ -398,13 +227,14 @@ void opp_init_direct_hop_cg(double grid_spacing, int dim, const opp_dat c_gbl_id
 
     if (useGlobalMove) {
 
-        const int nargs = 4;
+        const int nargs = 5;
         opp_arg args[nargs];
 
         args[0] = arg0;
         args[1] = arg1;
         args[2] = arg2;
         args[3] = arg3;
+        args[4] = opp_arg_dat(p2c_map->p2c_dat, OPP_RW); // required to make dirty or should manually make it dirty
 
 #ifdef USE_MPI
         opp_mpi_halo_exchanges(c_gbl_id->set, nargs, args);
@@ -418,7 +248,36 @@ void opp_init_direct_hop_cg(double grid_spacing, int dim, const opp_dat c_gbl_id
         boundingBox = std::make_shared<opp::BoundingBox>(b_box);
         cellMapper = std::make_shared<opp::CellMapper>(boundingBox, grid_spacing, comm);
 
-        gen_dh_structured_mesh(c_gbl_id->set, c_gbl_id, c2c_map, nargs, args);
+        const int c_set_size = c_gbl_id->set->size;
+
+        // lambda function for dh mesh search loop
+        auto all_cell_checker = [&](const opp_point& point, int& cid) {          
+ 
+            // we dont want to change the original arrays during dh mesh generation, hence duplicate except OPP_READ
+            OPP_REAL arg1_temp[4];
+            for (int ci = 0; ci < c_set_size; ++ci) {
+                opp_move_status_flag = OPP_NEED_MOVE;  
+                opp_move_hop_iter_one_flag = true;
+
+                int temp_ci = ci; // we dont want to get iterating ci changed within the kernel, hence get a copy
+                
+                opp_p2c = &(temp_ci);           
+                opp_c2c = &((c2c_map->map)[temp_ci * 4]);
+
+                opp_k4::move_kernel(
+                    (const OPP_REAL*)&point,
+                    arg1_temp, // p_lc| OPP_WRITE
+                    (const OPP_REAL *)args[2].data + (temp_ci * 1), // c_volume| OPP_READ
+                    (const OPP_REAL *)args[3].data + (temp_ci * 16) // c_det| OPP_READ
+                );
+                if (opp_move_status_flag == OPP_MOVE_DONE) {       
+                    cid = temp_ci;
+                    break;
+                }
+            }
+        };
+        
+        cellMapper->generateStructuredMesh(c_gbl_id->set, c_gbl_id, all_cell_checker);
 
         opp_profiler->reg("GlbToLocal");
         opp_profiler->reg("GblMv_Move");

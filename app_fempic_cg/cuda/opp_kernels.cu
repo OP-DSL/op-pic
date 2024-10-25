@@ -35,7 +35,15 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //*********************************************
 
 #include "opp_cuda.h"
+#include "device_kernels/cuda_inline_kernels.h"
 
+OPP_REAL CONST_spwt[1];
+OPP_REAL CONST_ion_velocity[1];
+OPP_REAL CONST_dt[1];
+OPP_REAL CONST_plasma_den[1];
+OPP_REAL CONST_mass[1];
+OPP_REAL CONST_charge[1];
+OPP_REAL CONST_wall_potential[1];
 
 __constant__ OPP_REAL CONST_spwt_d[1];
 __constant__ OPP_REAL CONST_ion_velocity_d[1];
@@ -44,11 +52,6 @@ __constant__ OPP_REAL CONST_plasma_den_d[1];
 __constant__ OPP_REAL CONST_mass_d[1];
 __constant__ OPP_REAL CONST_charge_d[1];
 __constant__ OPP_REAL CONST_wall_potential_d[1];
-    
-__constant__ int OPP_cells_set_size_d;
-int OPP_cells_set_size;
-
-__constant__ int OPP_comm_iteration_d;
 
 void opp_decl_const_impl(int dim, int size, char* data, const char* name) {
     
@@ -57,30 +60,37 @@ void opp_decl_const_impl(int dim, int size, char* data, const char* name) {
 
     if (!strcmp(name, "CONST_spwt")) {
         cutilSafeCall(cudaMemcpyToSymbol(CONST_spwt_d, data, dim * size));
+        std::memcpy(&CONST_spwt, data, (size*dim));
         return;
     }
     if (!strcmp(name, "CONST_ion_velocity")) {
         cutilSafeCall(cudaMemcpyToSymbol(CONST_ion_velocity_d, data, dim * size));
+        std::memcpy(&CONST_ion_velocity, data, (size*dim));
         return;
     }
     if (!strcmp(name, "CONST_dt")) {
         cutilSafeCall(cudaMemcpyToSymbol(CONST_dt_d, data, dim * size));
+        std::memcpy(&CONST_dt, data, (size*dim));
         return;
     }
     if (!strcmp(name, "CONST_plasma_den")) {
         cutilSafeCall(cudaMemcpyToSymbol(CONST_plasma_den_d, data, dim * size));
+        std::memcpy(&CONST_plasma_den, data, (size*dim));
         return;
     }
     if (!strcmp(name, "CONST_mass")) {
         cutilSafeCall(cudaMemcpyToSymbol(CONST_mass_d, data, dim * size));
+        std::memcpy(&CONST_mass, data, (size*dim));
         return;
     }
     if (!strcmp(name, "CONST_charge")) {
         cutilSafeCall(cudaMemcpyToSymbol(CONST_charge_d, data, dim * size));
+        std::memcpy(&CONST_charge, data, (size*dim));
         return;
     }
     if (!strcmp(name, "CONST_wall_potential")) {
         cutilSafeCall(cudaMemcpyToSymbol(CONST_wall_potential_d, data, dim * size));
+        std::memcpy(&CONST_wall_potential, data, (size*dim));
         return;
     }
 

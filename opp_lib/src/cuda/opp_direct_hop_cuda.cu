@@ -32,6 +32,10 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "opp_direct_hop_core.h"
 #include <opp_cuda.h>
 
+#ifdef USE_OMP
+#include <omp.h>
+#endif
+
 //*******************************************************************************
 using namespace opp;
 
@@ -465,15 +469,23 @@ void CellMapper::generateStructuredMesh(opp_set set, const opp_dat c_gbl_id,
 
     createStructMeshMappingArrays();
 
+#ifdef USE_OMP
+    const int omp_nthreads = omp_get_max_threads();
+    opp_printf("OPP", "generateStructuredMesh omp_nthreads %d", omp_nthreads);
+#endif
+
     // Step 1 : Get centroids of the structured mesh cells and try to relate them to unstructured mesh indices
     if (OPP_rank == 0) opp_printf("OPP", "generateStructuredMesh Step 1 Start");
     opp_profiler->start("Setup_Mover_s1");
     double x = 0.0, y = 0.0, z = 0.0;
-    
+
+#ifdef USE_OMP
+    #pragma omp parallel for private(x,y,z) num_threads(6)
+#endif    
     for (size_t dz = localGridStart.z; dz < localGridEnd.z; dz++) {       
         z = min_glb_coords.z + dz * gridSpacing;        
         for (size_t dy = localGridStart.y; dy < localGridEnd.y; dy++) {            
-            y = min_glb_coords.y + dy * gridSpacing;           
+            y = min_glb_coords.y + dy * gridSpacing;
             for (size_t dx = localGridStart.x; dx < localGridEnd.x; dx++) {                
                 x = min_glb_coords.x + dx * gridSpacing;               
                 
@@ -485,7 +497,14 @@ void CellMapper::generateStructuredMesh(opp_set set, const opp_dat c_gbl_id,
                 all_cell_checker(centroid, cid); // Find in which cell this centroid lies
 
                 if (cid == MAX_CELL_INDEX) {
+#ifdef USE_OMP
+                    #pragma omp critical
+                    {
+                        removed_coords.insert(std::make_pair(index, opp_point(x, y ,z)));
+                    }
+#else
                     removed_coords.insert(std::make_pair(index, opp_point(x, y ,z)));
+#endif
                 }
                 else if (cid < set->size) { // write only if the structured cell belong to the current MPI rank                    
                     enrichStructuredMesh(index, ((int*)c_gbl_id->data)[cid], OPP_rank);
@@ -522,10 +541,33 @@ void CellMapper::generateStructuredMesh(opp_set set, const opp_dat c_gbl_id,
     //          an unstructured mesh cell. If multiple are found, get the minimum cell index to match with MPI
     if (OPP_rank == 0) opp_printf("OPP", "generateStructuredMesh Step 3 Start");
     opp_profiler->start("Setup_Mover_s3");
+#ifdef USE_OMP 
+    std::vector<size_t> removed_coords_keys;
+    removed_coords_keys.reserve(removed_coords.size());
+    for (const auto& pair : removed_coords)
+        removed_coords_keys.push_back(pair.first);
+
+    std::vector<std::vector<std::pair<int, int>>> tmp_add_per_thr;
+    tmp_add_per_thr.resize(omp_nthreads);
+
+    #pragma omp parallel for num_threads(6)
+    for (int thr = 0; thr < omp_nthreads; thr++)
+    {
+        const size_t start  = (removed_coords_keys.size() * thr) / omp_nthreads;
+        const size_t finish = (removed_coords_keys.size() * (thr+1)) / omp_nthreads;
+      
+        for (size_t i = start; i < finish; i++)
+        {
+
+        const size_t index = removed_coords_keys[i];
+        opp_point& p = removed_coords[index];
+        double &x = p.x, &y = p.y, &z = p.z;
+#else
     for (auto& p : removed_coords) {
 
         const size_t index = p.first;
         double &x = p.second.x, &y = p.second.y, &z = p.second.z;
+#endif
         
         const double gs = gridSpacing;
         int most_suitable_cid = MAX_CELL_INDEX, most_suitable_gbl_cid = MAX_CELL_INDEX;
@@ -552,13 +594,23 @@ void CellMapper::generateStructuredMesh(opp_set set, const opp_dat c_gbl_id,
         }    
 
         // Allow neighbours to write on-behalf of the current rank, to reduce issues
+#ifndef USE_OMP
         lockWindows();
+#endif
         const int avail_gbl_cid = structMeshToCellMapping[index]; 
         if ((most_suitable_gbl_cid != MAX_CELL_INDEX) && (most_suitable_gbl_cid < avail_gbl_cid) && 
-                    (most_suitable_cid < set->size)) {        
-            enrichStructuredMesh(index, most_suitable_gbl_cid, OPP_rank);      
+                    (most_suitable_cid < set->size)) {
+#ifdef USE_OMP
+            tmp_add_per_thr[thr].push_back(std::make_pair(index, most_suitable_gbl_cid));
+#else
+            enrichStructuredMesh(index, most_suitable_gbl_cid, OPP_rank);
+#endif     
         }
+#ifndef USE_OMP
         unlockWindows();
+#else
+    }
+#endif
     }
     opp_profiler->end("Setup_Mover_s3");
 
@@ -622,7 +674,9 @@ void opp_init_dh_device(opp_set set)
         
         if (dh_indices_d.move_count == nullptr)
             dh_indices_d.move_count = opp_mem::dev_malloc<OPP_INT>(1);  
-if (OPP_DBG) opp_printf("OPP", "opp_init_dh_device JJJJJ %d %d", dh_indices_h.capacity, dh_indices_d.capacity);    
+        
+        if (OPP_DBG) opp_printf("OPP", "opp_init_dh_device capacities %d %d", 
+                        dh_indices_h.capacity, dh_indices_d.capacity);    
     }
 
     *(dh_indices_h.move_count) = 0;
@@ -631,6 +685,7 @@ if (OPP_DBG) opp_printf("OPP", "opp_init_dh_device JJJJJ %d %d", dh_indices_h.ca
     if (OPP_DBG) opp_printf("OPP", "opp_init_dh_device END");
 }
 
+#ifdef USE_MPI 
 //*******************************************************************************
 // gathers all global move information into the global mover for communication
 void opp_gather_dh_move_indices(opp_set set)
@@ -840,3 +895,4 @@ void dh_particle_packer_gpu::unpack(opp_set set, const std::map<int, std::vector
     if (OPP_DBG) 
         opp_printf("dh_particle_packer_gpu", "Unpack END");
 }
+#endif

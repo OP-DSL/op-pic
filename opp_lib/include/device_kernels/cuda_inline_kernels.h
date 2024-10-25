@@ -212,6 +212,25 @@ __inline__ __device__ size_t opp_dev_findStructuredCellIndex2D(const OPP_REAL* p
 }
 
 //*******************************************************************************
+__inline__ __device__ size_t opp_dev_findStructuredCellIndex3D(const OPP_REAL* pos, 
+            const OPP_REAL* oneOverGridSpace, const OPP_REAL* minGlbCoordinate, 
+            const size_t* globalGridDims, const size_t* globalGridSize)
+{
+    // Round to the nearest integer to minimize rounding errors
+    const size_t xIndex = (size_t)((pos[0 * cellMapper_pos_stride_d] - minGlbCoordinate[0]) * 
+                                            oneOverGridSpace[0]);
+    const size_t yIndex = (size_t)((pos[1 * cellMapper_pos_stride_d] - minGlbCoordinate[1]) * 
+                                            oneOverGridSpace[0]);
+    const size_t zIndex = (size_t)((pos[2 * cellMapper_pos_stride_d] - minGlbCoordinate[2]) * 
+                                            oneOverGridSpace[0]);
+
+    // Calculate the cell index mapping index
+    const size_t index = xIndex + (yIndex * globalGridDims[0]) + (zIndex * globalGridDims[3]);
+
+    return (index >= globalGridSize[0]) ? MAX_CELL_INDEX : index;
+}
+
+//*******************************************************************************
 __inline__ __device__ void opp_dev_remove_dh_particle(OPP_INT& p2c, const OPP_INT part_idx,
             OPP_INT *__restrict__ remove_count, OPP_INT *__restrict__ remove_part_indices) 
 {
@@ -229,6 +248,64 @@ __inline__ __device__ void opp_dev_move_dh_particle(const OPP_INT part_idx, cons
     arr_part_idx[moveArrayIndex] = part_idx;
     arr_rank[moveArrayIndex] = rank;
     arr_cid[moveArrayIndex] = cid;
+}
+
+//*******************************************************************************
+__inline__ __device__ void opp_dev_checkForGlobalMove(
+    const size_t struct_cell_id,
+    const int part_idx, 
+    OPP_INT* __restrict__ p2c_map,
+    const OPP_INT* __restrict__ struct_mesh_to_cell_map, 
+    const OPP_INT* __restrict__ struct_mesh_to_rank_map,
+    OPP_INT* __restrict__ remove_count, 
+    OPP_INT* __restrict__ remove_part_indices,
+    OPP_INT* __restrict__ move_part_indices, 
+    OPP_INT* __restrict__ move_cell_indices, 
+    OPP_INT* __restrict__ move_rank_indices, 
+    OPP_INT* __restrict__ move_count) 
+{
+    if (struct_cell_id == MAX_CELL_INDEX) { // This happens when point is out of the unstructured mesh      
+        opp_dev_remove_dh_particle(p2c_map[part_idx], part_idx, remove_count, remove_part_indices);
+        return;
+    }
+
+#ifdef USE_MPI
+    const OPP_INT struct_cell_rank = struct_mesh_to_rank_map[struct_cell_id];
+
+    // Check whether the paticles need global moving, if yes start global moving process, 
+    // if no, move to the closest local cell
+    if (struct_cell_rank != OPP_rank_d) {
+
+        if (struct_cell_rank == MAX_CELL_INDEX) { 
+            opp_dev_remove_dh_particle(p2c_map[part_idx], part_idx, remove_count, remove_part_indices);
+            return;
+        }
+
+        // Due to renumbering local cell indices will be different to global, hence do global comm with global indices
+        const OPP_INT unstruct_cell_id = struct_mesh_to_cell_map[struct_cell_id];
+
+        if (unstruct_cell_id == MAX_CELL_INDEX) {
+            opp_dev_remove_dh_particle(p2c_map[part_idx], part_idx, remove_count, remove_part_indices);
+            return;
+        }
+
+        // if the new rank is not the current rank, mark the particle to be sent via global comm
+        opp_dev_move_dh_particle(part_idx, struct_cell_rank, unstruct_cell_id, move_count, 
+                                    move_part_indices, move_cell_indices, move_rank_indices);
+        
+        // remove the dh moved particle from the current rank
+        opp_dev_remove_dh_particle(p2c_map[part_idx], part_idx, remove_count, remove_part_indices);
+        return;
+    }
+    else
+#endif
+    {
+        p2c_map[part_idx] = struct_mesh_to_cell_map[struct_cell_id];           
+        if (p2c_map[part_idx] == MAX_CELL_INDEX) { // Particle is outside the mesh, need to remove
+            opp_dev_remove_dh_particle(p2c_map[part_idx], part_idx, remove_count, remove_part_indices);
+            return;
+        }
+    }
 }
 
 //*******************************************************************************
@@ -254,53 +331,45 @@ __global__ void opp_dev_checkForGlobalMove2D_kernel(
     const int part_idx = thread_id + start;  
 
     if (part_idx < end) {
-
         const size_t struct_cell_id = opp_dev_findStructuredCellIndex2D(p_pos + part_idx,  
-                                                            oneOverGridSpacing, minGlbCoordinate, 
-                                                            globalGridDims, globalGridSize);
+                                                    oneOverGridSpacing, minGlbCoordinate, 
+                                                    globalGridDims, globalGridSize);
         
-        if (struct_cell_id == MAX_CELL_INDEX) { // This happens when point is out of the unstructured mesh
-            
-            opp_dev_remove_dh_particle(p2c_map[part_idx], part_idx, remove_count, remove_part_indices);
-            return;
-        }
+        opp_dev_checkForGlobalMove(struct_cell_id, part_idx, p2c_map, struct_mesh_to_cell_map, 
+            struct_mesh_to_rank_map, remove_count, remove_part_indices, move_part_indices, 
+            move_cell_indices, move_rank_indices, move_count);
+    }
+}
 
-#ifdef USE_MPI
-        const OPP_INT struct_cell_rank = struct_mesh_to_rank_map[struct_cell_id];
+//*******************************************************************************
+__global__ void opp_dev_checkForGlobalMove3D_kernel(
+    const OPP_REAL* __restrict__ p_pos, 
+    OPP_INT* __restrict__ p2c_map,
+    const OPP_INT* __restrict__ struct_mesh_to_cell_map, 
+    const OPP_INT* __restrict__ struct_mesh_to_rank_map,
+    const OPP_REAL* __restrict__ oneOverGridSpacing, 
+    const OPP_REAL* __restrict__ minGlbCoordinate, 
+    const size_t* __restrict__ globalGridDims, 
+    const size_t* __restrict__ globalGridSize,
+    OPP_INT* __restrict__ remove_count, 
+    OPP_INT* __restrict__ remove_part_indices,
+    OPP_INT* __restrict__ move_part_indices, 
+    OPP_INT* __restrict__ move_cell_indices, 
+    OPP_INT* __restrict__ move_rank_indices, 
+    OPP_INT* __restrict__ move_count, 
+    const OPP_INT start, 
+    const OPP_INT end) 
+{
+    const int thread_id = threadIdx.x + blockIdx.x * blockDim.x;
+    const int part_idx = thread_id + start;  
 
-        // Check whether the paticles need global moving, if yes start global moving process, 
-        // if no, move to the closest local cell
-        if (struct_cell_rank != OPP_rank_d) {
-
-            if (struct_cell_rank == MAX_CELL_INDEX) { 
-                opp_dev_remove_dh_particle(p2c_map[part_idx], part_idx, remove_count, remove_part_indices);
-                return;
-            }
-
-            // Due to renumbering local cell indices will be different to global, hence do global comm with global indices
-            const OPP_INT unstruct_cell_id = struct_mesh_to_cell_map[struct_cell_id];
-
-            if (unstruct_cell_id == MAX_CELL_INDEX) {
-                opp_dev_remove_dh_particle(p2c_map[part_idx], part_idx, remove_count, remove_part_indices);
-                return;
-            }
-
-            // if the new rank is not the current rank, mark the particle to be sent via global comm
-            opp_dev_move_dh_particle(part_idx, struct_cell_rank, unstruct_cell_id, move_count, 
-                                        move_part_indices, move_cell_indices, move_rank_indices);
-            
-            // remove the dh moved particle from the current rank
-            opp_dev_remove_dh_particle(p2c_map[part_idx], part_idx, remove_count, remove_part_indices);
-            return;
-        }
-        else
-#endif
-        {
-            p2c_map[part_idx] = struct_mesh_to_cell_map[struct_cell_id];           
-            if (p2c_map[part_idx] == MAX_CELL_INDEX) { // Particle is outside the mesh, need to remove
-                opp_dev_remove_dh_particle(p2c_map[part_idx], part_idx, remove_count, remove_part_indices);
-                return;
-            }
-        }
+    if (part_idx < end) {
+        const size_t struct_cell_id = opp_dev_findStructuredCellIndex3D(p_pos + part_idx,  
+                                                    oneOverGridSpacing, minGlbCoordinate, 
+                                                    globalGridDims, globalGridSize);
+        
+        opp_dev_checkForGlobalMove(struct_cell_id, part_idx, p2c_map, struct_mesh_to_cell_map, 
+            struct_mesh_to_rank_map, remove_count, remove_part_indices, move_part_indices, 
+            move_cell_indices, move_rank_indices, move_count);
     }
 }
