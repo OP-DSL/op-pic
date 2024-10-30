@@ -38,6 +38,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <sys/types.h>
 #include <unistd.h>
 #include <random>
+#include <zlib.h>
 
 //********************************************************************************
 char *copy_str(char const *src) 
@@ -394,9 +395,6 @@ void reset_seed()
 }
 
 //********************************************************************************
-/*******************************************************************************
-* Check if a file exists
-*******************************************************************************/
 int file_exist(char const *filename) {
     struct stat buffer;
     return (stat(filename, &buffer) == 0);
@@ -406,6 +404,7 @@ const char *doubles[] = {"double", "double:soa", "real(8)", "double precision"};
 const char *floats[] = {"float", "float:soa", "real(4)", "real"};
 const char *ints[] = {"int", "int:soa", "integer(4)", "integer"};
 
+//********************************************************************************
 bool opp_type_equivalence(const char *a, const char *b) {
 
     for (int i = 0; i < 4; i++) {
@@ -436,4 +435,61 @@ bool opp_type_equivalence(const char *a, const char *b) {
         }
     }
     return false;
+}
+
+//********************************************************************************
+// Function to write compressed binary data
+void opp_compress_write(const std::string &filename, 
+                        const int* data, const size_t count) {
+
+    uLong sourceSize = count * sizeof(int);
+    uLong destSize = compressBound(sourceSize);
+    std::vector<Bytef> compressedData(destSize);
+
+    // Compress the integer data
+    if (compress(compressedData.data(), &destSize, 
+            reinterpret_cast<const Bytef*>(data), sourceSize) != Z_OK) {
+        std::cerr << "Compression failed!" << std::endl;
+        opp_abort("opp_compress_write COMPRESS Failed");
+    }
+
+    std::ofstream outFile(filename, std::ios::binary);
+    if (outFile.is_open()) {
+        outFile.write(reinterpret_cast<const char*>(compressedData.data()), destSize);
+        outFile.close();
+        if (OPP_DBG) opp_printf("opp_compress_write", "File written successfully with compression");
+    } 
+    else {
+        std::cerr << "Failed to open file for writing: file name " << filename << std::endl;
+        opp_abort("opp_compress_write FILE OPEN Failed");
+    }
+}
+
+//********************************************************************************
+// Function to read compressed binary data
+void opp_decompress_read(const std::string &filename, size_t originalSize, int* data) {
+    
+    std::ifstream inFile(filename, std::ios::binary);
+    if (inFile.is_open()) {
+        inFile.seekg(0, std::ios::end);
+        size_t compressedSize = inFile.tellg();
+        inFile.seekg(0, std::ios::beg);
+
+        std::vector<Bytef> compressedData(compressedSize);
+        inFile.read(reinterpret_cast<char*>(compressedData.data()), compressedSize);
+        inFile.close();
+
+        uLong destSize = originalSize;
+        if (uncompress(reinterpret_cast<Bytef*>(data), &destSize, 
+                        compressedData.data(), compressedSize) != Z_OK) {
+            std::cerr << "Decompression failed!" << std::endl;
+            opp_abort("opp_decompress_read DECOMPRESS Failed");
+        }
+
+        if (OPP_DBG) opp_printf("opp_decompress_read", "File read and decompressed successfully");
+    } 
+    else {
+        std::cerr << "Failed to open file for reading: file name " << filename << std::endl;
+        opp_abort("opp_decompress_read FILE OPEN Failed");
+    }
 }

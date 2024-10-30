@@ -70,7 +70,7 @@ bool opp_inc_part_count_with_distribution_omp(opp_set part_set, int insert_count
         size_t start  = ((size_t)set_size * thr) / nthreads;
         size_t finish = ((size_t)set_size * (thr+1)) / nthreads;
 
-        for (size_t i = start; i < finish; i++)
+        for (OPP_INT i = (OPP_INT)start; i < (OPP_INT)finish; i++)
         { 
             // iterating for all particles here, makes the performance hit.
             // can we change here?

@@ -3,6 +3,8 @@
 // AUTO GENERATED CODE
 //*********************************************
 
+#define X_HOPS 5
+
 namespace opp_k4 {
 inline void move_kernel(
     char& opp_move_status_flag, const bool opp_move_hop_iter_one_flag, // Added by code-gen
@@ -87,6 +89,12 @@ void opp_particle_move__move_kernel(opp_set set, opp_map c2c_map, opp_map p2c_ma
         
     opp_mpi_halo_wait_all(nargs, args);
 
+#ifdef LOG_HOPS
+    std::vector<int> int_hops(nthreads, 0);
+    std::vector<int> moreX_hops(nthreads, 0);
+    OPP_move_moreX_hops = 0;
+#endif
+
     // lambda function for multi hop particle movement
     auto multihop_mover = [&](const int n, const int thread) {
 
@@ -100,6 +108,9 @@ void opp_particle_move__move_kernel(opp_set set, opp_map c2c_map, opp_map p2c_ma
         char move_flag = OPP_MOVE_DONE;
         bool iter_one_flag = true;
 
+#ifdef LOG_HOPS
+        int hops = 0;
+#endif
         do {
             move_flag = OPP_MOVE_DONE;
             opp_c2c = c2c_map->map + (opp_p2c[0] * 4);
@@ -111,8 +122,15 @@ void opp_particle_move__move_kernel(opp_set set, opp_map c2c_map, opp_map p2c_ma
                 (const OPP_REAL *)args[2].data + (opp_p2c[0] * 1),
                 (const OPP_REAL *)args[3].data + (opp_p2c[0] * 16)
             );
-
+#ifdef LOG_HOPS
+            hops++;
+#endif
         } while (opp_check_part_move_status(move_flag, iter_one_flag, opp_p2c[0], n, thread));
+
+#ifdef LOG_HOPS
+        int_hops[thread] = (int_hops[thread] < hops) ? hops : int_hops[thread];
+        if (hops > X_HOPS) moreX_hops[thread]++;
+#endif  
     };
 
     // ----------------------------------------------------------------------------
@@ -241,13 +259,17 @@ void opp_particle_move__move_kernel(opp_set set, opp_map c2c_map, opp_map p2c_ma
         opp_profiler->end(profName);
     }
 
+#ifdef LOG_HOPS
+    OPP_move_max_hops = *std::max_element(int_hops.begin(), int_hops.end());
+    OPP_move_moreX_hops = std::accumulate(moreX_hops.begin(), moreX_hops.end(), 0);
+#endif
 
     opp_set_dirtybit(nargs, args);
 
     opp_profiler->end("move_kernel");
 }
 
-void opp_init_direct_hop_cg(double grid_spacing, int dim, const opp_dat c_gbl_id, const opp::BoundingBox& b_box, 
+void opp_init_direct_hop_cg(double grid_spacing, const opp_dat c_gbl_id, const opp::BoundingBox& b_box, 
     opp_map c2c_map, opp_map p2c_map,
     opp_arg arg0, // p_pos | OPP_READ
     opp_arg arg1, // p_lc | OPP_WRITE
@@ -311,7 +333,12 @@ void opp_init_direct_hop_cg(double grid_spacing, int dim, const opp_dat c_gbl_id
             }
         };
         
-        cellMapper->generateStructuredMesh(c_gbl_id->set, c_gbl_id, all_cell_checker);
+        if (opp_params->get<OPP_BOOL>("opp_dh_data_generate")) {
+            cellMapper->generateStructuredMesh(c_gbl_id->set, c_gbl_id, all_cell_checker);
+        }
+        else {
+            cellMapper->generateStructuredMeshFromFile(c_gbl_id->set, c_gbl_id);
+        } 
 
         opp_profiler->reg("GlbToLocal");
         opp_profiler->reg("GblMv_Move");

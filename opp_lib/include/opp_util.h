@@ -93,7 +93,11 @@ int file_exist(char const *filename);
 
 bool opp_type_equivalence(const char *a, const char *b);
 
-
+void opp_compress_write(const std::string &filename, 
+                        const int* data, const size_t count);
+void opp_decompress_read(const std::string &filename, size_t originalSize, 
+                        int* data);
+   
 //*************************************************************************************************
 template <typename RNG>
 inline std::vector<std::vector<double>>

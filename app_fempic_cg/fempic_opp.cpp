@@ -1,5 +1,5 @@
 
-// Auto-generated at 2024-10-10 12:37:31.766026 by opp-translator
+// Auto-generated at 2024-10-17 19:08:48.174421 by opp-translator
 /* 
 BSD 3-Clause License
 
@@ -46,7 +46,7 @@ void opp_par_loop_all__compute_node_charge_density_kernel(opp_set,opp_iterate_ty
 void opp_par_loop_all__compute_electric_field_kernel(opp_set,opp_iterate_type,opp_arg,opp_arg,opp_arg,opp_arg,opp_arg,opp_arg);
 void opp_par_loop_all__get_max_cef_kernel(opp_set,opp_iterate_type,opp_arg,opp_arg);
 void opp_par_loop_all__get_final_max_values_kernel(opp_set,opp_iterate_type,opp_arg,opp_arg,opp_arg,opp_arg);
-void opp_init_direct_hop_cg(double,int,const opp_dat,const opp::BoundingBox&,opp_map,opp_map,opp_arg,opp_arg,opp_arg,opp_arg);
+void opp_init_direct_hop_cg(double,const opp_dat,const opp::BoundingBox&,opp_map,opp_map,opp_arg,opp_arg,opp_arg,opp_arg);
 
 #include "fempic_misc_mesh_loader.h"
 #include "fempic_misc.h"
@@ -73,7 +73,7 @@ int main(int argc, char **argv)
         std::string log                = "";
         const OPP_BOOL print_final_log = opp_params->get<OPP_BOOL>("print_final");
         int64_t total_part_iter        = 0;
-        const OPP_REAL expansion[3]    = { 4*grid_spacing, 4*grid_spacing, 4*grid_spacing };
+        const opp_point expansion(4*grid_spacing, 4*grid_spacing, 4*grid_spacing);
 
         std::shared_ptr<DataPointers> m = load_mesh();
 
@@ -145,8 +145,8 @@ int main(int argc, char **argv)
         opp_inc_part_count_with_distribution(particle_set, inject_count, if_distrib, false);
 
         // these two lines are only required if we plan to use direct_hop
-        opp::BoundingBox bounding_box = opp::BoundingBox(n_pos, DIM, expansion);
-        opp_init_direct_hop_cg(grid_spacing, DIM, c_gbl_id, bounding_box, c2c_map, p2c_map,
+        opp_init_direct_hop_cg(grid_spacing, c_gbl_id, opp::BoundingBox(n_pos, DIM, expansion), 
+            c2c_map, p2c_map,
 			opp_arg_dat(p_pos, OPP_READ),
 			opp_arg_dat(p_lc, OPP_WRITE),
 			opp_arg_dat(c_volume, p2c_map, OPP_READ),

@@ -71,3 +71,5 @@ export LD_LIBRARY_PATH=$HDF5_INSTALL_PATH/lib:$LD_LIBRARY_PATH
 # export NVCCFLAGS_ADD='-gencode arch=compute_90,code=sm_90'
 # export CUDA_ARCH=90
 # export MPI_INSTALL_PATH='/usr/lib/x86_64-linux-gnu/openmpi'
+
+# export PETSC_INSTALL_PATH=/home/zl/lib_install/petsc-3.20.5-gcc-12.2.0_demos_seq

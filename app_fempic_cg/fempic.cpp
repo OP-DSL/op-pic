@@ -68,7 +68,7 @@ int main(int argc, char **argv)
         std::string log                = "";
         const OPP_BOOL print_final_log = opp_params->get<OPP_BOOL>("print_final");
         int64_t total_part_iter        = 0;
-        const OPP_REAL expansion[3]    = { 4*grid_spacing, 4*grid_spacing, 4*grid_spacing };
+        const opp_point expansion(4*grid_spacing, 4*grid_spacing, 4*grid_spacing);
 
         std::shared_ptr<DataPointers> m = load_mesh();
 
@@ -140,8 +140,7 @@ int main(int argc, char **argv)
         opp_inc_part_count_with_distribution(particle_set, inject_count, if_distrib, false);
 
         // these two lines are only required if we plan to use direct_hop
-        opp::BoundingBox bounding_box = opp::BoundingBox(n_pos, DIM, expansion);
-        opp_init_direct_hop(grid_spacing, DIM, c_gbl_id, bounding_box);
+        opp_init_direct_hop(grid_spacing, c_gbl_id, opp::BoundingBox(n_pos, DIM, expansion));
 
         auto field_solver = std::make_unique<FESolver>(c2n_map, n_type, n_pos, n_bnd_pot);
         field_solver->enrich_cell_shape_deriv(c_sd);
@@ -243,7 +242,7 @@ int main(int argc, char **argv)
 }
 
 //*************************************************************************************************
-// std::string f = std::string("F_") + std::to_string(ts + 1);
+// std::string f = std::string("F_") + std::to_string(OPP_main_loop_iter + 1);
 // opp_print_map_to_txtfile(c2n_map  , f.c_str(), "c2n_map.dat");
 // opp_print_dat_to_txtfile(n_charge_den, f.c_str(), "n_charge_den.dat");
 // opp_mpi_print_dat_to_txtfile(c_sd, "c_sd.dat");

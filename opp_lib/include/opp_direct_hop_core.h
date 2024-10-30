@@ -48,6 +48,8 @@ private:
     opp_point globalBoundingBox[2]; // index 0 is min, index 1 is max
 
 public:
+    opp_point domain_expansion;
+
     //***********************************
     BoundingBox(int dim, opp_point minCoordinate, opp_point maxCoordinate) : dim(dim) {
 
@@ -65,7 +67,9 @@ public:
     }
 
     //***********************************
-    BoundingBox(const opp_dat node_pos_dat, int dim, const OPP_REAL expansion[3]) : dim(dim) {
+    BoundingBox(const opp_dat node_pos_dat, int dim, const opp_point expansion) 
+        : dim(dim), domain_expansion(expansion) {
+
         if (dim != 3 && dim != 2) {
             opp_abort(std::string("For now, only 2D/3D BoundingBox is implemented"));
         }
@@ -97,13 +101,13 @@ public:
 
         // Why BOUND_OFFSET? to overcome overlapping == nodes
         if (node_count != 0) {
-            minCoordinate.x -= (expansion[0] + BOUND_OFFSET);
-            minCoordinate.y -= (expansion[0] + BOUND_OFFSET);
-            maxCoordinate.x += (expansion[1] - BOUND_OFFSET);
-            maxCoordinate.y += (expansion[1] - BOUND_OFFSET);
+            minCoordinate.x -= (domain_expansion.x + BOUND_OFFSET);
+            minCoordinate.y -= (domain_expansion.x + BOUND_OFFSET);
+            maxCoordinate.x += (domain_expansion.y - BOUND_OFFSET);
+            maxCoordinate.y += (domain_expansion.y - BOUND_OFFSET);
             if (dim == 3) {
-                minCoordinate.z -= (expansion[2] + BOUND_OFFSET);
-                maxCoordinate.z += (expansion[2] - BOUND_OFFSET);
+                minCoordinate.z -= (domain_expansion.z + BOUND_OFFSET);
+                maxCoordinate.z += (domain_expansion.z - BOUND_OFFSET);
             }
         }
 
@@ -124,6 +128,7 @@ public:
         this->boundingBox[1] = other.boundingBox[1];
         this->globalBoundingBox[0] = other.globalBoundingBox[0];
         this->globalBoundingBox[1] = other.globalBoundingBox[1];
+        this->domain_expansion = other.domain_expansion;
     }
 
     //***********************************
@@ -211,21 +216,23 @@ private:
 
 public:
     //***********************************
-    GlobalToLocalCellIndexMapper(const opp_dat global_cell_id_dat) {
-        if (OPP_rank == 0)            
-            opp_printf("GlobalToLocalCellIndexMapper", "START");
+    GlobalToLocalCellIndexMapper(const opp_dat global_cell_id_dat, bool inc_halo = true) {
             
         globalToLocalCellIndexMap.clear();
 
-        const opp_set cells_set = global_cell_id_dat->set;
-        const OPP_INT size_inc_halo = (cells_set->size + cells_set->exec_size + cells_set->nonexec_size);
+        const opp_set c_set = global_cell_id_dat->set;
+        const OPP_INT size = inc_halo ? 
+                    (c_set->size + c_set->exec_size + c_set->nonexec_size) : (c_set->size);
 
-        for (OPP_INT i = 0; i < size_inc_halo; i++) {
+        if (OPP_rank == 0)            
+            opp_printf("GlobalToLocalCellIndexMapper", "Map Size %d", size);
+
+        for (OPP_INT i = 0; i < size; i++) {
             const OPP_INT glbIndex = ((OPP_INT*)global_cell_id_dat->data)[i];
             globalToLocalCellIndexMap.insert(std::make_pair(glbIndex, i));
         }
         
-        if (OPP_rank == 0)
+        if (OPP_DBG && OPP_rank == 0)
             opp_printf("GlobalToLocalCellIndexMapper", "END");
     }
 
@@ -233,12 +240,12 @@ public:
     ~GlobalToLocalCellIndexMapper() {
         globalToLocalCellIndexMap.clear();
 
-        if (OPP_rank == 0)
+        if (OPP_DBG && OPP_rank == 0)
             opp_printf("~GlobalToLocalCellIndexMapper", "DONE");
     }
 
     //***********************************
-    OPP_INT map(const OPP_INT globalIndex) {
+    OPP_INT map(const OPP_INT globalIndex) const {
         if (globalIndex == MAX_CELL_INDEX)
             return MAX_CELL_INDEX;
 
@@ -246,8 +253,9 @@ public:
         if (it != globalToLocalCellIndexMap.end())
             return it->second;
         
-        opp_printf("GlobalToLocalCellIndexMapper", 
-            "Error: Local cell index not found for global index %d", globalIndex);
+        if (OPP_DBG)
+            opp_printf("GlobalToLocalCellIndexMapper", 
+                "Error: Local cell index not found for global index %d", globalIndex);
         return MAX_INT;
     }
 };
@@ -297,10 +305,11 @@ public:
     void reduceInterNodeMappings(int callID);
     void createStructMeshMappingArrays();
     void convertToLocalMappings(const opp_dat global_cell_id_dat);
+    void convertToLocalMappingsIncRank(const opp_dat global_cell_id_dat);
     void hostToDeviceTransferMappings();
     void generateStructuredMesh(opp_set set, const opp_dat c_gbl_id, 
             const std::function<void(const opp_point&, int&)>& all_cell_checker);
-
+    void generateStructuredMeshFromFile(opp_set set, const opp_dat c_gbl_id);
     //***********************************
     inline void init_host(const double gridSpacing)
     {
@@ -500,7 +509,7 @@ public:
     #endif
     }
 
-    inline void convertToLocalMappings_seq(GlobalToLocalCellIndexMapper mapper)
+    inline void convertToLocalMappings_seq(const GlobalToLocalCellIndexMapper& mapper)
     {
         for (size_t i = 0; i < globalGridSize; i++) {
             if (structMeshToRankMapping[i] == OPP_rank) {   

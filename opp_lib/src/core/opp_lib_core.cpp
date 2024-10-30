@@ -63,6 +63,8 @@ int *OPP_mesh_relation_data_d       = nullptr;
 int OPP_part_cells_set_size         = 0;
 int OPP_part_comm_count_per_iter    = 0;
 int OPP_move_max_hops               = -1;
+int OPP_move_moreX_hops             = -1;
+bool OPP_dh_data_dump               = false;
 
 std::unique_ptr<opp::Params> opp_params;
 std::unique_ptr<opp::Profiler> opp_profiler;
@@ -148,18 +150,33 @@ void opp_set_args_core(char *argv)
 
     pch = strstr(argv, "OPP_ALLOC_MULT=");
     if (pch != NULL) {
-        strncpy(temp, pch, 20);
+        strncpy(temp, pch, 17);
         OPP_part_alloc_mult = atof(temp + 15);
         
-        printf("\topp_set_args_core OPP_part_alloc_mult = %lf\n", OPP_part_alloc_mult);
+        if (OPP_rank == OPP_ROOT)
+            printf("\topp_set_args_core OPP_part_alloc_mult = %lf\n", OPP_part_alloc_mult);
+        return;
     }
 
     pch = strstr(argv, "OPP_MPI_ALLOC_MULT=");
     if (pch != NULL) {
-        strncpy(temp, pch, 20);
-        OPP_mpi_part_alloc_mult = atoi(temp + 15);
+        strncpy(temp, pch, 21);
+        OPP_mpi_part_alloc_mult = atoi(temp + 19);
         
-        printf("\topp_set_args_core OPP_mpi_part_alloc_mult = %d\n", OPP_mpi_part_alloc_mult);
+        if (OPP_rank == OPP_ROOT)
+            printf("\topp_set_args_core OPP_mpi_part_alloc_mult = %d\n", OPP_mpi_part_alloc_mult);
+        return;
+    }
+
+    pch = strstr(argv, "OPP_DH_DATA_DUMP=");
+    if (pch != NULL) {
+        strncpy(temp, pch, 18);
+        int dump = atoi(temp + 17);
+        OPP_dh_data_dump = (dump != 0);
+        
+        if (OPP_rank == OPP_ROOT)
+            printf("\topp_set_args_core OPP_dh_data_dump = %s %d\n", OPP_dh_data_dump ? "TRUE" : "FALSE", dump);
+        return;
     }
 }
 

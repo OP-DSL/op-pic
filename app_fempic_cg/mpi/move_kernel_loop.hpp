@@ -3,6 +3,8 @@
 // AUTO GENERATED CODE
 //*********************************************
 
+#define X_HOPS 5
+
 namespace opp_k4 {
 inline void move_kernel(
     const double *point_pos, double* point_lc,
@@ -79,6 +81,7 @@ void opp_particle_move__move_kernel(opp_set set, opp_map c2c_map, opp_map p2c_ma
     OPP_mesh_relation_data = (OPP_INT*)p2c_map->p2c_dat->data;
 #ifdef LOG_HOPS
     OPP_move_max_hops = 0;
+    OPP_move_moreX_hops = 0;
 #endif
 
     opp_mpi_halo_exchanges(set, nargs, args);
@@ -116,6 +119,7 @@ void opp_particle_move__move_kernel(opp_set set, opp_map c2c_map, opp_map p2c_ma
 
 #ifdef LOG_HOPS
         OPP_move_max_hops = (OPP_move_max_hops < hops) ? hops : OPP_move_max_hops;
+        if (hops > X_HOPS) OPP_move_moreX_hops++;
 #endif    
     };
 
@@ -214,7 +218,7 @@ void opp_particle_move__move_kernel(opp_set set, opp_map c2c_map, opp_map p2c_ma
     opp_profiler->end("move_kernel");
 }
 
-void opp_init_direct_hop_cg(double grid_spacing, int dim, const opp_dat c_gbl_id, const opp::BoundingBox& b_box, 
+void opp_init_direct_hop_cg(double grid_spacing, const opp_dat c_gbl_id, const opp::BoundingBox& b_box, 
     opp_map c2c_map, opp_map p2c_map,
     opp_arg arg0, // p_pos | OPP_READ
     opp_arg arg1, // p_lc | OPP_WRITE
@@ -276,8 +280,38 @@ void opp_init_direct_hop_cg(double grid_spacing, int dim, const opp_dat c_gbl_id
                 }
             }
         };
-        
-        cellMapper->generateStructuredMesh(c_gbl_id->set, c_gbl_id, all_cell_checker);
+
+        if (opp_params->get<OPP_BOOL>("opp_dh_data_generate")) {
+            cellMapper->generateStructuredMesh(c_gbl_id->set, c_gbl_id, all_cell_checker);
+
+            // auto cellMapper2 = std::make_shared<opp::CellMapper>(boundingBox, grid_spacing, comm);
+            // cellMapper2->generateStructuredMeshFromFile(c_gbl_id->set, c_gbl_id);
+            // cellMapper2->waitBarrier();
+            // if (OPP_rank == 0) 
+            // {                
+            //     for (size_t i = 0; i < cellMapper->globalGridSize; i++) {
+            //         if (cellMapper->structMeshToCellMapping[i] != cellMapper2->structMeshToCellMapping[i]) {
+            //             opp_printf("APP", "Incorrect value from cell file at %d - system %d - file %d",
+            //                 i, cellMapper->structMeshToCellMapping[i], cellMapper2->structMeshToCellMapping[i]);
+            //         }
+            //     }
+            //     int count = 0, non_root = 0;
+            //     for (size_t i = 0; i < cellMapper->globalGridSize; i++) {
+            //         if (cellMapper->structMeshToRankMapping[i] != cellMapper2->structMeshToRankMapping[i]) { count++;
+            //             opp_printf("APP", "Incorrect value from rank file at %d - cid %d - system %d - file %d",
+            //                 i, cellMapper->structMeshToCellMapping[i], cellMapper->structMeshToRankMapping[i], cellMapper2->structMeshToRankMapping[i]);
+            //         }
+
+            //         if (cellMapper2->structMeshToRankMapping[i] != 0 && cellMapper2->structMeshToRankMapping[i] != MAX_CELL_INDEX) {
+            //             non_root++;
+            //         }
+            //     }
+            //     opp_printf("APP", "Incorrect rank values %d non root %d", count, non_root);
+            // }
+        }
+        else {
+            cellMapper->generateStructuredMeshFromFile(c_gbl_id->set, c_gbl_id);  
+        } 
 
         opp_profiler->reg("GlbToLocal");
         opp_profiler->reg("GblMv_Move");
