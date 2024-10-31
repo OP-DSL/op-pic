@@ -12,7 +12,7 @@ HIPCC      = $(HIP_COMPILER)
 SYCLCC     = icpx
 
 CPPFLAGS   = -std=c++17 -Wall -fPIC $(CPPFLAGS_ADD)
-NVCCFLAGS  = -m64 -Xptxas -dlcm=ca $(NVCCFLAGS_ADD)
+NVCCFLAGS  = -std=c++17 -m64 -Xptxas -dlcm=ca $(NVCCFLAGS_ADD)
 HIPCCFLAGS = $(HIPCCFLAGS_ADD) -std=c++17 -Wall -isystem -D__HIP_PLATFORM_AMD__
 SYCLFLAGS  = -w -fsycl -std=c++17 $(SYCLFLAGS_ADD)
 

@@ -65,6 +65,8 @@ int OPP_part_comm_count_per_iter    = 0;
 int OPP_move_max_hops               = -1;
 int OPP_move_moreX_hops             = -1;
 bool OPP_dh_data_dump               = false;
+size_t opp_maxSavedDHGrid[3];
+size_t opp_minSavedDHGrid[3];
 
 std::unique_ptr<opp::Params> opp_params;
 std::unique_ptr<opp::Profiler> opp_profiler;

@@ -227,10 +227,11 @@ inline std::string get_global_level_log(double max_c_ef, double max_n_potential,
     int64_t glb_parts, gbl_max_parts, gbl_min_parts;
     int64_t glb_part_comms, gbl_max_part_comms, gbl_min_part_comms;
     int64_t glb_max_hops, gbl_max_max_hops, gbl_min_max_hops;
-    int global_max_comm_iteration = 0;
+    int global_max_comm_iteration = 0, gbl_move_moreX_hops = 0;
 
 #ifdef USE_MPI
     MPI_Reduce(&OPP_max_comm_iteration, &global_max_comm_iteration, 1, MPI_INT, MPI_MAX, OPP_ROOT, MPI_COMM_WORLD);
+    MPI_Reduce(&OPP_move_moreX_hops, &gbl_move_moreX_hops, 1, MPI_INT, MPI_SUM, OPP_ROOT, MPI_COMM_WORLD);
 
     int64_t temp_local_part_count     = (int64_t)local_part_count;
     int64_t temp_local_parts_injected = (int64_t)local_parts_injected;
@@ -244,8 +245,9 @@ inline std::string get_global_level_log(double max_c_ef, double max_n_potential,
     global_inj_size = local_parts_injected;
     global_removed = local_part_removed;
     global_max_comm_iteration = OPP_max_comm_iteration;
-    gbl_max_max_hops = OPP_move_max_hops;
+    gbl_max_max_hops = 0;
     gbl_min_max_hops = OPP_move_max_hops;
+    gbl_move_moreX_hops = OPP_move_moreX_hops;
 #endif
 
     get_global_values(local_part_count, glb_parts, gbl_max_parts, gbl_min_parts);   
@@ -268,6 +270,7 @@ inline std::string get_global_level_log(double max_c_ef, double max_n_potential,
 #ifdef LOG_HOPS
     log += std::string(" | Hops: Min: ") + str(gbl_min_max_hops, "%" PRId64);
     log += std::string(" Max: ") + str(glb_max_hops, "%" PRId64);
+    log += std::string(" | moreX_hops: ") + str(gbl_move_moreX_hops, "%d");
 #endif
 
     return log;

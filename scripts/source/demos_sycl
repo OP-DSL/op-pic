@@ -55,7 +55,8 @@ export LD_LIBRARY_PATH=$HDF5_INSTALL_PATH/lib:$LD_LIBRARY_PATH
 # export LD_LIBRARY_PATH=$HDF5_INSTALL_PATH/lib:$LD_LIBRARY_PATH
 
 
-# # Use below for GCC-12.2.0 builds
+## For DEMOS with GCC-12.2.0 builds
+
 # module purge
 # export OPP=/home/zl/phd/OP-PIC
 # export OPP_INSTALL_PATH=$OPP/opp_install
@@ -73,3 +74,26 @@ export LD_LIBRARY_PATH=$HDF5_INSTALL_PATH/lib:$LD_LIBRARY_PATH
 # export MPI_INSTALL_PATH='/usr/lib/x86_64-linux-gnu/openmpi'
 
 # export PETSC_INSTALL_PATH=/home/zl/lib_install/petsc-3.20.5-gcc-12.2.0_demos_seq
+
+
+
+### For KOS with nvhpc and c++17 or later ###
+
+# module purge
+# export OPP_COMPILER=intel
+# export OPP=/home/zl/phd/OP-PIC
+# export OPP_INSTALL_PATH=$OPP/opp_install
+# export OPP_TRANSLATOR=$OPP/opp_translator/translator
+# export OPP_PATH=$OPP/opp_lib
+# module load nvhpc/23.1
+# export CUDA_INSTALL_PATH=$(realpath $(dirname $(which nvfortran))/../../cuda)
+# export NVHPC_CUDA_HOME=$(realpath $(dirname $(which nvfortran))/../../cuda)
+# export NVCCFLAGS_ADD='-gencode arch=compute_60,code=sm_60'
+# export NV_ARCH=Pascal
+# export CUDA_VISIBLE_DEVICES=0,1
+# echo $NV_ARCH $(hostname)
+# unset CUDA_HOME
+# export CUDA_ARCH=60
+# export CC_COMPILER=nvc++
+# export MPI_COMPILER=mpicxx
+# export PETSC_INSTALL_PATH=/home/zl/lib_install/petsc-3.20.5-nvhpc23.1-mpi_kos

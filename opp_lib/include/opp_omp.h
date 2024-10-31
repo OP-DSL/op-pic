@@ -203,7 +203,7 @@ inline bool opp_check_part_move_status(const char move_flag, bool& iter_one_flag
 inline bool opp_part_checkForGlobalMove_util(opp_set set, const opp_point& point, const int partIndex, 
             int& cellIdx, const size_t structCellIdx, const int thread) {
 
-    if (structCellIdx == MAX_CELL_INDEX) { // This happens when point is out of the unstructured mesh
+    if (structCellIdx == MAX_CELL_INDEX || structCellIdx == OPP_OUT_OF_SAVED_DOMAIN) { // This happens when point is out of the unstructured mesh
         if (false && OPP_DBG)
             opp_printf("opp_part_checkForGlobalMove", 
             "Remove %d [Struct cell index invalid - strCellIdx:%zu] [%2.16lE, %2.16lE, %2.16lE]", 

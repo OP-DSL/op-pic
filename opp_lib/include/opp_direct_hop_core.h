@@ -278,6 +278,9 @@ public:
     size_t globalGridDimsXY = 0;
     opp_uipoint localGridStart, localGridEnd;
 
+    opp_uipoint minSavedCoordinate;
+    opp_uipoint maxSavedCoordinate;
+
     size_t globalGridSize = 0;
     
     OPP_INT* structMeshToCellMapping = nullptr;         // This contain mapping to local cell indices
@@ -315,6 +318,14 @@ public:
     {
         const opp_point& minGblCoordinate = boundingBox->getGlobalMin();
         const opp_point& maxGblCoordinate = boundingBox->getGlobalMax();
+
+        opp_minSavedDHGrid[0] = 0;
+        opp_minSavedDHGrid[1] = 0;
+        opp_minSavedDHGrid[2] = 0;
+
+        opp_maxSavedDHGrid[0] = 100000;
+        opp_maxSavedDHGrid[1] = 100000;
+        opp_maxSavedDHGrid[2] = 100000;
 
         size_t ax = 0, ay = 0, az = 0;
 
@@ -402,6 +413,14 @@ public:
         const size_t xIndex = static_cast<size_t>((position.x - minGlbCoordinate.x) * oneOverGridSpacing);
         const size_t yIndex = static_cast<size_t>((position.y - minGlbCoordinate.y) * oneOverGridSpacing);
         const size_t zIndex = static_cast<size_t>((position.z - minGlbCoordinate.z) * oneOverGridSpacing);
+
+        bool isOutOfCuboid = (xIndex > opp_maxSavedDHGrid[0] || xIndex < opp_minSavedDHGrid[0]) ||
+                             (yIndex > opp_maxSavedDHGrid[1] || yIndex < opp_minSavedDHGrid[1]) ||
+                             (zIndex > opp_maxSavedDHGrid[2] || zIndex < opp_minSavedDHGrid[2]);
+
+        if (isOutOfCuboid) {
+            return OPP_OUT_OF_SAVED_DOMAIN;
+        }
 
         // Calculate the cell index mapping index
         const size_t index = xIndex + (yIndex * globalGridDimsX) + (zIndex * globalGridDimsXY);

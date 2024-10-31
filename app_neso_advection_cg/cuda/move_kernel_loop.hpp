@@ -321,7 +321,7 @@ void opp_particle_move__move_kernel(opp_set set, opp_map c2c_map, opp_map p2c_ma
     opp_profiler->end("move_kernel");
 }
 
-void opp_init_direct_hop_cg(double grid_spacing, int dim, const opp_dat c_gbl_id, const opp::BoundingBox& b_box, 
+void opp_init_direct_hop_cg(double grid_spacing, const opp_dat c_gbl_id, const opp::BoundingBox& b_box, 
     opp_map c2c_map, opp_map p2c_map,
     opp_arg arg0, // p_pos | OPP_READ
     opp_arg arg1 // c_pos_ll | OPP_READ
@@ -378,7 +378,12 @@ void opp_init_direct_hop_cg(double grid_spacing, int dim, const opp_dat c_gbl_id
             }
         };
         
-        cellMapper->generateStructuredMesh(c_gbl_id->set, c_gbl_id, all_cell_checker);
+        if (opp_params->get<OPP_BOOL>("opp_dh_data_generate")) {
+            cellMapper->generateStructuredMesh(c_gbl_id->set, c_gbl_id, all_cell_checker);
+        }
+        else {
+            cellMapper->generateStructuredMeshFromFile(c_gbl_id->set, c_gbl_id);  
+        }
     }
 
     opp_profiler->end("Setup_Mover");

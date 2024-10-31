@@ -1,5 +1,5 @@
 
-// Auto-generated at 2024-10-17 18:33:47.579352 by opp-translator
+// Auto-generated at 2024-10-17 18:58:53.904521 by opp-translator
 /* 
 BSD 3-Clause License
 
@@ -40,7 +40,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 void opp_par_loop_all__update_pos_kernel(opp_set,opp_iterate_type,opp_arg,opp_arg);
 void opp_particle_move__move_kernel(opp_set,opp_map,opp_map,opp_arg,opp_arg);
 void opp_par_loop_all__verify_kernel(opp_set,opp_iterate_type,opp_arg,opp_arg,opp_arg);
-void opp_init_direct_hop_cg(double,int,const opp_dat,const opp::BoundingBox&,opp_map,opp_map,opp_arg,opp_arg);
+void opp_init_direct_hop_cg(double,const opp_dat,const opp::BoundingBox&,opp_map,opp_map,opp_arg,opp_arg);
 
 #include "advec_misc.h"
 // #include "kenels.h" // codegen commented...
@@ -60,7 +60,7 @@ int main(int argc, char **argv)
         OPP_INT ndimcells[2]        = {opp_params->get<OPP_INT>("nx"), opp_params->get<OPP_INT>("ny")};
         OPP_BOOL verify_parts       = opp_params->get<OPP_BOOL>("verify_particles");
         OPP_REAL grid_spacing       = opp_params->get<OPP_REAL>("grid_spacing");
-        const OPP_REAL expansion[3] = {cell_width*2, cell_width*2, 0.0};
+        const opp_point expansion(cell_width*2, cell_width*2, 0.0);
         int64_t total_part_iter     = 0;
         int incorrect_part_count    = 0;
 
@@ -99,8 +99,8 @@ int main(int argc, char **argv)
         init_particles(p_idx, p_pos, p_vel, p_mdir, p2c_map, c_pos_ll, c_idx);
         
         // these two lines are only required if we plan to use direct_hop
-        opp::BoundingBox bounding_box = opp::BoundingBox(c_pos_ll, DIM, expansion);
-        opp_init_direct_hop_cg(grid_spacing, DIM, c_idx, bounding_box, c2c_map, p2c_map,
+        opp_init_direct_hop_cg(grid_spacing, c_idx, opp::BoundingBox(c_pos_ll, DIM, expansion), 
+            c2c_map, p2c_map,
 			opp_arg_dat(p_pos, OPP_READ),
 			opp_arg_dat(c_pos_ll, p2c_map, OPP_READ));
 

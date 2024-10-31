@@ -32,10 +32,6 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "opp_direct_hop_core.h"
 #include <opp_cuda.h>
 
-#ifdef USE_OMP
-#include <omp.h>
-#endif
-
 //*******************************************************************************
 using namespace opp;
 
@@ -379,9 +375,9 @@ void CellMapper::convertToLocalMappings(const opp_dat global_cell_id_dat) {
     if (OPP_DBG) 
         opp_printf("CellMapper", "convertToLocalMappings Start");
 
+#ifdef USE_MPI
     GlobalToLocalCellIndexMapper globalToLocalCellIndexMapper(global_cell_id_dat);
 
-#ifdef USE_MPI
     if (comm->rank_intra == 0) {    
         MPI_CHECK(MPI_Win_lock(MPI_LOCK_EXCLUSIVE, 0, 0, win_structMeshToCellMapping));
 
@@ -394,11 +390,9 @@ void CellMapper::convertToLocalMappings(const opp_dat global_cell_id_dat) {
     }
 
     waitBarrier();
-#endif
 
     convertToLocalMappings_seq(globalToLocalCellIndexMapper);
 
-#ifdef USE_MPI
     MPI_CHECK(MPI_Barrier(MPI_COMM_WORLD));
 
     if (comm->rank_intra == 0) {
@@ -446,7 +440,7 @@ void CellMapper::hostToDeviceTransferMappings() {
     }
 
     if (OPP_DBG) 
-        opp_printf("CellMapper", "convertToLocalMappings END");
+        opp_printf("CellMapper", "hostToDeviceTransferMappings END");
 }
 
 //*******************************************************************************
@@ -477,17 +471,27 @@ void CellMapper::generateStructuredMesh(opp_set set, const opp_dat c_gbl_id,
     // Step 1 : Get centroids of the structured mesh cells and try to relate them to unstructured mesh indices
     if (OPP_rank == 0) opp_printf("OPP", "generateStructuredMesh Step 1 Start");
     opp_profiler->start("Setup_Mover_s1");
-    double x = 0.0, y = 0.0, z = 0.0;
 
 #ifdef USE_OMP
-    #pragma omp parallel for private(x,y,z) num_threads(6)
-#endif    
-    for (size_t dz = localGridStart.z; dz < localGridEnd.z; dz++) {       
-        z = min_glb_coords.z + dz * gridSpacing;        
+    #pragma omp parallel for
+    for (int thr = 0; thr < omp_nthreads; thr++)
+    {
+        const size_t start  = ((localGridEnd.z - localGridStart.z) * thr) / omp_nthreads;
+        const size_t end = ((localGridEnd.z - localGridStart.z) * (thr+1)) / omp_nthreads;
+        
+        opp_printf("OPP", "generateStructuredMesh Starting thr %d [%zu %zu]", thr, start, end);
+
+        for (size_t dz = start; dz < end; dz++)
+        {
+
+#else   
+    for (size_t dz = localGridStart.z; dz < localGridEnd.z; dz++) {     
+#endif  
+        double z = min_glb_coords.z + dz * gridSpacing;        
         for (size_t dy = localGridStart.y; dy < localGridEnd.y; dy++) {            
-            y = min_glb_coords.y + dy * gridSpacing;
+            double y = min_glb_coords.y + dy * gridSpacing;
             for (size_t dx = localGridStart.x; dx < localGridEnd.x; dx++) {                
-                x = min_glb_coords.x + dx * gridSpacing;               
+                double x = min_glb_coords.x + dx * gridSpacing;               
                 
                 size_t index = (dx + dy * globalGridDimsX + dz * globalGridDimsXY); 
 
@@ -511,6 +515,9 @@ void CellMapper::generateStructuredMesh(opp_set set, const opp_dat c_gbl_id,
                 }
             }
         }
+#ifdef USE_OMP
+    }
+#endif
     }
     opp_profiler->end("Setup_Mover_s1");
 
@@ -550,13 +557,13 @@ void CellMapper::generateStructuredMesh(opp_set set, const opp_dat c_gbl_id,
     std::vector<std::vector<std::pair<int, int>>> tmp_add_per_thr;
     tmp_add_per_thr.resize(omp_nthreads);
 
-    #pragma omp parallel for num_threads(6)
+    #pragma omp parallel for
     for (int thr = 0; thr < omp_nthreads; thr++)
     {
         const size_t start  = (removed_coords_keys.size() * thr) / omp_nthreads;
-        const size_t finish = (removed_coords_keys.size() * (thr+1)) / omp_nthreads;
+        const size_t end = (removed_coords_keys.size() * (thr+1)) / omp_nthreads;
       
-        for (size_t i = start; i < finish; i++)
+        for (size_t i = start; i < end; i++)
         {
 
         const size_t index = removed_coords_keys[i];
@@ -617,17 +624,18 @@ void CellMapper::generateStructuredMesh(opp_set set, const opp_dat c_gbl_id,
     // Step 4 : For MPI, get the inter-node values reduced to the structured mesh
     if (OPP_rank == 0) opp_printf("OPP", "generateStructuredMesh Step 4 Start");
     opp_profiler->start("Setup_Mover_s4");
-#ifdef USE_MPI
     reduceInterNodeMappings(2);
-#endif
     opp_profiler->end("Setup_Mover_s4");
+
+    // Step Add : Dump the structured mesh to a file, if requested 
+    if (OPP_dh_data_dump) {
+        opp_printf("OPP", "generateStructuredMesh: Not Dumping DH file, Use a CPU backend to Dump");
+    }
 
     // Step 5 : For MPI, convert the global cell coordinates to rank local coordinates for increased performance
     if (OPP_rank == 0) opp_printf("OPP", "generateStructuredMesh Step 5 Start");
     opp_profiler->start("Setup_Mover_s5");
-#ifdef USE_MPI
     convertToLocalMappings(c_gbl_id);
-#endif
     opp_profiler->end("Setup_Mover_s5");
 
     // Step 6 : Copy structured mesh mappings from host to device
@@ -637,6 +645,103 @@ void CellMapper::generateStructuredMesh(opp_set set, const opp_dat c_gbl_id,
     opp_profiler->end("Setup_Mover_s6");
 
     if (OPP_rank == 0) opp_printf("OPP", "generateStructuredMesh DONE");
+}
+
+
+//*******************************************************************************
+void CellMapper::convertToLocalMappingsIncRank(const opp_dat global_cell_id_dat) {
+
+    if (OPP_DBG) 
+        opp_printf("CellMapper", "convertToLocalMappingsIncRank Start");
+
+#ifdef USE_MPI
+    GlobalToLocalCellIndexMapper globalToLocalCellIndexMapper(global_cell_id_dat, false);
+
+    if (comm->rank_intra == 0) {    
+        MPI_CHECK(MPI_Win_lock(MPI_LOCK_EXCLUSIVE, 0, 0, win_structMeshToCellMapping));
+
+        for (size_t i = 0; i < globalGridSize; i++) {         
+            if (structMeshToCellMapping[i] != MAX_CELL_INDEX) {
+                structMeshToCellMapping[i] = (-1 * structMeshToCellMapping[i]);
+            }
+        }
+
+        MPI_CHECK(MPI_Win_unlock(0, win_structMeshToCellMapping));
+    }
+
+    waitBarrier();
+
+    for (size_t i = 0; i < globalGridSize; i++) {
+
+        const int globalCID = (-1 * structMeshToCellMapping[i]);
+        if ((globalCID != MAX_CELL_INDEX) || (globalCID != (-1 * MAX_CELL_INDEX))) {               
+            
+            const int localCID = globalToLocalCellIndexMapper.map(globalCID);   
+            if (localCID != MAX_CELL_INDEX) {
+                enrichStructuredMesh(i, localCID, OPP_rank);
+            }
+        }
+    }
+
+    MPI_CHECK(MPI_Barrier(MPI_COMM_WORLD));
+
+    if (comm->rank_intra == 0) {
+        MPI_CHECK(MPI_Allreduce(MPI_IN_PLACE, structMeshToCellMapping, globalGridSize, 
+                        MPI_INT, MPI_MAX, comm->comm_inter));
+    }
+
+    waitBarrier();
+#endif
+
+    if (OPP_DBG) 
+        opp_printf("CellMapper", "convertToLocalMappingsIncRank END");
+}
+
+//*******************************************************************************
+void CellMapper::generateStructuredMeshFromFile(opp_set set, const opp_dat c_gbl_id) {
+
+    if (OPP_rank == 0)            
+        opp_printf("OPP", "generateStructuredMeshFromFile START cells [%s] global grid dims %zu %zu %zu",
+            set->name, globalGridDimsX, globalGridDimsY, globalGridDimsZ);
+
+    createStructMeshMappingArrays();
+
+    opp_profiler->start("Setup_Mover_s0");
+
+#ifdef USE_MPI
+    int set_size = 0;
+    MPI_Reduce(&(set->size), &set_size, 1, MPI_INT, MPI_SUM, 0, MPI_COMM_WORLD);
+
+    if (comm->rank_intra == 0) // read only with the node-main rank
+#else
+    int set_size = set->size;
+#endif
+    {
+        std::stringstream s;
+        s << str(set_size, "dh_mapping_c%d");
+        s << str(gridSpacing, "_gs%2.4lE");
+        s << str(boundingBox->domain_expansion.x, "_ex%2.4lE");
+        s << str(boundingBox->domain_expansion.y, "_%2.4lE");
+        s << str(boundingBox->domain_expansion.z, "_%2.4lE.bin");
+
+        opp_decompress_read(s.str(), globalGridSize * sizeof(int), structMeshToCellMapping);
+    }
+    opp_profiler->end("Setup_Mover_s0");
+
+    // Step 5 : For MPI, convert the global cell coordinates to rank local coordinates for increased performance,
+    //      however, not like in generating values, at this time we dont have structMeshToRankMapping enriched!
+    if (OPP_rank == 0) opp_printf("OPP", "generateStructuredMeshFromFile Step 5 Start");
+    opp_profiler->start("Setup_Mover_s5");
+    convertToLocalMappingsIncRank(c_gbl_id);
+    opp_profiler->end("Setup_Mover_s5");
+
+    // Step 6 : Copy structured mesh mappings from host to device
+    if (OPP_rank == 0) opp_printf("OPP", "generateStructuredMesh Step 6 Start");
+    opp_profiler->start("Setup_Mover_s6");
+    hostToDeviceTransferMappings();
+    opp_profiler->end("Setup_Mover_s6");
+
+    if (OPP_rank == 0) opp_printf("OPP", "generateStructuredMeshFromFile DONE");
 }
 
 //*******************************************************************************

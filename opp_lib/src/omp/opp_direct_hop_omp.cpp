@@ -442,14 +442,14 @@ void CellMapper::convertToLocalMappingsIncRank(const opp_dat global_cell_id_dat)
 void CellMapper::generateStructuredMeshFromFile(opp_set set, const opp_dat c_gbl_id) {
 
     if (OPP_rank == 0)            
-        opp_printf("APP", "generateStructuredMeshFromFile START cells [%s] global grid dims %zu %zu %zu",
+        opp_printf("OPP", "generateStructuredMeshFromFile START cells [%s] global grid dims %zu %zu %zu",
             set->name, globalGridDimsX, globalGridDimsY, globalGridDimsZ);
 
     createStructMeshMappingArrays();
 
     opp_profiler->start("Setup_Mover_s0");
-#ifdef USE_MPI
 
+#ifdef USE_MPI
     int set_size = 0;
     MPI_Reduce(&(set->size), &set_size, 1, MPI_INT, MPI_SUM, 0, MPI_COMM_WORLD);
 
@@ -471,12 +471,12 @@ void CellMapper::generateStructuredMeshFromFile(opp_set set, const opp_dat c_gbl
 
     // Step 5 : For MPI, convert the global cell coordinates to rank local coordinates for increased performance,
     //      however, not like in generating values, at this time we dont have structMeshToRankMapping enriched!
-    if (OPP_rank == 0) opp_printf("APP", "generateStructuredMeshFromFile Step 5 Start");
+    if (OPP_rank == 0) opp_printf("OPP", "generateStructuredMeshFromFile Step 5 Start");
     opp_profiler->start("Setup_Mover_s5");
     convertToLocalMappingsIncRank(c_gbl_id);
     opp_profiler->end("Setup_Mover_s5");
 
-    if (OPP_rank == 0) opp_printf("APP", "generateStructuredMeshFromFile DONE");
+    if (OPP_rank == 0) opp_printf("OPP", "generateStructuredMeshFromFile DONE");
 }
 
 //*******************************************************************************
@@ -485,12 +485,12 @@ void CellMapper::generateStructuredMesh(opp_set set, const opp_dat c_gbl_id,
             const std::function<void(const opp_point&, int&)>& all_cell_checker) { 
 
     if (OPP_rank == 0)            
-        opp_printf("APP", "generateStructuredMesh START cells [%s] global grid dims %zu %zu %zu DUMP %s",
+        opp_printf("OPP", "generateStructuredMesh START cells [%s] global grid dims %zu %zu %zu DUMP %s",
             set->name, globalGridDimsX, globalGridDimsY, globalGridDimsZ, OPP_dh_data_dump? "YES" : "NO");
 
     const int set_size_inc_halo = set->size + set->exec_size + set->nonexec_size;
     if (set_size_inc_halo <= 0) {
-        opp_printf("APP", "Error... set_size_inc_halo <= 0 for set %s", set->name);
+        opp_printf("OPP", "Error... set_size_inc_halo <= 0 for set %s", set->name);
         opp_abort("Error... APP set_size_inc_halo <= 0");
     }
 
@@ -501,7 +501,7 @@ void CellMapper::generateStructuredMesh(opp_set set, const opp_dat c_gbl_id,
     createStructMeshMappingArrays();
 
     // Step 1 : Get centroids of the structured mesh cells and try to relate them to unstructured mesh indices
-    if (OPP_rank == 0) opp_printf("APP", "generateStructuredMesh Step 1 Start");
+    if (OPP_rank == 0) opp_printf("OPP", "generateStructuredMesh Step 1 Start");
     opp_profiler->start("Setup_Mover_s1");
 
     const int omp_nthreads = omp_get_max_threads();
@@ -545,7 +545,7 @@ void CellMapper::generateStructuredMesh(opp_set set, const opp_dat c_gbl_id,
     opp_profiler->end("Setup_Mover_s1");
 
     // Step 2 : For MPI, get the inter-node values reduced to the structured mesh
-    if (OPP_rank == 0) opp_printf("APP", "generateStructuredMesh Step 2 Start");
+    if (OPP_rank == 0) opp_printf("OPP", "generateStructuredMesh Step 2 Start");
     opp_profiler->start("Setup_Mover_s2");
 #ifdef USE_MPI
     reduceInterNodeMappings(1);
@@ -556,7 +556,7 @@ void CellMapper::generateStructuredMesh(opp_set set, const opp_dat c_gbl_id,
         size_t removed_idx = it->first;
         if (structMeshToRankMapping[removed_idx] != MAX_CELL_INDEX) {
             it = removed_coords.erase(it); // This structured index is already written by another rank
-            // opp_printf("APP", "index %zu already in %d", this->structMeshToRankMapping[removed_idx], removed_idx);
+            // opp_printf("OPP", "index %zu already in %d", this->structMeshToRankMapping[removed_idx], removed_idx);
         } 
         else {
             ++it;
@@ -568,7 +568,7 @@ void CellMapper::generateStructuredMesh(opp_set set, const opp_dat c_gbl_id,
 
     // Step 3 : Iterate over NEED_REMOVE points, Check whether atleast one vertex of the structured mesh is within 
     //          an unstructured mesh cell. If multiple are found, get the minimum cell index to match with MPI
-    if (OPP_rank == 0) opp_printf("APP", "generateStructuredMesh Step 3 Start");
+    if (OPP_rank == 0) opp_printf("OPP", "generateStructuredMesh Step 3 Start");
     opp_profiler->start("Setup_Mover_s3");
     std::vector<size_t> removed_coords_keys;
     removed_coords_keys.reserve(removed_coords.size());
@@ -638,7 +638,7 @@ void CellMapper::generateStructuredMesh(opp_set set, const opp_dat c_gbl_id,
     opp_profiler->end("Setup_Mover_s3");
 
     // Step 4 : For MPI, get the inter-node values reduced to the structured mesh
-    if (OPP_rank == 0) opp_printf("APP", "generateStructuredMesh Step 4 Start");
+    if (OPP_rank == 0) opp_printf("OPP", "generateStructuredMesh Step 4 Start");
     opp_profiler->start("Setup_Mover_s4");
     reduceInterNodeMappings(2);
     opp_profiler->end("Setup_Mover_s4");
@@ -662,7 +662,7 @@ void CellMapper::generateStructuredMesh(opp_set set, const opp_dat c_gbl_id,
             s << str(boundingBox->domain_expansion.y, "_%2.4lE");
             s << str(boundingBox->domain_expansion.z, "_%2.4lE.bin");
 
-            opp_printf("APP", "generateStructuredMesh Step Dumping File Start");
+            opp_printf("OPP", "generateStructuredMesh Step Dumping File Start");
 
             opp_compress_write(s.str(), structMeshToCellMapping, 
                 globalGridSize);
@@ -674,7 +674,7 @@ void CellMapper::generateStructuredMesh(opp_set set, const opp_dat c_gbl_id,
                 
                 for (size_t i = 0; i < globalGridSize; i++) {
                     if (decompressedData[i] != structMeshToCellMapping[i]) {
-                        opp_printf("APP", "Incorrect value from file at %d - file %d - system %d",
+                        opp_printf("OPP", "Incorrect value from file at %d - file %d - system %d",
                             i, decompressedData[i], structMeshToCellMapping[i]);
                     }
                 }
@@ -683,10 +683,10 @@ void CellMapper::generateStructuredMesh(opp_set set, const opp_dat c_gbl_id,
     }
 
     // Step 5 : For MPI, convert the global cell coordinates to rank local coordinates for increased performance
-    if (OPP_rank == 0) opp_printf("APP", "generateStructuredMesh Step 5 Start");
+    if (OPP_rank == 0) opp_printf("OPP", "generateStructuredMesh Step 5 Start");
     opp_profiler->start("Setup_Mover_s5");
     convertToLocalMappings(c_gbl_id);
     opp_profiler->end("Setup_Mover_s5");
 
-    if (OPP_rank == 0) opp_printf("APP", "generateStructuredMesh DONE");
+    if (OPP_rank == 0) opp_printf("OPP", "generateStructuredMesh DONE");
 }
