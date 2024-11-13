@@ -122,6 +122,8 @@ bool opp_finalize_particle_move(opp_set set)
     OPP_move_count_h = -1;
     opp_mem::copy_dev_to_host<int>(&OPP_move_count_h, OPP_move_count_d, 1);
 
+    OPP_part_comm_count_per_iter += OPP_move_count_h;
+
     // remove count is the addition of removed particles and the exchange count
     set->particle_remove_count = -1;
     opp_mem::copy_dev_to_host<int>(&(set->particle_remove_count), set->particle_remove_count_d, 1);

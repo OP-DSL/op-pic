@@ -44,6 +44,9 @@ OPP_INT cellMapper_pos_stride = -1;
 __constant__ OPP_INT OPP_rank_d;
 __constant__ OPP_INT OPP_comm_size_d;
 
+__constant__ size_t opp_maxSavedDHGrid_d[3];
+__constant__ size_t opp_minSavedDHGrid_d[3];
+
 //*******************************************************************************
 // Returns true only if another hop is required by the current rank
 __inline__ __device__ bool opp_part_check_status_device(char& move_flag, bool& iter_one_flag, 
@@ -205,10 +208,13 @@ __inline__ __device__ size_t opp_dev_findStructuredCellIndex2D(const OPP_REAL* p
     const size_t yIndex = (size_t)((pos[1 * cellMapper_pos_stride_d] - minGlbCoordinate[1]) * 
                                             oneOverGridSpace[0]);
 
+    const bool isOutOfCuboid = ((xIndex >= opp_maxSavedDHGrid_d[0] || xIndex < opp_minSavedDHGrid_d[0]) ||
+                                (yIndex >= opp_maxSavedDHGrid_d[1] || yIndex < opp_minSavedDHGrid_d[1]));
+
     // Calculate the cell index mapping index
     const size_t index = xIndex + (yIndex * globalGridDims[0]);
 
-    return (index >= globalGridSize[0]) ? MAX_CELL_INDEX : index;
+    return (isOutOfCuboid) ? MAX_CELL_INDEX : index;
 }
 
 //*******************************************************************************
@@ -224,10 +230,14 @@ __inline__ __device__ size_t opp_dev_findStructuredCellIndex3D(const OPP_REAL* p
     const size_t zIndex = (size_t)((pos[2 * cellMapper_pos_stride_d] - minGlbCoordinate[2]) * 
                                             oneOverGridSpace[0]);
 
+    const bool isOutOfCuboid = ((xIndex >= opp_maxSavedDHGrid_d[0] || xIndex < opp_minSavedDHGrid_d[0]) ||
+                                (yIndex >= opp_maxSavedDHGrid_d[1] || yIndex < opp_minSavedDHGrid_d[1]) ||
+                                (zIndex >= opp_maxSavedDHGrid_d[2] || zIndex < opp_minSavedDHGrid_d[2]));
+
     // Calculate the cell index mapping index
     const size_t index = xIndex + (yIndex * globalGridDims[0]) + (zIndex * globalGridDims[3]);
 
-    return (index >= globalGridSize[0]) ? MAX_CELL_INDEX : index;
+    return (isOutOfCuboid) ? MAX_CELL_INDEX : index;
 }
 
 //*******************************************************************************
@@ -358,8 +368,8 @@ __global__ void opp_dev_checkForGlobalMove3D_kernel(
     OPP_INT* __restrict__ move_rank_indices, 
     OPP_INT* __restrict__ move_count, 
     const OPP_INT start, 
-    const OPP_INT end) 
-{
+    const OPP_INT end
+) {
     const int thread_id = threadIdx.x + blockIdx.x * blockDim.x;
     const int part_idx = thread_id + start;  
 

@@ -68,7 +68,7 @@ seq: mklib advec_opp+seq opp_kernels+seq
 	 $(CPP) $(CPPFLAGS) -o $(BIN)/seq \
 		$(OBJ)/advec_opp_seq.o \
 		$(OBJ)/opp_kernels_seq.o \
-		$(ALL_INC) $(ALL_LIBS) -lopp_seq
+		$(ALL_INC) $(ALL_LIBS) -lopp_seq -lz
 
 # ------------------------------------------------------------------------------------------
 advec_opp+mpi:
@@ -79,7 +79,7 @@ mpi: mklib advec_opp+mpi opp_kernels+mpi
 	 $(MPICPP) $(CPPFLAGS) -DUSE_MPI -o $(BIN)/mpi \
 		$(OBJ)/advec_opp_mpi.o \
 		$(OBJ)/opp_kernels_mpi.o \
-		$(ALL_INC) $(ALL_LIBS) -lopp_mpi
+		$(ALL_INC) $(ALL_LIBS) -lopp_mpi -lz
 
 # ------------------------------------------------------------------------------------------
 advec_opp+omp:
@@ -90,7 +90,7 @@ omp: mklib advec_opp+omp opp_kernels+omp
 	 $(CPP) $(CPPFLAGS) -fopenmp -o $(BIN)/omp \
 		$(OBJ)/advec_opp_omp.o \
 		$(OBJ)/opp_kernels_omp.o \
-		$(ALL_INC) $(ALL_LIBS) -lopp_omp
+		$(ALL_INC) $(ALL_LIBS) -lopp_omp -lz
 
 # ------------------------------------------------------------------------------------------
 advec_opp+omp_mpi:
@@ -101,7 +101,7 @@ omp_mpi: mklib advec_opp+omp_mpi opp_kernels+omp_mpi
 	 $(MPICPP) $(CPPFLAGS) -fopenmp -o $(BIN)/omp_mpi \
 		$(OBJ)/advec_opp_omp_mpi.o \
 		$(OBJ)/opp_kernels_omp_mpi.o \
-		$(ALL_INC) $(ALL_LIBS) -lopp_omp_mpi
+		$(ALL_INC) $(ALL_LIBS) -lopp_omp_mpi -lz
 
 # ------------------------------------------------------------------------------------------
 advec_opp+cuda:
@@ -112,7 +112,7 @@ cuda: mklib advec_opp+cuda opp_kernels+cuda
 	 $(CPP) $(CPPFLAGS) -o $(BIN)/cuda \
 		$(OBJ)/advec_opp_cuda.o \
 		$(OBJ)/opp_kernels_cuda.o \
-		$(ALL_INC) $(CUDA_INC) $(ALL_LIBS) $(CUDA_LIB) -lopp_cuda
+		$(ALL_INC) $(CUDA_INC) $(ALL_LIBS) $(CUDA_LIB) -lopp_cuda -lz
 
 # ------------------------------------------------------------------------------------------
 advec_opp+cuda_mpi:
@@ -123,7 +123,7 @@ cuda_mpi: mklib advec_opp+cuda_mpi opp_kernels+cuda_mpi
 	 $(MPICPP) $(CPPFLAGS) -DUSE_MPI -o $(BIN)/cuda_mpi \
 		$(OBJ)/advec_opp_cuda_mpi.o \
 		$(OBJ)/opp_kernels_cuda_mpi.o \
-		$(ALL_INC) $(CUDA_INC) $(ALL_LIBS) $(CUDA_LIB) -lopp_cuda_mpi
+		$(ALL_INC) $(CUDA_INC) $(ALL_LIBS) $(CUDA_LIB) -lopp_cuda_mpi -lz
 
 # ------------------------------------------------------------------------------------------
 advec_opp+sycl:
@@ -134,7 +134,7 @@ sycl: mklib advec_opp+sycl opp_kernels+sycl
 	 $(SYCLCC) $(SYCLFLAGS) -o $(BIN)/sycl \
 		$(OBJ)/advec_opp_sycl.o \
 		$(OBJ)/opp_kernels_sycl.o \
-		$(ALL_INC) $(ALL_LIBS) -lopp_sycl
+		$(ALL_INC) $(ALL_LIBS) -lopp_sycl -lz
 
 # ------------------------------------------------------------------------------------------
 advec_opp+sycl_mpi:
@@ -145,7 +145,7 @@ sycl_mpi: mklib advec_opp+sycl_mpi opp_kernels+sycl_mpi
 	 $(MPICPP) $(SYCLFLAGS) -o $(BIN)/sycl_mpi \
 		$(OBJ)/advec_opp_sycl_mpi.o \
 		$(OBJ)/opp_kernels_sycl_mpi.o \
-		$(ALL_INC) $(ALL_LIBS) -lopp_sycl_mpi
+		$(ALL_INC) $(ALL_LIBS) -lopp_sycl_mpi -lz
 
 # ------------------------------------------------------------------------------------------
 advec_opp+hip:
@@ -156,7 +156,7 @@ hip: mklib advec_opp+hip opp_kernels+hip
 	 $(HIPCC) $(HIPCCFLAGS) -o $(BIN)/hip \
 		$(OBJ)/advec_opp_hip.o \
 		$(OBJ)/opp_kernels_hip.o \
-		$(ALL_INC) $(HIP_INC) $(ALL_LIBS) -lopp_hip
+		$(ALL_INC) $(HIP_INC) $(ALL_LIBS) -lopp_hip -lz
 
 # ------------------------------------------------------------------------------------------
 advec_opp+hip_mpi:
@@ -167,7 +167,7 @@ hip_mpi: mklib advec_opp+hip_mpi opp_kernels+hip_mpi
 	 $(HIPCC) $(HIPCCFLAGS) -o $(BIN)/hip_mpi \
 		$(OBJ)/advec_opp_hip_mpi.o \
 		$(OBJ)/opp_kernels_hip_mpi.o \
-		$(ALL_INC) $(HIP_INC) $(ALL_LIBS) -lopp_hip_mpi -lmpi
+		$(ALL_INC) $(HIP_INC) $(ALL_LIBS) -lopp_hip_mpi -lmpi -lz
 
 # ------------------------------------------------------------------------------------------
 clean: 

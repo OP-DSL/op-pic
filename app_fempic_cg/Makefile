@@ -49,11 +49,22 @@ ifeq ($(DEBUG_LOG), 1)
 	SYCLFLAGS  += -DDEBUG_LOG
 endif
 
+HOPS ?= 1
+ifeq ($(HOPS), 1)
+	CPPFLAGS   += -DLOG_HOPS
+	NVCCFLAGS  += -DLOG_HOPS
+	HIPCCFLAGS += -DLOG_HOPS
+	SYCLFLAGS  += -DLOG_HOPS
+endif
+
 PETSC_INC  = -I$(PETSC_INSTALL_PATH)/include
 PETSC_LIB  = -Wl,-rpath,$(PETSC_INSTALL_PATH)/lib -L$(PETSC_INSTALL_PATH)/lib -lpetsc
 
 CUDA_INC   = -I$(CUDA_INSTALL_PATH)/include
 CUDA_LIB   = -L$(CUDA_INSTALL_PATH)/lib64 -lcudart -lcuda
+
+# CUDA_INC   = -I$(CUDA_INSTALL_PATH)/include -I$(MPI_INSTALL_PATH)/include
+# CUDA_LIB   = -L$(CUDA_INSTALL_PATH)/lib64 -lcudart -lcuda -I$(MPI_INSTALL_PATH)/lib -lmpi
 
 HIP_INC   = -I$(ROCM_INSTALL_DIR)/include -I$(ROCM_THRUST_DIR)/include -I$(ROCM_PRIM_DIR)/include
 HIP_LIB   = -L$(ROCM_INSTALL_DIR)/lib -lamdhip64
@@ -94,7 +105,7 @@ seq: mklib fempic_opp+seq opp_kernels+seq field_solver+seq
 		 	$(OBJ)/fempic_opp_seq.o \
 			$(OBJ)/opp_kernels_seq.o \
 			$(OBJ)/field_solver_cpu_seq.o \
-			$(ALL_LIBS) -lopp_seq
+			$(ALL_LIBS) -lopp_seq -lz
 
 # ----------------------------------------------------------------------------------------------------------------------
 opp_kernels+omp: 
@@ -109,7 +120,7 @@ omp: mklib opp_kernels+omp fempic_opp+omp field_solver+omp
 			$(OBJ)/fempic_opp_omp.o \
 			$(OBJ)/opp_kernels_omp.o \
 			$(OBJ)/field_solver_cpu_omp.o \
-			$(ALL_LIBS) -lopp_omp
+			$(ALL_LIBS) -lopp_omp -lz
 
 # ----------------------------------------------------------------------------------------------------------------------
 fempic_opp+omp_mpi: 
@@ -126,7 +137,7 @@ omp_mpi: mklib opp_kernels+omp_mpi field_solver+omp_mpi fempic_opp+omp_mpi
 		 	$(OBJ)/fempic_opp_omp_mpi.o \
 			$(OBJ)/opp_kernels_omp_mpi.o \
 			$(OBJ)/field_solver_cpu_omp_mpi.o \
-			$(ALL_LIBS) -lopp_omp_mpi
+			$(ALL_LIBS) -lopp_omp_mpi -lz
 
 omp_mpi_hdf5: mklib opp_kernels+omp_mpi field_solver+omp_mpi fempic_opp+omp_mpi opp_mpi_hdf5+omp_mpi
 	     $(MPICPP) $(CPPFLAGS) -fopenmp -o $(BIN)/omp_mpi_hdf5 \
@@ -134,7 +145,7 @@ omp_mpi_hdf5: mklib opp_kernels+omp_mpi field_solver+omp_mpi fempic_opp+omp_mpi 
 			$(OBJ)/opp_kernels_omp_mpi.o \
 			$(OBJ)/field_solver_cpu_omp_mpi.o \
 			$(OBJ)/opp_mpi_hdf5_omp_mpi.o \
-			$(ALL_LIBS) -lopp_omp_mpi -lhdf5
+			$(ALL_LIBS) -lopp_omp_mpi -lhdf5 -lz
 
 # ----------------------------------------------------------------------------------------------------------------------
 fempic_opp+mpi:
@@ -151,7 +162,7 @@ mpi: mklib fempic_opp+mpi opp_kernels+mpi field_solver+mpi
 			$(OBJ)/fempic_opp_mpi.o \
 			$(OBJ)/opp_kernels_mpi.o \
 			$(OBJ)/field_solver_cpu_mpi.o \
-			$(ALL_LIBS) -lopp_mpi 
+			$(ALL_LIBS) -lopp_mpi -lz
 
 mpi_hdf5: mklib fempic_opp+mpi opp_kernels+mpi field_solver+mpi opp_mpi_hdf5+mpi
 		 $(MPICPP) $(CPPFLAGS) -DUSE_MPI -o $(BIN)/mpi_hdf5 \
@@ -159,7 +170,7 @@ mpi_hdf5: mklib fempic_opp+mpi opp_kernels+mpi field_solver+mpi opp_mpi_hdf5+mpi
 		 	$(OBJ)/opp_mpi_hdf5_mpi_hdf5.o  \
 		 	$(OBJ)/opp_kernels_mpi.o \
 		 	$(OBJ)/field_solver_cpu_mpi.o \
-		 	$(ALL_LIBS) -lopp_mpi -lhdf5
+		 	$(ALL_LIBS) -lopp_mpi -lhdf5 -lz
 
 # ----------------------------------------------------------------------------------------------------------------------
 opp_kernels+cuda:
@@ -174,7 +185,7 @@ cuda: mklib opp_kernels+cuda fempic_opp+cuda field_solver+cuda
 		 	$(OBJ)/fempic_opp_cuda.o \
 			$(OBJ)/opp_kernels_cuda.o \
 			$(OBJ)/field_solver_cuda.o \
-			$(ALL_LIBS) $(CUDA_LIB) -lopp_cuda
+			$(ALL_LIBS) $(CUDA_LIB) -lopp_cuda -lz
 
 # ----------------------------------------------------------------------------------------------------------------------
 opp_kernels+cuda_mpi:	
@@ -191,7 +202,7 @@ cuda_mpi: mklib opp_kernels+cuda_mpi fempic_opp+cuda_mpi field_solver+cuda_mpi
 		 	$(OBJ)/fempic_opp_cuda_mpi.o \
 			$(OBJ)/opp_kernels_cuda_mpi.o \
 			$(OBJ)/field_solver_cuda_mpi.o \
-			$(ALL_LIBS) $(CUDA_LIB) -lopp_cuda_mpi
+			$(ALL_LIBS) $(CUDA_LIB) -lopp_cuda_mpi -lz
 
 cuda_mpi_hdf5: mklib opp_kernels+cuda_mpi fempic_opp+cuda_mpi field_solver+cuda_mpi opp_mpi_hdf5+cuda_mpi
 	     $(MPICPP) $(CPPFLAGS) -DUSE_MPI -o $(BIN)/cuda_mpi_hdf5 \
@@ -199,7 +210,7 @@ cuda_mpi_hdf5: mklib opp_kernels+cuda_mpi fempic_opp+cuda_mpi field_solver+cuda_
 			$(OBJ)/fempic_hdf5_opp_cuda_mpi_hdf5.o \
 			$(OBJ)/opp_mpi_hdf5_cuda_mpi_hdf5.o \
 			$(OBJ)/opp_kernels_cuda_mpi_hdf5.o \
-			$(ALL_LIBS) $(CUDA_LIB) -lopp_cuda_mpi -lhdf5
+			$(ALL_LIBS) $(CUDA_LIB) -lopp_cuda_mpi -lhdf5 -lz
 
 # ----------------------------------------------------------------------------------------------------------------------
 fempic_opp+hip:

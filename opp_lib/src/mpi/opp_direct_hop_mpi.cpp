@@ -100,7 +100,7 @@ void CellMapper::createStructMeshMappingArrays()
     createPerNodeSharedMemArrays(structMeshToCellMapping, win_structMeshToCellMapping);
     createPerNodeSharedMemArrays(structMeshToRankMapping, win_structMeshToRankMapping);
 
-    MPI_CHECK(MPI_Barrier(MPI_COMM_WORLD));
+    waitBarrier();
 }
 
 //*******************************************************************************
@@ -396,9 +396,12 @@ void CellMapper::convertToLocalMappingsIncRank(const opp_dat global_cell_id_dat)
 
     waitBarrier();
 
+    std::vector<int> tmp_structMeshToCellMapping(globalGridSize);
+    std::copy(structMeshToCellMapping, structMeshToCellMapping + globalGridSize, tmp_structMeshToCellMapping.begin());
+
     for (size_t i = 0; i < globalGridSize; i++) {
 
-        const int globalCID = (-1 * structMeshToCellMapping[i]);
+        const int globalCID = (-1 * tmp_structMeshToCellMapping[i]);
         if ((globalCID != MAX_CELL_INDEX) || (globalCID != (-1 * MAX_CELL_INDEX))) {               
             
             const int localCID = globalToLocalCellIndexMapper.map(globalCID);   
@@ -408,7 +411,7 @@ void CellMapper::convertToLocalMappingsIncRank(const opp_dat global_cell_id_dat)
         }
     }
 
-    MPI_CHECK(MPI_Barrier(MPI_COMM_WORLD));
+    waitBarrier();
 
     if (comm->rank_intra == 0) {
         MPI_CHECK(MPI_Allreduce(MPI_IN_PLACE, structMeshToCellMapping, globalGridSize, 

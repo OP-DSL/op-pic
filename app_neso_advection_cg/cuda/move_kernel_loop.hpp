@@ -246,6 +246,7 @@ void opp_particle_move__move_kernel(opp_set set, opp_map c2c_map, opp_map p2c_ma
     opp_profiler->end("move_kernel_only");
     opp_profiler->end("Mv_AllMv0");
 
+#ifdef USE_MPI 
     // ----------------------------------------------------------------------------
     // finalize the global move routine and iterate over newly added particles and check whether they need neighbour comm
     if (useGlobalMove && globalMover->finalize(set) > 0) {
@@ -284,6 +285,7 @@ void opp_particle_move__move_kernel(opp_set set, opp_map c2c_map, opp_map p2c_ma
 
         opp_profiler->end("GblMv_AllMv");
     }
+#endif
 
     // ----------------------------------------------------------------------------
     // Do neighbour communication and if atleast one particle is received by the currect rank, 

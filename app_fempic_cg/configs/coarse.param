@@ -24,16 +24,17 @@ STRING rand_file    = /home/zl/phd/box_mesh_gen/random_100k.dat
 BOOL invert_normals = false
 
 BOOL opp_auto_sort          = false
-REAL opp_allocation_multiple = 11
+REAL opp_allocation_multiple = 13
 INT opp_threads_per_block   = 256
 
 BOOL opp_profile_all        = false
 INT opp_gpu_direct = 0
-
-REAL grid_spacing  = 25e-6
 BOOL print_final   = true
 
 BOOL opp_global_move = false
+REAL grid_spacing  = 25e-6
+BOOL opp_dh_data_generate = false
+# Use opp_dh_data_generate = true and OPP_DH_DATA_DUMP=1 in args to dump the structured mesh
 
 # block k-means mpi-block
 STRING cluster = block
@@ -41,4 +42,4 @@ BOOL use_reg_red = false
 
 # HoleFill_All Sort_All Shuffle_All Sort_Periodic Shuffle_Periodic
 STRING opp_fill = Shuffle_Periodic
-INT opp_fill_period = 20
+INT opp_fill_period = 4

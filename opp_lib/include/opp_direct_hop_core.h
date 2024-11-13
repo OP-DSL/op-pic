@@ -319,14 +319,6 @@ public:
         const opp_point& minGblCoordinate = boundingBox->getGlobalMin();
         const opp_point& maxGblCoordinate = boundingBox->getGlobalMax();
 
-        opp_minSavedDHGrid[0] = 0;
-        opp_minSavedDHGrid[1] = 0;
-        opp_minSavedDHGrid[2] = 0;
-
-        opp_maxSavedDHGrid[0] = 100000;
-        opp_maxSavedDHGrid[1] = 100000;
-        opp_maxSavedDHGrid[2] = 100000;
-
         size_t ax = 0, ay = 0, az = 0;
 
         { // removed this and added below due to decimal point issues
@@ -347,8 +339,8 @@ public:
         globalGridSize = (globalGridDimsX * globalGridDimsY * globalGridDimsZ);
 
         if (OPP_rank == OPP_ROOT)
-            opp_printf("CellMapper", "Global Grid Size - [%zu %zu %zu] gridSpacing [%2.10lE]", 
-                globalGridDimsX, globalGridDimsY, globalGridDimsZ, gridSpacing); 
+            opp_printf("CellMapper", "Global Grid Size - [%zu %zu %zu | %zu] gridSpacing [%2.10lE]", 
+                globalGridDimsX, globalGridDimsY, globalGridDimsZ, globalGridDimsXY, gridSpacing); 
         
         const opp_point& minLocalCoordinate = boundingBox->getLocalMin();
         const opp_point& maxLocalCoordinate = boundingBox->getLocalMax();
@@ -377,6 +369,14 @@ public:
             opp_printf("CellMapper", "Local Grid - Size [%zu] Min[%d %d %d] Max[%d %d %d]", 
                 local_grid_size, localGridStart.x, localGridStart.y, localGridStart.z, 
                 localGridEnd.x, localGridEnd.y, localGridEnd.z); 
+
+        opp_minSavedDHGrid[0] = 0;
+        opp_minSavedDHGrid[1] = 0;
+        opp_minSavedDHGrid[2] = 0;
+
+        opp_maxSavedDHGrid[0] = globalGridDimsX;
+        opp_maxSavedDHGrid[1] = globalGridDimsY;
+        opp_maxSavedDHGrid[2] = globalGridDimsZ;    
     }
 
     //***********************************
@@ -414,9 +414,9 @@ public:
         const size_t yIndex = static_cast<size_t>((position.y - minGlbCoordinate.y) * oneOverGridSpacing);
         const size_t zIndex = static_cast<size_t>((position.z - minGlbCoordinate.z) * oneOverGridSpacing);
 
-        bool isOutOfCuboid = (xIndex > opp_maxSavedDHGrid[0] || xIndex < opp_minSavedDHGrid[0]) ||
-                             (yIndex > opp_maxSavedDHGrid[1] || yIndex < opp_minSavedDHGrid[1]) ||
-                             (zIndex > opp_maxSavedDHGrid[2] || zIndex < opp_minSavedDHGrid[2]);
+        bool isOutOfCuboid = (xIndex >= opp_maxSavedDHGrid[0] || xIndex < opp_minSavedDHGrid[0]) ||
+                             (yIndex >= opp_maxSavedDHGrid[1] || yIndex < opp_minSavedDHGrid[1]) ||
+                             (zIndex >= opp_maxSavedDHGrid[2] || zIndex < opp_minSavedDHGrid[2]);
 
         if (isOutOfCuboid) {
             return OPP_OUT_OF_SAVED_DOMAIN;

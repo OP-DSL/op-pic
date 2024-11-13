@@ -141,6 +141,8 @@ constexpr int MIN_INT = std::numeric_limits<int>::min();
 #define MAX_CELL_INDEX     INT_MAX
 #define OPP_OUT_OF_SAVED_DOMAIN ULONG_MAX
 
+#define X_HOPS 5
+
 #define UNUSED(expr) do { (void)(expr); } while (0)
 
 #define OPP_READ        0
