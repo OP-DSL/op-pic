@@ -241,6 +241,12 @@ int opp_mpi_halo_exchanges_grouped(opp_set set, int nargs, opp_arg *args, Device
 }
 
 //****************************************
+void opp_mpi_force_halo_update_if_dirty(opp_set set, std::vector<opp_dat> dats, DeviceType device) 
+{
+    // Nothing to execute here
+}
+
+//****************************************
 void opp_mpi_halo_wait_all(int nargs, opp_arg *args)
 {
     // Nothing to execute here
