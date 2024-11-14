@@ -55,12 +55,10 @@ protected:
     void compute_node_potential(const opp_dat n_bnd_pot_dat, opp_dat node_potential_dat);
 
     void pre_assembly(const opp_dat n_bnd_pot);
-    void summarize(std::ostream &out);  
-
+    
+    void duplicate_vec(Vec* vec_mimic, Vec* vec_new);
     void add_ke(std::map<int, std::map<int, double>>& sparse_K, int e, double ke[4][4]);
     void add_fe(Vec *Fvec, int e, double fe[4]);
-    double evaluate_na(int a, double xi, double eta, double zeta);
-    void get_nax(double nx[3], int e, int a);
     void initialze_matrix(std::map<int, std::map<int, double>>& sparse_K);
     void compute_nx(const opp_dat n_pos);
     void sanity_check();
