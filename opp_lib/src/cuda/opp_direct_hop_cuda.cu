@@ -873,8 +873,10 @@ void dh_particle_packer_gpu::pack(opp_set set)
 
     thrust::device_vector<OPP_INT>& temp_dv = *(set->mesh_relation_dat->thrust_int_sort);
 
-    for (const auto& [send_rank, part_ids_vec] : local_part_ids) {
+    for (const auto& a : local_part_ids) {
 
+        const int send_rank = a.first;
+        const std::vector<int>& part_ids_vec = a.second;
         const size_t bytes_per_rank = (size_t)set->particle_size * part_ids_vec.size();
         
         if (OPP_DBG) 
@@ -948,8 +950,9 @@ void dh_particle_packer_gpu::unpack(opp_set set, const std::map<int, std::vector
         }
 
         size_t current_recv_count = 0;
-        for (const auto& [recv_rank, buffer] : part_recv_buffers) {
-            
+        for (const auto& a : part_recv_buffers) {
+
+            const std::vector<char>& buffer = a.second;
             const size_t recv_count = (buffer.size() / set->particle_size);
             int64_t displacement = 0;
 

@@ -829,7 +829,9 @@ void dh_particle_packer_cpu::pack(opp_set set)
 
     opp_profiler->start("MvDH_Pack");
 
-    for (const auto& [send_rank, part_ids_vec] : local_part_ids) {
+    for (const auto& a : local_part_ids) {
+        const int send_rank = a.first;
+        const std::vector<OPP_INT>& part_ids_vec = a.second;
 
         const size_t bytes_per_rank = (size_t)set->particle_size * part_ids_vec.size();
         
@@ -1024,7 +1026,9 @@ void GlobalParticleMover::communicate(opp_set set) {
     this->h_send_rank_npart.resize(this->numRemoteSendRanks);
 
     int rankx = 0;
-    for (const auto& [rank, indices_vec] : this->dh_local_part_indices) {
+    for (const auto& a : this->dh_local_part_indices) {
+        const int rank = a.first;
+        const std::vector<int>& indices_vec = a.second;
 
         if (rank >= OPP_comm_size || rank < 0) {
             opp_printf("GlobalParticleMover", "ERROR locking rank %d [size %zu] from rank %d", 
@@ -1143,10 +1147,10 @@ void GlobalParticleMover::communicate(opp_set set) {
 
     // (4) Once sent, map could be cleared for the set, keep the allocations if possible -----------
 
-    for (auto& [rank, vec] : this->dh_local_part_indices)
-        vec.clear();       
-    for (auto& [rank, vec] : this->dh_foreign_cell_indices)
-        vec.clear();   
+    for (auto& a : this->dh_local_part_indices)
+        a.second.clear();       
+    for (auto& a : this->dh_foreign_cell_indices)
+        a.second.clear();   
 
     opp_profiler->end("MvDH_Comm");  
 }

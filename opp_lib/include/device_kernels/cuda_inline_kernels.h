@@ -236,6 +236,13 @@ __inline__ __device__ size_t opp_dev_findStructuredCellIndex3D(const OPP_REAL* p
 
     // Calculate the cell index mapping index
     const size_t index = xIndex + (yIndex * globalGridDims[0]) + (zIndex * globalGridDims[3]);
+    
+    // printf("%lf %lf %lf - %lld %lld %lld -- MAX %lld %lld %lld -- MIN %lld %lld %lld -- out %d -- %lld\n", 
+    //     pos[0 * cellMapper_pos_stride_d], pos[1 * cellMapper_pos_stride_d], pos[2 * cellMapper_pos_stride_d],
+    //     xIndex, yIndex, zIndex, 
+    //     opp_maxSavedDHGrid_d[0],opp_maxSavedDHGrid_d[1],opp_maxSavedDHGrid_d[2],
+    //     opp_minSavedDHGrid_d[0],opp_minSavedDHGrid_d[1],opp_minSavedDHGrid_d[2],
+    //     isOutOfCuboid ? 1 : 0, index);
 
     return (isOutOfCuboid) ? MAX_CELL_INDEX : index;
 }

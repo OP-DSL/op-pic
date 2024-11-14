@@ -227,7 +227,9 @@ void opp_particle_move__move_kernel(opp_set set, opp_map c2c_map, opp_map p2c_ma
 
         opp_mem::dev_copy_to_symbol<OPP_INT>(cellMapper_pos_stride_d, &cellMapper_pos_stride, &(args[0].dat->set->set_capacity), 1);
         opp_mem::dev_copy_to_symbol<OPP_INT>(OPP_rank_d, &OPP_rank, 1);
-
+        cutilSafeCall(cudaMemcpyToSymbol(opp_minSavedDHGrid_d, opp_minSavedDHGrid, 3 * sizeof(size_t)));
+        cutilSafeCall(cudaMemcpyToSymbol(opp_maxSavedDHGrid_d, opp_maxSavedDHGrid, 3 * sizeof(size_t)));
+        
         // check whether particles needs to be moved over global move routine
         opp_dev_checkForGlobalMove3D_kernel<<<num_blocks, block_size>>>(
             (OPP_REAL*)args[0].data_d,    // p_pos 
