@@ -174,5 +174,4 @@ dpct --extra-arg="-DUSE_THRUST" --extra-arg="-DUSE_MPI" --extra-arg="-I/home/zl/
 
 # ------------------------------------------------------------------------------------------------------
 
-
 ONEAPI_DEVICE_SELECTOR="cuda:*" SYCL_PI_TRACE=1 bin/sycl configs/advec.param 
