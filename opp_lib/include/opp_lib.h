@@ -138,6 +138,8 @@ int opp_mpi_halo_exchanges(opp_set set, int nargs, opp_arg *args);
 void opp_mpi_halo_exchange(opp_arg *arg, int exec_flag);
 void opp_mpi_halo_wait_all(int nargs, opp_arg *args);
 
+void opp_mpi_force_halo_update_if_dirty(opp_set set, std::vector<opp_dat> dats, DeviceType device);
+
 // Copy a dat from host to device
 void opp_upload_dat(opp_dat dat);
 

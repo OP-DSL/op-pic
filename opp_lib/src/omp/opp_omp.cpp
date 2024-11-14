@@ -59,7 +59,6 @@ void opp_init(int argc, char **argv)
 
 #ifdef USE_MPI
     OPP_MPI_WORLD = MPI_COMM_WORLD;
-    OPP_MPI_GLOBAL = MPI_COMM_WORLD;
     
     MPI_Comm_rank(OPP_MPI_WORLD, &OPP_rank);
     MPI_Comm_size(OPP_MPI_WORLD, &OPP_comm_size);
@@ -800,6 +799,12 @@ int opp_mpi_halo_exchanges_grouped(opp_set set, int nargs, opp_arg *args, Device
 int opp_mpi_halo_exchanges(opp_set set, int nargs, opp_arg *args) 
 {
     return set->size;
+}
+
+//****************************************
+void opp_mpi_force_halo_update_if_dirty(opp_set set, std::vector<opp_dat> dats, DeviceType device) 
+{
+    // Nothing to execute here
 }
 
 //****************************************
