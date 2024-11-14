@@ -292,14 +292,9 @@ void FESolver::pre_assembly(const opp_dat n_bnd_pot)
                     for (int j = 0; j < n_int; j++)
                         for (int i = 0; i < n_int; i++) 
                         {
-                            double nax[3],nbx[3];
-
-                            get_nax(nax,e,a);
-                            get_nax(nbx,e,b);
-
                             double dot = 0.0; /*dot product*/
                             for (int d = 0; d < DIM; d++) 
-                                dot += (nax[d] * nbx[d]);
+                                dot += (NX[e][a][d] * NX[e][b][d]);
                             ke[a][b] += (dot * detJ[e] * W[i] * W[j] * W[k]);
                         }
             }
@@ -350,7 +345,7 @@ void FESolver::initialze_matrix(std::map<int, std::map<int, double>>& sparse_K)
     for (int i=own_start; i<own_end; i++) { // iterate own rows
     
         std::vector<int> tempVec;
-        int local_diag_max_fields = 0, local_off_diag_max_fields = 0;
+        int diag = 0, off_diag = 0;
         
         std::map<int, double>& K_sparse_row = sparse_K[i-own_start];
 
@@ -363,10 +358,8 @@ void FESolver::initialze_matrix(std::map<int, std::map<int, double>>& sparse_K)
        
             if ((std::abs(value) > 1e-12) || (i == j)) { // significant ones and all diagonals  
                 tempVec.push_back(j); 
-                if (j >= own_start && j < own_end)
-                    local_diag_max_fields++;
-                else
-                    local_off_diag_max_fields++;
+                if (j >= own_start && j < own_end) diag++;
+                else off_diag++;
             }         
         }
 
@@ -376,11 +369,8 @@ void FESolver::initialze_matrix(std::map<int, std::map<int, double>>& sparse_K)
 
         std::copy(tempVec.begin(), tempVec.end(), matIndex[i-own_start].data());
 
-        diag_max_fields = (diag_max_fields > local_diag_max_fields) ? 
-                                diag_max_fields : local_diag_max_fields; 
-
-        off_diag_max_fields = (off_diag_max_fields > local_off_diag_max_fields) ? 
-                                off_diag_max_fields : local_off_diag_max_fields;  
+        diag_max_fields = (diag_max_fields > diag) ? diag_max_fields : diag; 
+        off_diag_max_fields = (off_diag_max_fields > off_diag) ? off_diag_max_fields : off_diag;  
     }
 
 #ifndef USE_MPI
@@ -446,7 +436,7 @@ void FESolver::enrich_cell_shape_deriv(opp_dat cell_shape_deriv)
 }
 
 /*adds contributions from element stiffness matrix*/
-void FESolver::add_ke(std::map<int, std::map<int, double>>& sparse_K, int e, double ke[4][4]) // BUG : K is not created correctly
+void FESolver::add_ke(std::map<int, std::map<int, double>>& sparse_K, int e, double ke[4][4])
 { 
     if (neq <= 0) return;
 
@@ -465,7 +455,7 @@ void FESolver::add_ke(std::map<int, std::map<int, double>>& sparse_K, int e, dou
             if (Q < 0)
             {
                 if (Q == INT_MIN) continue; // skip g nodes
-                else Q = (-1 * Q - 1);            // on a different MPI rank, get its correct column
+                else Q = (-1 * Q - 1);      // on a different MPI rank, get its correct column
             }
             else 
                 Q += own_start;             // on the same MPI rank, get its correct column
@@ -497,30 +487,7 @@ void FESolver::add_fe(Vec *Fvec, int e, double fe[4])
     }
 }
 
-/*evaluates shape function a at position (xi,eta,zeta)*/
-double FESolver::evaluate_na(int a, double xi, double eta, double zeta) 
-{
-    switch(a) 
-    {
-        case 0: return xi;
-        case 1: return eta;
-        case 2: return zeta;
-        case 3: return 1-xi-eta-zeta;       
-    }
-
-    return 0;    /*shouldn't happen*/
-}
-
-/*returns derivative of N[a] at some logical point since we are using linear elements, 
-these are constant in each element*/
-void FESolver::get_nax(double nx[3], int e, int a) 
-{
-    for (int d = 0; d < DIM; d++)
-        nx[d] = NX[e][a][d];
-}
-
-/*computes derivatives of the shape functions for all elements constants since 
-using linear elements*/
+/*computes derivatives of the shape functions for all elements constants since using linear elements*/
 void FESolver::compute_nx(const opp_dat n_pos) 
 { 
     /*derivatives of the shape functions vs. xi*/
@@ -562,8 +529,6 @@ void FESolver::compute_nx(const opp_dat n_pos)
     }
 }
 
-//*************************************************************************************************
-// Sanity check after assembling matrices
 void FESolver::sanity_check()
 {
     if (OPP_DBG)
