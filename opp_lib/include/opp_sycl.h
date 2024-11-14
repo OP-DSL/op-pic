@@ -102,9 +102,9 @@ void opp_halo_create();
 void opp_halo_destroy();
 
 /*******************************************************************************/
-void opp_init_double_indirect_reductions_cuda(int nargs, opp_arg *args);
-void opp_exchange_double_indirect_reductions_cuda(int nargs, opp_arg *args) ;
-void opp_complete_double_indirect_reductions_cuda(int nargs, opp_arg *args);
+void opp_init_double_indirect_reductions_device(int nargs, opp_arg *args);
+void opp_exchange_double_indirect_reductions_device(int nargs, opp_arg *args) ;
+void opp_complete_double_indirect_reductions_device(int nargs, opp_arg *args);
 
 /*******************************************************************************/
 void print_dat_to_txtfile_mpi(opp_dat dat, const char *file_name);

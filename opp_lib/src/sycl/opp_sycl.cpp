@@ -539,7 +539,7 @@ void opp_partition(std::string lib_name, opp_set prime_set, opp_map prime_map, o
 
 
 //*******************************************************************************
-void opp_init_double_indirect_reductions_cuda(int nargs, opp_arg *args)
+void opp_init_double_indirect_reductions_device(int nargs, opp_arg *args)
 {
 #ifdef USE_MPI
     opp_init_double_indirect_reductions(nargs, args);
@@ -547,11 +547,11 @@ void opp_init_double_indirect_reductions_cuda(int nargs, opp_arg *args)
 }
 
 //****************************************
-void opp_exchange_double_indirect_reductions_cuda(int nargs, opp_arg *args)
+void opp_exchange_double_indirect_reductions_device(int nargs, opp_arg *args)
 {
 #ifdef USE_MPI
 
-    if (OPP_DBG) opp_printf("opp_exchange_double_indirect_reductions_cuda", "ALL START");
+    if (OPP_DBG) opp_printf("opp_exchange_double_indirect_reductions_device", "ALL START");
 
     OPP_DEVICE_SYNCHRONIZE();
 
@@ -575,15 +575,15 @@ void opp_exchange_double_indirect_reductions_cuda(int nargs, opp_arg *args)
 
     opp_exchange_double_indirect_reductions(nargs, args);
 
-    if (OPP_DBG) opp_printf("opp_exchange_double_indirect_reductions_cuda", "ALL END");
+    if (OPP_DBG) opp_printf("opp_exchange_double_indirect_reductions_device", "ALL END");
 #endif
 }
 
 //****************************************
-void opp_complete_double_indirect_reductions_cuda(int nargs, opp_arg *args)
+void opp_complete_double_indirect_reductions_device(int nargs, opp_arg *args)
 {
 #ifdef USE_MPI
-    if (OPP_DBG) opp_printf("opp_complete_double_indirect_reductions_cuda", "ALL START");
+    if (OPP_DBG) opp_printf("opp_complete_double_indirect_reductions_device", "ALL START");
 
     opp_complete_double_indirect_reductions(nargs, args);
 
@@ -607,7 +607,7 @@ void opp_complete_double_indirect_reductions_cuda(int nargs, opp_arg *args)
         }
     }  
 
-    if (OPP_DBG) opp_printf("opp_complete_double_indirect_reductions_cuda", "ALL END");  
+    if (OPP_DBG) opp_printf("opp_complete_double_indirect_reductions_device", "ALL END");  
 #endif
 }
 
