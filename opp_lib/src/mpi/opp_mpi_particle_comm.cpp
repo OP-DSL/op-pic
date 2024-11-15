@@ -1164,7 +1164,7 @@ int64_t GlobalParticleMover::finalize(opp_set set) {
     MPI_CHECK(MPI_Waitall(this->numRemoteRecvRanks, &(this->h_recv_requests[0]), &(this->h_recv_status[0])));
     opp_profiler->end("MvDH_WaitFin1");
 
-    // if (OPP_DBG) 
+    if (OPP_DBG) 
     {
         // Check this rank recv'd the correct number of bytes from each remote
         for (int rankx = 0; rankx < this->numRemoteRecvRanks; rankx++) {

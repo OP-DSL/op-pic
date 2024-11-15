@@ -795,6 +795,7 @@ void opp_init_dh_device(opp_set set)
 // gathers all global move information into the global mover for communication
 void opp_gather_dh_move_indices(opp_set set)
 {
+    opp_profiler->start("MvDH_Gather");
     opp_mem::copy_dev_to_host<OPP_INT>(dh_indices_h.move_count, dh_indices_d.move_count, 1);
 
     if (OPP_DBG) 
@@ -841,6 +842,7 @@ void opp_gather_dh_move_indices(opp_set set)
                             dh_indices_h.rank_indices[i], dh_indices_h.cell_indices[i]);
     }
 
+    opp_profiler->end("MvDH_Gather");
     if (OPP_DBG) opp_printf("OPP", "opp_gather_dh_move_indices DONE - dh move count %d", 
                     *(dh_indices_h.move_count));
 }
@@ -865,18 +867,15 @@ void dh_particle_packer_gpu::pack(opp_set set)
     if (OPP_DBG) 
         opp_printf("dh_particle_packer_gpu", "pack set [%s]", set->name);
 
-    std::map<int, std::vector<char>>& buffers_of_set = this->buffers[set->index];
-    for (auto& x : buffers_of_set) // try to keep the allocated vectors as it is, without deleting
-        x.second.clear();   
-
     opp_profiler->start("MvDH_Pack");
 
+    std::map<int, std::vector<char>>& buffers_of_set = this->buffers[set->index];
     thrust::device_vector<OPP_INT>& temp_dv = *(set->mesh_relation_dat->thrust_int_sort);
 
-    for (const auto& a : local_part_ids) {
+    for (const auto& per_rank_parts : local_part_ids) {
 
-        const int send_rank = a.first;
-        const std::vector<int>& part_ids_vec = a.second;
+        const int send_rank = per_rank_parts.first;
+        const std::vector<int>& part_ids_vec = per_rank_parts.second;
         const size_t bytes_per_rank = (size_t)set->particle_size * part_ids_vec.size();
         
         if (OPP_DBG) 
@@ -884,7 +883,7 @@ void dh_particle_packer_gpu::pack(opp_set set)
                         send_rank, part_ids_vec.size());
 
         std::vector<char>& send_rank_buffer = buffers_of_set[send_rank];
-        send_rank_buffer.resize(bytes_per_rank, 0);
+        send_rank_buffer.resize(bytes_per_rank);
 
         const int copy_count = (int)part_ids_vec.size();
         
