@@ -45,6 +45,14 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
     #include <opp_mpi_core.h>
 #endif
 
+struct opp_dh_indices {
+    OPP_INT* move_count = nullptr;
+    OPP_INT* part_indices = nullptr;
+    OPP_INT* rank_indices = nullptr;
+    OPP_INT* cell_indices = nullptr;
+    OPP_INT capacity = 0;
+};
+
 constexpr bool debug_mem = false;
 constexpr bool debugger = false;
 constexpr int opp_const_threads_per_block = 192;
@@ -89,6 +97,14 @@ extern char *OPP_reduct_h, *OPP_reduct_d;
 extern char *OPP_consts_h, *OPP_consts_d;
 
 extern std::vector<char*> opp_consts;
+
+extern char opp_move_status_flag;
+extern bool opp_move_hop_iter_one_flag;
+extern OPP_INT* opp_p2c;
+extern OPP_INT* opp_c2c;
+
+extern opp_dh_indices dh_indices_d;
+extern opp_dh_indices dh_indices_h;
 
 //*************************************************************************************************
 void opp_sycl_init(int argc, char **argv);

@@ -33,6 +33,8 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "opp_hip.h"
 
+constexpr bool verbose_profile = true;
+
 #define MPI_COUNT_EXCHANGE 0
 #define MPI_TAG_PART_EX 1
 
@@ -180,13 +182,13 @@ void opp_part_pack_device(opp_set set)
     // copy_according_to_index(set->mesh_relation_dat->thrust_int, &send_part_cell_idx_dv, 
     //     OPP_thrust_move_particle_indices_d, -1, -1, OPP_move_count_h, 1);
 
-    // opp_profiler->start("Mv_Pack1");
+    if (verbose_profile) opp_profiler->start("Mv_Pack1");
     thrust::host_vector<int> send_part_cell_idx_hv(OPP_move_count_h);
     thrust::copy(OPP_thrust_move_cell_indices_d.begin(), 
             OPP_thrust_move_cell_indices_d.begin() + OPP_move_count_h, send_part_cell_idx_hv.begin());
-    // opp_profiler->end("Mv_Pack1");
+    if (verbose_profile) opp_profiler->end("Mv_Pack1");
 
-    // opp_profiler->start("Mv_Pack2");
+    if (verbose_profile) opp_profiler->start("Mv_Pack2");
     // enrich the particles to communicate with the correct external cell index and mpi rank
     std::map<int, opp_particle_comm_data>& set_part_com_data = opp_part_comm_neighbour_data[set];
     for (int index = 0; index < OPP_move_count_h; index++)
@@ -205,9 +207,9 @@ void opp_part_pack_device(opp_set set)
 
         opp_part_mark_move(set, index, it->second); // it->second is the local cell index in foreign rank
     }
-    // opp_profiler->end("Mv_Pack2");
+    if (verbose_profile) opp_profiler->end("Mv_Pack2");
 
-    // opp_profiler->start("Mv_Pack3");
+    if (verbose_profile) opp_profiler->start("Mv_Pack3");
     std::map<int, std::vector<char>> move_dat_data_map;
 
     // download the particles to send
@@ -241,9 +243,9 @@ void opp_part_pack_device(opp_set set)
             }
         }      
     }
-    // opp_profiler->end("Mv_Pack3");
+    if (verbose_profile) opp_profiler->end("Mv_Pack3");
 
-    // opp_profiler->start("Mv_Pack4");
+    if (verbose_profile) opp_profiler->start("Mv_Pack4");
     opp_part_all_neigh_comm_data* send_buffers = (opp_part_all_neigh_comm_data*)set->mpi_part_buffers;
 
     // increase the sizes of MPI buffers
@@ -278,9 +280,9 @@ void opp_part_pack_device(opp_set set)
             }        
         }
     }
-    // opp_profiler->end("Mv_Pack4");
+    if (verbose_profile) opp_profiler->end("Mv_Pack4");
 
-    // opp_profiler->start("Mv_Pack5");
+    if (verbose_profile) opp_profiler->start("Mv_Pack5");
     // iterate over all the ranks and pack to mpi buffers using SOA
     for (auto& move_indices_per_rank : opp_part_move_indices[set->index])
     {
@@ -331,14 +333,14 @@ void opp_part_pack_device(opp_set set)
 
         move_indices_vector.clear();
     }
-    // opp_profiler->end("Mv_Pack5");
+    if (verbose_profile) opp_profiler->end("Mv_Pack5");
 
-    // opp_profiler->start("Mv_Pack6");
+    if (verbose_profile) opp_profiler->start("Mv_Pack6");
     // This particle is already packed, hence needs to be removed from the current rank
     CopyMaxCellIndexFunctor copyMaxCellIndexFunctor((int*)set->mesh_relation_dat->data_d);
     thrust::for_each(OPP_thrust_move_particle_indices_d.begin(), OPP_thrust_move_particle_indices_d.begin() + OPP_move_count_h, 
         copyMaxCellIndexFunctor);
-    // opp_profiler->end("Mv_Pack6");
+    if (verbose_profile) opp_profiler->end("Mv_Pack6");
 
     opp_profiler->end("Mv_Pack");
 #endif
@@ -877,10 +879,10 @@ void opp_part_unpack_device_direct(opp_set set)
 
 
 bool opp_finalize_particle_move(opp_set set)
-{ 
-    opp_profiler->start("Mv_Finalize");
-
+{
     cutilSafeCall(hipDeviceSynchronize());
+
+    opp_profiler->start("Mv_Finalize");
 
     OPP_move_count_h = 0;
     cutilSafeCall(hipMemcpy(&OPP_move_count_h, OPP_move_count_d, sizeof(int), 
@@ -891,7 +893,7 @@ bool opp_finalize_particle_move(opp_set set)
     cutilSafeCall(hipMemcpy(&(set->particle_remove_count), set->particle_remove_count_d, 
                     sizeof(int), hipMemcpyDeviceToHost));
 
-    if (OPP_DBG)
+    //if (OPP_DBG)
         opp_printf("opp_finalize_particle_move", "set [%s][%d] remove_count [%d] move count [%d]", 
             set->name, set->size, set->particle_remove_count, OPP_move_count_h);
 

@@ -36,7 +36,7 @@ void opp_create_dat_device_arrays(opp_dat dat, bool create_new)
 {
     if (OPP_DBG) opp_printf("opp_create_dat_device_arrays", "%s %s", dat->name, dat->type);
 
-    char* temp_char_d = nullptr;
+    // char* temp_char_d = nullptr;
     const size_t capacity = (size_t)dat->set->set_capacity * dat->dim;
 
     if (strcmp(dat->type, "double") == 0) {
@@ -50,7 +50,7 @@ void opp_create_dat_device_arrays(opp_dat dat, bool create_new)
             dat->data_d = (char*)opp_get_dev_raw_ptr(*(dat->thrust_real));
 
             dat->thrust_real_sort = new thrust::device_vector<OPP_REAL>(capacity);
-            temp_char_d = (char*)opp_get_dev_raw_ptr(*(dat->thrust_real_sort));
+            dat->data_swap_d = (char*)opp_get_dev_raw_ptr(*(dat->thrust_real_sort));
         } 
     } 
     else if (strcmp(dat->type, "int") == 0 ) {
@@ -64,7 +64,7 @@ void opp_create_dat_device_arrays(opp_dat dat, bool create_new)
             dat->data_d = (char*)opp_get_dev_raw_ptr(*(dat->thrust_int));
 
             dat->thrust_int_sort = new thrust::device_vector<OPP_INT>(capacity);
-            temp_char_d = (char*)opp_get_dev_raw_ptr(*(dat->thrust_int_sort));
+            dat->data_swap_d = (char*)opp_get_dev_raw_ptr(*(dat->thrust_int_sort));
         } 
     }
     else {
@@ -75,7 +75,7 @@ void opp_create_dat_device_arrays(opp_dat dat, bool create_new)
 
     if (OPP_DBG) 
         opp_printf("opp_create_dat_device_arrays", "Device array of dat [%s][%p][%p] Capacity [%d]", 
-                        dat->name, dat->data_d, temp_char_d, capacity);
+                        dat->name, dat->data_d, dat->data_swap_d, capacity);
 }
 
 //****************************************

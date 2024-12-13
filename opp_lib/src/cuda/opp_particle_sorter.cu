@@ -141,6 +141,7 @@ void sort_dat_according_to_index_int(opp_dat dat, const thrust::device_vector<in
         dat->thrust_int_sort = tmp;
 
         dat->data_d = (char*)opp_get_dev_raw_ptr(*(dat->thrust_int));
+        dat->data_swap_d = (char*)opp_get_dev_raw_ptr(*(dat->thrust_real_int));
     }
 }
 
@@ -178,6 +179,7 @@ void sort_dat_according_to_index_double(opp_dat dat, const thrust::device_vector
         dat->thrust_real_sort = tmp;
 
         dat->data_d = (char*)opp_get_dev_raw_ptr(*(dat->thrust_real));
+        dat->data_swap_d = (char*)opp_get_dev_raw_ptr(*(dat->thrust_real_sort));
     }
 }
 

@@ -41,6 +41,14 @@ char *OPP_reduct_d = nullptr;
 char *OPP_consts_h = nullptr;
 char *OPP_consts_d = nullptr;
 
+char opp_move_status_flag = OPP_MOVE_DONE;
+bool opp_move_hop_iter_one_flag = true;
+OPP_INT* opp_p2c = nullptr;
+OPP_INT* opp_c2c = nullptr;
+
+opp_dh_indices dh_indices_h;
+opp_dh_indices dh_indices_d;
+
 //****************************************
 void opp_init(int argc, char **argv)
 {
@@ -928,7 +936,7 @@ void opp_create_device_arrays(opp_dat dat, bool create_new)
 {
     if (OPP_DBG) opp_printf("opp_create_device_arrays", "%s %s", dat->name, dat->type);
 
-    char* temp_char_d = nullptr;
+    // char* temp_char_d = nullptr;
 
     if (strcmp(dat->type, "double") == 0)
     {
@@ -944,7 +952,7 @@ void opp_create_device_arrays(opp_dat dat, bool create_new)
             dat->data_d = (char*)thrust::raw_pointer_cast(dat->thrust_real->data());
 
             dat->thrust_real_sort = new thrust::device_vector<double>(dat->set->set_capacity * dat->dim);
-            temp_char_d = (char*)thrust::raw_pointer_cast(dat->thrust_real_sort->data());
+            dat->data_swap_d = (char*)thrust::raw_pointer_cast(dat->thrust_real_sort->data());
         } 
     } 
     else if (strcmp(dat->type, "int") == 0 )
@@ -961,7 +969,7 @@ void opp_create_device_arrays(opp_dat dat, bool create_new)
             dat->data_d = (char*)thrust::raw_pointer_cast(dat->thrust_int->data());
 
             dat->thrust_int_sort = new thrust::device_vector<int>(dat->set->set_capacity * dat->dim);
-            temp_char_d = (char*)thrust::raw_pointer_cast(dat->thrust_int_sort->data());
+            dat->data_swap_d = (char*)thrust::raw_pointer_cast(dat->thrust_int_sort->data());
         } 
     }
     else
@@ -972,7 +980,7 @@ void opp_create_device_arrays(opp_dat dat, bool create_new)
     }
 
     if (OPP_DBG) opp_printf("opp_create_device_arrays", "Device array of dat [%s][%p][%p] Capacity [%d]", 
-                        dat->name, dat->data_d, temp_char_d, dat->set->set_capacity * dat->dim);
+                        dat->name, dat->data_d, dat->data_swap_d, dat->set->set_capacity * dat->dim);
 }
 
 //****************************************

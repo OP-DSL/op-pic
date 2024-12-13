@@ -53,6 +53,14 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
     #include <opp_mpi_core.h>
 #endif
 
+struct opp_dh_indices {
+    OPP_INT* move_count = nullptr;
+    OPP_INT* part_indices = nullptr;
+    OPP_INT* rank_indices = nullptr;
+    OPP_INT* cell_indices = nullptr;
+    OPP_INT capacity = 0;
+};
+
 #define cutilSafeCall(err) __hipSafeCall(err, __FILE__, __LINE__)
 #define cutilCheckMsg(msg) __cutilCheckMsg(msg, __FILE__, __LINE__)
 
@@ -92,10 +100,18 @@ extern std::map<int, thrust::device_vector<char>> send_data;
 extern std::map<int, thrust::device_vector<char>> recv_data;
 
 // arrays for global constants and reductions
-extern int OPP_consts_bytes;
-extern int OPP_reduct_bytes;
+extern OPP_INT OPP_consts_bytes;
+extern OPP_INT OPP_reduct_bytes;
 extern char *OPP_reduct_h, *OPP_reduct_d;
 extern char *OPP_consts_h, *OPP_consts_d;
+
+extern char opp_move_status_flag;
+extern bool opp_move_hop_iter_one_flag;
+extern OPP_INT* opp_p2c;
+extern OPP_INT* opp_c2c;
+
+extern opp_dh_indices dh_indices_d;
+extern opp_dh_indices dh_indices_h;
 
 //*************************************************************************************************
 

@@ -43,6 +43,9 @@ char *OPP_consts_h = nullptr, *OPP_consts_d = nullptr;
 
 std::vector<char*> opp_consts;
 
+opp_dh_indices dh_indices_h;
+opp_dh_indices dh_indices_d;
+
 //****************************************
 void opp_init(int argc, char **argv)
 {

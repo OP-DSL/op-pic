@@ -86,7 +86,7 @@ void opp_inc_part_count_with_distribution(opp_set particles_set,
 
     opp_increase_particle_count(particles_set, num_particles_to_insert);
 
-    int nargs1 = 2;
+    const int nargs1 = 2;
     opp_arg args1[nargs1];
 
     // if iface particle distribution is dirty in device, get it to the device

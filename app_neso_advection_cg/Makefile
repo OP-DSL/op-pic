@@ -149,25 +149,25 @@ sycl_mpi: mklib advec_opp+sycl_mpi opp_kernels+sycl_mpi
 
 # ------------------------------------------------------------------------------------------
 advec_opp+hip:
-	 $(HIPCC) $(HIPCCFLAGS) -DUSE_HIP -c advec_opp.cpp -o $(OBJ)/advec_opp_hip.o $(ALL_INC) $(HIP_INC)
+	 $(MPICPP) $(CPPFLAGS) -DUSE_HIP -c advec_opp.cpp -o $(OBJ)/advec_opp_hip.o $(ALL_INC) $(HIP_INC)
 opp_kernels+hip:
 	 $(HIPCC) $(HIPCCFLAGS) -DUSE_HIP -c hip/opp_kernels.cpp -o $(OBJ)/opp_kernels_hip.o $(ALL_INC) $(HIP_INC)
 hip: mklib advec_opp+hip opp_kernels+hip
-	 $(HIPCC) $(HIPCCFLAGS) -o $(BIN)/hip \
+	 $(MPICPP) $(CPPFLAGS) -o $(BIN)/hip \
 		$(OBJ)/advec_opp_hip.o \
 		$(OBJ)/opp_kernels_hip.o \
-		$(ALL_INC) $(HIP_INC) $(ALL_LIBS) -lopp_hip -lz
+		$(ALL_INC) $(HIP_INC) $(ALL_LIBS) -lopp_hip -lz $(HIP_LIB)
 
 # ------------------------------------------------------------------------------------------
 advec_opp+hip_mpi:
-	 $(HIPCC) $(HIPCCFLAGS) -DUSE_HIP -DUSE_MPI -c advec_opp.cpp -o $(OBJ)/advec_opp_hip_mpi.o $(ALL_INC) $(HIP_INC)
+	 $(MPICPP) $(CPPFLAGS) -DUSE_HIP -DUSE_MPI -c advec_opp.cpp -o $(OBJ)/advec_opp_hip_mpi.o $(ALL_INC) $(HIP_INC)
 opp_kernels+hip_mpi:
 	 $(HIPCC) $(HIPCCFLAGS) -DUSE_HIP -DUSE_MPI -c hip/opp_kernels.cpp -o $(OBJ)/opp_kernels_hip_mpi.o $(ALL_INC) $(HIP_INC)
 hip_mpi: mklib advec_opp+hip_mpi opp_kernels+hip_mpi
-	 $(HIPCC) $(HIPCCFLAGS) -o $(BIN)/hip_mpi \
+	 $(MPICPP) $(CPPFLAGS) -o $(BIN)/hip_mpi \
 		$(OBJ)/advec_opp_hip_mpi.o \
 		$(OBJ)/opp_kernels_hip_mpi.o \
-		$(ALL_INC) $(HIP_INC) $(ALL_LIBS) -lopp_hip_mpi -lmpi -lz
+		$(ALL_INC) $(HIP_INC) $(ALL_LIBS) -lopp_hip_mpi -lmpi -lz $(HIP_LIB)
 
 # ------------------------------------------------------------------------------------------
 clean: 

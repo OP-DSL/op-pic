@@ -85,7 +85,7 @@ CUDA_INC   += -I$(CUDA_INSTALL_PATH)/include
 # for demos with gcc
 # CUDA_INC   = -I$(CUDA_INSTALL_PATH)/include -I$(MPI_INSTALL_PATH)/include
 
-HIP_INC   += -I$(ROCM_INSTALL_DIR)/include -I$(ROCM_THRUST_DIR)/include -I$(ROCM_PRIM_DIR)/include
+HIP_INC   += -I$(ROCM_INSTALL_DIR)/include -I$(ROCM_THRUST_DIR)/include -I$(ROCM_PRIM_DIR)/include -I$(MPI_INSTALL_PATH)/include
 
 .PHONY: clean mklib
 
@@ -154,7 +154,8 @@ SRC_SYCL_CPP = 	$(SRC)/sycl/opp_sycl.cpp \
 				$(SRC)/sycl/opp_sycl_halo.cpp \
 				$(SRC)/core/opp_lib_core.cpp \
 				$(SRC)/core/opp_util.cpp \
-				$(SRC)/core/opp_params.cpp
+				$(SRC)/core/opp_params.cpp \
+				$(SRC)/sycl/opp_direct_hop_sycl.cpp
 OBJ_SYCL_CPP =  $(patsubst $(SRC)/core/%.cpp,$(OBJ)/%+sycl.o,$(SRC_SYCL_CPP)) \
 				$(patsubst $(SRC)/sycl/%.cpp,$(OBJ)/%+sycl.o,$(SRC_SYCL_CPP))
 $(OBJ)/%+sycl.o: $(SRC)/core/%.cpp
@@ -173,7 +174,8 @@ SRC_HIP_CPP = 	$(SRC)/core/opp_lib_core.cpp \
 				$(SRC)/core/opp_params.cpp \
 				$(SRC)/hip/opp_hip.cpp \
 				$(SRC)/hip/opp_particle_sorter.cpp \
-				$(SRC)/hip/opp_hip_halo.cpp 
+				$(SRC)/hip/opp_hip_halo.cpp \
+				$(SRC)/hip/opp_direct_hop_hip.cpp
 OBJ_HIP_CPP =  	$(patsubst $(SRC)/core/%.cpp,$(OBJ)/%+hip.o,$(SRC_HIP_CPP)) \
 				$(patsubst $(SRC)/hip/%.cpp,$(OBJ)/%+hip.o,$(SRC_HIP_CPP))
 $(OBJ)/%+hip.o: $(SRC)/core/%.cpp
@@ -223,7 +225,8 @@ SRC_SYCL_MPI_CPP = 	$(SRC)/sycl/opp_sycl.cpp \
 					$(SRC)/mpi/opp_mpi_core.cpp \
 					$(SRC)/mpi/opp_mpi_particle_comm.cpp \
 					$(SRC)/mpi/opp_mpi_double_ind_reducs.cpp \
-					$(SRC)/mpi/opp_mpi_utils.cpp
+					$(SRC)/mpi/opp_mpi_utils.cpp \
+					$(SRC)/sycl/opp_direct_hop_sycl.cpp
 OBJ_SYCL_MPI_CPP =  $(patsubst $(SRC)/core/%.cpp,$(OBJ)/%+sycl_mpi.o,$(SRC_SYCL_MPI_CPP)) \
 					$(patsubst $(SRC)/sycl/%.cpp,$(OBJ)/%+sycl_mpi.o,$(SRC_SYCL_MPI_CPP)) \
 					$(patsubst $(SRC)/mpi/%.cpp,$(OBJ)/%+sycl_mpi.o,$(SRC_SYCL_MPI_CPP))
@@ -280,7 +283,8 @@ SRC_HIP_MPI_CPP = 	$(SRC)/core/opp_lib_core.cpp \
 					$(SRC)/mpi/opp_mpi_utils.cpp \
 					$(SRC)/hip/opp_hip.cpp \
 					$(SRC)/hip/opp_hip_halo.cpp \
-					$(SRC)/hip/opp_particle_sorter.cpp
+					$(SRC)/hip/opp_particle_sorter.cpp \
+					$(SRC)/hip/opp_direct_hop_hip.cpp
 OBJ_HIP_MPI_CPP = 	$(patsubst $(SRC)/core/%.cpp,$(OBJ)/%+hip_mpi.o,$(SRC_HIP_MPI_CPP)) \
 					$(patsubst $(SRC)/mpi/%.cpp,$(OBJ)/%+hip_mpi.o,$(SRC_HIP_MPI_CPP)) \
 					$(patsubst $(SRC)/hip/%.cpp,$(OBJ)/%+hip_mpi.o,$(SRC_HIP_MPI_CPP))
