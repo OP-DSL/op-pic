@@ -870,7 +870,7 @@ void dh_particle_packer_gpu::pack(opp_set set)
     opp_profiler->start("MvDH_Pack");
 
     std::map<int, std::vector<char>>& buffers_of_set = this->buffers[set->index];
-    thrust::device_vector<OPP_INT>& temp_dv = *(set->mesh_relation_dat->thrust_int_sort);
+    OPP_INT* temp_dp = (OPP_INT*)set->mesh_relation_dat->data_swap_d;
 
     for (const auto& per_rank_parts : local_part_ids) {
 
@@ -887,7 +887,6 @@ void dh_particle_packer_gpu::pack(opp_set set)
 
         const int copy_count = (int)part_ids_vec.size();
         
-        OPP_INT* temp_dp = opp_get_dev_raw_ptr<OPP_INT>(temp_dv);
         opp_mem::copy_host_to_dev<OPP_INT>(temp_dp, part_ids_vec.data(), copy_count);
 
         size_t disp = 0;
@@ -900,19 +899,19 @@ void dh_particle_packer_gpu::pack(opp_set set)
             }
             else if (strcmp(dat->type, "double") == 0) {
                     
-                copy_according_to_index<OPP_REAL>(dat->thrust_real, dat->thrust_real_sort, 
-                    temp_dv, dat->set->set_capacity, copy_count, copy_count, dat->dim);
+                copy_according_to_index<OPP_REAL>((OPP_REAL*)dat->data_d, (OPP_REAL*)dat->data_swap_d,
+                    temp_dp, dat->set->set_capacity, copy_count, copy_count, dat->dim);
 
                 opp_mem::copy_dev_to_host<char>(&(send_rank_buffer[disp]), 
-                    (char*)opp_get_dev_raw_ptr<OPP_REAL>(*(dat->thrust_real_sort)), bytes_to_copy);
+                    dat->data_swap_d, bytes_to_copy);
             }
             else if (strcmp(dat->type, "int") == 0) {
                 
-                copy_according_to_index<OPP_INT>(dat->thrust_int, dat->thrust_int_sort, 
-                    temp_dv, dat->set->set_capacity, copy_count, copy_count, dat->dim);
+                copy_according_to_index<OPP_INT>((OPP_INT*)dat->data_d, (OPP_INT*)dat->data_swap_d, 
+                    temp_dp, dat->set->set_capacity, copy_count, copy_count, dat->dim);
                 
                 opp_mem::copy_dev_to_host<char>(&(send_rank_buffer[disp]), 
-                    (char*)opp_get_dev_raw_ptr<OPP_INT>(*(dat->thrust_int_sort)), bytes_to_copy);
+                    dat->data_swap_d, bytes_to_copy);
             }
 
             disp += bytes_to_copy; 
