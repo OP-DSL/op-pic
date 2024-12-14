@@ -87,6 +87,8 @@ void opp_init(int argc, char **argv)
     opp_params->write(std::cout);
     opp_sycl_init(argc, argv);
 
+    OPP_auto_soa = 1; // TODO : Make this configurable with args
+
     const int threads_per_block = opp_params->get<OPP_INT>("opp_threads_per_block");   
     if (threads_per_block > 0 && threads_per_block < INT_MAX)
         OPP_gpu_threads_per_block = threads_per_block;
@@ -156,56 +158,52 @@ void opp_sycl_init(int argc, char **argv) {
     for (int n = 1; n < argc; n++) {
         char *pch = strstr(argv[n], "-cpu");
         if (pch != NULL)
-            run_on_gpu = true;
+            run_on_gpu = false;
     }
 
     if (OPP_DBG) opp_printf("opp_sycl_init", "run_on_gpu=%s", run_on_gpu ? "TRUE" : "FALSE");
 
     try {
-        std::vector<sycl::device> selected_devices;
-        std::vector<sycl::device> all_devices = sycl::device::get_devices();
+//         std::vector<sycl::device> selected_devices;
+//         std::vector<sycl::device> all_devices = sycl::device::get_devices();   
+//         if (all_devices.size() == 0) {
+//             opp_printf("opp_sycl_init", "Error: no supporting devices found");
+//             opp_abort();
+//         }
+//         for (const auto& dev : all_devices) {
+//             if (OPP_DBG) {
+//                 std::string device_type;  
+//                 if (dev.is_cpu()) device_type = "CPU";
+//                 else if (dev.is_gpu()) device_type = "GPU";
+//                 else if (dev.is_accelerator()) device_type = "Accelerator";
+//                 else device_type = "Unknown";
+//                 std::cout << "opp_sycl_init[" << OPP_rank << "] - Detected device [ " 
+//                     << dev.get_info<sycl::info::device::name>() << " (" 
+//                     << device_type << ") ]" << std::endl;
+//             }
+//             // Should we include CPU and GPU loops as well?
+//             if ((dev.is_cpu() && !run_on_gpu) || (dev.is_gpu() && run_on_gpu)) {
+//                 selected_devices.push_back(dev);
+//             }
+//         }
+//         if (selected_devices.size() == 0) {
+//             opp_printf("opp_sycl_init", "Requested %s but none found", run_on_gpu ? "GPUs" : "CPUs");
+//             opp_abort();
+//         }
+// #ifdef USE_MPI
+//         opp::Comm comm(MPI_COMM_WORLD);
+//         const int int_rank = comm.rank_intra;
+// #else
+//         const int int_rank = OPP_rank;
+// #endif
+//         // Select a GPU based on the MPI rank
+//         sycl::device selected_device = selected_devices[int_rank % selected_devices.size()];
+//         opp_queue = new sycl::queue(selected_device);
+
+        // Instead of above commented code, use a wrapper to set device selectors!
+        // Run using, mpirun -np 8 ./wrap_sycl.sh bin/sycl_mpi congigs/xx.param
+        opp_queue = new sycl::queue(sycl::default_selector_v);
         
-        if (all_devices.size() == 0) {
-            opp_printf("opp_sycl_init", "Error: no supporting devices found");
-            opp_abort();
-        }
-
-        for (const auto& dev : all_devices) {
-
-            if (OPP_DBG) {
-                std::string device_type;  
-                if (dev.is_cpu()) device_type = "CPU";
-                else if (dev.is_gpu()) device_type = "GPU";
-                else if (dev.is_accelerator()) device_type = "Accelerator";
-                else device_type = "Unknown";
-
-                std::cout << "opp_sycl_init[" << OPP_rank << "] - Detected device [ " 
-                    << dev.get_info<sycl::info::device::name>() << " (" 
-                    << device_type << ") ]" << std::endl;
-            }
-
-            // Should we include CPU and GPU loops as well?
-            if ((dev.is_cpu() && !run_on_gpu) || (dev.is_gpu() && run_on_gpu)) {
-                selected_devices.push_back(dev);
-            }
-        }
-
-        if (selected_devices.size() == 0) {
-            opp_printf("opp_sycl_init", "Requested %s but none found", run_on_gpu ? "GPUs" : "CPUs");
-            opp_abort();
-        }
-
-#ifdef USE_MPI
-        opp::Comm comm(MPI_COMM_WORLD);
-        const int int_rank = comm.rank_intra;
-#else
-        const int int_rank = OPP_rank;
-#endif
-
-        // Select a GPU based on the MPI rank
-        sycl::device selected_device = selected_devices[int_rank % selected_devices.size()];
-        opp_queue = new sycl::queue(selected_device);
-
         // Test we have access to a device
         float *test = opp_mem::dev_malloc<float>(1);
         opp_mem::dev_free(test);

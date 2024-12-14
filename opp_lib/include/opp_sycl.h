@@ -98,11 +98,6 @@ extern char *OPP_consts_h, *OPP_consts_d;
 
 extern std::vector<char*> opp_consts;
 
-extern char opp_move_status_flag;
-extern bool opp_move_hop_iter_one_flag;
-extern OPP_INT* opp_p2c;
-extern OPP_INT* opp_c2c;
-
 extern opp_dh_indices dh_indices_d;
 extern opp_dh_indices dh_indices_h;
 
