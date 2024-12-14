@@ -81,7 +81,7 @@ def translateProgram(source: str, program: Program, force_soa: bool) -> str:
     dh_api_match = re.search(pattern, source)
 
     if dh_api_match:
-        prototype = f'void opp_init_direct_hop_cg(double,int,const opp_dat,const opp::BoundingBox&,opp_map,opp_map{",opp_arg" * len(move_loop.args)});'
+        prototype = f'void opp_init_direct_hop_cg(double,const opp_dat,const opp::BoundingBox&,opp_map,opp_map{",opp_arg" * len(move_loop.args)});'
         buffer.insert(index, prototype)
         index += 1
         move_loop.dh_loop_required = True
