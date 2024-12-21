@@ -31,7 +31,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "opp_sycl.h"
 
-constexpr bool verbose_profile = false;
+constexpr bool verbose_profile = true;
 
 void opp_part_pack_device(opp_set set);
 void opp_part_unpack_device(opp_set set);

@@ -12,8 +12,8 @@ HIPCC      = $(HIP_COMPILER)
 SYCLCC     = icpx
 
 CPPFLAGS   = -std=c++17 -Wall -fPIC -march=native $(CPPFLAGS_ADD)
-NVCCFLAGS  = -std=c++17 -m64 -Xptxas -dlcm=ca $(NVCCFLAGS_ADD)
-HIPCCFLAGS = $(HIPCCFLAGS_ADD) -std=c++17 -Wall -isystem -D__HIP_PLATFORM_AMD__ -munsafe-fp-atomics -march=native
+NVCCFLAGS  = -std=c++17 -m64 -Xptxas -dlcm=ca $(NVCCFLAGS_ADD) -DUSE_THRUST 
+HIPCCFLAGS = $(HIPCCFLAGS_ADD) -std=c++17 -Wall -isystem -D__HIP_PLATFORM_AMD__ -munsafe-fp-atomics -DUSE_THRUST -march=native
 SYCLFLAGS  = -w -fsycl -std=c++17 $(SYCLFLAGS_ADD) -DUSE_SYCL 
 
 DEBUG ?= 0
@@ -166,9 +166,9 @@ sycl_mpi: mklib opp_kernels_sycl_mpi cabana_opp_sycl_mpi
 opp_kernels_hip:
 		 $(HIPCC) $(HIPCCFLAGS) -c hip/opp_kernels.cpp -o $(OBJ)/opp_kernels_hip.o $(ALL_INC) $(HIP_INC)
 cabana_opp_hip:
-	     $(HIPCC) $(HIPCCFLAGS) -c cabana_opp.cpp -o $(OBJ)/cabana_opp_hip.o $(ALL_INC)
+	     $(MPICPP) $(CPPFLAGS) -c cabana_opp.cpp -o $(OBJ)/cabana_opp_hip.o $(ALL_INC)
 hip: mklib cabana_opp_hip opp_kernels_hip
-	     $(HIPCC) -o $(BIN)/hip \
+	     $(MPICPP) $(CPPFLAGS) -o $(BIN)/hip \
 			$(OBJ)/cabana_opp_hip.o \
 			$(OBJ)/opp_kernels_hip.o \
 			$(ALL_LIBS) $(HIP_LIB) -lopp_hip
@@ -177,12 +177,12 @@ hip: mklib cabana_opp_hip opp_kernels_hip
 opp_kernels_hip_mpi:
 		 $(HIPCC) $(HIPCCFLAGS) -DUSE_MPI -c hip/opp_kernels.cpp -o $(OBJ)/opp_kernels_hip_mpi.o $(ALL_INC) $(HIP_INC)
 cabana_opp_hip_mpi:
-	     $(HIPCC) $(HIPCCFLAGS) -DUSE_MPI -c cabana_opp.cpp -o $(OBJ)/cabana_opp_hip_mpi.o $(ALL_INC)
+	     $(MPICPP) $(CPPFLAGS) -DUSE_MPI -c cabana_opp.cpp -o $(OBJ)/cabana_opp_hip_mpi.o $(ALL_INC)
 hip_mpi: mklib opp_kernels_hip_mpi cabana_opp_hip_mpi
-	     $(HIPCC) -o $(BIN)/hip_mpi \
+	     $(MPICPP) $(CPPFLAGS) -o $(BIN)/hip_mpi \
 			$(OBJ)/cabana_opp_hip_mpi.o \
 			$(OBJ)/opp_kernels_hip_mpi.o \
-			$(ALL_LIBS) $(HIP_LIB) -lopp_hip_mpi -lmpi
+			$(ALL_LIBS) $(HIP_LIB) -lopp_hip_mpi
 
 # ----------------------------------------------------------------------------------------------------------------------
 mpi_hdf5: mklib

@@ -85,7 +85,7 @@ ifeq ($(HDF5), 1)
 endif
 
 ALL_INC    += -I$(OPP_PATH)/include $(PETSC_INC)
-ALL_LIBS   += -L$(OPP_PATH)/lib $(PETSC_LIB)
+ALL_LIBS   += -L$(OPP_PATH)/lib $(PETSC_LIB) -lz
 
 .PHONY: clean mklib
 

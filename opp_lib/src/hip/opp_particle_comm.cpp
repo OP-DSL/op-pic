@@ -893,7 +893,7 @@ bool opp_finalize_particle_move(opp_set set)
     cutilSafeCall(hipMemcpy(&(set->particle_remove_count), set->particle_remove_count_d, 
                     sizeof(int), hipMemcpyDeviceToHost));
 
-    //if (OPP_DBG)
+    if (OPP_DBG)
         opp_printf("opp_finalize_particle_move", "set [%s][%d] remove_count [%d] move count [%d]", 
             set->name, set->size, set->particle_remove_count, OPP_move_count_h);
 

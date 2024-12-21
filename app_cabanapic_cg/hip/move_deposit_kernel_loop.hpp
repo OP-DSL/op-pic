@@ -446,6 +446,7 @@ __global__ void opp_dev_move_deposit_kernel(
     const OPP_REAL *__restrict__ dat3,     // p_weight
     const OPP_REAL *__restrict__ dat4,     // c_interp
     OPP_REAL *__restrict__ dat5,     // c_acc
+    OPP_REAL *__restrict__ swap_dat5,     // c_acc
     OPP_INT *__restrict__ p2c_map,
     const OPP_INT *__restrict__ c2c_map,
     OPP_INT *__restrict__ particle_remove_count,
@@ -469,6 +470,8 @@ __global__ void opp_dev_move_deposit_kernel(
 
         OPP_REAL arg5_p2c_local[12];
 
+        OPP_REAL* tmp5 = (threadIdx.x & 1) ? dat5 : swap_dat5;
+
         do
         {
             const OPP_INT p2c = opp_p2c[0]; // get the value here, since the kernel might change it
@@ -489,7 +492,7 @@ __global__ void opp_dev_move_deposit_kernel(
             );
 
             for (int d = 0; d < 12; ++d)
-                atomicAdd(dat5 + p2c + (d * opp_k2_dat5_stride_d), arg5_p2c_local[d]);
+                atomicAdd(tmp5 + p2c + (d * opp_k2_dat5_stride_d), arg5_p2c_local[d]);
         
         } while (opp_k2::opp_part_check_status_hip(move_flag, iter_one_flag, opp_p2c, n, 
             *particle_remove_count, particle_remove_indices, move_particle_indices, 
@@ -654,6 +657,8 @@ void opp_particle_move__move_deposit_kernel(opp_set set, opp_map c2c_map, opp_ma
 
         if (!opp_params->get<OPP_BOOL>("use_reg_red")) // Do atomics ----------       
         {
+            thrust::fill(args[5].dat->thrust_real_sort->begin(), args[5].dat->thrust_real_sort->end(), 0.0);   
+
             opp_dev_move_deposit_kernel<<<num_blocks, block_size>>>(
                 (OPP_REAL *)args[0].data_d,    // p_vel
                 (OPP_REAL *)args[1].data_d,    // p_pos
@@ -661,6 +666,7 @@ void opp_particle_move__move_deposit_kernel(opp_set set, opp_map c2c_map, opp_ma
                 (OPP_REAL *)args[3].data_d,    // p_weight
                 (OPP_REAL *)args[4].data_d,    // c_interp
                 (OPP_REAL *)args[5].data_d,    // c_acc
+                (OPP_REAL *)args[5].dat->data_swap_d,
                 (OPP_INT *)args[6].data_d,    // p2c_map
                 (OPP_INT *)c2c_map->map_d,    // c2c_map
                 (OPP_INT *)set->particle_remove_count_d,
@@ -671,6 +677,11 @@ void opp_particle_move__move_deposit_kernel(opp_set set, opp_map c2c_map, opp_ma
                 OPP_iter_start,
                 OPP_iter_end
             );
+
+            OPP_DEVICE_SYNCHRONIZE(); 
+
+            thrust::transform(args[5].dat->thrust_real->begin(), args[5].dat->thrust_real->end(), 
+                args[5].dat->thrust_real_sort->begin(), args[5].dat->thrust_real->begin(), thrust::plus<OPP_REAL>());
         }
      
         else // Do segmented reductions ----------       
