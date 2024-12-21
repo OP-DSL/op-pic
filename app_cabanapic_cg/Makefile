@@ -67,7 +67,7 @@ ifeq ($(HDF5), 1)
 endif
 
 ALL_INC  += -I$(OPP_PATH)/include
-ALL_LIBS += -L$(OPP_PATH)/lib
+ALL_LIBS += -L$(OPP_PATH)/lib -lz
 
 .PHONY: clean mklib
 

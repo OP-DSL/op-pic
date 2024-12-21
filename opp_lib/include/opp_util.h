@@ -261,6 +261,7 @@ inline void opp_printf(const char* function, const char *format, ...)
     va_end(args);
 
     printf("%s[%d][%d] - %s\n", function, OPP_rank, OPP_main_loop_iter, buf);
+    fflush(stdout);
 }
 
 //*************************************************************************************************

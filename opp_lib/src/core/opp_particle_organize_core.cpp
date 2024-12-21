@@ -99,7 +99,7 @@ void opp_particle_sort_core(opp_set set, bool shuffle)
 { 
     if (OPP_DBG) printf("\topp_particle_sort set [%s]\n", set->name);
     
-    opp_profiler->start("PartSort");
+    // opp_profiler->start("PartSort");
 
     std::vector<OPP_INT> from_indices = sort_iota_by_key<OPP_INT>(
                                             (OPP_INT*)set->mesh_relation_dat->data, set->size);
@@ -117,12 +117,14 @@ void opp_particle_sort_core(opp_set set, bool shuffle)
         dat->data = new_data;
     }
 
-    opp_profiler->end("PartSort");
+    // opp_profiler->end("PartSort");
 }
 
 //****************************************
 void particle_hole_fill_core(opp_set set)
 {
+    // opp_profiler->start("Core_HoleFill");
+
     OPP_INT* mesh_relation_data = (OPP_INT*)set->mesh_relation_dat->data;
     std::vector<std::pair<size_t, size_t>> swap_indices;  // Contains hole index and the index from back to swap
     swap_indices.reserve(set->particle_remove_count);     // Pre-allocate memory if the number of removals is known
@@ -211,4 +213,6 @@ void particle_hole_fill_core(opp_set set)
             // }
         }
     }
+
+    // opp_profiler->end("Core_HoleFill");
 }

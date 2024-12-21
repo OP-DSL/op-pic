@@ -66,21 +66,21 @@ for run in 1 2; do
 
         # ---------------------
         echo "RUNNING d 10e17 block Multi Hop"
-        srun --cpu-bind=cores ${binary} ${currentfilename} | tee $folder/log_N${num_nodes}_MH_C${config}_D10_R${run}.log;
+        srun --distribution=block:block --hint=nomultithread --unbuffered --cpu-bind=cores ${binary} ${currentfilename} | tee $folder/log_N${num_nodes}_MH_C${config}_D10_R${run}.log;
 
         sed -i "s/REAL plasma_den     = 1e18/REAL plasma_den     = 1.3e18/" ${currentfilename}
         echo "RUNNING d 13e17 block Multi Hop"
-        srun --cpu-bind=cores ${binary} ${currentfilename} | tee $folder/log_N${num_nodes}_MH_C${config}_D5_R${run}.log;
+        srun --distribution=block:block --hint=nomultithread --unbuffered --cpu-bind=cores ${binary} ${currentfilename} | tee $folder/log_N${num_nodes}_MH_C${config}_D13_R${run}.log;
         # ---------------------
 
         sed -i "s/BOOL opp_global_move = false/BOOL opp_global_move = true/" ${currentfilename}
         # ---------------------
         echo "RUNNING d 13e17 block Direct Hop"
-        srun --cpu-bind=cores ${binary} ${currentfilename} | tee $folder/log_N${num_nodes}_DH_C${config}_D10_R${run}.log;
+        srun --distribution=block:block --hint=nomultithread --unbuffered --cpu-bind=cores ${binary} ${currentfilename} | tee $folder/log_N${num_nodes}_DH_C${config}_D13_R${run}.log;
 
         sed -i "s/REAL plasma_den     = 1.3e18/REAL plasma_den     = 1.0e18/" ${currentfilename}
-        echo "RUNNING d 13e17 block Direct Hop"
-        srun --cpu-bind=cores ${binary} ${currentfilename} | tee $folder/log_N${num_nodes}_DH_C${config}_D5_R${run}.log;
+        echo "RUNNING d 10e17 block Direct Hop"
+        srun --distribution=block:block --hint=nomultithread --unbuffered --cpu-bind=cores ${binary} ${currentfilename} | tee $folder/log_N${num_nodes}_DH_C${config}_D10_R${run}.log;
         # ---------------------
 
         rmCommand=$folder'/box_'$config'.hdf5'
@@ -88,48 +88,48 @@ for run in 1 2; do
     done
 done
 
-for run in 1 2; do
-    for config in 3072000 6144000; do
+# for run in 1 2; do
+#     for config in 3072000 6144000; do
            
-        folder=$runFolder/$config"_mpi"
+#         folder=$runFolder/$config"_mpi"
 
-        echo "Running MPI" $file $config $folder
+#         echo "Running MPI" $file $config $folder
 
-        mkdir -p $folder
-        cp $file $folder
-        currentfilename=$folder/$configFile
+#         mkdir -p $folder
+#         cp $file $folder
+#         currentfilename=$folder/$configFile
 
-        copyCommand=$hdfOriginalFolder'/box_'$config'.hdf5 '$folder'/'
-        echo "COPY ->" $copyCommand
-        cp $copyCommand
+#         copyCommand=$hdfOriginalFolder'/box_'$config'.hdf5 '$folder'/'
+#         echo "COPY ->" $copyCommand
+#         cp $copyCommand
 
-        escaped_folder="${folder//\//\\/}"
-        sed -i "s/STRING hdf_filename = <path_to_hdf5_mesh_file>/STRING hdf_filename = ${escaped_folder}\/box_${config}.hdf5/" ${currentfilename}
-        sed -i "s/STRING cluster = block/STRING cluster = mpi-block/" ${currentfilename}
+#         escaped_folder="${folder//\//\\/}"
+#         sed -i "s/STRING hdf_filename = <path_to_hdf5_mesh_file>/STRING hdf_filename = ${escaped_folder}\/box_${config}.hdf5/" ${currentfilename}
+#         sed -i "s/STRING cluster = block/STRING cluster = mpi-block/" ${currentfilename}
 
-        # ---------------------
-        echo "RUNNING d 10e17 mpi-block Multi Hop"
-        srun --cpu-bind=cores ${binary} ${currentfilename} | tee $folder/log_N${num_nodes}_MH_X${config}_D10_R${run}.log;
+#         # ---------------------
+#         echo "RUNNING d 10e17 mpi-block Multi Hop"
+#         srun --distribution=block:block --hint=nomultithread --unbuffered --cpu-bind=cores ${binary} ${currentfilename} | tee $folder/log_N${num_nodes}_MH_X${config}_D10_R${run}.log;
 
-        sed -i "s/REAL plasma_den     = 1e18/REAL plasma_den     = 1.3e18/" ${currentfilename}
-        echo "RUNNING d 13e17 mpi-block Multi Hop"
-        srun --cpu-bind=cores ${binary} ${currentfilename} | tee $folder/log_N${num_nodes}_MH_X${config}_D5_R${run}.log;
-        # ---------------------
+#         sed -i "s/REAL plasma_den     = 1e18/REAL plasma_den     = 1.3e18/" ${currentfilename}
+#         echo "RUNNING d 13e17 mpi-block Multi Hop"
+#         srun --distribution=block:block --hint=nomultithread --unbuffered --cpu-bind=cores ${binary} ${currentfilename} | tee $folder/log_N${num_nodes}_MH_X${config}_D5_R${run}.log;
+#         # ---------------------
 
-        sed -i "s/BOOL opp_global_move = false/BOOL opp_global_move = true/" ${currentfilename}
-        # ---------------------
-        echo "RUNNING d 13e17 mpi-block Direct Hop"
-        srun --cpu-bind=cores ${binary} ${currentfilename} | tee $folder/log_N${num_nodes}_DH_X${config}_D10_R${run}.log;
+#         sed -i "s/BOOL opp_global_move = false/BOOL opp_global_move = true/" ${currentfilename}
+#         # ---------------------
+#         echo "RUNNING d 13e17 mpi-block Direct Hop"
+#         srun --distribution=block:block --hint=nomultithread --unbuffered --cpu-bind=cores ${binary} ${currentfilename} | tee $folder/log_N${num_nodes}_DH_X${config}_D10_R${run}.log;
 
-        sed -i "s/REAL plasma_den     = 1.3e18/REAL plasma_den     = 1.0e18/" ${currentfilename}
-        echo "RUNNING d 13e17 mpi-block Direct Hop"
-        srun --cpu-bind=cores ${binary} ${currentfilename} | tee $folder/log_N${num_nodes}_DH_X${config}_D5_R${run}.log;
-        # ---------------------
+#         sed -i "s/REAL plasma_den     = 1.3e18/REAL plasma_den     = 1.0e18/" ${currentfilename}
+#         echo "RUNNING d 13e17 mpi-block Direct Hop"
+#         srun --distribution=block:block --hint=nomultithread --unbuffered --cpu-bind=cores ${binary} ${currentfilename} | tee $folder/log_N${num_nodes}_DH_X${config}_D5_R${run}.log;
+#         # ---------------------
 
-        rmCommand=$folder'/box_'$config'.hdf5'
-        rm $rmCommand
-    done
-done
+#         rmCommand=$folder'/box_'$config'.hdf5'
+#         rm $rmCommand
+#     done
+# done
 
 echo "simulation done"
 

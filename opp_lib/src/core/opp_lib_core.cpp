@@ -104,6 +104,10 @@ void opp_init_core(int argc, char **argv)
     for (int n = 1; n < argc; n++) {
         opp_set_args_core(argv[n]);
     }
+
+    opp_profiler->reg("Mv_holefill_core");
+    opp_profiler->reg("Mv_sort_core");
+    opp_profiler->reg("Mv_shuffle_core");
 }
 
 //****************************************

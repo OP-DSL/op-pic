@@ -48,7 +48,7 @@ for run in 1 2; do
         sed -i "s/INT n_particles = 6000000/INT n_particles = 100000000/" ${currentfilename}
 
         # ---------------------
-        srun ${binary} ${currentfilename} | tee $folder/log_N${num_nodes}_C${config}_R${run}.log;
+        srun --distribution=block:block --hint=nomultithread --unbuffered ${binary} ${currentfilename} | tee $folder/log_N${num_nodes}_C${config}_R${run}.log;
         # ---------------------
     done
 done

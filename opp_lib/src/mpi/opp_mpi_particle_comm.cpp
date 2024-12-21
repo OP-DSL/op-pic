@@ -35,6 +35,8 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #define MPI_MH_COUNT_EXCHANGE 0
 #define MPI_MH_TAG_PART_EX 1
 
+#define MAX_COMM_ITER_LOG 4
+
 #define PACK_AOS  false // PACK_AOS == false, is performing better
 
 // this translate to std::map<opp_set, std::map<local_cell_index, opp_particle_comm_data>>
@@ -358,7 +360,8 @@ void opp_part_exchange(opp_set set)
     opp_profiler->end("Mv_Exchange");
 
     // wait for the counts to receive only from neighbours
-    const std::string profName = std::string("Mv_WaitExCnt") + std::to_string(OPP_comm_iteration);
+    const int tmp = (OPP_comm_iteration == MAX_COMM_ITER_LOG) ? MAX_COMM_ITER_LOG : OPP_comm_iteration;
+    const std::string profName = std::string("Mv_WaitExCnt") + std::to_string(tmp);
     opp_profiler->start(profName);
     std::vector<MPI_Status> send_req_statuses(neighbour_count);
     std::vector<MPI_Status> recv_req_statuses(neighbour_count);
@@ -452,7 +455,8 @@ void opp_part_wait_all(opp_set set)
     opp_profiler->startMpiComm("", opp::OPP_Particle);
 
     // wait till all the particles from all the ranks are received
-    std::string profName = std::string("Mv_WaitExRecv") + std::to_string(OPP_comm_iteration);
+    const int tmp = (OPP_comm_iteration == MAX_COMM_ITER_LOG) ? MAX_COMM_ITER_LOG : OPP_comm_iteration;
+    std::string profName = std::string("Mv_WaitExRecv") + std::to_string(tmp);
     opp_profiler->start(profName);
 
     std::vector<MPI_Status> send_req_statuses(send_req.size());
@@ -496,7 +500,8 @@ bool opp_part_check_all_done(opp_set set)
 {
     if (OPP_DBG) opp_printf("opp_part_check_all_done", "START");
 
-    const std::string profName = std::string("Mv_WaitDone") + std::to_string(OPP_comm_iteration);
+    const int tmp = (OPP_comm_iteration == MAX_COMM_ITER_LOG) ? MAX_COMM_ITER_LOG : OPP_comm_iteration;
+    const std::string profName = std::string("Mv_WaitDone") + std::to_string(tmp);
     opp_profiler->start(profName);
 
     const int64_t total_recv_parts = ((opp_part_all_neigh_comm_data*)set->mpi_part_buffers)->total_recv;
@@ -555,7 +560,7 @@ void opp_part_comm_init()
     opp_profiler->reg("Mv_WaitAll");
 
     std::string profName = "";
-    for (int i = 0; i < 5; i++) {
+    for (int i = 0; i <= MAX_COMM_ITER_LOG; i++) {
         profName = std::string("Mv_WaitDone") + std::to_string(i);
         opp_profiler->reg(profName);
         profName = std::string("Mv_WaitExCnt") + std::to_string(i);
