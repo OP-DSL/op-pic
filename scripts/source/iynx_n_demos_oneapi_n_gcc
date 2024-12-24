@@ -164,11 +164,14 @@ export MPICH_CXX=$(spack location -i intel-oneapi-compilers@2024.2.1/jpypt46)/co
 export MPICH_CC=$(spack location -i intel-oneapi-compilers@2024.2.1/jpypt46)/compiler/2024.2/bin/icx
 
 export SYCLFLAGS_ADD=" -fsycl-targets=nvptx64-nvidia-cuda -Xsycl-target-backend=nvptx64-nvidia-cuda --cuda-gpu-arch=sm_90 "
+export PETSC_INSTALL_PATH=/home/zl/lib_install/petsc-3.20.5-oneapi-2024.2.1_demos
 
 spack load intel-oneapi-dpct@2024.2.1
 module load cuda/12.5
 . /home/zl/spack_install/spack_demos/opt/spack/linux-debian12-zen3/gcc-12.2.0/intel-oneapi-compilers-2024.2.1-jpypt464ei5wbrl2bly2y3hbngnhp3j4/setvars.sh --include-intel-llvm
   
+# ------------------------------------------------------------------------------------------------------
+
 dpct --extra-arg="-DUSE_THRUST" --extra-arg="-DUSE_MPI" --extra-arg="-I/home/zl/phd/test/OP-PIC/opp_lib/include" --cuda-include-path=/opt/nvidia/hpc_sdk/Linux_x86_64/23.7/cuda/include --process-all --in-root=. --out-root=/home/zl/phd/test/OP-PIC/dpct_lib
 dpct --extra-arg="-DUSE_THRUST" --extra-arg="-DUSE_MPI" --extra-arg="-I/home/zl/phd/test/OP-PIC/opp_lib/include" --cuda-include-path=/opt/nvidia/hpc_sdk/Linux_x86_64/23.7/cuda/include --process-all --in-root=. --out-root=/home/zl/phd/test/OP-PIC/dpct_cabanapic_cg
 

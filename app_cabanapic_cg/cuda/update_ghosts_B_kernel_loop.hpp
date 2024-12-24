@@ -104,18 +104,9 @@ void opp_par_loop_all__update_ghosts_B_kernel(opp_set set, opp_iterate_type,
 
     opp_mvConstArraysToDevice(const_bytes);
 
-    if (opp_k5_dat0_stride != args[0].dat->set->set_capacity) {
-        opp_k5_dat0_stride = args[0].dat->set->set_capacity;
-        cutilSafeCall(cudaMemcpyToSymbol(opp_k5_dat0_stride_d, &opp_k5_dat0_stride, sizeof(OPP_INT)));
-    }
-    if (opp_k5_dat1_stride != args[1].dat->set->set_capacity) {
-        opp_k5_dat1_stride = args[1].dat->set->set_capacity;
-        cutilSafeCall(cudaMemcpyToSymbol(opp_k5_dat1_stride_d, &opp_k5_dat1_stride, sizeof(OPP_INT)));
-    }
-    if (opp_k5_map0_stride != args[2].size) {
-        opp_k5_map0_stride = args[2].size;
-        cutilSafeCall(cudaMemcpyToSymbol(opp_k5_map0_stride_d, &opp_k5_map0_stride, sizeof(OPP_INT)));
-    }
+    opp_mem::dev_copy_to_symbol<OPP_INT>(opp_k5_dat0_stride_d, &opp_k5_dat0_stride, &(args[0].dat->set->set_capacity), 1);
+    opp_mem::dev_copy_to_symbol<OPP_INT>(opp_k5_dat1_stride_d, &opp_k5_dat1_stride, &(args[1].dat->set->set_capacity), 1);
+    opp_mem::dev_copy_to_symbol<OPP_INT>(opp_k5_map0_stride_d, &opp_k5_map0_stride, &(args[2].size), 1);
 
 #ifdef OPP_BLOCK_SIZE_5
     const int block_size = OPP_BLOCK_SIZE_5;

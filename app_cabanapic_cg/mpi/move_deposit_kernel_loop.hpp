@@ -308,6 +308,9 @@ void opp_particle_move__move_deposit_kernel(opp_set set, opp_map c2c_map, opp_ma
     args[6] = opp_arg_dat(p2c_map->p2c_dat, OPP_RW); // required to make dirty or should manually make it dirty
 
     OPP_mesh_relation_data = (OPP_INT*)p2c_map->p2c_dat->data;
+#ifdef LOG_HOPS
+    OPP_move_max_hops = 0;
+#endif
 
     opp_mpi_halo_exchanges(set, nargs, args);
         
@@ -325,6 +328,9 @@ void opp_particle_move__move_deposit_kernel(opp_set set, opp_map c2c_map, opp_ma
         opp_move_status_flag = OPP_MOVE_DONE; 
         opp_move_hop_iter_one_flag = true;
 
+#ifdef LOG_HOPS
+        int hops = 0;
+#endif
         do {
             opp_c2c = &((c2c_map->map)[opp_p2c[0] * 6]);
 
@@ -336,8 +342,14 @@ void opp_particle_move__move_deposit_kernel(opp_set set, opp_map c2c_map, opp_ma
                 (const OPP_REAL *)args[4].data + (opp_p2c[0] * 18),
                 (OPP_REAL *)args[5].data + (opp_p2c[0] * 12)
             );
-
+#ifdef LOG_HOPS
+            hops++;
+#endif
         } while (opp_check_part_move_status(opp_p2c[0], n, set->particle_remove_count));
+
+#ifdef LOG_HOPS
+        OPP_move_max_hops = (OPP_move_max_hops < hops) ? hops : OPP_move_max_hops;
+#endif    
     };
 
     // ----------------------------------------------------------------------------

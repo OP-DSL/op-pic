@@ -111,18 +111,9 @@ void opp_par_loop_all__get_max_x_values_kernel(opp_set set, opp_iterate_type,
     OPP_REAL *arg3_host_data = (OPP_REAL *)args[3].data;
     OPP_REAL *arg5_host_data = (OPP_REAL *)args[5].data;
 
-    if (opp_k9_dat0_stride != args[0].dat->set->set_capacity) {
-        opp_k9_dat0_stride = args[0].dat->set->set_capacity;
-        cutilSafeCall(cudaMemcpyToSymbol(opp_k9_dat0_stride_d, &opp_k9_dat0_stride, sizeof(OPP_INT)));
-    }
-    if (opp_k9_dat1_stride != args[2].dat->set->set_capacity) {
-        opp_k9_dat1_stride = args[2].dat->set->set_capacity;
-        cutilSafeCall(cudaMemcpyToSymbol(opp_k9_dat1_stride_d, &opp_k9_dat1_stride, sizeof(OPP_INT)));
-    }
-    if (opp_k9_dat2_stride != args[4].dat->set->set_capacity) {
-        opp_k9_dat2_stride = args[4].dat->set->set_capacity;
-        cutilSafeCall(cudaMemcpyToSymbol(opp_k9_dat2_stride_d, &opp_k9_dat2_stride, sizeof(OPP_INT)));
-    }
+    opp_mem::dev_copy_to_symbol<OPP_INT>(opp_k9_dat0_stride_d, &opp_k9_dat0_stride, &(args[0].dat->set->set_capacity), 1);
+    opp_mem::dev_copy_to_symbol<OPP_INT>(opp_k9_dat1_stride_d, &opp_k9_dat1_stride, &(args[2].dat->set->set_capacity), 1);
+    opp_mem::dev_copy_to_symbol<OPP_INT>(opp_k9_dat2_stride_d, &opp_k9_dat2_stride, &(args[4].dat->set->set_capacity), 1);
 
 #ifdef OPP_BLOCK_SIZE_9
     const int block_size = OPP_BLOCK_SIZE_9;
