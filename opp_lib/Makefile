@@ -109,7 +109,7 @@ $(OBJ)/%+seq.o: $(SRC)/seq/%.cpp
 seq_compile: $(OBJ_SEQ_CPP)
 seq: clean mklib
 	$(MAKE) seq_compile
-	ar -r $(LIB)/libopp_seq.a $(OBJ_SEQ_CPP)
+	ar -r $(LIB)/libopp_seq$(if $(filter 1,$(PETSC)),_pet).a $(OBJ_SEQ_CPP)
 
 # ------------------------------------------------------------------------------------------
 SRC_OMP_CPP = 	$(SRC)/core/opp_lib_core.cpp \
@@ -127,7 +127,7 @@ $(OBJ)/%+omp.o: $(SRC)/omp/%.cpp
 omp_compile: $(OBJ_OMP_CPP)
 omp: clean mklib
 	$(MAKE) omp_compile
-	ar -r $(LIB)/libopp_omp.a $(OBJ_OMP_CPP)
+	ar -r $(LIB)/libopp_omp$(if $(filter 1,$(PETSC)),_pet).a $(OBJ_OMP_CPP)
 
 # ------------------------------------------------------------------------------------------
 SRC_CUDA_CPP = 	$(SRC)/core/opp_lib_core.cpp \
@@ -147,7 +147,7 @@ $(OBJ)/%+cuda.o: $(SRC)/cuda/%.cu
 cuda_compile: $(OBJ_CUDA_CPP) $(OBJ_CUDA_CU)
 cuda: clean mklib
 	$(MAKE) cuda_compile
-	ar -r $(LIB)/libopp_cuda.a $(OBJ_CUDA_CPP) $(OBJ_CUDA_CU)
+	ar -r $(LIB)/libopp_cuda$(if $(filter 1,$(PETSC)),_pet).a $(OBJ_CUDA_CPP) $(OBJ_CUDA_CU)
 
 # ------------------------------------------------------------------------------------------
 SRC_SYCL_CPP = 	$(SRC)/sycl/opp_sycl.cpp \
@@ -167,7 +167,7 @@ $(OBJ)/%+sycl.o: $(SRC)/sycl/%.cpp
 sycl_compile: $(OBJ_SYCL_CPP)
 sycl: clean mklib
 	$(MAKE) sycl_compile
-	ar -r $(LIB)/libopp_sycl.a $(OBJ_SYCL_CPP)
+	ar -r $(LIB)/libopp_sycl$(if $(filter 1,$(PETSC)),_pet).a $(OBJ_SYCL_CPP)
 
 # ------------------------------------------------------------------------------------------
 SRC_HIP_CPP = 	$(SRC)/core/opp_lib_core.cpp \
@@ -187,7 +187,7 @@ $(OBJ)/%+hip.o: $(SRC)/hip/%.cpp
 hip_compile: $(OBJ_HIP_CPP)
 hip: clean mklib
 	$(MAKE) hip_compile
-	ar -r $(LIB)/libopp_hip.a $(OBJ_HIP_CPP)
+	ar -r $(LIB)/libopp_hip$(if $(filter 1,$(PETSC)),_pet).a $(OBJ_HIP_CPP)
 
 # ------------------------------------------------------------------------------------------
 SRC_MPI_CPP = 	$(SRC)/core/opp_lib_core.cpp \
@@ -212,7 +212,7 @@ $(OBJ)/%+mpi.o: $(SRC)/mpi/%.cpp
 mpi_compile: $(OBJ_MPI_CPP)
 mpi: clean mklib
 	$(MAKE) mpi_compile
-	ar -r $(LIB)/libopp_mpi.a $(OBJ_MPI_CPP)
+	ar -r $(LIB)/libopp_mpi$(if $(filter 1,$(PETSC)),_pet).a $(OBJ_MPI_CPP)
 
 # ------------------------------------------------------------------------------------------
 SRC_SYCL_MPI_CPP = 	$(SRC)/sycl/opp_sycl.cpp \
@@ -241,7 +241,7 @@ $(OBJ)/%+sycl_mpi.o: $(SRC)/mpi/%.cpp
 sycl_mpi_compile: $(OBJ_SYCL_MPI_CPP)
 sycl_mpi: clean mklib
 	$(MAKE) sycl_mpi_compile
-	ar -r $(LIB)/libopp_sycl_mpi.a $(OBJ_SYCL_MPI_CPP)
+	ar -r $(LIB)/libopp_sycl_mpi$(if $(filter 1,$(PETSC)),_pet).a $(OBJ_SYCL_MPI_CPP)
 
 # ------------------------------------------------------------------------------------------
 SRC_CUDA_MPI_CPP = 	$(SRC)/core/opp_lib_core.cpp \
@@ -270,7 +270,7 @@ $(OBJ)/%+cuda_mpi.o: $(SRC)/cuda/%.cu
 cuda_mpi_compile: $(OBJ_CUDA_MPI_CPP) $(OBJ_CUDA_MPI_CU)
 cuda_mpi: clean mklib
 	$(MAKE) cuda_mpi_compile
-	ar -r $(LIB)/libopp_cuda_mpi.a $(OBJ_CUDA_MPI_CPP) $(OBJ_CUDA_MPI_CU)
+	ar -r $(LIB)/libopp_cuda_mpi$(if $(filter 1,$(PETSC)),_pet).a $(OBJ_CUDA_MPI_CPP) $(OBJ_CUDA_MPI_CU)
 
 # ------------------------------------------------------------------------------------------
 SRC_HIP_MPI_CPP = 	$(SRC)/core/opp_lib_core.cpp \
@@ -299,7 +299,7 @@ $(OBJ)/%+hip_mpi.o: $(SRC)/hip/%.cpp
 hip_mpi_compile: $(OBJ_HIP_MPI_CPP)
 hip_mpi: clean mklib
 	$(MAKE) hip_mpi_compile
-	ar -r $(LIB)/libopp_hip_mpi.a $(OBJ_HIP_MPI_CPP)
+	ar -r $(LIB)/libopp_hip_mpi$(if $(filter 1,$(PETSC)),_pet).a $(OBJ_HIP_MPI_CPP)
 
 # ------------------------------------------------------------------------------------------
 SRC_OMP_MPI_CPP = 	$(SRC)/core/opp_lib_core.cpp \
@@ -327,7 +327,7 @@ $(OBJ)/%+omp_mpi.o: $(SRC)/omp/%.cpp
 omp_mpi_compile: $(OBJ_OMP_MPI_CPP)
 omp_mpi: clean mklib
 	$(MAKE) omp_mpi_compile
-	ar -r $(LIB)/libopp_omp_mpi.a $(OBJ_OMP_MPI_CPP)
+	ar -r $(LIB)/libopp_omp_mpi$(if $(filter 1,$(PETSC)),_pet).a $(OBJ_OMP_MPI_CPP)
 
 # ------------------------------------------------------------------------------------------
 clean: 

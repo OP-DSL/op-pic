@@ -54,6 +54,7 @@ __global__ void assign_values( // Used for Segmented Reductions
 __global__ void opp_dev_deposit_charge_on_nodes_kernel(
     const OPP_REAL *__restrict__ dat0,  // p_lc
     OPP_REAL *__restrict__ dat1,  // n_charge_den
+    OPP_REAL *__restrict__ swap_dat1,  // n_charge_den
     const OPP_INT *__restrict__ p2c_map,
     const OPP_INT *__restrict__ map0,  // c2n_map
     const OPP_INT start,
@@ -92,17 +93,19 @@ __global__ void opp_dev_deposit_charge_on_nodes_kernel(
             arg4_3_local // n_charge_den 
         );
 
-        for (int d = 0; d < 1; ++d)
-            atomicAdd(dat1 + map0[opp_k5_map0_stride_d * 0 + opp_p2c[0]] + (d * opp_k5_dat1_stride_d), arg1_0_local[d]);
+        OPP_REAL* tmp1 = (threadIdx.x & 1) ? dat1 : swap_dat1;
 
         for (int d = 0; d < 1; ++d)
-            atomicAdd(dat1 + map0[opp_k5_map0_stride_d * 1 + opp_p2c[0]] + (d * opp_k5_dat1_stride_d), arg2_1_local[d]);
+            atomicAdd(tmp1 + map0[opp_k5_map0_stride_d * 0 + opp_p2c[0]] + (d * opp_k5_dat1_stride_d), arg1_0_local[d]);
 
         for (int d = 0; d < 1; ++d)
-            atomicAdd(dat1 + map0[opp_k5_map0_stride_d * 2 + opp_p2c[0]] + (d * opp_k5_dat1_stride_d), arg3_2_local[d]);
+            atomicAdd(tmp1 + map0[opp_k5_map0_stride_d * 1 + opp_p2c[0]] + (d * opp_k5_dat1_stride_d), arg2_1_local[d]);
 
         for (int d = 0; d < 1; ++d)
-            atomicAdd(dat1 + map0[opp_k5_map0_stride_d * 3 + opp_p2c[0]] + (d * opp_k5_dat1_stride_d), arg4_3_local[d]);
+            atomicAdd(tmp1 + map0[opp_k5_map0_stride_d * 2 + opp_p2c[0]] + (d * opp_k5_dat1_stride_d), arg3_2_local[d]);
+
+        for (int d = 0; d < 1; ++d)
+            atomicAdd(tmp1 + map0[opp_k5_map0_stride_d * 3 + opp_p2c[0]] + (d * opp_k5_dat1_stride_d), arg4_3_local[d]);
     }
     
 }
@@ -220,14 +223,22 @@ void opp_par_loop_all__deposit_charge_on_nodes_kernel(opp_set set, opp_iterate_t
 
         if (!opp_params->get<OPP_BOOL>("use_reg_red")) // Do atomics ----------       
         {
+            thrust::fill(args[1].dat->thrust_real_sort->begin(), args[1].dat->thrust_real_sort->end(), 0.0);  
+
             opp_dev_deposit_charge_on_nodes_kernel<<<num_blocks, block_size>>>(
                 (OPP_REAL *)args[0].data_d,     // p_lc
                 (OPP_REAL *)args[1].data_d,     // n_charge_den
+                (OPP_REAL *)args[1].dat->data_swap_d,     // n_charge_den   
                 (OPP_INT *)set->mesh_relation_dat->data_d,
                 args[1].map_data_d,     // c2n_map
                 start,
                 end
             );
+
+            OPP_DEVICE_SYNCHRONIZE(); 
+
+            thrust::transform(args[1].dat->thrust_real->begin(), args[1].dat->thrust_real->end(), 
+                args[1].dat->thrust_real_sort->begin(), args[1].dat->thrust_real->begin(), thrust::plus<OPP_REAL>());
         }
      
         else // Do segmented reductions ----------       

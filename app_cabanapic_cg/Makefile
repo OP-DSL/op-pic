@@ -67,7 +67,7 @@ ifeq ($(HDF5), 1)
 endif
 
 ALL_INC  += -I$(OPP_PATH)/include
-ALL_LIBS += -L$(OPP_PATH)/lib -lz
+ALL_LIBS += -L$(OPP_PATH)/lib
 
 .PHONY: clean mklib
 
@@ -83,7 +83,7 @@ seq: mklib opp_kernels_seq cabana_opp_seq
 	     $(CPP) $(CPPFLAGS) -o $(BIN)/seq \
 			$(OBJ)/cabana_opp_seq.o \
 			$(OBJ)/opp_kernels_seq.o \
-			$(ALL_INC) $(ALL_LIBS) -lopp_seq
+			$(ALL_INC) $(ALL_LIBS) -lopp_seq -lz
 
 # ----------------------------------------------------------------------------------------------------------------------
 cabana_opp_omp:
@@ -94,7 +94,7 @@ omp: mklib opp_kernels_omp cabana_opp_omp
 	     $(CPP) $(CPPFLAGS) -fopenmp -o $(BIN)/omp \
 			$(OBJ)/cabana_opp_omp.o \
 			$(OBJ)/opp_kernels_omp.o \
-			$(ALL_INC) $(ALL_LIBS) -lopp_omp
+			$(ALL_INC) $(ALL_LIBS) -lopp_omp -lz
 
 # ----------------------------------------------------------------------------------------------------------------------
 cabana_opp_mpi:
@@ -105,7 +105,7 @@ mpi: mklib cabana_opp_mpi opp_kernels_mpi
 	     $(MPICPP) $(CPPFLAGS) -DUSE_MPI -o $(BIN)/mpi \
 		 	$(OBJ)/cabana_opp_mpi.o \
 			$(OBJ)/opp_kernels_mpi.o \
-			$(ALL_INC) $(ALL_LIBS) -lopp_mpi
+			$(ALL_INC) $(ALL_LIBS) -lopp_mpi -lz
 
 # ----------------------------------------------------------------------------------------------------------------------
 cabana_opp_omp_mpi:
@@ -116,7 +116,7 @@ omp_mpi: mklib cabana_opp_omp_mpi opp_kernels_omp_mpi
 	     $(MPICPP) $(CPPFLAGS) -DUSE_MPI -fopenmp -o $(BIN)/omp_mpi \
 			$(OBJ)/cabana_opp_omp_mpi.o \
 			$(OBJ)/opp_kernels_omp_mpi.o \
-			$(ALL_INC) $(ALL_LIBS) -lopp_omp_mpi
+			$(ALL_INC) $(ALL_LIBS) -lopp_omp_mpi -lz
 
 # ----------------------------------------------------------------------------------------------------------------------
 opp_kernels_cuda:
@@ -127,7 +127,7 @@ cuda: mklib cabana_opp_cuda opp_kernels_cuda
 	     $(CPP) $(CPPFLAGS) -o $(BIN)/cuda \
 		 	$(OBJ)/cabana_opp_cuda.o \
 			$(OBJ)/opp_kernels_cuda.o \
-			$(ALL_INC) $(CUDA_INC) $(ALL_LIBS) $(CUDA_LIB) -lopp_cuda
+			$(ALL_INC) $(CUDA_INC) $(ALL_LIBS) $(CUDA_LIB) -lopp_cuda -lz
 
 # ----------------------------------------------------------------------------------------------------------------------
 opp_kernels_cuda_mpi:
@@ -138,7 +138,7 @@ cuda_mpi: mklib cabana_opp_cuda_mpi opp_kernels_cuda_mpi
 	     $(MPICPP) $(CPPFLAGS) -DUSE_MPI -o $(BIN)/cuda_mpi \
 			$(OBJ)/cabana_opp_cuda_mpi.o \
 			$(OBJ)/opp_kernels_cuda_mpi.o \
-			$(ALL_INC) $(CUDA_INC) $(ALL_LIBS) $(CUDA_LIB) -lopp_cuda_mpi
+			$(ALL_INC) $(CUDA_INC) $(ALL_LIBS) $(CUDA_LIB) -lopp_cuda_mpi -lz
 
 # ----------------------------------------------------------------------------------------------------------------------
 opp_kernels_sycl:
@@ -149,7 +149,7 @@ sycl: mklib cabana_opp_sycl opp_kernels_sycl
 	     $(SYCLCC) $(SYCLFLAGS) -o $(BIN)/sycl \
 		 	$(OBJ)/cabana_opp_sycl.o \
 			$(OBJ)/opp_kernels_sycl.o \
-			$(ALL_LIBS) $(CUDA_LIB) -lopp_sycl
+			$(ALL_LIBS) $(CUDA_LIB) -lopp_sycl -lz
 
 # ----------------------------------------------------------------------------------------------------------------------
 cabana_opp_sycl_mpi:
@@ -160,7 +160,7 @@ sycl_mpi: mklib opp_kernels_sycl_mpi cabana_opp_sycl_mpi
 	     $(MPICPP) $(SYCLFLAGS) -DUSE_MPI -o $(BIN)/sycl_mpi \
 		 	$(OBJ)/cabana_opp_sycl_mpi.o \
 			$(OBJ)/opp_kernels_sycl_mpi.o \
-			$(ALL_LIBS) $(CUDA_LIB) -lopp_sycl_mpi
+			$(ALL_LIBS) $(CUDA_LIB) -lopp_sycl_mpi -lz
 
 # ----------------------------------------------------------------------------------------------------------------------
 opp_kernels_hip:
@@ -171,7 +171,7 @@ hip: mklib cabana_opp_hip opp_kernels_hip
 	     $(MPICPP) $(CPPFLAGS) -o $(BIN)/hip \
 			$(OBJ)/cabana_opp_hip.o \
 			$(OBJ)/opp_kernels_hip.o \
-			$(ALL_LIBS) $(HIP_LIB) -lopp_hip
+			$(ALL_LIBS) $(HIP_LIB) -lopp_hip -lz
 
 # ----------------------------------------------------------------------------------------------------------------------
 opp_kernels_hip_mpi:
@@ -182,7 +182,7 @@ hip_mpi: mklib opp_kernels_hip_mpi cabana_opp_hip_mpi
 	     $(MPICPP) $(CPPFLAGS) -o $(BIN)/hip_mpi \
 			$(OBJ)/cabana_opp_hip_mpi.o \
 			$(OBJ)/opp_kernels_hip_mpi.o \
-			$(ALL_LIBS) $(HIP_LIB) -lopp_hip_mpi
+			$(ALL_LIBS) $(HIP_LIB) -lopp_hip_mpi -lz
 
 # ----------------------------------------------------------------------------------------------------------------------
 mpi_hdf5: mklib
@@ -193,7 +193,7 @@ mpi_hdf5: mklib
 		 	$(OBJ)/cabana_op_hdf5.o \
 			$(OBJ)/opp_mpi_hdf5.o \
 			$(OBJ)/mpikernels.o \
-			-lopp_mpi $(ALL_INC) $(ALL_LIBS) -lhdf5
+			-lopp_mpi $(ALL_INC) $(ALL_LIBS) -lz -lhdf5
 
 # ----------------------------------------------------------------------------------------------------------------------
 mpi_hdf5_conv: mklib
@@ -202,7 +202,7 @@ mpi_hdf5_conv: mklib
 	     $(MPICPP) $(CPPFLAGS) -DUSE_MPI -o $(BIN)/mpi_hdf5_conv \
 		 	$(OBJ)/cabana_convert_hdf5.o \
 			$(OBJ)/opp_mpi_hdf5.o \
-			-lopp_mpi $(ALL_INC) $(ALL_LIBS) -lhdf5
+			-lopp_mpi $(ALL_INC) $(ALL_LIBS) -lz -lhdf5
 
 # ----------------------------------------------------------------------------------------------------------------------
 clean: 
