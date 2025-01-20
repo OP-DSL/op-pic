@@ -132,7 +132,7 @@ int main(int argc, char **argv)
         fempic_color_block(c_colors, c_centroids, if_n_pos, if2n_map);
 
         // opp_partition(std::string("PARMETIS_KWAY"), cell_set, c2n_map);
-        // opp_partition(std::string("PARMETIS_GEOM"), iface_set, nullptr, if_n_pos);
+        // opp_partition(std::string("PARMETIS_GEOM"), cell_set, nullptr, n_pos);
         opp_partition(std::string("EXTERNAL"), cell_set, nullptr, c_colors);
 #endif
         

@@ -79,6 +79,7 @@ endif
 PARMETIS ?= 0
 ifeq ($(PARMETIS), 1)
 	CPPFLAGS  += -DHAVE_PARMETIS
+	OPP_INC   += -I$(PARMETIS_INSTALL_PATH)/include
 endif
 
 CUDA_INC   += -I$(CUDA_INSTALL_PATH)/include

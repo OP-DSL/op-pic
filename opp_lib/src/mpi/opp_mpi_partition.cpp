@@ -1740,7 +1740,10 @@ void opp_partition_kway(opp_map primary_map)
     idx_t options[3] = {1, 3, 15};
 
     int *hybrid_flags = (int *)opp_host_malloc(comm_size * sizeof(int));
-    MPI_Allgather(&OPP_hybrid_gpu, 1, MPI_INT, hybrid_flags, 1, MPI_INT, OPP_PART_WORLD);
+    for (int i = 0; i < comm_size; i++) {
+        hybrid_flags[i] = 0;
+    }
+    // MPI_Allgather(&OPP_hybrid_gpu, 1, MPI_INT, hybrid_flags, 1, MPI_INT, OPP_PART_WORLD);
     double total = 0;
     for (int i = 0; i < comm_size; i++)
         total += hybrid_flags[i] == 1 ? OPP_hybrid_balance : 1.0;

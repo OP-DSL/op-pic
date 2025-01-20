@@ -74,8 +74,8 @@ HIP_LIB   = -L$(ROCM_INSTALL_DIR)/lib -lamdhip64
 
 PARMETIS ?= 0
 ifeq ($(PARMETIS), 1)
-	ALL_LIBS = -lparmetis -lmetis
-	ALL_INC  += -DHAVE_PARMETIS
+	ALL_LIBS = -L$(PARMETIS_INSTALL_PATH)/lib -lparmetis -lmetis
+	ALL_INC  += -I$(PARMETIS_INSTALL_PATH)/include -DHAVE_PARMETIS
 endif
 
 HDF5 ?= 0
@@ -162,7 +162,7 @@ mpi: mklib fempic_opp+mpi opp_kernels+mpi field_solver+mpi
 			$(OBJ)/fempic_opp_mpi.o \
 			$(OBJ)/opp_kernels_mpi.o \
 			$(OBJ)/field_solver_cpu_mpi.o \
-			$(ALL_LIBS) -lopp_mpi -lz
+			$(ALL_LIBS) -lopp_mpi -lparmetis -lmetis
 
 mpi_hdf5: mklib fempic_opp+mpi opp_kernels+mpi field_solver+mpi opp_mpi_hdf5+mpi
 		 $(MPICPP) $(CPPFLAGS) -DUSE_MPI -o $(BIN)/mpi_hdf5 \
@@ -170,7 +170,7 @@ mpi_hdf5: mklib fempic_opp+mpi opp_kernels+mpi field_solver+mpi opp_mpi_hdf5+mpi
 		 	$(OBJ)/opp_mpi_hdf5_mpi_hdf5.o  \
 		 	$(OBJ)/opp_kernels_mpi.o \
 		 	$(OBJ)/field_solver_cpu_mpi.o \
-		 	$(ALL_LIBS) -lopp_mpi -lhdf5 -lz
+		 	$(ALL_LIBS) -lopp_mpi -lhdf5 -lparmetis -lmetis
 
 # ----------------------------------------------------------------------------------------------------------------------
 opp_kernels+cuda:
