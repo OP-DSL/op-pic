@@ -70,47 +70,6 @@ __device__ inline void move_kernel(
         { opp_move_status_flag = OPP_NEED_REMOVE; };
     }
 }
-
-//*******************************************************************************
-// Returns true only if another hop is required by the current rank
-__device__ inline bool opp_part_check_status_hip(char& move_flag, bool& iter_one_flag, 
-        int* cell_id, int particle_index, int& remove_count, int *remove_particle_indices, 
-        int *move_particle_indices, int *move_cell_indices, int *move_count) 
-{
-    iter_one_flag = false;
-
-    if (move_flag == OPP_MOVE_DONE)
-    {
-        return false;
-    }
-    else if (move_flag == OPP_NEED_REMOVE)
-    {
-        *cell_id = MAX_CELL_INDEX;
-        const int removeArrayIndex = atomicAdd(&remove_count, 1);
-        remove_particle_indices[removeArrayIndex] = particle_index;
-
-        return false;
-    }
-    else if (*cell_id >= OPP_cells_set_size_d)
-    {
-        // cell_id cell is not owned by the current mpi rank, need to communicate
-        int moveArrayIndex = atomicAdd(move_count, 1);
-        move_particle_indices[moveArrayIndex] = particle_index;
-        move_cell_indices[moveArrayIndex] = *cell_id;
-
-        // Needs to be removed from the current rank, 
-        // particle packing will be done just prior exchange and removal
-        move_flag = OPP_NEED_REMOVE; 
-        const int removeArrayIndex = atomicAdd(&remove_count, 1);
-        remove_particle_indices[removeArrayIndex] = particle_index;
-
-        return false;
-    }
-
-    // cell_id is an own cell and move_flag == OPP_NEED_MOVE
-    return true;
-}
-
 }
 
 //--------------------------------------------------------------
@@ -154,7 +113,7 @@ __global__ void opp_dev_move_kernel(
           
             );
 
-        } while (opp_k4::opp_part_check_status_hip(move_flag, iter_one_flag, opp_p2c, n, 
+        } while (opp_part_check_status_device(move_flag, iter_one_flag, opp_p2c, n, 
             *particle_remove_count, particle_remove_indices, move_particle_indices, 
             move_cell_indices, move_count));        
     }

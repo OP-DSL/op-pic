@@ -265,3 +265,53 @@ inline void opp_printf(const char* function, const char *format, ...)
 }
 
 //*************************************************************************************************
+// Below can be used to create files per MPI rank for logging
+/*
+// If using, paste below in opp_util.cpp file
+FILE* rank_log_file = nullptr;
+const char* log_folder = "log_files";
+*/
+// #include <sys/stat.h>
+// #include <sys/types.h>
+
+// extern FILE* rank_log_file;
+// extern const char* log_folder;
+
+// // Function to initialize logging
+// inline void opp_initialize_logging() {
+//     // Create log folder if it doesn't exist
+//     struct stat st;
+//     if (stat(log_folder, &st) != 0) {
+//         if (mkdir(log_folder, 0755) != 0 && errno != EEXIST) {
+//             fprintf(stderr, "Failed to create log folder '%s'\n", log_folder);
+//             exit(-1);
+//         }
+//     }
+
+//     // Construct the file name for the current rank
+//     char file_name[LOG_STR_LEN];
+//     snprintf(file_name, LOG_STR_LEN, "%s/log_rank_%d.txt", log_folder, OPP_rank);
+
+//     // Open the file for appending (creates if it doesn't exist)
+//     rank_log_file = fopen(file_name, "a");
+//     if (!rank_log_file) {
+//         fprintf(stderr, "Failed to open log file '%s'\n", file_name);
+//         exit(-1);
+//     }
+// }
+
+// // Logging function
+// inline void opp_printf(const char* function, const char* format, ...) {
+//     if (!rank_log_file) {
+//         opp_initialize_logging();
+//     }
+
+//     char buf[LOG_STR_LEN];
+//     va_list args;
+//     va_start(args, format);
+//     vsnprintf(buf, LOG_STR_LEN, format, args);
+//     va_end(args);
+
+//     fprintf(rank_log_file, "%s[%d][%d] - %s\n", function, OPP_rank, OPP_main_loop_iter, buf);
+//     fflush(rank_log_file);  // Ensure the line is written immediately
+// }

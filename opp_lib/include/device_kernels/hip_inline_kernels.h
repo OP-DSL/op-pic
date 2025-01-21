@@ -31,7 +31,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #pragma once
 
-#include <opp_cuda.h>
+#include <opp_hip.h>
 
 __constant__ OPP_INT OPP_cells_set_size_d;
 OPP_INT OPP_cells_set_size;
@@ -139,11 +139,11 @@ __inline__ __device__ void opp_reduction(volatile T *dat_g, T dat_l)
                 break;
             case OPP_MIN:
                 if (dat_t < dat_l)
-                    dat_l = dat_t;
+                dat_l = dat_t;
                 break;
             case OPP_MAX:
                 if (dat_t > dat_l)
-                    dat_l = dat_t;
+                dat_l = dat_t;
                 break;
             }
 
@@ -156,7 +156,8 @@ __inline__ __device__ void opp_reduction(volatile T *dat_g, T dat_l)
 
     if (tid < warpSize) {
         for (; d > 0; d >>= 1) {
-            __syncwarp();
+            // __syncwarp();
+            __syncthreads();
             if (tid < d) {
                 dat_t = temp[tid + d];
 

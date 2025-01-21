@@ -137,15 +137,9 @@ extern OPP_INT* opp_c2c;
 extern opp_dh_indices dh_indices_d;
 extern opp_dh_indices dh_indices_h;
 
-#define OPP_PARTICLE_MOVE_DONE { opp_move_status_flag = OPP_MOVE_DONE; }
-#define OPP_PARTICLE_NEED_MOVE { opp_move_status_flag = OPP_NEED_MOVE; }
-#define OPP_PARTICLE_NEED_REMOVE { opp_move_status_flag = OPP_NEED_REMOVE; }
-#define OPP_DO_ONCE (opp_move_hop_iter_one_flag)
-#define OPP_MOVE_RESET_FLAGS { opp_move_status_flag = OPP_MOVE_DONE; opp_move_hop_iter_one_flag = true; }
-
 //*************************************************************************************************
-void opp_cuda_exit();
-void opp_cuda_init(int argc, char **argv);
+void opp_device_exit();
+void opp_device_init(int argc, char **argv);
 
 void opp_upload_map(opp_map map, bool create_new = false);
 void opp_create_dat_device_arrays(opp_dat dat, bool create_new = false);

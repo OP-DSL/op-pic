@@ -33,7 +33,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "opp_hip.h"
 #ifdef USE_MPI
-    #include "opp_hip_kernels.cpp"
+    #include "opp_hip_helper_kernels.cpp"
 #endif
 
 enum UpDownType {
@@ -61,6 +61,19 @@ void opp_device_malloc(void **ptr, size_t size)
 void opp_device_free(void* ptr)
 {
     cutilSafeCall(hipFree(ptr));
+}
+
+//****************************************
+void opp_cpHostToDevice(void **data_d, void **data_h, size_t copy_size, size_t alloc_size, bool create_new) 
+{
+    if (create_new)
+    {
+        if (*data_d != NULL) cutilSafeCall(hipFree(*data_d));
+        cutilSafeCall(hipMalloc(data_d, alloc_size));
+    }
+
+    cutilSafeCall(hipMemcpy(*data_d, *data_h, copy_size, hipMemcpyHostToDevice));
+    OPP_DEVICE_SYNCHRONIZE();
 }
 
 /*******************************************************************************

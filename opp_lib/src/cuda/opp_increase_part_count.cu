@@ -111,7 +111,7 @@ void opp_inc_part_count_with_distribution(opp_set set, OPP_INT insert_count,
         opp_printf("opp_inc_part_count_with_distribution", "insert_count [%d] %s", 
         insert_count, (calc_new ? "NEW" : "COPY"));
 
-    opp_profiler->start("IncPartCountWithDistribution");
+    opp_profiler->start("opp_inc_parts_with_distr");
 
     opp_dat mesh_rel_dat  = set->mesh_relation_dat;
 
@@ -202,6 +202,6 @@ void opp_inc_part_count_with_distribution(opp_set set, OPP_INT insert_count,
     opp_set_dirtybit_grouped(nargs1, args1, Device_GPU);
     OPP_DEVICE_SYNCHRONIZE();
 
-    opp_profiler->end("IncPartCountWithDistribution");
+    opp_profiler->end("opp_inc_parts_with_distr");
 }
 

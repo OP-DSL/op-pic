@@ -35,7 +35,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //*********************************************
 
 #include "opp_hip.h"
-
+#include "device_kernels/hip_inline_kernels.h"
 
 __constant__ OPP_REAL CONST_spwt_d[1];
 __constant__ OPP_REAL CONST_ion_velocity_d[1];
@@ -44,11 +44,6 @@ __constant__ OPP_REAL CONST_plasma_den_d[1];
 __constant__ OPP_REAL CONST_mass_d[1];
 __constant__ OPP_REAL CONST_charge_d[1];
 __constant__ OPP_REAL CONST_wall_potential_d[1];
-    
-__constant__ int OPP_cells_set_size_d;
-int OPP_cells_set_size;
-
-__constant__ int OPP_comm_iteration_d;
 
 void opp_decl_const_impl(int dim, int size, char* data, const char* name) {
     

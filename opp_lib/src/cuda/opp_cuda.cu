@@ -85,7 +85,7 @@ void opp_init(int argc, char **argv)
 
     opp_init_core(argc, argv);
     opp_params->write(std::cout);
-    opp_cuda_init(argc, argv);
+    opp_device_init(argc, argv);
 
     // cutilSafeCall(cudaDeviceSetCacheConfig(cudaFuncCachePreferL1));
     cutilSafeCall(cudaDeviceSetCacheConfig(cudaFuncCachePreferShared));
@@ -136,7 +136,7 @@ void opp_exit()
         opp_part_comm_destroy(); // free memory allocated for particle communication
 #endif
 
-    opp_cuda_exit();
+    opp_device_exit();
     opp_exit_core();
 
 #ifdef USE_PETSC
@@ -160,7 +160,7 @@ void opp_abort(std::string s)
 }
 
 //****************************************
-void opp_cuda_init(int argc, char **argv) 
+void opp_device_init(int argc, char **argv) 
 {
     (void)argc; (void)argv;
 
@@ -194,7 +194,7 @@ void opp_cuda_init(int argc, char **argv)
 }
 
 //****************************************
-void opp_cuda_exit() 
+void opp_device_exit() 
 {
     for (auto& set : opp_sets) {
         if (set->is_particle) 
