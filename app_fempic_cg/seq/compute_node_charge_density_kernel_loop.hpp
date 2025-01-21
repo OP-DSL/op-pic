@@ -7,13 +7,12 @@ namespace opp_k6 {
 inline void compute_node_charge_density_kernel(
     double *node_charge_den,
     const double *node_volume
-)
-{
+) {
     (*node_charge_den) *= (CONST_spwt[0] / node_volume[0]);
 }
 }
 
-void opp_par_loop_all__compute_node_charge_density_kernel(opp_set set, opp_iterate_type, 
+void opp_par_loop_all__compute_node_charge_density_kernel(opp_set set,
     opp_arg arg0, // n_charge_den | OPP_RW
     opp_arg arg1 // n_volume | OPP_READ
 ) 

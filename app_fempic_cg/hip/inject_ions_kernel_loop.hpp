@@ -41,18 +41,15 @@ __device__ inline void inject_ions_kernel(
     const double *iface_normal,
     const double *node_pos,
     const double* dummy_part_random
-)
-{
+) {
     double a = dummy_part_random[(0) * opp_k2_dat9_stride_d];
     double b = dummy_part_random[(1) * opp_k2_dat9_stride_d];
-    if ((a + b) > 1)  // TODO : Change the random dat to avoid this
-    {
+    if ((a + b) > 1) {  // TODO : Change the random dat to avoid this
         a = (1 - a);
         b = (1 - b);
     }
 
-    for (int i = 0; i < 3; i++)
-    {
+    for (int i = 0; i < 3; i++) {
         part_pos[(i) * opp_k2_dat0_stride_d] = a * iface_u[(i) * opp_k2_dat5_stride_d] + b * iface_v[(i) * opp_k2_dat6_stride_d] + node_pos[(i) * opp_k2_dat8_stride_d];
 
         part_vel[(i) * opp_k2_dat1_stride_d] = (iface_normal[(i) * opp_k2_dat7_stride_d] * CONST_ion_velocity_d[0]);
@@ -108,7 +105,7 @@ __global__ void opp_dev_inject_ions_kernel(
 }
 
 //--------------------------------------------------------------
-void opp_par_loop_injected__inject_ions_kernel(opp_set set, opp_iterate_type, 
+void opp_par_loop_injected__inject_ions_kernel(opp_set set,
     opp_arg arg0, // p_pos | OPP_WRITE
     opp_arg arg1, // p_vel | OPP_WRITE
     opp_arg arg2, // p2c_map | OPP_RW

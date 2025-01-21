@@ -10,7 +10,7 @@ OPP_INT* opp_k3_dat0_stride_s = nullptr;
 OPP_INT* opp_k3_dat1_stride_s = nullptr;
 
 //--------------------------------------------------------------
-void opp_par_loop_all__verify_kernel(opp_set set, opp_iterate_type, 
+void opp_par_loop_all__verify_kernel(opp_set set,
     opp_arg arg0, // p_pos | OPP_READ
     opp_arg arg1, // c_idx | OPP_READ
     opp_arg arg2 // | OPP_INC
@@ -73,8 +73,8 @@ void opp_par_loop_all__verify_kernel(opp_set set, opp_iterate_type,
             const OPP_INT* opp_k3_dat0_stride_sycl = opp_k3_dat0_stride_s;
             const OPP_INT* opp_k3_dat1_stride_sycl = opp_k3_dat1_stride_s;
     
-            const OPP_INT* CONST_ndimcells_sycl = CONST_ndimcells_s;
             const OPP_REAL* CONST_cell_width_sycl = CONST_cell_width_s;
+            const OPP_INT* CONST_ndimcells_sycl = CONST_ndimcells_s;
 
             OPP_REAL* dat0_sycl = (OPP_REAL*)args[0].data_d;     // p_pos
             OPP_INT* dat1_sycl = (OPP_INT*)args[1].data_d;     // c_idx

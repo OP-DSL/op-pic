@@ -48,7 +48,7 @@ __global__ void opp_dev_update_pos_kernel(
 }
 
 //--------------------------------------------------------------
-void opp_par_loop_all__update_pos_kernel(opp_set set, opp_iterate_type, 
+void opp_par_loop_all__update_pos_kernel(opp_set set,
     opp_arg arg0, // p_vel | OPP_READ
     opp_arg arg1 // p_pos | OPP_RW
 ) 

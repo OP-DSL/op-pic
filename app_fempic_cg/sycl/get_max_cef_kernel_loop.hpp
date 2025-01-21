@@ -8,7 +8,7 @@ OPP_INT opp_k8_dat0_stride = -1;
 OPP_INT* opp_k8_dat0_stride_s = nullptr;
 
 //--------------------------------------------------------------
-void opp_par_loop_all__get_max_cef_kernel(opp_set set, opp_iterate_type, 
+void opp_par_loop_all__get_max_cef_kernel(opp_set set,
     opp_arg arg0, // c_ef | OPP_READ
     opp_arg arg1 // | OPP_MAX
 ) 
@@ -80,10 +80,9 @@ void opp_par_loop_all__get_max_cef_kernel(opp_set set, opp_iterate_type,
             // -----------------------------------------------------------------------------------------
             auto  get_max_cef_kernel_sycl = [=](
                 const double* val,
-                double* max_val)
-            {
-                for (int dim = 0; dim < 3; ++dim)
-                {
+                double* max_val
+            ) {
+                for (int dim = 0; dim < 3; ++dim) {
                     *max_val = ((val[(dim) * opp_k8_dat0_stride_sycl[0]] > *max_val) ? (val[(dim) * opp_k8_dat0_stride_sycl[0]]) : (*max_val));
                 }
             };

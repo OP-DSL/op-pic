@@ -2,7 +2,7 @@ from typing import Callable, List, Optional, Tuple
 
 from clang.cindex import Cursor, CursorKind, SourceRange
 
-import op as OP
+import opp as OPP
 from store import Application, Entity, Function, Type
 from util import Location, Rewriter, Span, find, safeFind
 
@@ -105,16 +105,16 @@ def insertStrides(
     entity: Entity,
     rewriter: Rewriter,
     app: Application,
-    loop: OP.Loop,
+    loop: OPP.Loop,
     stride: Callable[[int], str],
-    skip: Optional[Callable[[OP.ArgDat], bool]] = None,
+    skip: Optional[Callable[[OPP.ArgDat], bool]] = None,
 ) -> None:
     if not isinstance(entity, Function):
         return
 
     for arg_idx in range(len(loop.args)):
         arg = loop.args[arg_idx]
-        if not isinstance(arg, OP.ArgDat):
+        if not isinstance(arg, OPP.ArgDat):
             continue
 
         if skip is not None and skip(arg):

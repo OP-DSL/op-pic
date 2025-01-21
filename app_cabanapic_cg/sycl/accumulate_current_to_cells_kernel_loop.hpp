@@ -14,7 +14,7 @@ OPP_INT* opp_k3_dat2_stride_s = nullptr;
 OPP_INT* opp_k3_map0_stride_s = nullptr;
 
 //--------------------------------------------------------------
-void opp_par_loop_all__accumulate_current_to_cells_kernel(opp_set set, opp_iterate_type, 
+void opp_par_loop_all__accumulate_current_to_cells_kernel(opp_set set,
     opp_arg arg0, // c_j | OPP_WRITE
     opp_arg arg1, // c_acc | OPP_READ
     opp_arg arg2, // c_acc | OPP_READ
@@ -82,16 +82,16 @@ void opp_par_loop_all__accumulate_current_to_cells_kernel(opp_set set, opp_itera
 
             // user provided elemental kernel
             // -----------------------------------------------------------------------------------------
-            enum Dim {
-                x = 0,
-                y = 1,
-                z = 2,
-            };
-
             enum CellAcc {
                 jfx = 0 * 4,
                 jfy = 1 * 4,
                 jfz = 2 * 4,
+            };
+
+            enum Dim {
+                x = 0,
+                y = 1,
+                z = 2,
             };
 
             auto  accumulate_current_to_cells_kernel_sycl = [=](

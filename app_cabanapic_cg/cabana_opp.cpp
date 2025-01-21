@@ -1,5 +1,5 @@
 
-// Auto-generated at 2024-10-02 18:51:49.041549 by opp-translator
+// Auto-generated at 2025-01-21 14:53:57.354254 by opp-translator
 /* 
 BSD 3-Clause License
 
@@ -37,15 +37,15 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "opp_lib.h"
 
-void opp_par_loop_all__interpolate_mesh_fields_kernel(opp_set,opp_iterate_type,opp_arg,opp_arg,opp_arg,opp_arg,opp_arg,opp_arg,opp_arg,opp_arg,opp_arg,opp_arg,opp_arg,opp_arg,opp_arg);
+void opp_par_loop_all__interpolate_mesh_fields_kernel(opp_set,opp_arg,opp_arg,opp_arg,opp_arg,opp_arg,opp_arg,opp_arg,opp_arg,opp_arg,opp_arg,opp_arg,opp_arg,opp_arg);
 void opp_particle_move__move_deposit_kernel(opp_set,opp_map,opp_map,opp_arg,opp_arg,opp_arg,opp_arg,opp_arg,opp_arg);
-void opp_par_loop_all__accumulate_current_to_cells_kernel(opp_set,opp_iterate_type,opp_arg,opp_arg,opp_arg,opp_arg,opp_arg,opp_arg,opp_arg,opp_arg,opp_arg);
-void opp_par_loop_all__half_advance_b_kernel(opp_set,opp_iterate_type,opp_arg,opp_arg,opp_arg,opp_arg,opp_arg,opp_arg);
-void opp_par_loop_all__update_ghosts_B_kernel(opp_set,opp_iterate_type,opp_arg,opp_arg,opp_arg,opp_arg);
-void opp_par_loop_all__update_ghosts_kernel(opp_set,opp_iterate_type,opp_arg,opp_arg,opp_arg,opp_arg,opp_arg);
-void opp_par_loop_all__advance_e_kernel(opp_set,opp_iterate_type,opp_arg,opp_arg,opp_arg,opp_arg,opp_arg,opp_arg,opp_arg);
-void opp_par_loop_all__compute_energy_kernel(opp_set,opp_iterate_type,opp_arg,opp_arg,opp_arg);
-void opp_par_loop_all__get_max_x_values_kernel(opp_set,opp_iterate_type,opp_arg,opp_arg,opp_arg,opp_arg,opp_arg,opp_arg);
+void opp_par_loop_all__accumulate_current_to_cells_kernel(opp_set,opp_arg,opp_arg,opp_arg,opp_arg,opp_arg,opp_arg,opp_arg,opp_arg,opp_arg);
+void opp_par_loop_all__half_advance_b_kernel(opp_set,opp_arg,opp_arg,opp_arg,opp_arg,opp_arg,opp_arg);
+void opp_par_loop_all__update_ghosts_B_kernel(opp_set,opp_arg,opp_arg,opp_arg,opp_arg);
+void opp_par_loop_all__update_ghosts_kernel(opp_set,opp_arg,opp_arg,opp_arg,opp_arg,opp_arg);
+void opp_par_loop_all__advance_e_kernel(opp_set,opp_arg,opp_arg,opp_arg,opp_arg,opp_arg,opp_arg,opp_arg);
+void opp_par_loop_all__compute_energy_kernel(opp_set,opp_arg,opp_arg,opp_arg);
+void opp_par_loop_all__get_max_x_values_kernel(opp_set,opp_arg,opp_arg,opp_arg,opp_arg,opp_arg,opp_arg);
 
 #include "cabana_misc.h"
 // #include "kenels.h" // codegen commented...
@@ -141,7 +141,7 @@ int main(int argc, char **argv)
             OPP_RUN_ON_ROOT(&& OPP_DBG)
                 opp_printf("Main", "Starting main loop iteration %d ****", OPP_main_loop_iter);
 
-            opp_par_loop_all__interpolate_mesh_fields_kernel(c_set, OPP_ITERATE_ALL, 
+            opp_par_loop_all__interpolate_mesh_fields_kernel(c_set,  
                 opp_arg_dat(c_e,                            OPP_READ),
                 opp_arg_dat(c_b,                            OPP_READ),
                 opp_arg_dat(c_e, CellMap::xu_y_z,  c2c_map, OPP_READ),
@@ -166,7 +166,7 @@ int main(int argc, char **argv)
                 opp_arg_dat(c_interp, p2c_map, OPP_READ),
                 opp_arg_dat(c_acc,    p2c_map, OPP_INC));
 
-            opp_par_loop_all__accumulate_current_to_cells_kernel(c_set, OPP_ITERATE_ALL, 
+            opp_par_loop_all__accumulate_current_to_cells_kernel(c_set,  
                 opp_arg_dat(c_j,                              OPP_WRITE),
                 opp_arg_dat(c_acc,                            OPP_READ),
                 opp_arg_dat(c_acc, CellMap::xd_y_z , c2c_map, OPP_READ),
@@ -178,7 +178,7 @@ int main(int argc, char **argv)
                 opp_arg_dat(c_mask_right,                     OPP_READ));
 
             // Leap frog method
-            opp_par_loop_all__half_advance_b_kernel(c_set, OPP_ITERATE_ALL,
+            opp_par_loop_all__half_advance_b_kernel(c_set, 
                 opp_arg_dat(c_e, CellMap::xu_y_z, c2c_map, OPP_READ),
                 opp_arg_dat(c_e, CellMap::x_yu_z, c2c_map, OPP_READ), 
                 opp_arg_dat(c_e, CellMap::x_y_zu, c2c_map, OPP_READ), 
@@ -186,64 +186,64 @@ int main(int argc, char **argv)
                 opp_arg_dat(c_b,                           OPP_INC),
                 opp_arg_dat(c_mask_ghost,                  OPP_READ));
 
-            opp_par_loop_all__update_ghosts_B_kernel(c_set, OPP_ITERATE_ALL, 
+            opp_par_loop_all__update_ghosts_B_kernel(c_set,  
                 opp_arg_dat(c_mask_ugb, OPP_READ), opp_arg_dat(c_b, OPP_READ),
                 opp_arg_dat(c_b, 0, c2cugb0_map, OPP_WRITE), opp_arg_gbl(&m0, 1, "int", OPP_READ));
-            opp_par_loop_all__update_ghosts_B_kernel(c_set, OPP_ITERATE_ALL, 
+            opp_par_loop_all__update_ghosts_B_kernel(c_set,  
                 opp_arg_dat(c_mask_ugb, OPP_READ), opp_arg_dat(c_b, OPP_READ),
                 opp_arg_dat(c_b, 0, c2cugb1_map, OPP_WRITE), opp_arg_gbl(&m1, 1, "int", OPP_READ));
-            opp_par_loop_all__update_ghosts_B_kernel(c_set, OPP_ITERATE_ALL, 
+            opp_par_loop_all__update_ghosts_B_kernel(c_set,  
                 opp_arg_dat(c_mask_ugb, OPP_READ), opp_arg_dat(c_b, OPP_READ),
                 opp_arg_dat(c_b, 0, c2cugb2_map, OPP_WRITE), opp_arg_gbl(&m2, 1, "int", OPP_READ));
-            opp_par_loop_all__update_ghosts_B_kernel(c_set, OPP_ITERATE_ALL, 
+            opp_par_loop_all__update_ghosts_B_kernel(c_set,  
                 opp_arg_dat(c_mask_ugb, OPP_READ), opp_arg_dat(c_b, OPP_READ),
                 opp_arg_dat(c_b, 0, c2cugb3_map, OPP_WRITE), opp_arg_gbl(&m3, 1, "int", OPP_READ));
-            opp_par_loop_all__update_ghosts_B_kernel(c_set, OPP_ITERATE_ALL, 
+            opp_par_loop_all__update_ghosts_B_kernel(c_set,  
                 opp_arg_dat(c_mask_ugb, OPP_READ), opp_arg_dat(c_b, OPP_READ),
                 opp_arg_dat(c_b, 0, c2cugb4_map, OPP_WRITE), opp_arg_gbl(&m4, 1, "int", OPP_READ));
-            opp_par_loop_all__update_ghosts_B_kernel(c_set, OPP_ITERATE_ALL, 
+            opp_par_loop_all__update_ghosts_B_kernel(c_set,  
                 opp_arg_dat(c_mask_ugb, OPP_READ), opp_arg_dat(c_b, OPP_READ),
                 opp_arg_dat(c_b, 0, c2cugb5_map, OPP_WRITE), opp_arg_gbl(&m5, 1, "int", OPP_READ));
 
-            opp_par_loop_all__update_ghosts_kernel(c_set, OPP_ITERATE_ALL,
+            opp_par_loop_all__update_ghosts_kernel(c_set, 
                 opp_arg_dat(c_mask_ug, OPP_READ), opp_arg_dat(c_j, OPP_READ), opp_arg_dat(c_j, 0, c2cug0_map, OPP_INC), 
                 opp_arg_gbl(&m0, 1, "int", OPP_READ), opp_arg_gbl(&m0, 1, "int", OPP_READ));
-            opp_par_loop_all__update_ghosts_kernel(c_set, OPP_ITERATE_ALL, 
+            opp_par_loop_all__update_ghosts_kernel(c_set,  
                 opp_arg_dat(c_mask_ug, OPP_READ), opp_arg_dat(c_j, OPP_READ), opp_arg_dat(c_j, 0, c2cug1_map, OPP_INC), 
                 opp_arg_gbl(&m1, 1, "int", OPP_READ), opp_arg_gbl(&m0, 1, "int", OPP_READ));
-            opp_par_loop_all__update_ghosts_kernel(c_set, OPP_ITERATE_ALL, 
+            opp_par_loop_all__update_ghosts_kernel(c_set,  
                 opp_arg_dat(c_mask_ug, OPP_READ), opp_arg_dat(c_j, OPP_READ), opp_arg_dat(c_j, 0, c2cug2_map, OPP_INC), 
                 opp_arg_gbl(&m2, 1, "int", OPP_READ), opp_arg_gbl(&m1, 1, "int", OPP_READ));
-            opp_par_loop_all__update_ghosts_kernel(c_set, OPP_ITERATE_ALL, 
+            opp_par_loop_all__update_ghosts_kernel(c_set,  
                 opp_arg_dat(c_mask_ug, OPP_READ), opp_arg_dat(c_j, OPP_READ), opp_arg_dat(c_j, 0, c2cug3_map, OPP_INC), 
                 opp_arg_gbl(&m3, 1, "int", OPP_READ), opp_arg_gbl(&m1, 1, "int", OPP_READ));
-            opp_par_loop_all__update_ghosts_kernel(c_set, OPP_ITERATE_ALL, 
+            opp_par_loop_all__update_ghosts_kernel(c_set,  
                 opp_arg_dat(c_mask_ug, OPP_READ), opp_arg_dat(c_j, OPP_READ), opp_arg_dat(c_j, 0, c2cug4_map, OPP_INC), 
                 opp_arg_gbl(&m4, 1, "int", OPP_READ), opp_arg_gbl(&m2, 1, "int", OPP_READ));
-            opp_par_loop_all__update_ghosts_kernel(c_set, OPP_ITERATE_ALL, 
+            opp_par_loop_all__update_ghosts_kernel(c_set,  
                 opp_arg_dat(c_mask_ug, OPP_READ), opp_arg_dat(c_j, OPP_READ), opp_arg_dat(c_j, 0, c2cug5_map, OPP_INC), 
                 opp_arg_gbl(&m5, 1, "int", OPP_READ), opp_arg_gbl(&m2, 1, "int", OPP_READ));
 
-            opp_par_loop_all__update_ghosts_B_kernel(c_set, OPP_ITERATE_ALL, 
+            opp_par_loop_all__update_ghosts_B_kernel(c_set,  
                 opp_arg_dat(c_mask_ugb, OPP_READ), opp_arg_dat(c_j, OPP_READ),
                 opp_arg_dat(c_j, 0, c2cugb0_map, OPP_WRITE), opp_arg_gbl(&m0, 1, "int", OPP_READ));
-            opp_par_loop_all__update_ghosts_B_kernel(c_set, OPP_ITERATE_ALL, 
+            opp_par_loop_all__update_ghosts_B_kernel(c_set,  
                 opp_arg_dat(c_mask_ugb, OPP_READ), opp_arg_dat(c_j, OPP_READ),
                 opp_arg_dat(c_j, 0, c2cugb1_map, OPP_WRITE), opp_arg_gbl(&m1, 1, "int", OPP_READ));
-            opp_par_loop_all__update_ghosts_B_kernel(c_set, OPP_ITERATE_ALL, 
+            opp_par_loop_all__update_ghosts_B_kernel(c_set,  
                 opp_arg_dat(c_mask_ugb, OPP_READ), opp_arg_dat(c_j, OPP_READ),
                 opp_arg_dat(c_j, 0, c2cugb2_map, OPP_WRITE), opp_arg_gbl(&m2, 1, "int", OPP_READ));
-            opp_par_loop_all__update_ghosts_B_kernel(c_set, OPP_ITERATE_ALL, 
+            opp_par_loop_all__update_ghosts_B_kernel(c_set,  
                 opp_arg_dat(c_mask_ugb, OPP_READ), opp_arg_dat(c_j, OPP_READ),
                 opp_arg_dat(c_j, 0, c2cugb3_map, OPP_WRITE), opp_arg_gbl(&m3, 1, "int", OPP_READ));
-            opp_par_loop_all__update_ghosts_B_kernel(c_set, OPP_ITERATE_ALL, 
+            opp_par_loop_all__update_ghosts_B_kernel(c_set,  
                 opp_arg_dat(c_mask_ugb, OPP_READ), opp_arg_dat(c_j, OPP_READ),
                 opp_arg_dat(c_j, 0, c2cugb4_map, OPP_WRITE), opp_arg_gbl(&m4, 1, "int", OPP_READ));
-            opp_par_loop_all__update_ghosts_B_kernel(c_set, OPP_ITERATE_ALL, 
+            opp_par_loop_all__update_ghosts_B_kernel(c_set,  
                 opp_arg_dat(c_mask_ugb, OPP_READ), opp_arg_dat(c_j, OPP_READ),
                 opp_arg_dat(c_j, 0, c2cugb5_map, OPP_WRITE), opp_arg_gbl(&m5, 1, "int", OPP_READ));
 
-            opp_par_loop_all__advance_e_kernel(c_set, OPP_ITERATE_ALL, 
+            opp_par_loop_all__advance_e_kernel(c_set,  
                 opp_arg_dat(c_b, CellMap::xd_y_z, c2c_map, OPP_READ),
                 opp_arg_dat(c_b, CellMap::x_yd_z, c2c_map, OPP_READ),
                 opp_arg_dat(c_b, CellMap::x_y_zd, c2c_map, OPP_READ),
@@ -252,7 +252,7 @@ int main(int argc, char **argv)
                 opp_arg_dat(c_e,                           OPP_INC),
                 opp_arg_dat(c_mask_right,                  OPP_READ));
 
-            opp_par_loop_all__half_advance_b_kernel(c_set, OPP_ITERATE_ALL, 
+            opp_par_loop_all__half_advance_b_kernel(c_set,  
                 opp_arg_dat(c_e, CellMap::xu_y_z, c2c_map, OPP_READ),
                 opp_arg_dat(c_e, CellMap::x_yu_z, c2c_map, OPP_READ), 
                 opp_arg_dat(c_e, CellMap::x_y_zu, c2c_map, OPP_READ), 
@@ -260,22 +260,22 @@ int main(int argc, char **argv)
                 opp_arg_dat(c_b,                           OPP_INC),
                 opp_arg_dat(c_mask_ghost,                  OPP_READ));
 
-            opp_par_loop_all__update_ghosts_B_kernel(c_set, OPP_ITERATE_ALL,
+            opp_par_loop_all__update_ghosts_B_kernel(c_set, 
                 opp_arg_dat(c_mask_ugb, OPP_READ), opp_arg_dat(c_b, OPP_READ),
                 opp_arg_dat(c_b, 0, c2cugb0_map, OPP_WRITE), opp_arg_gbl(&m0, 1, "int", OPP_READ));
-            opp_par_loop_all__update_ghosts_B_kernel(c_set, OPP_ITERATE_ALL, 
+            opp_par_loop_all__update_ghosts_B_kernel(c_set,  
                 opp_arg_dat(c_mask_ugb, OPP_READ), opp_arg_dat(c_b, OPP_READ),
                 opp_arg_dat(c_b, 0, c2cugb1_map, OPP_WRITE), opp_arg_gbl(&m1, 1, "int", OPP_READ));
-            opp_par_loop_all__update_ghosts_B_kernel(c_set, OPP_ITERATE_ALL, 
+            opp_par_loop_all__update_ghosts_B_kernel(c_set,  
                 opp_arg_dat(c_mask_ugb, OPP_READ), opp_arg_dat(c_b, OPP_READ),
                 opp_arg_dat(c_b, 0, c2cugb2_map, OPP_WRITE), opp_arg_gbl(&m2, 1, "int", OPP_READ));
-            opp_par_loop_all__update_ghosts_B_kernel(c_set, OPP_ITERATE_ALL, 
+            opp_par_loop_all__update_ghosts_B_kernel(c_set,  
                 opp_arg_dat(c_mask_ugb, OPP_READ), opp_arg_dat(c_b, OPP_READ),
                 opp_arg_dat(c_b, 0, c2cugb3_map, OPP_WRITE), opp_arg_gbl(&m3, 1, "int", OPP_READ));
-            opp_par_loop_all__update_ghosts_B_kernel(c_set, OPP_ITERATE_ALL, 
+            opp_par_loop_all__update_ghosts_B_kernel(c_set,  
                 opp_arg_dat(c_mask_ugb, OPP_READ), opp_arg_dat(c_b, OPP_READ),
                 opp_arg_dat(c_b, 0, c2cugb4_map, OPP_WRITE), opp_arg_gbl(&m4, 1, "int", OPP_READ));
-            opp_par_loop_all__update_ghosts_B_kernel(c_set, OPP_ITERATE_ALL, 
+            opp_par_loop_all__update_ghosts_B_kernel(c_set,  
                 opp_arg_dat(c_mask_ugb, OPP_READ), opp_arg_dat(c_b, OPP_READ),
                 opp_arg_dat(c_b, 0, c2cugb5_map, OPP_WRITE), opp_arg_gbl(&m5, 1, "int", OPP_READ));
 
@@ -283,11 +283,11 @@ int main(int argc, char **argv)
             if (opp_params->get<OPP_BOOL>("print_energy"))
             {
                 OPP_REAL e_energy = 0.0, b_energy = 0.0;
-                opp_par_loop_all__compute_energy_kernel(c_set, OPP_ITERATE_ALL, 
+                opp_par_loop_all__compute_energy_kernel(c_set,  
                     opp_arg_dat(c_mask_ghost, OPP_READ),
                     opp_arg_dat(c_e,          OPP_READ),
                     opp_arg_gbl(&e_energy, 1, "double", OPP_INC));
-                opp_par_loop_all__compute_energy_kernel(c_set, OPP_ITERATE_ALL, 
+                opp_par_loop_all__compute_energy_kernel(c_set,  
                     opp_arg_dat(c_mask_ghost, OPP_READ),
                     opp_arg_dat(c_b,          OPP_READ),
                     opp_arg_gbl(&b_energy, 1, "double", OPP_INC));
@@ -299,7 +299,7 @@ int main(int argc, char **argv)
             if (opp_params->get<OPP_BOOL>("print_final"))
             {
                 OPP_REAL max_j = 0.0, max_e = 0.0, max_b = 0.0;
-                opp_par_loop_all__get_max_x_values_kernel(c_set, OPP_ITERATE_ALL,
+                opp_par_loop_all__get_max_x_values_kernel(c_set, 
                     opp_arg_dat(c_j, OPP_READ), opp_arg_gbl(&max_j, 1, "double", OPP_MAX),
                     opp_arg_dat(c_e, OPP_READ), opp_arg_gbl(&max_e, 1, "double", OPP_MAX),
                     opp_arg_dat(c_b, OPP_READ), opp_arg_gbl(&max_b, 1, "double", OPP_MAX));

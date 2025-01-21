@@ -15,16 +15,12 @@ namespace opp_k1 {
 __device__ inline void init_boundary_pot_kernel(
     const int *node_type,
     double *n_bnd_pot
-)
-{
-    switch (*node_type)
-    {
+) {
+    switch (*node_type) {
         case 2: // INLET:
-            *n_bnd_pot = 0;
-            break;
+            *n_bnd_pot = 0; break;
         case 3: // FIXED:
-            *n_bnd_pot = -1 * CONST_wall_potential_d[0];
-            break;
+            *n_bnd_pot = -1 * CONST_wall_potential_d[0]; break;
         default: // NORMAL or OPEN
             *n_bnd_pot = 0; /*default*/
     }
@@ -53,7 +49,7 @@ __global__ void opp_dev_init_boundary_pot_kernel(
 }
 
 //--------------------------------------------------------------
-void opp_par_loop_all__init_boundary_pot_kernel(opp_set set, opp_iterate_type, 
+void opp_par_loop_all__init_boundary_pot_kernel(opp_set set,
     opp_arg arg0, // n_type | OPP_READ
     opp_arg arg1 // n_bnd_pot | OPP_WRITE
 ) 

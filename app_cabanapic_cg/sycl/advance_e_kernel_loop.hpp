@@ -16,7 +16,7 @@ OPP_INT* opp_k7_dat3_stride_s = nullptr;
 OPP_INT* opp_k7_map0_stride_s = nullptr;
 
 //--------------------------------------------------------------
-void opp_par_loop_all__advance_e_kernel(opp_set set, opp_iterate_type, 
+void opp_par_loop_all__advance_e_kernel(opp_set set,
     opp_arg arg0, // c_b | OPP_READ
     opp_arg arg1, // c_b | OPP_READ
     opp_arg arg2, // c_b | OPP_READ
@@ -68,8 +68,8 @@ void opp_par_loop_all__advance_e_kernel(opp_set set, opp_iterate_type,
             const OPP_INT* opp_k7_dat3_stride_sycl = opp_k7_dat3_stride_s;
             const OPP_INT* opp_k7_map0_stride_sycl = opp_k7_map0_stride_s;
     
-            const OPP_REAL* CONST_p_sycl = CONST_p_s;
             const OPP_REAL* CONST_dt_eps0_sycl = CONST_dt_eps0_s;
+            const OPP_REAL* CONST_p_sycl = CONST_p_s;
 
             OPP_REAL* dat0_sycl = (OPP_REAL*)args[0].data_d;     // c_b
             OPP_REAL* dat1_sycl = (OPP_REAL*)args[4].data_d;     // c_j

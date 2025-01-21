@@ -74,7 +74,7 @@ __global__ void opp_dev_half_advance_b_kernel(
 }
 
 //--------------------------------------------------------------
-void opp_par_loop_all__half_advance_b_kernel(opp_set set, opp_iterate_type, 
+void opp_par_loop_all__half_advance_b_kernel(opp_set set,
     opp_arg arg0, // c_e | OPP_READ
     opp_arg arg1, // c_e | OPP_READ
     opp_arg arg2, // c_e | OPP_READ

@@ -90,7 +90,7 @@ __global__ void opp_dev_verify_kernel(
 }
 
 //--------------------------------------------------------------
-void opp_par_loop_all__verify_kernel(opp_set set, opp_iterate_type, 
+void opp_par_loop_all__verify_kernel(opp_set set,
     opp_arg arg0, // p_pos | OPP_READ
     opp_arg arg1, // c_idx | OPP_READ
     opp_arg arg2 // | OPP_INC

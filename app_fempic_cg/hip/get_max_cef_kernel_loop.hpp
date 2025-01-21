@@ -12,10 +12,9 @@ __constant__ OPP_INT opp_k8_dat0_stride_d;
 namespace opp_k8 {
 __device__ inline void get_max_cef_kernel(
     const double* val,
-    double* max_val)
-{
-    for (int dim = 0; dim < 3; ++dim)
-    {
+    double* max_val
+) {
+    for (int dim = 0; dim < 3; ++dim) {
         *max_val = ((val[(dim) * opp_k8_dat0_stride_d] > *max_val) ? (val[(dim) * opp_k8_dat0_stride_d]) : (*max_val));
     }
 }
@@ -50,7 +49,7 @@ __global__ void opp_dev_get_max_cef_kernel(
 }
 
 //--------------------------------------------------------------
-void opp_par_loop_all__get_max_cef_kernel(opp_set set, opp_iterate_type, 
+void opp_par_loop_all__get_max_cef_kernel(opp_set set,
     opp_arg arg0, // c_ef | OPP_READ
     opp_arg arg1 // | OPP_MAX
 ) 

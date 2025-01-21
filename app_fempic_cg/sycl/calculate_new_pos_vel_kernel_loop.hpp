@@ -12,7 +12,7 @@ OPP_INT* opp_k3_dat1_stride_s = nullptr;
 OPP_INT* opp_k3_dat2_stride_s = nullptr;
 
 //--------------------------------------------------------------
-void opp_par_loop_all__calculate_new_pos_vel_kernel(opp_set set, opp_iterate_type, 
+void opp_par_loop_all__calculate_new_pos_vel_kernel(opp_set set,
     opp_arg arg0, // c_ef | OPP_READ
     opp_arg arg1, // p_pos | OPP_WRITE
     opp_arg arg2 // p_vel | OPP_WRITE
@@ -52,9 +52,9 @@ void opp_par_loop_all__calculate_new_pos_vel_kernel(opp_set set, opp_iterate_typ
             const OPP_INT* opp_k3_dat1_stride_sycl = opp_k3_dat1_stride_s;
             const OPP_INT* opp_k3_dat2_stride_sycl = opp_k3_dat2_stride_s;
     
+            const OPP_REAL* CONST_charge_sycl = CONST_charge_s;
             const OPP_REAL* CONST_dt_sycl = CONST_dt_s;
             const OPP_REAL* CONST_mass_sycl = CONST_mass_s;
-            const OPP_REAL* CONST_charge_sycl = CONST_charge_s;
 
             OPP_REAL* dat0_sycl = (OPP_REAL*)args[0].data_d;     // c_ef
             OPP_REAL* dat1_sycl = (OPP_REAL*)args[1].data_d;     // p_pos
@@ -71,8 +71,8 @@ void opp_par_loop_all__calculate_new_pos_vel_kernel(opp_set set, opp_iterate_typ
             auto  calculate_new_pos_vel_kernel_sycl = [=](
                 const double *cell_ef,
                 double *part_pos,
-                double *part_vel ) {
-
+                double *part_vel
+            ) {
                 const double coefficient1 = CONST_charge_sycl[0] / CONST_mass_sycl[0] * (CONST_dt_sycl[0]);
                 for (int i = 0; i < 3; i++) {
                     part_vel[(i) * opp_k3_dat2_stride_sycl[0]] += (coefficient1 * cell_ef[(i) * opp_k3_dat0_stride_sycl[0]]);

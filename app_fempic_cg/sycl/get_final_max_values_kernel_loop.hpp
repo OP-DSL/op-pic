@@ -10,7 +10,7 @@ OPP_INT* opp_k9_dat0_stride_s = nullptr;
 OPP_INT* opp_k9_dat1_stride_s = nullptr;
 
 //--------------------------------------------------------------
-void opp_par_loop_all__get_final_max_values_kernel(opp_set set, opp_iterate_type, 
+void opp_par_loop_all__get_final_max_values_kernel(opp_set set,
     opp_arg arg0, // n_charge_den | OPP_READ
     opp_arg arg1, // | OPP_MAX
     opp_arg arg2, // n_potential | OPP_READ
@@ -106,10 +106,9 @@ void opp_par_loop_all__get_final_max_values_kernel(opp_set set, opp_iterate_type
                 const double* n_charge_den,
                 double* max_n_charge_den,
                 const double* n_pot,
-                double* max_n_pot)
-            {
+                double* max_n_pot
+            ) {
                 *max_n_charge_den = ((abs(*n_charge_den) > *max_n_charge_den) ? (abs(*n_charge_den)) : (*max_n_charge_den));
-
                 *max_n_pot = ((*n_pot > *max_n_pot) ? (*n_pot) : (*max_n_pot));
             };
 

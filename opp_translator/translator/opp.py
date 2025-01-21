@@ -31,7 +31,7 @@ class AccessType(Enum):
         return [x.name for x in list(AccessType)]
 
 
-class OpError(Exception):
+class OppError(Exception):
     message: str
     loc: Optional[Location]
 

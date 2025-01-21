@@ -25,7 +25,7 @@ inline void update_ghosts_B_kernel(
 }
 }
 
-void opp_par_loop_all__update_ghosts_B_kernel(opp_set set, opp_iterate_type, 
+void opp_par_loop_all__update_ghosts_B_kernel(opp_set set,
     opp_arg arg0, // c_mask_ugb | OPP_READ
     opp_arg arg1, // c_b | OPP_READ
     opp_arg arg2, // c_b | OPP_WRITE

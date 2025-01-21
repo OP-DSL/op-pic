@@ -10,7 +10,7 @@ OPP_INT* opp_k6_dat0_stride_s = nullptr;
 OPP_INT* opp_k6_dat1_stride_s = nullptr;
 
 //--------------------------------------------------------------
-void opp_par_loop_all__compute_node_charge_density_kernel(opp_set set, opp_iterate_type, 
+void opp_par_loop_all__compute_node_charge_density_kernel(opp_set set,
     opp_arg arg0, // n_charge_den | OPP_RW
     opp_arg arg1 // n_volume | OPP_READ
 ) 
@@ -61,8 +61,7 @@ void opp_par_loop_all__compute_node_charge_density_kernel(opp_set set, opp_itera
             auto  compute_node_charge_density_kernel_sycl = [=](
                 double *node_charge_den,
                 const double *node_volume
-            )
-            {
+            ) {
                 (*node_charge_den) *= (CONST_spwt_sycl[0] / node_volume[(0) * opp_k6_dat1_stride_sycl[0]]);
             };
 

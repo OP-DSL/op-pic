@@ -92,7 +92,7 @@ __global__ void opp_dev_accumulate_current_to_cells_kernel(
 }
 
 //--------------------------------------------------------------
-void opp_par_loop_all__accumulate_current_to_cells_kernel(opp_set set, opp_iterate_type, 
+void opp_par_loop_all__accumulate_current_to_cells_kernel(opp_set set,
     opp_arg arg0, // c_j | OPP_WRITE
     opp_arg arg1, // c_acc | OPP_READ
     opp_arg arg2, // c_acc | OPP_READ

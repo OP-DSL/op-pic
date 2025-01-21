@@ -9,8 +9,8 @@ inline void deposit_charge_on_nodes_kernel(
     double *node_charge_den0,
     double *node_charge_den1,
     double *node_charge_den2,
-    double *node_charge_den3) {
-
+    double *node_charge_den3
+) {
     node_charge_den0[0] += part_lc[0];
     node_charge_den1[0] += part_lc[1];
     node_charge_den2[0] += part_lc[2];
@@ -18,7 +18,7 @@ inline void deposit_charge_on_nodes_kernel(
 }
 }
 
-void opp_par_loop_all__deposit_charge_on_nodes_kernel(opp_set set, opp_iterate_type, 
+void opp_par_loop_all__deposit_charge_on_nodes_kernel(opp_set set,
     opp_arg arg0, // p_lc | OPP_READ
     opp_arg arg1, // n_charge_den | OPP_INC
     opp_arg arg2, // n_charge_den | OPP_INC

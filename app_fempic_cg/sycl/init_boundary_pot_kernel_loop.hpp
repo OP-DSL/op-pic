@@ -10,7 +10,7 @@ OPP_INT* opp_k1_dat0_stride_s = nullptr;
 OPP_INT* opp_k1_dat1_stride_s = nullptr;
 
 //--------------------------------------------------------------
-void opp_par_loop_all__init_boundary_pot_kernel(opp_set set, opp_iterate_type, 
+void opp_par_loop_all__init_boundary_pot_kernel(opp_set set,
     opp_arg arg0, // n_type | OPP_READ
     opp_arg arg1 // n_bnd_pot | OPP_WRITE
 ) 
@@ -61,16 +61,12 @@ void opp_par_loop_all__init_boundary_pot_kernel(opp_set set, opp_iterate_type,
             auto  init_boundary_pot_kernel_sycl = [=](
                 const int *node_type,
                 double *n_bnd_pot
-            )
-            {
-                switch (*node_type)
-                {
+            ) {
+                switch (*node_type) {
                     case 2: // INLET:
-                        *n_bnd_pot = 0;
-                        break;
+                        *n_bnd_pot = 0; break;
                     case 3: // FIXED:
-                        *n_bnd_pot = -1 * CONST_wall_potential_sycl[0];
-                        break;
+                        *n_bnd_pot = -1 * CONST_wall_potential_sycl[0]; break;
                     default: // NORMAL or OPEN
                         *n_bnd_pot = 0; /*default*/
                 }

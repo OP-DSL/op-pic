@@ -94,9 +94,9 @@ void opp_particle_move__move_deposit_kernel(opp_set set, opp_map c2c_map, opp_ma
             const OPP_INT* opp_k2_dat4_stride_sycl = opp_k2_dat4_stride_s;
             const OPP_INT* opp_k2_dat5_stride_sycl = opp_k2_dat5_stride_s;
    
-            const OPP_REAL* CONST_qdt_2mc_sycl = CONST_qdt_2mc_s;
-            const OPP_REAL* CONST_qsp_sycl = CONST_qsp_s;
             const OPP_REAL* CONST_cdt_d_sycl = CONST_cdt_d_s;
+            const OPP_REAL* CONST_qsp_sycl = CONST_qsp_s;
+            const OPP_REAL* CONST_qdt_2mc_sycl = CONST_qdt_2mc_s;
 
             OPP_REAL* dat0_sycl = (OPP_REAL*)args[0].data_d;     // p_vel
             OPP_REAL* dat1_sycl = (OPP_REAL*)args[1].data_d;     // p_pos
@@ -119,10 +119,25 @@ void opp_particle_move__move_deposit_kernel(opp_set set, opp_map c2c_map, opp_ma
                 jfz = 2 * 4,
             };
 
-            enum Dim {
-                x = 0,
-                y = 1,
-                z = 2,
+            enum CellInterp {
+                ex = 0,
+                dexdy,
+                dexdz,
+                d2exdydz,
+                ey,
+                deydz,
+                deydx,
+                d2eydzdx,
+                ez,
+                dezdx,
+                dezdy,
+                d2ezdxdy,
+                cbx,
+                dcbxdx,
+                cby,
+                dcbydy,
+                cbz,
+                dcbzdz,
             };
 
             auto  weight_current_to_accumulator_kernel_sycl = [=](
@@ -154,25 +169,10 @@ void opp_particle_move__move_deposit_kernel(opp_set set, opp_map c2c_map, opp_ma
                 cell_acc[CellAcc::jfz + 3] += v3;
             };
 
-            enum CellInterp {
-                ex = 0,
-                dexdy,
-                dexdz,
-                d2exdydz,
-                ey,
-                deydz,
-                deydx,
-                d2eydzdx,
-                ez,
-                dezdx,
-                dezdy,
-                d2ezdxdy,
-                cbx,
-                dcbxdx,
-                cby,
-                dcbydy,
-                cbz,
-                dcbzdz,
+            enum Dim {
+                x = 0,
+                y = 1,
+                z = 2,
             };
 
             auto  move_deposit_kernel_sycl = [=](

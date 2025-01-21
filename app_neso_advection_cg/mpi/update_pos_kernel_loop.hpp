@@ -18,7 +18,7 @@ inline void update_pos_kernel(const double* part_vel, double* p_pos)
 }
 }
 
-void opp_par_loop_all__update_pos_kernel(opp_set set, opp_iterate_type, 
+void opp_par_loop_all__update_pos_kernel(opp_set set,
     opp_arg arg0, // p_vel | OPP_READ
     opp_arg arg1 // p_pos | OPP_RW
 ) 

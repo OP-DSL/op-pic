@@ -4,12 +4,6 @@
 //*********************************************
 
 namespace opp_k1 {
-enum Dim {
-    x = 0,
-    y = 1,
-    z = 2,
-};
-
 enum CellInterp {
     ex = 0,
     dexdy,
@@ -29,6 +23,12 @@ enum CellInterp {
     dcbydy,
     cbz,
     dcbzdz,
+};
+
+enum Dim {
+    x = 0,
+    y = 1,
+    z = 2,
 };
 
 inline void interpolate_mesh_fields_kernel(
@@ -104,7 +104,7 @@ inline void interpolate_mesh_fields_kernel(
 }
 }
 
-void opp_par_loop_all__interpolate_mesh_fields_kernel(opp_set set, opp_iterate_type, 
+void opp_par_loop_all__interpolate_mesh_fields_kernel(opp_set set,
     opp_arg arg0, // c_e | OPP_READ
     opp_arg arg1, // c_b | OPP_READ
     opp_arg arg2, // c_e | OPP_READ

@@ -63,7 +63,7 @@ __global__ void opp_dev_compute_energy_kernel(
 }
 
 //--------------------------------------------------------------
-void opp_par_loop_all__compute_energy_kernel(opp_set set, opp_iterate_type, 
+void opp_par_loop_all__compute_energy_kernel(opp_set set,
     opp_arg arg0, // c_mask_ghost | OPP_READ
     opp_arg arg1, // c_e | OPP_READ
     opp_arg arg2 // | OPP_INC

@@ -16,7 +16,7 @@ OPP_INT* opp_k1_dat3_stride_s = nullptr;
 OPP_INT* opp_k1_map0_stride_s = nullptr;
 
 //--------------------------------------------------------------
-void opp_par_loop_all__interpolate_mesh_fields_kernel(opp_set set, opp_iterate_type, 
+void opp_par_loop_all__interpolate_mesh_fields_kernel(opp_set set,
     opp_arg arg0, // c_e | OPP_READ
     opp_arg arg1, // c_b | OPP_READ
     opp_arg arg2, // c_e | OPP_READ
@@ -94,12 +94,6 @@ void opp_par_loop_all__interpolate_mesh_fields_kernel(opp_set set, opp_iterate_t
 
             // user provided elemental kernel
             // -----------------------------------------------------------------------------------------
-            enum Dim {
-                x = 0,
-                y = 1,
-                z = 2,
-            };
-
             enum CellInterp {
                 ex = 0,
                 dexdy,
@@ -119,6 +113,12 @@ void opp_par_loop_all__interpolate_mesh_fields_kernel(opp_set set, opp_iterate_t
                 dcbydy,
                 cbz,
                 dcbzdz,
+            };
+
+            enum Dim {
+                x = 0,
+                y = 1,
+                z = 2,
             };
 
             auto  interpolate_mesh_fields_kernel_sycl = [=](

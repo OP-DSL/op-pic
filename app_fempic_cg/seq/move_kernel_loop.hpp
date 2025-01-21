@@ -8,7 +8,6 @@ inline void move_kernel(
     const double *point_pos, double* point_lc,
     const double *cell_volume, const double *cell_det
 ) {
-
     const double coefficient2 = (1.0 / 6.0) / (*cell_volume);
 
     for (int i=0; i<4; i++) { /*loop over vertices*/
@@ -20,14 +19,10 @@ inline void move_kernel(
             cell_det[i * 4 + 3] * point_pos[2]);
     }
 
-    if (!(point_lc[0] < 0.0 ||
-        point_lc[0] > 1.0 ||
-        point_lc[1] < 0.0 ||
-        point_lc[1] > 1.0 ||
-        point_lc[2] < 0.0 ||
-        point_lc[2] > 1.0 ||
-        point_lc[3] < 0.0 ||
-        point_lc[3] > 1.0)) {
+    if (!(point_lc[0] < 0.0 || point_lc[0] > 1.0 ||
+          point_lc[1] < 0.0 || point_lc[1] > 1.0 ||
+          point_lc[2] < 0.0 || point_lc[2] > 1.0 ||
+          point_lc[3] < 0.0 || point_lc[3] > 1.0)) {
 
         { opp_move_status_flag = OPP_MOVE_DONE; };
         return;
@@ -216,7 +211,7 @@ void opp_init_direct_hop_cg(double grid_spacing, const opp_dat c_gbl_id, const o
         else {
             cellMapper->generateStructuredMeshFromFile(c_gbl_id->set, c_gbl_id);  
         }
-
+        
         opp_profiler->reg("GlbToLocal");
         opp_profiler->reg("GblMv_Move");
         opp_profiler->reg("GblMv_AllMv");

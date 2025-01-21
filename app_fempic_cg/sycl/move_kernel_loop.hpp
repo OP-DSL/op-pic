@@ -102,7 +102,6 @@ void opp_particle_move__move_kernel(opp_set set, opp_map c2c_map, opp_map p2c_ma
                 const double *point_pos, double* point_lc,
                 const double *cell_volume, const double *cell_det
             ) {
-
                 const double coefficient2 = (1.0 / 6.0) / (*cell_volume);
 
                 for (int i=0; i<4; i++) { /*loop over vertices*/
@@ -114,14 +113,10 @@ void opp_particle_move__move_kernel(opp_set set, opp_map c2c_map, opp_map p2c_ma
                         cell_det[(i * 4 + 3) * opp_k4_dat3_stride_sycl[0]] * point_pos[(2) * opp_k4_dat0_stride_sycl[0]]);
                 }
 
-                if (!(point_lc[(0) * opp_k4_dat1_stride_sycl[0]] < 0.0 ||
-                    point_lc[(0) * opp_k4_dat1_stride_sycl[0]] > 1.0 ||
-                    point_lc[(1) * opp_k4_dat1_stride_sycl[0]] < 0.0 ||
-                    point_lc[(1) * opp_k4_dat1_stride_sycl[0]] > 1.0 ||
-                    point_lc[(2) * opp_k4_dat1_stride_sycl[0]] < 0.0 ||
-                    point_lc[(2) * opp_k4_dat1_stride_sycl[0]] > 1.0 ||
-                    point_lc[(3) * opp_k4_dat1_stride_sycl[0]] < 0.0 ||
-                    point_lc[(3) * opp_k4_dat1_stride_sycl[0]] > 1.0)) {
+                if (!(point_lc[(0) * opp_k4_dat1_stride_sycl[0]] < 0.0 || point_lc[(0) * opp_k4_dat1_stride_sycl[0]] > 1.0 ||
+                      point_lc[(1) * opp_k4_dat1_stride_sycl[0]] < 0.0 || point_lc[(1) * opp_k4_dat1_stride_sycl[0]] > 1.0 ||
+                      point_lc[(2) * opp_k4_dat1_stride_sycl[0]] < 0.0 || point_lc[(2) * opp_k4_dat1_stride_sycl[0]] > 1.0 ||
+                      point_lc[(3) * opp_k4_dat1_stride_sycl[0]] < 0.0 || point_lc[(3) * opp_k4_dat1_stride_sycl[0]] > 1.0)) {
 
                     { opp_move_status_flag = OPP_MOVE_DONE; };
                     return;
@@ -214,7 +209,7 @@ void opp_particle_move__move_kernel(opp_set set, opp_map c2c_map, opp_map p2c_ma
             cgh.parallel_for<class opp_particle_move>(
                     sycl::nd_range<1>(block_size * num_blocks, block_size), opp_move_kernel);
         });
-
+    
     } while (opp_finalize_particle_move(set)); // MPI communication iteration
 
     opp_set_dirtybit_grouped(nargs, args, Device_GPU);

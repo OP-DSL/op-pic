@@ -24,7 +24,6 @@ __device__ inline void move_kernel(
     const double *point_pos, double* point_lc,
     const double *cell_volume, const double *cell_det
 ) {
-
     const double coefficient2 = (1.0 / 6.0) / (*cell_volume);
 
     for (int i=0; i<4; i++) { /*loop over vertices*/
@@ -36,14 +35,10 @@ __device__ inline void move_kernel(
             cell_det[(i * 4 + 3) * opp_k4_dat3_stride_d] * point_pos[(2) * opp_k4_dat0_stride_d]);
     }
 
-    if (!(point_lc[(0) * opp_k4_dat1_stride_d] < 0.0 ||
-        point_lc[(0) * opp_k4_dat1_stride_d] > 1.0 ||
-        point_lc[(1) * opp_k4_dat1_stride_d] < 0.0 ||
-        point_lc[(1) * opp_k4_dat1_stride_d] > 1.0 ||
-        point_lc[(2) * opp_k4_dat1_stride_d] < 0.0 ||
-        point_lc[(2) * opp_k4_dat1_stride_d] > 1.0 ||
-        point_lc[(3) * opp_k4_dat1_stride_d] < 0.0 ||
-        point_lc[(3) * opp_k4_dat1_stride_d] > 1.0)) {
+    if (!(point_lc[(0) * opp_k4_dat1_stride_d] < 0.0 || point_lc[(0) * opp_k4_dat1_stride_d] > 1.0 ||
+          point_lc[(1) * opp_k4_dat1_stride_d] < 0.0 || point_lc[(1) * opp_k4_dat1_stride_d] > 1.0 ||
+          point_lc[(2) * opp_k4_dat1_stride_d] < 0.0 || point_lc[(2) * opp_k4_dat1_stride_d] > 1.0 ||
+          point_lc[(3) * opp_k4_dat1_stride_d] < 0.0 || point_lc[(3) * opp_k4_dat1_stride_d] > 1.0)) {
 
         { opp_move_status_flag = OPP_MOVE_DONE; };
         return;

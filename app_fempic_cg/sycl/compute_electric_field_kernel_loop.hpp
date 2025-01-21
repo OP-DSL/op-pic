@@ -14,7 +14,7 @@ OPP_INT* opp_k7_dat2_stride_s = nullptr;
 OPP_INT* opp_k7_map0_stride_s = nullptr;
 
 //--------------------------------------------------------------
-void opp_par_loop_all__compute_electric_field_kernel(opp_set set, opp_iterate_type, 
+void opp_par_loop_all__compute_electric_field_kernel(opp_set set,
     opp_arg arg0, // c_ef | OPP_INC
     opp_arg arg1, // c_sd | OPP_READ
     opp_arg arg2, // n_potential | OPP_READ
@@ -82,10 +82,8 @@ void opp_par_loop_all__compute_electric_field_kernel(opp_set set, opp_iterate_ty
                 const double *node_potential1,
                 const double *node_potential2,
                 const double *node_potential3
-            )
-            {
-                for (int dim = 0; dim < 3; dim++)
-                {
+            ) {
+                for (int dim = 0; dim < 3; dim++) {
                     const double c1 = (cell_shape_deriv[(0 * 3 + dim) * opp_k7_dat1_stride_sycl[0]] * (*node_potential0));
                     const double c2 = (cell_shape_deriv[(1 * 3 + dim) * opp_k7_dat1_stride_sycl[0]] * (*node_potential1));
                     const double c3 = (cell_shape_deriv[(2 * 3 + dim) * opp_k7_dat1_stride_sycl[0]] * (*node_potential2));

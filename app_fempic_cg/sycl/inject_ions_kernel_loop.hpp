@@ -28,7 +28,7 @@ OPP_INT* opp_k2_dat9_stride_s = nullptr;
 OPP_INT* opp_k2_map0_stride_s = nullptr;
 
 //--------------------------------------------------------------
-void opp_par_loop_injected__inject_ions_kernel(opp_set set, opp_iterate_type, 
+void opp_par_loop_injected__inject_ions_kernel(opp_set set,
     opp_arg arg0, // p_pos | OPP_WRITE
     opp_arg arg1, // p_vel | OPP_WRITE
     opp_arg arg2, // p2c_map | OPP_RW
@@ -99,10 +99,10 @@ void opp_par_loop_injected__inject_ions_kernel(opp_set set, opp_iterate_type,
             const OPP_INT* opp_k2_dat9_stride_sycl = opp_k2_dat9_stride_s;
             const OPP_INT* opp_k2_map0_stride_sycl = opp_k2_map0_stride_s;
     
-            const OPP_REAL* CONST_dt_sycl = CONST_dt_s;
-            const OPP_REAL* CONST_ion_velocity_sycl = CONST_ion_velocity_s;
-            const OPP_REAL* CONST_mass_sycl = CONST_mass_s;
             const OPP_REAL* CONST_charge_sycl = CONST_charge_s;
+            const OPP_REAL* CONST_ion_velocity_sycl = CONST_ion_velocity_s;
+            const OPP_REAL* CONST_dt_sycl = CONST_dt_s;
+            const OPP_REAL* CONST_mass_sycl = CONST_mass_s;
 
             OPP_REAL* dat0_sycl = (OPP_REAL*)args[0].data_d;     // p_pos
             OPP_REAL* dat1_sycl = (OPP_REAL*)args[1].data_d;     // p_vel
@@ -135,18 +135,15 @@ void opp_par_loop_injected__inject_ions_kernel(opp_set set, opp_iterate_type,
                 const double *iface_normal,
                 const double *node_pos,
                 const double* dummy_part_random
-            )
-            {
+            ) {
                 double a = dummy_part_random[(0) * opp_k2_dat9_stride_sycl[0]];
                 double b = dummy_part_random[(1) * opp_k2_dat9_stride_sycl[0]];
-                if ((a + b) > 1)  // TODO : Change the random dat to avoid this
-                {
+                if ((a + b) > 1) {  // TODO : Change the random dat to avoid this
                     a = (1 - a);
                     b = (1 - b);
                 }
 
-                for (int i = 0; i < 3; i++)
-                {
+                for (int i = 0; i < 3; i++) {
                     part_pos[(i) * opp_k2_dat0_stride_sycl[0]] = a * iface_u[(i) * opp_k2_dat5_stride_sycl[0]] + b * iface_v[(i) * opp_k2_dat6_stride_sycl[0]] + node_pos[(i) * opp_k2_dat8_stride_sycl[0]];
 
                     part_vel[(i) * opp_k2_dat1_stride_sycl[0]] = (iface_normal[(i) * opp_k2_dat7_stride_sycl[0]] * CONST_ion_velocity_sycl[0]);

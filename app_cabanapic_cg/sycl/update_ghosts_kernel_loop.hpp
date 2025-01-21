@@ -12,7 +12,7 @@ OPP_INT* opp_k6_dat1_stride_s = nullptr;
 OPP_INT* opp_k6_map0_stride_s = nullptr;
 
 //--------------------------------------------------------------
-void opp_par_loop_all__update_ghosts_kernel(opp_set set, opp_iterate_type, 
+void opp_par_loop_all__update_ghosts_kernel(opp_set set,
     opp_arg arg0, // c_mask_ug | OPP_READ
     opp_arg arg1, // c_j | OPP_READ
     opp_arg arg2, // c_j | OPP_INC

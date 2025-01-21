@@ -2,7 +2,7 @@ from pathlib import Path
 from typing import Any, Dict
 
 import cpp.translator.kernels as ctk
-import op as OP
+import opp as OPP
 from language import Lang
 from scheme import Scheme
 from store import Application, ParseError, Program
@@ -22,7 +22,7 @@ class CppSeq(Scheme):
     
     def translateKernel(
         self,
-        loop: OP.Loop,
+        loop: OPP.Loop,
         program: Program,
         app: Application,
         config: Dict[str, Any],
@@ -51,7 +51,7 @@ class CppMpi(Scheme):
     
     def translateKernel(
         self,
-        loop: OP.Loop,
+        loop: OPP.Loop,
         program: Program,
         app: Application,
         config: Dict[str, Any],
@@ -80,7 +80,7 @@ class CppOmp(Scheme):
     
     def translateKernel(
         self,
-        loop: OP.Loop,
+        loop: OPP.Loop,
         program: Program,
         app: Application,
         config: Dict[str, Any],
@@ -92,7 +92,7 @@ class CppOmp(Scheme):
 
         extracted_entities = ctk.extractDependencies(kernel_entities, app)
 
-        if loop.loop_type == OP.LoopType.MOVE_LOOP:
+        if loop.loop_type == OPP.LoopType.MOVE_LOOP:
             ctk.updateMoveKernelArgs(extracted_entities, 
                 lambda typ, _: f"char& opp_move_status_flag, const bool opp_move_hop_iter_one_flag, // Added by code-gen\n    const OPP_INT* opp_c2c, OPP_INT* opp_p2c, // Added by code-gen\n    {typ}", loop.kernel)
 
@@ -114,7 +114,7 @@ class CppCuda(Scheme):
     
     def translateKernel(
         self,
-        loop: OP.Loop,
+        loop: OPP.Loop,
         program: Program,
         app: Application,
         config: Dict[str, Any],
@@ -126,7 +126,7 @@ class CppCuda(Scheme):
 
         extracted_entities = ctk.extractDependencies(kernel_entities, app)
 
-        if loop.loop_type == OP.LoopType.MOVE_LOOP:
+        if loop.loop_type == OPP.LoopType.MOVE_LOOP:
             ctk.updateMoveKernelArgs(extracted_entities, 
                 lambda typ, _: f"char& opp_move_status_flag, const bool opp_move_hop_iter_one_flag, // Added by code-gen\n    const OPP_INT* opp_c2c, OPP_INT* opp_p2c, // Added by code-gen\n    {typ}", loop.kernel)
 
@@ -144,14 +144,14 @@ class CppCuda(Scheme):
                 app,
                 loop,
                 lambda dat_id: f"opp_k{kernel_idx}_{dat_id}_stride_d",
-                skip=lambda arg: arg.access_type == OP.AccessType.INC and (arg.map_id is not None or arg.p2c_id is not None) and (config["atomics"] or config["seg_red"]),
+                skip=lambda arg: arg.access_type == OPP.AccessType.INC and (arg.map_id is not None or arg.p2c_id is not None) and (config["atomics"] or config["seg_red"]),
             )
 
         return ctk.writeSource(extracted_entities)
 
     def translateHostKernel(
         self,
-        loop: OP.Loop,
+        loop: OPP.Loop,
         program: Program,
         app: Application,
         config: Dict[str, Any],
@@ -180,7 +180,7 @@ class CppHip(Scheme):
     
     def translateKernel(
         self,
-        loop: OP.Loop,
+        loop: OPP.Loop,
         program: Program,
         app: Application,
         config: Dict[str, Any],
@@ -192,7 +192,7 @@ class CppHip(Scheme):
 
         extracted_entities = ctk.extractDependencies(kernel_entities, app)
 
-        if loop.loop_type == OP.LoopType.MOVE_LOOP:
+        if loop.loop_type == OPP.LoopType.MOVE_LOOP:
             ctk.updateMoveKernelArgs(extracted_entities, 
                 lambda typ, _: f"char& opp_move_status_flag, const bool opp_move_hop_iter_one_flag, // Added by code-gen\n    const OPP_INT* opp_c2c, OPP_INT* opp_p2c, // Added by code-gen\n    {typ}", loop.kernel)
 
@@ -210,14 +210,14 @@ class CppHip(Scheme):
                 app,
                 loop,
                 lambda dat_id: f"opp_k{kernel_idx}_{dat_id}_stride_d",
-                skip=lambda arg: arg.access_type == OP.AccessType.INC and (arg.map_id is not None or arg.p2c_id is not None) and (config["atomics"] or config["seg_red"]),
+                skip=lambda arg: arg.access_type == OPP.AccessType.INC and (arg.map_id is not None or arg.p2c_id is not None) and (config["atomics"] or config["seg_red"]),
             )
 
         return ctk.writeSource(extracted_entities)
 
     def translateHostKernel(
         self,
-        loop: OP.Loop,
+        loop: OPP.Loop,
         program: Program,
         app: Application,
         config: Dict[str, Any],
@@ -241,7 +241,7 @@ class CppSycl(Scheme):
     
     def translateKernel(
         self,
-        loop: OP.Loop,
+        loop: OPP.Loop,
         program: Program,
         app: Application,
         config: Dict[str, Any],
@@ -253,7 +253,7 @@ class CppSycl(Scheme):
 
         extracted_entities = ctk.extractDependencies(kernel_entities, app)
 
-        if loop.loop_type == OP.LoopType.MOVE_LOOP:
+        if loop.loop_type == OPP.LoopType.MOVE_LOOP:
             ctk.updateMoveKernelArgs(extracted_entities, 
                 lambda typ, _: f"char& opp_move_status_flag, const bool opp_move_hop_iter_one_flag, // Added by code-gen\n    const OPP_INT* opp_c2c, OPP_INT* opp_p2c, // Added by code-gen\n    {typ}", loop.kernel)
 
@@ -272,14 +272,14 @@ class CppSycl(Scheme):
                 app,
                 loop,
                 lambda dat_id: f"opp_k{kernel_idx}_{dat_id}_stride_sycl[0]",
-                skip=lambda arg: arg.access_type == OP.AccessType.INC and (arg.map_id is not None or arg.p2c_id is not None) and (config["atomics"] or config["seg_red"]),
+                skip=lambda arg: arg.access_type == OPP.AccessType.INC and (arg.map_id is not None or arg.p2c_id is not None) and (config["atomics"] or config["seg_red"]),
             )
 
         return ctk.writeSource(extracted_entities, ";")
 
     def translateHostKernel(
         self,
-        loop: OP.Loop,
+        loop: OPP.Loop,
         program: Program,
         app: Application,
         config: Dict[str, Any],

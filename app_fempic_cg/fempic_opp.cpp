@@ -1,5 +1,5 @@
 
-// Auto-generated at 2024-10-17 19:08:48.174421 by opp-translator
+// Auto-generated at 2025-01-21 14:55:58.979812 by opp-translator
 /* 
 BSD 3-Clause License
 
@@ -37,15 +37,15 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "opp_lib.h"
 
-void opp_par_loop_all__init_boundary_pot_kernel(opp_set,opp_iterate_type,opp_arg,opp_arg);
-void opp_par_loop_injected__inject_ions_kernel(opp_set,opp_iterate_type,opp_arg,opp_arg,opp_arg,opp_arg,opp_arg,opp_arg,opp_arg,opp_arg,opp_arg,opp_arg);
-void opp_par_loop_all__calculate_new_pos_vel_kernel(opp_set,opp_iterate_type,opp_arg,opp_arg,opp_arg);
+void opp_par_loop_all__init_boundary_pot_kernel(opp_set,opp_arg,opp_arg);
+void opp_par_loop_injected__inject_ions_kernel(opp_set,opp_arg,opp_arg,opp_arg,opp_arg,opp_arg,opp_arg,opp_arg,opp_arg,opp_arg,opp_arg);
+void opp_par_loop_all__calculate_new_pos_vel_kernel(opp_set,opp_arg,opp_arg,opp_arg);
 void opp_particle_move__move_kernel(opp_set,opp_map,opp_map,opp_arg,opp_arg,opp_arg,opp_arg);
-void opp_par_loop_all__deposit_charge_on_nodes_kernel(opp_set,opp_iterate_type,opp_arg,opp_arg,opp_arg,opp_arg,opp_arg);
-void opp_par_loop_all__compute_node_charge_density_kernel(opp_set,opp_iterate_type,opp_arg,opp_arg);
-void opp_par_loop_all__compute_electric_field_kernel(opp_set,opp_iterate_type,opp_arg,opp_arg,opp_arg,opp_arg,opp_arg,opp_arg);
-void opp_par_loop_all__get_max_cef_kernel(opp_set,opp_iterate_type,opp_arg,opp_arg);
-void opp_par_loop_all__get_final_max_values_kernel(opp_set,opp_iterate_type,opp_arg,opp_arg,opp_arg,opp_arg);
+void opp_par_loop_all__deposit_charge_on_nodes_kernel(opp_set,opp_arg,opp_arg,opp_arg,opp_arg,opp_arg);
+void opp_par_loop_all__compute_node_charge_density_kernel(opp_set,opp_arg,opp_arg);
+void opp_par_loop_all__compute_electric_field_kernel(opp_set,opp_arg,opp_arg,opp_arg,opp_arg,opp_arg,opp_arg);
+void opp_par_loop_all__get_max_cef_kernel(opp_set,opp_arg,opp_arg);
+void opp_par_loop_all__get_final_max_values_kernel(opp_set,opp_arg,opp_arg,opp_arg,opp_arg);
 void opp_init_direct_hop_cg(double,const opp_dat,const opp::BoundingBox&,opp_map,opp_map,opp_arg,opp_arg,opp_arg,opp_arg);
 
 #include "fempic_misc_mesh_loader.h"
@@ -136,7 +136,7 @@ int main(int argc, char **argv)
         opp_partition(std::string("EXTERNAL"), cell_set, nullptr, c_colors);
 #endif
         
-        opp_par_loop_all__init_boundary_pot_kernel(node_set, OPP_ITERATE_ALL,
+        opp_par_loop_all__init_boundary_pot_kernel(node_set, 
             opp_arg_dat(n_type,    OPP_READ), 
             opp_arg_dat(n_bnd_pot, OPP_WRITE));
 
@@ -166,7 +166,7 @@ int main(int argc, char **argv)
                 opp_inc_part_count_with_distribution(particle_set, inject_count, if_distrib, false);
 
             const int old_nparts = particle_set->size;
-            opp_par_loop_injected__inject_ions_kernel(particle_set, OPP_ITERATE_INJECTED,
+            opp_par_loop_injected__inject_ions_kernel(particle_set, 
                 opp_arg_dat(p_pos,                      OPP_WRITE),                      
                 opp_arg_dat(p_vel,                      OPP_WRITE),                      
                 opp_arg_dat(p2c_map,                    OPP_RW),
@@ -180,7 +180,7 @@ int main(int argc, char **argv)
 
             opp_reset_dat(n_charge_den, opp_zero_double16);
 
-            opp_par_loop_all__calculate_new_pos_vel_kernel(particle_set, OPP_ITERATE_ALL,
+            opp_par_loop_all__calculate_new_pos_vel_kernel(particle_set, 
                 opp_arg_dat(c_ef, p2c_map, OPP_READ),
                 opp_arg_dat(p_pos,         OPP_WRITE),
                 opp_arg_dat(p_vel,         OPP_WRITE));
@@ -191,14 +191,14 @@ int main(int argc, char **argv)
                 opp_arg_dat(c_volume, p2c_map, OPP_READ),
                 opp_arg_dat(c_det,    p2c_map, OPP_READ));
 
-            opp_par_loop_all__deposit_charge_on_nodes_kernel(particle_set, OPP_ITERATE_ALL,
+            opp_par_loop_all__deposit_charge_on_nodes_kernel(particle_set, 
                 opp_arg_dat(p_lc,                              OPP_READ),
                 opp_arg_dat(n_charge_den, 0, c2n_map, p2c_map, OPP_INC),
                 opp_arg_dat(n_charge_den, 1, c2n_map, p2c_map, OPP_INC),
                 opp_arg_dat(n_charge_den, 2, c2n_map, p2c_map, OPP_INC),
                 opp_arg_dat(n_charge_den, 3, c2n_map, p2c_map, OPP_INC));
 
-            opp_par_loop_all__compute_node_charge_density_kernel(node_set, OPP_ITERATE_ALL,
+            opp_par_loop_all__compute_node_charge_density_kernel(node_set, 
                 opp_arg_dat(n_charge_den,  OPP_RW), 
                 opp_arg_dat(n_volume,      OPP_READ));
 
@@ -209,7 +209,7 @@ int main(int argc, char **argv)
 
             opp_reset_dat(c_ef, opp_zero_double16); 
 
-            opp_par_loop_all__compute_electric_field_kernel(cell_set, OPP_ITERATE_ALL,
+            opp_par_loop_all__compute_electric_field_kernel(cell_set, 
                 opp_arg_dat(c_ef,                    OPP_INC), 
                 opp_arg_dat(c_sd,                    OPP_READ),
                 opp_arg_dat(n_potential, 0, c2n_map, OPP_READ),
@@ -221,10 +221,10 @@ int main(int argc, char **argv)
             {
                 OPP_REAL max_n_chg_den = 0.0, max_n_pot = 0.0, max_c_ef = 0.0;
 
-                opp_par_loop_all__get_max_cef_kernel(cell_set, OPP_ITERATE_ALL,
+                opp_par_loop_all__get_max_cef_kernel(cell_set, 
                     opp_arg_dat(c_ef, OPP_READ),
                     opp_arg_gbl(&max_c_ef, 1, "double", OPP_MAX));
-                opp_par_loop_all__get_final_max_values_kernel(node_set, OPP_ITERATE_ALL,
+                opp_par_loop_all__get_final_max_values_kernel(node_set, 
                     opp_arg_dat(n_charge_den, OPP_READ),
                     opp_arg_gbl(&max_n_chg_den, 1, "double", OPP_MAX),
                     opp_arg_dat(n_potential, OPP_READ),

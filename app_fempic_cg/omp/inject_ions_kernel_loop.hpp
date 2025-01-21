@@ -15,18 +15,15 @@ inline void inject_ions_kernel(
     const double *iface_normal,
     const double *node_pos,
     const double* dummy_part_random
-)
-{
+) {
     double a = dummy_part_random[0];
     double b = dummy_part_random[1];
-    if ((a + b) > 1)  // TODO : Change the random dat to avoid this
-    {
+    if ((a + b) > 1) {  // TODO : Change the random dat to avoid this
         a = (1 - a);
         b = (1 - b);
     }
 
-    for (int i = 0; i < 3; i++)
-    {
+    for (int i = 0; i < 3; i++) {
         part_pos[i] = a * iface_u[i] + b * iface_v[i] + node_pos[i];
 
         part_vel[i] = (iface_normal[i] * CONST_ion_velocity[0]);
@@ -37,7 +34,7 @@ inline void inject_ions_kernel(
 }
 }
 
-void opp_par_loop_injected__inject_ions_kernel(opp_set set, opp_iterate_type, 
+void opp_par_loop_injected__inject_ions_kernel(opp_set set,
     opp_arg arg0, // p_pos | OPP_WRITE
     opp_arg arg1, // p_vel | OPP_WRITE
     opp_arg arg2, // p2c_map | OPP_RW
