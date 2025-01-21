@@ -460,8 +460,7 @@ void __opp_mpi_device_halo_exchange(opp_arg *arg, int exec_flag)
         MPI_Isend(&outptr_exec[exp_exec_list->disps[i] * dat->size],
                     dat->size * exp_exec_list->sizes[i], MPI_CHAR,
                     exp_exec_list->ranks[i], dat->index, OPP_MPI_WORLD,
-                    &mpi_buff->s_req[mpi_buff->s_num_req++]); 
-                        
+                    &mpi_buff->s_req[mpi_buff->s_num_req++]);                    
         // opp_printf("opp_mpi_halo_exchange_dev", "Send exec to rank %d count %d req %d",
         //      exp_exec_list->ranks[i], exp_exec_list->sizes[i], mpi_buff->s_num_req);              
     }
@@ -480,7 +479,7 @@ void __opp_mpi_device_halo_exchange(opp_arg *arg, int exec_flag)
             
         MPI_Irecv(ptr, dat->size * imp_exec_list->sizes[i], MPI_CHAR,
                     imp_exec_list->ranks[i], dat->index, OPP_MPI_WORLD,
-                    &mpi_buff->r_req[mpi_buff->r_num_req++]);
+                    &mpi_buff->r_req[mpi_buff->r_num_req++]);       
         // opp_printf("opp_mpi_halo_exchange_dev", "Recv exec from rank %d count %d req %d", 
         //      imp_exec_list->ranks[i], imp_exec_list->sizes[i], mpi_buff->r_num_req);                
     }
@@ -520,7 +519,6 @@ void __opp_mpi_device_halo_exchange(opp_arg *arg, int exec_flag)
         MPI_Irecv(ptr, dat->size * imp_nonexec_list->sizes[i], MPI_CHAR,
                     imp_nonexec_list->ranks[i], dat->index, OPP_MPI_WORLD,
                     &mpi_buff->r_req[mpi_buff->r_num_req++]);
-
         // opp_printf("opp_mpi_halo_exchange_dev", "Recv non-exec from rank %d count %d req %d", 
         //        imp_nonexec_list->ranks[i], imp_nonexec_list->sizes[i], mpi_buff->r_num_req);
     }

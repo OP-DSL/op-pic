@@ -1,5 +1,5 @@
 
-// Auto-generated at 2024-10-17 18:58:53.904521 by opp-translator
+// Auto-generated at 2025-01-21 13:14:47.385227 by opp-translator
 /* 
 BSD 3-Clause License
 
@@ -99,8 +99,8 @@ int main(int argc, char **argv)
         init_particles(p_idx, p_pos, p_vel, p_mdir, p2c_map, c_pos_ll, c_idx);
         
         // these two lines are only required if we plan to use direct_hop
-        opp_init_direct_hop_cg(grid_spacing, c_idx, opp::BoundingBox(c_pos_ll, DIM, expansion), 
-            c2c_map, p2c_map,
+        opp::BoundingBox bounding_box(c_pos_ll, DIM, expansion);
+        opp_init_direct_hop_cg(grid_spacing, c_idx, bounding_box, c2c_map, p2c_map,
 			opp_arg_dat(p_pos, OPP_READ),
 			opp_arg_dat(c_pos_ll, p2c_map, OPP_READ));
 

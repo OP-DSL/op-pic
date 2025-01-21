@@ -58,7 +58,7 @@ int main(int argc, char **argv)
         OPP_INT ndimcells[2]        = {opp_params->get<OPP_INT>("nx"), opp_params->get<OPP_INT>("ny")};
         OPP_BOOL verify_parts       = opp_params->get<OPP_BOOL>("verify_particles");
         OPP_REAL grid_spacing       = opp_params->get<OPP_REAL>("grid_spacing");
-        const OPP_REAL expansion[3] = {cell_width*2, cell_width*2, 0.0};
+        const opp_point expansion(cell_width*2, cell_width*2, 0.0);
         int64_t total_part_iter     = 0;
         int incorrect_part_count    = 0;
 
@@ -97,8 +97,8 @@ int main(int argc, char **argv)
         init_particles(p_idx, p_pos, p_vel, p_mdir, p2c_map, c_pos_ll, c_idx);
         
         // these two lines are only required if we plan to use direct_hop
-        opp::BoundingBox bounding_box = opp::BoundingBox(c_pos_ll, DIM, expansion);
-        opp_init_direct_hop(grid_spacing, DIM, c_idx, bounding_box);
+        opp::BoundingBox bounding_box(c_pos_ll, DIM, expansion);
+        opp_init_direct_hop(grid_spacing, c_idx, bounding_box);
 
         opp_printf("Setup Completed", "Cells[%d] Particles[%d] max_iter[%d]", cell_set->size, part_set->size, max_iter);
 

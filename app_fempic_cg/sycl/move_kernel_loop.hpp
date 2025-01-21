@@ -164,6 +164,7 @@ void opp_particle_move__move_kernel(opp_set set, opp_map c2c_map, opp_map p2c_ma
 
                     return false;
                 }
+            #ifdef USE_MPI
                 else if (c_idx[0] >= opp_cell_set_size_sycl[0]) {
                     // cell_id is not owned by the current mpi rank, need to communicate
                     const int moveIdx = opp_atomic_fetch_add(move_count, 1);
@@ -176,6 +177,7 @@ void opp_particle_move__move_kernel(opp_set set, opp_map c2c_map, opp_map p2c_ma
 
                     return false;
                 }
+            #endif
                 return true; // cell_id is an own cell and move_flag == OPP_NEED_MOVE
             };
 
@@ -212,7 +214,7 @@ void opp_particle_move__move_kernel(opp_set set, opp_map c2c_map, opp_map p2c_ma
             cgh.parallel_for<class opp_particle_move>(
                     sycl::nd_range<1>(block_size * num_blocks, block_size), opp_move_kernel);
         });
-    
+
     } while (opp_finalize_particle_move(set)); // MPI communication iteration
 
     opp_set_dirtybit_grouped(nargs, args, Device_GPU);

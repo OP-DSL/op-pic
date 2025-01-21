@@ -408,6 +408,7 @@ void opp_particle_move__move_deposit_kernel(opp_set set, opp_map c2c_map, opp_ma
 
                     return false;
                 }
+            #ifdef USE_MPI
                 else if (c_idx[0] >= opp_cell_set_size_sycl[0]) {
                     // cell_id is not owned by the current mpi rank, need to communicate
                     const int moveIdx = opp_atomic_fetch_add(move_count, 1);
@@ -420,6 +421,7 @@ void opp_particle_move__move_deposit_kernel(opp_set set, opp_map c2c_map, opp_ma
 
                     return false;
                 }
+            #endif
                 return true; // cell_id is an own cell and move_flag == OPP_NEED_MOVE
             };
 

@@ -54,47 +54,6 @@ __device__ inline void move_kernel(char& opp_move_status_flag, const bool opp_mo
 
     { opp_move_status_flag = OPP_MOVE_DONE; };
 }
-
-//*******************************************************************************
-// Returns true only if another hop is required by the current rank
-__device__ inline bool opp_part_check_status_hip(char& move_flag, bool& iter_one_flag, 
-        int* cell_id, int particle_index, int& remove_count, int *remove_particle_indices, 
-        int *move_particle_indices, int *move_cell_indices, int *move_count) 
-{
-    iter_one_flag = false;
-
-    if (move_flag == OPP_MOVE_DONE)
-    {
-        return false;
-    }
-    else if (move_flag == OPP_NEED_REMOVE)
-    {
-        *cell_id = MAX_CELL_INDEX;
-        const int removeArrayIndex = atomicAdd(&remove_count, 1);
-        remove_particle_indices[removeArrayIndex] = particle_index;
-
-        return false;
-    }
-    else if (*cell_id >= OPP_cells_set_size_d)
-    {
-        // cell_id cell is not owned by the current mpi rank, need to communicate
-        int moveArrayIndex = atomicAdd(move_count, 1);
-        move_particle_indices[moveArrayIndex] = particle_index;
-        move_cell_indices[moveArrayIndex] = *cell_id;
-
-        // Needs to be removed from the current rank, 
-        // particle packing will be done just prior exchange and removal
-        move_flag = OPP_NEED_REMOVE; 
-        const int removeArrayIndex = atomicAdd(&remove_count, 1);
-        remove_particle_indices[removeArrayIndex] = particle_index;
-
-        return false;
-    }
-
-    // cell_id is an own cell and move_flag == OPP_NEED_MOVE
-    return true;
-}
-
 }
 
 //--------------------------------------------------------------
@@ -134,7 +93,7 @@ __global__ void opp_dev_move_kernel(
           
             );
 
-        } while (opp_k2::opp_part_check_status_hip(move_flag, iter_one_flag, opp_p2c, n, 
+        } while (opp_part_check_status_device(move_flag, iter_one_flag, opp_p2c, n, 
             *particle_remove_count, particle_remove_indices, move_particle_indices, 
             move_cell_indices, move_count));        
     }
@@ -160,16 +119,11 @@ void opp_particle_move__move_kernel(opp_set set, opp_map c2c_map, opp_map p2c_ma
     args[2] = opp_arg_dat(p2c_map->p2c_dat, OPP_RW); // required to make dirty or should manually make it dirty
 
     const int iter_size = opp_mpi_halo_exchanges_grouped(set, nargs, args, Device_GPU);
- 
-    if (OPP_cells_set_size != set->cells_set->size) {
-        OPP_cells_set_size = set->cells_set->size; 
-        cutilSafeCall(hipMemcpyToSymbol(HIP_SYMBOL(OPP_cells_set_size_d), &OPP_cells_set_size, sizeof(int)));
-    }
+
     const OPP_INT c2c_stride = c2c_map->from->size + c2c_map->from->exec_size + c2c_map->from->nonexec_size;
-    if (opp_k2_c2c_map_stride != c2c_stride) {
-        opp_k2_c2c_map_stride = c2c_stride;
-        cutilSafeCall(hipMemcpyToSymbol(HIP_SYMBOL(opp_k2_c2c_map_stride_d), &opp_k2_c2c_map_stride, sizeof(OPP_INT)));
-    }
+
+    opp_mem::dev_copy_to_symbol<OPP_INT>(OPP_cells_set_size_d, &OPP_cells_set_size, &(set->cells_set->size), 1);
+    opp_mem::dev_copy_to_symbol<OPP_INT>(opp_k2_c2c_map_stride_d, &opp_k2_c2c_map_stride, &c2c_stride, 1);
 
     opp_mpi_halo_wait_all(nargs, args);
 
@@ -183,17 +137,11 @@ void opp_particle_move__move_kernel(opp_set set, opp_map c2c_map, opp_map p2c_ma
 
     do 
     {
-        if (opp_k2_dat0_stride != args[0].dat->set->set_capacity) {
-            opp_k2_dat0_stride = args[0].dat->set->set_capacity;
-            cutilSafeCall(hipMemcpyToSymbol(HIP_SYMBOL(opp_k2_dat0_stride_d), &opp_k2_dat0_stride, sizeof(OPP_INT)));
-        }
-        if (opp_k2_dat1_stride != args[1].dat->set->set_capacity) {
-            opp_k2_dat1_stride = args[1].dat->set->set_capacity;
-            cutilSafeCall(hipMemcpyToSymbol(HIP_SYMBOL(opp_k2_dat1_stride_d), &opp_k2_dat1_stride, sizeof(OPP_INT)));
-        }
+        opp_mem::dev_copy_to_symbol<OPP_INT>(opp_k2_dat0_stride_d, &opp_k2_dat0_stride, &(args[0].dat->set->set_capacity), 1);
+        opp_mem::dev_copy_to_symbol<OPP_INT>(opp_k2_dat1_stride_d, &opp_k2_dat1_stride, &(args[1].dat->set->set_capacity), 1);
 
         opp_init_particle_move(set, nargs, args);
-        cutilSafeCall(hipMemcpyToSymbol(HIP_SYMBOL(OPP_comm_iteration_d), &OPP_comm_iteration, sizeof(int)));
+        opp_mem::dev_copy_to_symbol<OPP_INT>(OPP_comm_iteration_d, &OPP_comm_iteration, 1);
 
         num_blocks = (OPP_iter_end - OPP_iter_start - 1) / block_size + 1;
 

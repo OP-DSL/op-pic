@@ -140,7 +140,8 @@ int main(int argc, char **argv)
         opp_inc_part_count_with_distribution(particle_set, inject_count, if_distrib, false);
 
         // these two lines are only required if we plan to use direct_hop
-        opp_init_direct_hop(grid_spacing, c_gbl_id, opp::BoundingBox(n_pos, DIM, expansion));
+        opp::BoundingBox bounding_box(n_pos, DIM, expansion);
+        opp_init_direct_hop(grid_spacing, c_gbl_id, bounding_box);
 
         auto field_solver = std::make_unique<FESolver>(c2n_map, n_type, n_pos, n_bnd_pot);
         field_solver->enrich_cell_shape_deriv(c_sd);

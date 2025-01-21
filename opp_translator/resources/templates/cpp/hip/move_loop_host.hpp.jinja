@@ -466,16 +466,12 @@ void opp_particle_move__{{lh.kernel}}(opp_set set, opp_map c2c_map, opp_map p2c_
 #ifdef USE_MPI
     opp_init_double_indirect_reductions_device(nargs, args);
 #endif
-    {% endif %} 
-    if (OPP_cells_set_size != set->cells_set->size) {
-        OPP_cells_set_size = set->cells_set->size; 
-        cutilSafeCall(hipMemcpyToSymbol(HIP_SYMBOL(OPP_cells_set_size_d), &OPP_cells_set_size, sizeof(int)));
-    }
+    {% endif %}
+
     const OPP_INT c2c_stride = c2c_map->from->size + c2c_map->from->exec_size + c2c_map->from->nonexec_size;
-    if (opp_k{{kernel_idx}}_c2c_map_stride != c2c_stride) {
-        opp_k{{kernel_idx}}_c2c_map_stride = c2c_stride;
-        cutilSafeCall(hipMemcpyToSymbol(HIP_SYMBOL(opp_k{{kernel_idx}}_c2c_map_stride_d), &opp_k{{kernel_idx}}_c2c_map_stride, sizeof(OPP_INT)));
-    }
+
+    opp_mem::dev_copy_to_symbol<OPP_INT>(OPP_cells_set_size_d, &OPP_cells_set_size, &(set->cells_set->size), 1);
+    opp_mem::dev_copy_to_symbol<OPP_INT>(opp_k{{kernel_idx}}_c2c_map_stride_d, &opp_k{{kernel_idx}}_c2c_map_stride, &c2c_stride, 1);
 
     opp_mpi_halo_wait_all(nargs, args);
     {% if lh.args|opt|length > 0 %}
@@ -530,23 +526,16 @@ void opp_particle_move__{{lh.kernel}}(opp_set set, opp_map c2c_map, opp_map p2c_
     do 
     {
         {% for dat in lh.dats|soa %}
-        if (opp_k{{kernel_idx}}_dat{{dat.id}}_stride != args[{{dat.arg_id}}].dat->set->set_capacity) {
-            opp_k{{kernel_idx}}_dat{{dat.id}}_stride = args[{{dat.arg_id}}].dat->set->set_capacity;
-            cutilSafeCall(hipMemcpyToSymbol(HIP_SYMBOL(opp_k{{kernel_idx}}_dat{{dat.id}}_stride_d), &opp_k{{kernel_idx}}_dat{{dat.id}}_stride, sizeof(OPP_INT)));
-        }
+        opp_mem::dev_copy_to_symbol<OPP_INT>(opp_k{{kernel_idx}}_dat{{dat.id}}_stride_d, &opp_k{{kernel_idx}}_dat{{dat.id}}_stride, &(args[{{dat.arg_id}}].dat->set->set_capacity), 1);
         {% endfor %}
         {% for map in lh.maps %}
-        if (opp_k{{kernel_idx}}_map{{map.id}}_stride != args[{{map.arg_id}}].size) {
-            opp_k{{kernel_idx}}_map{{map.id}}_stride = args[{{map.arg_id}}].size;
-            cutilSafeCall(hipMemcpyToSymbol(HIP_SYMBOL(opp_k{{kernel_idx}}_map{{map.id}}_stride_d), &opp_k{{kernel_idx}}_map{{map.id}}_stride, sizeof(OPP_INT)));
-        }
+        opp_mem::dev_copy_to_symbol<OPP_INT>(opp_k{{kernel_idx}}_map{{map.id}}_stride_d, &opp_k{{kernel_idx}}_map{{map.id}}_stride, &(args[{{map.arg_id}}].size), 1);
         {% endfor %}
 
         opp_init_particle_move(set, nargs, args);
-        cutilSafeCall(hipMemcpyToSymbol(HIP_SYMBOL(OPP_comm_iteration_d), &OPP_comm_iteration, sizeof(int)));
+        opp_mem::dev_copy_to_symbol<OPP_INT>(OPP_comm_iteration_d, &OPP_comm_iteration, 1);
 
     {% if lh.args|gbl|reduction|length > 0 %}
-
         {% if lh is direct %}
     int max_blocks = num_blocks;
         {% elif config.atomics %}
@@ -666,10 +655,7 @@ opp_dev_sr_{{lh.kernel}}<<<num_blocks, block_size{{-(", %s" % shared_size) if lh
     {% endif %}
     {% if lh is indirect and lh.args|dat|indirect|reduction|length > 0 and config.seg_red %}
         {
-            if (opp_k{{kernel_idx}}_sr_set_stride != set->size) {
-                opp_k{{kernel_idx}}_sr_set_stride = set->size;
-                cutilSafeCall(hipMemcpyToSymbol(HIP_SYMBOL(opp_k{{kernel_idx}}_sr_set_stride_d), &opp_k{{kernel_idx}}_sr_set_stride, sizeof(OPP_INT)));
-            }
+            opp_mem::dev_copy_to_symbol<OPP_INT>(opp_k{{kernel_idx}}_sr_set_stride_d, &opp_k{{kernel_idx}}_sr_set_stride, &set->size, 1);
 
         {% for arg in lh.args|dat|indirect|reduction|not_already_mapped(lh) %}
             size_t operating_size_dat{{arg.dat_id}} = 0, resize_size_dat{{arg.dat_id}} = 0;

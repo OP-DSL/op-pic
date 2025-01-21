@@ -343,7 +343,7 @@ __global__ void opp_dev_sr_{{lh.kernel}}( // Used for Segmented Reductions
 
 {% block host_prologue_early_exit_cleanup %}
         opp_set_dirtybit_grouped(nargs, args, Device_GPU);
-        OPP_DEVICE_SYNCHRONIZE();  
+        OPP_DEVICE_SYNCHRONIZE();   
 {% endblock %}
 
 {% block host_prologue %}
@@ -417,22 +417,13 @@ void opp_par_loop_{{lh.iterator_type}}__{{lh.kernel}}(opp_set set, opp_iterate_t
     {% endif %}
     {% for dat in lh.dats|soa %}
         {% if dat is map_not_dat %}
-    if (opp_k{{kernel_idx}}_dat{{dat.id}}_stride != args[{{dat.arg_id}}].size) {
-        opp_k{{kernel_idx}}_dat{{dat.id}}_stride = args[{{dat.arg_id}}].size;
-        cutilSafeCall(hipMemcpyToSymbol(HIP_SYMBOL(opp_k{{kernel_idx}}_dat{{dat.id}}_stride_d), &opp_k{{kernel_idx}}_dat{{dat.id}}_stride, sizeof(OPP_INT)));
-    }
+    opp_mem::dev_copy_to_symbol<OPP_INT>(opp_k{{kernel_idx}}_dat{{dat.id}}_stride_d, &opp_k{{kernel_idx}}_dat{{dat.id}}_stride, &(args[{{dat.arg_id}}].size), 1);
         {% else %}
-    if (opp_k{{kernel_idx}}_dat{{dat.id}}_stride != args[{{dat.arg_id}}].dat->set->set_capacity) {
-        opp_k{{kernel_idx}}_dat{{dat.id}}_stride = args[{{dat.arg_id}}].dat->set->set_capacity;
-        cutilSafeCall(hipMemcpyToSymbol(HIP_SYMBOL(opp_k{{kernel_idx}}_dat{{dat.id}}_stride_d), &opp_k{{kernel_idx}}_dat{{dat.id}}_stride, sizeof(OPP_INT)));
-    }
+    opp_mem::dev_copy_to_symbol<OPP_INT>(opp_k{{kernel_idx}}_dat{{dat.id}}_stride_d, &opp_k{{kernel_idx}}_dat{{dat.id}}_stride, &(args[{{dat.arg_id}}].dat->set->set_capacity), 1);
         {% endif %}
     {% endfor %}
     {% for map in lh.maps %}
-    if (opp_k{{kernel_idx}}_map{{map.id}}_stride != args[{{map.arg_id}}].size) {
-        opp_k{{kernel_idx}}_map{{map.id}}_stride = args[{{map.arg_id}}].size;
-        cutilSafeCall(hipMemcpyToSymbol(HIP_SYMBOL(opp_k{{kernel_idx}}_map{{map.id}}_stride_d), &opp_k{{kernel_idx}}_map{{map.id}}_stride, sizeof(OPP_INT)));
-    }
+    opp_mem::dev_copy_to_symbol<OPP_INT>(opp_k{{kernel_idx}}_map{{map.id}}_stride_d, &opp_k{{kernel_idx}}_map{{map.id}}_stride, &(args[{{map.arg_id}}].size), 1);
     {% endfor %}
 
 #ifdef OPP_BLOCK_SIZE_{{kernel_idx}}
@@ -570,10 +561,7 @@ opp_dev_sr_{{lh.kernel}}<<<num_blocks, block_size{{-(", %s" % shared_size) if lh
     {% endif %}
     {% if lh is indirect and lh.args|dat|indirect|reduction|length > 0 and config.seg_red %}
         {
-            if (opp_k{{kernel_idx}}_sr_set_stride != set->size) {
-                opp_k{{kernel_idx}}_sr_set_stride = set->size;
-                cutilSafeCall(hipMemcpyToSymbol(HIP_SYMBOL(opp_k{{kernel_idx}}_sr_set_stride_d), &opp_k{{kernel_idx}}_sr_set_stride, sizeof(OPP_INT)));
-            }
+            opp_mem::dev_copy_to_symbol<OPP_INT>(opp_k{{kernel_idx}}_sr_set_stride_d, &opp_k{{kernel_idx}}_sr_set_stride, &(set->size), 1);
 
         {% for arg in lh.args|dat|indirect|reduction|not_already_mapped(lh) %}
             size_t operating_size_dat{{arg.dat_id}} = 0, resize_size_dat{{arg.dat_id}} = 0;

@@ -110,26 +110,11 @@ void opp_par_loop_all__advance_e_kernel(opp_set set, opp_iterate_type,
     const int iter_size = opp_mpi_halo_exchanges_grouped(set, nargs, args, Device_GPU);
  
  
-    if (opp_k7_dat0_stride != args[0].dat->set->set_capacity) {
-        opp_k7_dat0_stride = args[0].dat->set->set_capacity;
-        cutilSafeCall(hipMemcpyToSymbol(HIP_SYMBOL(opp_k7_dat0_stride_d), &opp_k7_dat0_stride, sizeof(OPP_INT)));
-    }
-    if (opp_k7_dat1_stride != args[4].dat->set->set_capacity) {
-        opp_k7_dat1_stride = args[4].dat->set->set_capacity;
-        cutilSafeCall(hipMemcpyToSymbol(HIP_SYMBOL(opp_k7_dat1_stride_d), &opp_k7_dat1_stride, sizeof(OPP_INT)));
-    }
-    if (opp_k7_dat2_stride != args[5].dat->set->set_capacity) {
-        opp_k7_dat2_stride = args[5].dat->set->set_capacity;
-        cutilSafeCall(hipMemcpyToSymbol(HIP_SYMBOL(opp_k7_dat2_stride_d), &opp_k7_dat2_stride, sizeof(OPP_INT)));
-    }
-    if (opp_k7_dat3_stride != args[6].dat->set->set_capacity) {
-        opp_k7_dat3_stride = args[6].dat->set->set_capacity;
-        cutilSafeCall(hipMemcpyToSymbol(HIP_SYMBOL(opp_k7_dat3_stride_d), &opp_k7_dat3_stride, sizeof(OPP_INT)));
-    }
-    if (opp_k7_map0_stride != args[0].size) {
-        opp_k7_map0_stride = args[0].size;
-        cutilSafeCall(hipMemcpyToSymbol(HIP_SYMBOL(opp_k7_map0_stride_d), &opp_k7_map0_stride, sizeof(OPP_INT)));
-    }
+    opp_mem::dev_copy_to_symbol<OPP_INT>(opp_k7_dat0_stride_d, &opp_k7_dat0_stride, &(args[0].dat->set->set_capacity), 1);
+    opp_mem::dev_copy_to_symbol<OPP_INT>(opp_k7_dat1_stride_d, &opp_k7_dat1_stride, &(args[4].dat->set->set_capacity), 1);
+    opp_mem::dev_copy_to_symbol<OPP_INT>(opp_k7_dat2_stride_d, &opp_k7_dat2_stride, &(args[5].dat->set->set_capacity), 1);
+    opp_mem::dev_copy_to_symbol<OPP_INT>(opp_k7_dat3_stride_d, &opp_k7_dat3_stride, &(args[6].dat->set->set_capacity), 1);
+    opp_mem::dev_copy_to_symbol<OPP_INT>(opp_k7_map0_stride_d, &opp_k7_map0_stride, &(args[0].size), 1);
 
 #ifdef OPP_BLOCK_SIZE_7
     const int block_size = OPP_BLOCK_SIZE_7;

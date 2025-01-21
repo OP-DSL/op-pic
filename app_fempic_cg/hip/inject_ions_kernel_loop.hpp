@@ -143,50 +143,17 @@ void opp_par_loop_injected__inject_ions_kernel(opp_set set, opp_iterate_type,
     const int iter_size = set->diff; 
     const int inj_start = (set->size - set->diff);  
  
-    if (opp_k2_dat0_stride != args[0].dat->set->set_capacity) {
-        opp_k2_dat0_stride = args[0].dat->set->set_capacity;
-        cutilSafeCall(hipMemcpyToSymbol(HIP_SYMBOL(opp_k2_dat0_stride_d), &opp_k2_dat0_stride, sizeof(OPP_INT)));
-    }
-    if (opp_k2_dat1_stride != args[1].dat->set->set_capacity) {
-        opp_k2_dat1_stride = args[1].dat->set->set_capacity;
-        cutilSafeCall(hipMemcpyToSymbol(HIP_SYMBOL(opp_k2_dat1_stride_d), &opp_k2_dat1_stride, sizeof(OPP_INT)));
-    }
-    if (opp_k2_dat2_stride != args[2].size) {
-        opp_k2_dat2_stride = args[2].size;
-        cutilSafeCall(hipMemcpyToSymbol(HIP_SYMBOL(opp_k2_dat2_stride_d), &opp_k2_dat2_stride, sizeof(OPP_INT)));
-    }
-    if (opp_k2_dat3_stride != args[3].size) {
-        opp_k2_dat3_stride = args[3].size;
-        cutilSafeCall(hipMemcpyToSymbol(HIP_SYMBOL(opp_k2_dat3_stride_d), &opp_k2_dat3_stride, sizeof(OPP_INT)));
-    }
-    if (opp_k2_dat4_stride != args[4].dat->set->set_capacity) {
-        opp_k2_dat4_stride = args[4].dat->set->set_capacity;
-        cutilSafeCall(hipMemcpyToSymbol(HIP_SYMBOL(opp_k2_dat4_stride_d), &opp_k2_dat4_stride, sizeof(OPP_INT)));
-    }
-    if (opp_k2_dat5_stride != args[5].dat->set->set_capacity) {
-        opp_k2_dat5_stride = args[5].dat->set->set_capacity;
-        cutilSafeCall(hipMemcpyToSymbol(HIP_SYMBOL(opp_k2_dat5_stride_d), &opp_k2_dat5_stride, sizeof(OPP_INT)));
-    }
-    if (opp_k2_dat6_stride != args[6].dat->set->set_capacity) {
-        opp_k2_dat6_stride = args[6].dat->set->set_capacity;
-        cutilSafeCall(hipMemcpyToSymbol(HIP_SYMBOL(opp_k2_dat6_stride_d), &opp_k2_dat6_stride, sizeof(OPP_INT)));
-    }
-    if (opp_k2_dat7_stride != args[7].dat->set->set_capacity) {
-        opp_k2_dat7_stride = args[7].dat->set->set_capacity;
-        cutilSafeCall(hipMemcpyToSymbol(HIP_SYMBOL(opp_k2_dat7_stride_d), &opp_k2_dat7_stride, sizeof(OPP_INT)));
-    }
-    if (opp_k2_dat8_stride != args[8].dat->set->set_capacity) {
-        opp_k2_dat8_stride = args[8].dat->set->set_capacity;
-        cutilSafeCall(hipMemcpyToSymbol(HIP_SYMBOL(opp_k2_dat8_stride_d), &opp_k2_dat8_stride, sizeof(OPP_INT)));
-    }
-    if (opp_k2_dat9_stride != args[9].dat->set->set_capacity) {
-        opp_k2_dat9_stride = args[9].dat->set->set_capacity;
-        cutilSafeCall(hipMemcpyToSymbol(HIP_SYMBOL(opp_k2_dat9_stride_d), &opp_k2_dat9_stride, sizeof(OPP_INT)));
-    }
-    if (opp_k2_map0_stride != args[4].size) {
-        opp_k2_map0_stride = args[4].size;
-        cutilSafeCall(hipMemcpyToSymbol(HIP_SYMBOL(opp_k2_map0_stride_d), &opp_k2_map0_stride, sizeof(OPP_INT)));
-    }
+    opp_mem::dev_copy_to_symbol<OPP_INT>(opp_k2_dat0_stride_d, &opp_k2_dat0_stride, &(args[0].dat->set->set_capacity), 1);
+    opp_mem::dev_copy_to_symbol<OPP_INT>(opp_k2_dat1_stride_d, &opp_k2_dat1_stride, &(args[1].dat->set->set_capacity), 1);
+    opp_mem::dev_copy_to_symbol<OPP_INT>(opp_k2_dat2_stride_d, &opp_k2_dat2_stride, &(args[2].size), 1);
+    opp_mem::dev_copy_to_symbol<OPP_INT>(opp_k2_dat3_stride_d, &opp_k2_dat3_stride, &(args[3].size), 1);
+    opp_mem::dev_copy_to_symbol<OPP_INT>(opp_k2_dat4_stride_d, &opp_k2_dat4_stride, &(args[4].dat->set->set_capacity), 1);
+    opp_mem::dev_copy_to_symbol<OPP_INT>(opp_k2_dat5_stride_d, &opp_k2_dat5_stride, &(args[5].dat->set->set_capacity), 1);
+    opp_mem::dev_copy_to_symbol<OPP_INT>(opp_k2_dat6_stride_d, &opp_k2_dat6_stride, &(args[6].dat->set->set_capacity), 1);
+    opp_mem::dev_copy_to_symbol<OPP_INT>(opp_k2_dat7_stride_d, &opp_k2_dat7_stride, &(args[7].dat->set->set_capacity), 1);
+    opp_mem::dev_copy_to_symbol<OPP_INT>(opp_k2_dat8_stride_d, &opp_k2_dat8_stride, &(args[8].dat->set->set_capacity), 1);
+    opp_mem::dev_copy_to_symbol<OPP_INT>(opp_k2_dat9_stride_d, &opp_k2_dat9_stride, &(args[9].dat->set->set_capacity), 1);
+    opp_mem::dev_copy_to_symbol<OPP_INT>(opp_k2_map0_stride_d, &opp_k2_map0_stride, &(args[4].size), 1);
 
 #ifdef OPP_BLOCK_SIZE_2
     const int block_size = OPP_BLOCK_SIZE_2;

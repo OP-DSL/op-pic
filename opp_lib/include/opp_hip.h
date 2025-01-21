@@ -472,7 +472,7 @@ public:
         }
         if (copy_symbol) {
             memcpy(data_h, new_data, copy_count * sizeof(T));  
-            hipError_t err = hipMemcpyToSymbol(symbol, new_data, copy_count * sizeof(T));
+            hipError_t err = hipMemcpyToSymbol(HIP_SYMBOL(symbol), new_data, copy_count * sizeof(T));
             if (err != hipSuccess) {
                 throw std::runtime_error(std::string("dev_copy_to_symbol: ") + hipGetErrorString(err));
             }
@@ -480,7 +480,7 @@ public:
     }
     template <typename T>
     inline static void dev_copy_to_symbol(const T& symbol, const T* data_h, size_t copy_count) {    
-        hipError_t err = hipMemcpyToSymbol(symbol, data_h, copy_count * sizeof(T));
+        hipError_t err = hipMemcpyToSymbol(HIP_SYMBOL(symbol), data_h, copy_count * sizeof(T));
         if (err != hipSuccess) {
             throw std::runtime_error(std::string("dev_copy_to_symbol: ") + hipGetErrorString(err));
         }

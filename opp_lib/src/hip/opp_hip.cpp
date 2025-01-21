@@ -118,27 +118,18 @@ void opp_init(int argc, char **argv)
         "Device: %d [%s] on Host [%s] threads=%d Shared_Mem=%lubytes GPU_Direct=%d", deviceId, 
         prop.name, hostname, OPP_gpu_threads_per_block, prop.sharedMemPerBlock, OPP_gpu_direct);
 
-    opp_profiler->reg("PS_Resize");
-    opp_profiler->reg("PS_CopyCID");
-    opp_profiler->reg("PS_HoleFill");
-    opp_profiler->reg("PS_Sequence");
-    opp_profiler->reg("PS_SortKey0");
-    opp_profiler->reg("PS_SortKey");
-    opp_profiler->reg("PS_Dats");
-    opp_profiler->reg("HF_Sort");
-    opp_profiler->reg("HF_CopyIf");
-    opp_profiler->reg("HF_Dats");
+    std::vector<std::string> vec = {
+        "Mv_Pack1", "Mv_Pack2", "Mv_Pack3", "Mv_Pack4", "Mv_Pack5", "Mv_Pack6", "HF_COPY_IF", "HF_Dats", "HF_SORT", 
+        "Mv_fill", "Mv_Finalize", "Mv_holefill", "Mv_Pack", "Mv_PackExDir", "Mv_shuffle", "Mv_sort", "Mv_Unpack", 
+        "Mv_UnpackDir", "MvDH_Gather", "MvDH_Pack", "MvDH_Unpack", 
+        "opp_inc_part_count_DWN", "opp_inc_part_count_INC", "opp_inc_part_count_UPL", "opp_inc_part_count", "opp_inc_parts_with_distr", 
+        "PS_CopyCID", "PS_Dats", "PS_Sequence", "PS_Shuffle", "PS_SortKey", 
+        "Setup_Mover_s0", "Setup_Mover_s1", "Setup_Mover_s2", "Setup_Mover_s3", "Setup_Mover_s4", 
+        "Setup_Mover_s5", "Setup_Mover_s5", "Setup_Mover_s6", "Setup_Mover_s6"};
 
-    opp_profiler->reg("Inc_part_count");
-    opp_profiler->reg("Inc_part_count_DWN");
-    opp_profiler->reg("Inc_part_count_INC");
-    opp_profiler->reg("Inc_part_count_UPL");
-    opp_profiler->reg("Mv_Pack");
-    opp_profiler->reg("Mv_Unpack");
-    opp_profiler->reg("Mv_PackExDir");
-    opp_profiler->reg("Mv_UnpackDir");
-    opp_profiler->reg("Mv_Finalize"); 
-    opp_profiler->reg("Mv_fill");
+    for (auto& a : vec) {
+        opp_profiler->reg(a);
+    }
 }
 
 //****************************************

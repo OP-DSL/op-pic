@@ -145,8 +145,8 @@ int main(int argc, char **argv)
         opp_inc_part_count_with_distribution(particle_set, inject_count, if_distrib, false);
 
         // these two lines are only required if we plan to use direct_hop
-        opp_init_direct_hop_cg(grid_spacing, c_gbl_id, opp::BoundingBox(n_pos, DIM, expansion), 
-            c2c_map, p2c_map,
+        opp::BoundingBox bounding_box(n_pos, DIM, expansion);
+        opp_init_direct_hop_cg(grid_spacing, c_gbl_id, bounding_box, c2c_map, p2c_map,
 			opp_arg_dat(p_pos, OPP_READ),
 			opp_arg_dat(p_lc, OPP_WRITE),
 			opp_arg_dat(c_volume, p2c_map, OPP_READ),
