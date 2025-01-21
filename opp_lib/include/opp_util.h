@@ -264,6 +264,74 @@ inline void opp_printf(const char* function, const char *format, ...)
     fflush(stdout);
 }
 
+/*************************************************************************************************/
+inline void opp_get_global_values(const int64_t value, int64_t& gbl_value, int64_t& gbl_max, int64_t& gbl_min) 
+{
+#ifdef USE_MPI
+    MPI_Reduce(&value, &gbl_value, 1, MPI_INT64_T, MPI_SUM, OPP_ROOT, MPI_COMM_WORLD);
+    MPI_Reduce(&value, &gbl_max, 1, MPI_INT64_T, MPI_MAX, 0, MPI_COMM_WORLD);
+    MPI_Reduce(&value, &gbl_min, 1, MPI_INT64_T, MPI_MIN, 0, MPI_COMM_WORLD);
+#else
+    gbl_value = value;
+    gbl_max = value;
+    gbl_min = value;
+#endif
+}
+
+/*************************************************************************************************/
+inline int64_t opp_get_global_value(int64_t value) {
+
+    int64_t gbl_value = 0;
+#ifdef USE_MPI
+        MPI_Reduce(&value, &gbl_value, 1, MPI_INT64_T, MPI_SUM, OPP_ROOT, MPI_COMM_WORLD);
+#else
+        gbl_value = value;
+#endif
+    return gbl_value;
+}
+
+/*************************************************************************************************
+ * This is a utility function to log the size of the provided set
+*/
+inline void opp_log_set_size_statistics(opp_set set, int log_boundary_count = 1) {
+
+#ifdef USE_MPI
+
+    std::map<int, std::map<int,int>> particle_counts;
+
+    std::vector<int> count_per_iter(OPP_comm_size, 0);
+    MPI_Gather(&(set->size), 1, MPI_INT, count_per_iter.data(), 1, MPI_INT, 0, MPI_COMM_WORLD);
+    int sum = 0, average = 0;
+
+    auto& cc = particle_counts[OPP_main_loop_iter];
+    for (int i = 0; i < OPP_comm_size; i++) {
+        cc[count_per_iter[i]] = i;
+        sum += count_per_iter[i];
+    }
+    average = sum / OPP_comm_size;
+
+    std::string max_log = ""; 
+    int counter_max = 1;
+    for (auto it = cc.rbegin(); it != cc.rend(); ++it) {
+        max_log += std::string(" ") + std::to_string(it->first) + "|" + std::to_string(it->second);
+        if (counter_max == log_boundary_count) break;
+        counter_max++;
+    }
+    std::string min_log = "";
+    int counter_min = 1;
+    for (auto it = cc.begin(); it != cc.end(); ++it) {
+        min_log += std::string(" ") + std::to_string(it->first) + "|" + std::to_string(it->second);
+        if (counter_min == log_boundary_count) break;
+        counter_min++;
+    }
+
+    if (OPP_rank == 0) {
+        opp_printf("ParticleSet", "sum %d average %d max [%s ] min [%s ]", 
+            sum, average, max_log.c_str(), min_log.c_str());
+    }
+#endif
+}
+
 //*************************************************************************************************
 // Below can be used to create files per MPI rank for logging
 /*

@@ -231,7 +231,7 @@ int main(int argc, char **argv)
         }
     opp_profiler->end("MainLoop");
 
-        const int64_t global_parts_iterated = get_global_parts_iterated(total_part_iter);
+        const int64_t global_parts_iterated = opp_get_global_value(total_part_iter);
         OPP_RUN_ON_ROOT()
             opp_printf("Main", "Loop completed : %d iterations with %" PRId64 " particle iterations ****", 
                 max_iter, global_parts_iterated);  

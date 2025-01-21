@@ -69,7 +69,7 @@ int main(int argc, char **argv)
         const std::string file         = opp_params->get<OPP_STRING>("hdf_filename");
         const OPP_BOOL print_final_log = opp_params->get<OPP_BOOL>("print_final");
         int64_t total_part_iter        = 0;
-        const OPP_REAL expansion[3]    = { 4*grid_spacing, 4*grid_spacing, 4*grid_spacing };
+        const opp_point expansion(4*grid_spacing, 4*grid_spacing, 4*grid_spacing);
 
         opp_set node_set       = opp_decl_set_hdf5(file.c_str(), "mesh_nodes");
         opp_set cell_set       = opp_decl_set_hdf5(file.c_str(), "mesh_cells");
@@ -124,7 +124,7 @@ int main(int argc, char **argv)
         fempic_color_block(c_colors, c_centroids, if_n_pos, if2n_map);
 
         // opp_partition(std::string("PARMETIS_KWAY"), cell_set, c2n_map);
-        // opp_partition(std::string("PARMETIS_GEOM"), iface_set, nullptr, if_n_pos);
+        // opp_partition(std::string("PARMETIS_GEOM"), cell_set, nullptr, n_pos);
         opp_partition(std::string("EXTERNAL"), cell_set, nullptr, c_colors);
 #endif
         
@@ -137,8 +137,8 @@ int main(int argc, char **argv)
         opp_inc_part_count_with_distribution(particle_set, inject_count, if_distrib, false);
 
         // these two lines are only required if we plan to use direct_hop
-        opp::BoundingBox bounding_box = opp::BoundingBox(n_pos, DIM, expansion);
-        opp_init_direct_hop(grid_spacing, DIM, c_gbl_id, bounding_box);
+        opp::BoundingBox bounding_box(n_pos, DIM, expansion);
+        opp_init_direct_hop(grid_spacing, c_gbl_id, bounding_box);
 
         auto field_solver = std::make_unique<FESolver>(c2n_map, n_type, n_pos, n_bnd_pot);
         field_solver->enrich_cell_shape_deriv(c_sd);
@@ -228,7 +228,7 @@ int main(int argc, char **argv)
         }
     opp_profiler->end("MainLoop");
 
-        const int64_t global_parts_iterated = get_global_parts_iterated(total_part_iter);
+        const int64_t global_parts_iterated = opp_get_global_value(total_part_iter);
         OPP_RUN_ON_ROOT()
             opp_printf("Main", "Loop completed : %d iterations with %" PRId64 " particle iterations ****", 
                 max_iter, global_parts_iterated);  

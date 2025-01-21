@@ -194,23 +194,6 @@ inline void print_per_cell_particle_counts(opp_dat c_part_count, opp_dat part_me
 }
 
 /*************************************************************************************************
- * This is a utility function to get the total particles iterated during the simulation
-*/
-inline void get_global_values(const int64_t total_part_iter, int64_t& gbl_total_part_iter, 
-    int64_t& gbl_max_iter, int64_t& gbl_min_iter) {
-
-#ifdef USE_MPI
-        MPI_Reduce(&total_part_iter, &gbl_total_part_iter, 1, MPI_INT64_T, MPI_SUM, OPP_ROOT, MPI_COMM_WORLD);
-        MPI_Reduce(&total_part_iter, &gbl_max_iter, 1, MPI_INT64_T, MPI_MAX, 0, MPI_COMM_WORLD);
-        MPI_Reduce(&total_part_iter, &gbl_min_iter, 1, MPI_INT64_T, MPI_MIN, 0, MPI_COMM_WORLD);
-#else
-        gbl_total_part_iter = total_part_iter;
-        gbl_max_iter = total_part_iter;
-        gbl_min_iter = total_part_iter;
-#endif
-}
-
-/*************************************************************************************************
  * This is a utility function create a global level log string using local values
  * @param max_c_ef - this is already reduced glocally by the opp_par_loop
  * @param max_n_potential - this is already reduced glocally by the opp_par_loop
@@ -250,9 +233,9 @@ inline std::string get_global_level_log(double max_c_ef, double max_n_potential,
     gbl_move_moreX_hops = OPP_move_moreX_hops;
 #endif
 
-    get_global_values(local_part_count, glb_parts, gbl_max_parts, gbl_min_parts);   
-    get_global_values(OPP_part_comm_count_per_iter, glb_part_comms, gbl_max_part_comms, gbl_min_part_comms);
-    get_global_values(OPP_move_max_hops, glb_sum_max_hops, gbl_max_max_hops, gbl_min_max_hops);
+    opp_get_global_values(local_part_count, glb_parts, gbl_max_parts, gbl_min_parts);   
+    opp_get_global_values(OPP_part_comm_count_per_iter, glb_part_comms, gbl_max_part_comms, gbl_min_part_comms);
+    opp_get_global_values(OPP_move_max_hops, glb_sum_max_hops, gbl_max_max_hops, gbl_min_max_hops);
 
     log += std::string("\t np: ") + str(global_part_size, "%" PRId64);
     log += std::string(" (") + str(global_inj_size, "%" PRId64);
@@ -276,58 +259,3 @@ inline std::string get_global_level_log(double max_c_ef, double max_n_potential,
     return log;
 }
 
-/*************************************************************************************************
- * This is a utility function to log the size of the provided set
-*/
-inline void log_set_size_statistics(opp_set set, int log_boundary_count = 1) {
-
-#ifdef USE_MPI
-
-    std::map<int, std::map<int,int>> particle_counts;
-
-    std::vector<int> count_per_iter(OPP_comm_size, 0);
-    MPI_Gather(&(set->size), 1, MPI_INT, count_per_iter.data(), 1, MPI_INT, 0, MPI_COMM_WORLD);
-    int sum = 0, average = 0;
-
-    auto& cc = particle_counts[OPP_main_loop_iter];
-    for (int i = 0; i < OPP_comm_size; i++) {
-        cc[count_per_iter[i]] = i;
-        sum += count_per_iter[i];
-    }
-    average = sum / OPP_comm_size;
-
-    std::string max_log = ""; 
-    int counter_max = 1;
-    for (auto it = cc.rbegin(); it != cc.rend(); ++it) {
-        max_log += std::string(" ") + std::to_string(it->first) + "|" + std::to_string(it->second);
-        if (counter_max == log_boundary_count) break;
-        counter_max++;
-    }
-    std::string min_log = "";
-    int counter_min = 1;
-    for (auto it = cc.begin(); it != cc.end(); ++it) {
-        min_log += std::string(" ") + std::to_string(it->first) + "|" + std::to_string(it->second);
-        if (counter_min == log_boundary_count) break;
-        counter_min++;
-    }
-
-    if (OPP_rank == 0) {
-        opp_printf("ParticleSet", "sum %d average %d max [%s ] min [%s ]", 
-            sum, average, max_log.c_str(), min_log.c_str());
-    }
-#endif
-}
-
-/*************************************************************************************************
- * This is a utility function to get the total particles iterated during the simulation
-*/
-inline int64_t get_global_parts_iterated(int64_t total_part_iter) {
-
-    int64_t gbl_total_part_iter = 0;
-#ifdef USE_MPI
-        MPI_Reduce(&total_part_iter, &gbl_total_part_iter, 1, MPI_INT64_T, MPI_SUM, OPP_ROOT, MPI_COMM_WORLD);
-#else
-        gbl_total_part_iter = total_part_iter;
-#endif
-    return gbl_total_part_iter;
-}
