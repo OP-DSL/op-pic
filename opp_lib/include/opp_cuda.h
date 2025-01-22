@@ -521,3 +521,68 @@ inline void write_array_to_file(const T* array, size_t size, const std::string& 
 // in opp_direct_hop_cuda.cu
 void opp_init_dh_device(opp_set set); 
 void opp_gather_dh_move_indices(opp_set set); // gathers all device global move info to the global mover for communication
+
+//*******************************************************************************
+template <typename T>
+__global__ void zero_set_array_except_first_kernel(T** __restrict__ arrays, int num_arrays, int size) {
+    const int idx = blockIdx.x * blockDim.x + threadIdx.x;
+    if (idx < size) {
+        for (int i = 1; i < num_arrays; i++) {
+            arrays[i][idx] = 0.0;
+        }
+    }
+}
+template <typename T>
+inline T** opp_create_thread_level_data(opp_arg arg) 
+{
+    opp_dat dat = arg.dat;
+    const int array_count = opp_params->get<OPP_INT>("red_arr_count");
+    const int array_size = (dat->set->size + dat->set->exec_size + dat->set->nonexec_size) * dat->dim;
+    if (OPP_main_loop_iter == 0) {
+        dat->thread_data->resize(array_count);
+        dat->thread_data->at(0) = dat->data_d;
+        if (array_count > 1)
+            dat->thread_data->at(1) = dat->data_swap_d;
+        for (int i = 2; i < array_count; ++i) {
+            dat->thread_data->at(i) = (char*)opp_mem::dev_malloc<T>(array_size);
+        }
+        dat->thread_data_d = (char**)opp_mem::dev_malloc<T*>(array_count);
+        cudaMemcpy(dat->thread_data_d, dat->thread_data->data(), array_count * sizeof(char*), cudaMemcpyHostToDevice);
+    }
+    else if (dat->set->is_particle) {
+        dat->thread_data->at(0) = dat->data_d; // Why? because move loop can swap device arays
+        if (array_count > 1)
+            dat->thread_data->at(1) = dat->data_swap_d;
+        cudaMemcpy(dat->thread_data_d, dat->thread_data->data(), array_count * sizeof(char*), cudaMemcpyHostToDevice);
+    }
+
+    const int num_blocks = (array_size - 1) / OPP_gpu_threads_per_block + 1;
+    zero_set_array_except_first_kernel<<<num_blocks, OPP_gpu_threads_per_block>>>(
+        (T**)dat->thread_data_d, array_count, array_size);
+    OPP_DEVICE_SYNCHRONIZE();
+
+    return (T**)dat->thread_data_d;
+}
+
+//*******************************************************************************
+template <typename T>
+__global__ void reduce_arrays_kernel(T** __restrict__ arrays, const int num_arrays, const int size) 
+{
+    const int idx = blockIdx.x * blockDim.x + threadIdx.x;
+    if (idx < size) {
+        for (int i = 1; i < num_arrays; ++i) {  // Start from the second array
+            arrays[0][idx] += arrays[i][idx];
+        }
+    }
+}
+template <typename T>
+inline void opp_reduce_thread_level_data(opp_arg arg) 
+{
+    opp_dat dat = arg.dat;
+    const int array_count = opp_params->get<OPP_INT>("red_arr_count");
+    const int array_size = (dat->set->size + dat->set->exec_size + dat->set->nonexec_size) * dat->dim;
+    const int num_blocks = (array_size - 1) / OPP_gpu_threads_per_block + 1;
+    reduce_arrays_kernel<<<num_blocks, OPP_gpu_threads_per_block>>>(
+        (T**)dat->thread_data_d, array_count, array_size);
+    OPP_DEVICE_SYNCHRONIZE();    
+}

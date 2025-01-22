@@ -98,6 +98,11 @@ void opp_exit()
         opp_part_comm_destroy(); // free memory allocated for particle communication
 #endif
 
+    for (auto& dat : opp_dats) {
+        for (size_t thr = 1; thr < dat->thread_data->size(); thr++) { 
+            opp_host_free(dat->thread_data->at(thr)); 
+        }
+    }
     opp_exit_core();
 
 #ifdef USE_PETSC

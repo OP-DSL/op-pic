@@ -219,6 +219,13 @@ void opp_device_exit()
     }
 
     for (auto& dat : opp_dats) {
+        // if (dat->thread_data_d) {
+        //     const int count = opp_params->get<OPP_INT>("red_arr_count");
+        //     for (int thr = 2; thr < count; thr++) { 
+        //         opp_mem::dev_free((dat->thread_data_d)[thr]); 
+        //     }
+        //     opp_mem::dev_free(dat->thread_data_d);
+        // }
         delete dat->thrust_int;
         delete dat->thrust_real;
         delete dat->thrust_int_sort;

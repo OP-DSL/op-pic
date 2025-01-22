@@ -331,6 +331,7 @@ struct opp_dat_core {
     opp_reduc_comm reduc_comm;  /* flag to check whether the dat is in between reduction communication */
 
     std::vector<char*>* thread_data;
+    char** thread_data_d;
     bool is_cell_index;
 
     THRUST_INT *thrust_int;

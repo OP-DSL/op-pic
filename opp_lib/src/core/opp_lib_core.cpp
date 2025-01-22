@@ -128,9 +128,6 @@ void opp_exit_core()
 
     for (auto& dat : opp_dats) {
         opp_host_free(dat->data);
-        for (size_t thr = 1; thr < dat->thread_data->size(); thr++) { 
-            opp_host_free(dat->thread_data->at(thr)); 
-        }
         delete dat->thread_data;
         opp_host_free((char*)dat->name);
         opp_host_free((char*)dat->type);
@@ -334,6 +331,7 @@ opp_dat opp_decl_dat_core(opp_set set, int dim, char const *type, int size, char
     dat->dirtybit      = 0;
 
     dat->thread_data        = new std::vector<char*>();
+    dat->thread_data_d      = NULL;
     dat->is_cell_index      = false;
     dat->thrust_int         = NULL;
     dat->thrust_real        = NULL;
