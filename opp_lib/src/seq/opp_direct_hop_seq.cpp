@@ -86,6 +86,48 @@ void CellMapper::convertToLocalMappings(const opp_dat global_cell_id_dat) {
 }
 
 //*******************************************************************************
+void CellMapper::generateStructuredMeshFromFile(opp_set set, const opp_dat c_gbl_id) {
+
+    if (OPP_rank == 0)            
+        opp_printf("OPP", "generateStructuredMeshFromFile START cells [%s] global grid dims %zu %zu %zu",
+            set->name, globalGridDimsX, globalGridDimsY, globalGridDimsZ);
+
+    createStructMeshMappingArrays();
+
+    opp_profiler->start("Setup_Mover_s0");
+
+#ifdef USE_MPI
+    int set_size = 0;
+    MPI_Reduce(&(set->size), &set_size, 1, MPI_INT, MPI_SUM, 0, MPI_COMM_WORLD);
+
+    if (comm->rank_intra == 0) // read only with the node-main rank
+#else
+    int set_size = set->size;
+#endif
+    {
+        std::stringstream s;
+        s << str(set_size, "dh_c%d");
+        s << str(gridSpacing, "_gs%2.4lE");
+        s << str(boundingBox->domain_expansion.x, "_ex%2.4lE");
+        s << str(boundingBox->domain_expansion.y, "_%2.4lE");
+        s << str(boundingBox->domain_expansion.z, "_%2.4lE.bin");
+
+        opp_decompress_read(s.str(), globalGridSize * sizeof(int), structMeshToCellMapping);
+    }
+    opp_profiler->end("Setup_Mover_s0");
+
+    // // Step 5 : For MPI, convert the global cell coordinates to rank local coordinates for increased performance,
+    // //      however, not like in generating values, at this time we dont have structMeshToRankMapping enriched!
+    // if (OPP_rank == 0) opp_printf("OPP", "generateStructuredMeshFromFile Step 5 Start");
+    // opp_profiler->start("Setup_Mover_s5");
+    // convertToLocalMappingsIncRank(c_gbl_id);
+    // opp_profiler->end("Setup_Mover_s5");
+
+    if (OPP_rank == 0) opp_printf("OPP", "generateStructuredMeshFromFile DONE");
+}
+
+//*******************************************************************************
+// Use OPP_DH_DATA_DUMP=1 to dump the structured mesh
 void CellMapper::generateStructuredMesh(opp_set set, const opp_dat c_gbl_id, 
             const std::function<void(const opp_point&, int&)>& all_cell_checker) { 
 
@@ -119,10 +161,23 @@ void CellMapper::generateStructuredMesh(opp_set set, const opp_dat c_gbl_id,
                 
                 size_t index = (dx + dy * cellMapper->globalGridDimsX + dz * cellMapper->globalGridDimsXY); 
 
-                const opp_point centroid = cellMapper->getCentroidOfBox(opp_point(x, y ,z));
+                opp_point centroid = cellMapper->getCentroidOfBox(opp_point(x, y ,z));
                 int cid = MAX_CELL_INDEX;
 
                 all_cell_checker(centroid, cid); // Find in which cell this centroid lies
+
+                if (cid == MAX_CELL_INDEX) { // Change the centroid slightly to avoid edge cases
+                    centroid.x += gridSpacing / 100.0;
+                    all_cell_checker(centroid, cid);
+                }
+                if (cid == MAX_CELL_INDEX) { // Change the centroid slightly to avoid edge cases
+                    centroid.y += gridSpacing / 100.0;
+                    all_cell_checker(centroid, cid);
+                }
+                if (cid == MAX_CELL_INDEX) { // Change the centroid slightly to avoid edge cases
+                    centroid.z += gridSpacing / 100.0;
+                    all_cell_checker(centroid, cid);
+                }
 
                 if (cid == MAX_CELL_INDEX) {
                     removed_coords.insert(std::make_pair(index, opp_point(x, y ,z)));
@@ -170,12 +225,17 @@ void CellMapper::generateStructuredMesh(opp_set set, const opp_dat c_gbl_id,
         const double gs = cellMapper->gridSpacing;
         int most_suitable_cid = MAX_CELL_INDEX, most_suitable_gbl_cid = MAX_CELL_INDEX;
 
-        std::array<opp_point,4> vertices = {
-            opp_point(GET_VERT(x,x),    GET_VERT(y,y),    GET_VERT(z,z)),
-            opp_point(GET_VERT(x,x),    GET_VERT(y,y+gs), GET_VERT(z,z)),
-            opp_point(GET_VERT(x,x+gs), GET_VERT(y,y),    GET_VERT(z,z)),
-            opp_point(GET_VERT(x,x+gs), GET_VERT(y,y+gs), GET_VERT(z,z)),
-        };
+        std::vector<opp_point> vertices;
+        vertices.push_back(opp_point(GET_VERT(x,x),    GET_VERT(y,y),    GET_VERT(z,z)));
+        vertices.push_back(opp_point(GET_VERT(x,x),    GET_VERT(y,y+gs), GET_VERT(z,z)));
+        vertices.push_back(opp_point(GET_VERT(x,x+gs), GET_VERT(y,y),    GET_VERT(z,z)));
+        vertices.push_back(opp_point(GET_VERT(x,x+gs), GET_VERT(y,y+gs), GET_VERT(z,z)));
+        if (dim == 3) {
+            vertices.push_back(opp_point(GET_VERT(x,x),    GET_VERT(y,y),    GET_VERT(z,z+gs)));
+            vertices.push_back(opp_point(GET_VERT(x,x),    GET_VERT(y,y+gs), GET_VERT(z,z+gs)));
+            vertices.push_back(opp_point(GET_VERT(x,x+gs), GET_VERT(y,y),    GET_VERT(z,z+gs)));
+            vertices.push_back(opp_point(GET_VERT(x,x+gs), GET_VERT(y,y+gs), GET_VERT(z,z+gs)));
+        }
 
         for (const auto& point : vertices) {
             int cid = MAX_CELL_INDEX;
@@ -209,6 +269,45 @@ void CellMapper::generateStructuredMesh(opp_set set, const opp_dat c_gbl_id,
     cellMapper->reduceInterNodeMappings(2);
 #endif
     opp_profiler->end("Setup_Mover_s4");
+
+    // Step Add : Dump the structured mesh to a file, if requested 
+    if (OPP_dh_data_dump) {
+        int set_size = 0;
+
+#ifdef USE_MPI       
+        MPI_Reduce(&(set->size), &set_size, 1, MPI_INT, MPI_SUM, OPP_ROOT, MPI_COMM_WORLD);
+#else
+        set_size = set->size;
+#endif
+
+        if (OPP_rank == OPP_ROOT) {
+
+            std::stringstream s;
+            s << str(set_size, "dh_c%d");
+            s << str(gridSpacing, "_gs%2.4lE");
+            s << str(boundingBox->domain_expansion.x, "_ex%2.4lE");
+            s << str(boundingBox->domain_expansion.y, "_%2.4lE");
+            s << str(boundingBox->domain_expansion.z, "_%2.4lE.bin");
+
+            opp_printf("OPP", "generateStructuredMesh Step Dumping File Start");
+
+            opp_compress_write(s.str(), structMeshToCellMapping, 
+                globalGridSize);
+            
+            if (OPP_DBG) {
+                std::vector<int> decompressedData(globalGridSize);
+                opp_decompress_read(s.str(), globalGridSize * sizeof(int), 
+                                    decompressedData.data());
+                
+                for (size_t i = 0; i < globalGridSize; i++) {
+                    if (decompressedData[i] != structMeshToCellMapping[i]) {
+                        opp_printf("OPP", "Incorrect value from file at %d - file %d - system %d",
+                            i, decompressedData[i], structMeshToCellMapping[i]);
+                    }
+                }
+            }
+        }
+    }
 
     // Step 5 : For MPI, convert the global cell coordinates to rank local coordinates for increased performance
     if (OPP_rank == 0) opp_printf("APP", "generateStructuredMesh Step 5 Start");

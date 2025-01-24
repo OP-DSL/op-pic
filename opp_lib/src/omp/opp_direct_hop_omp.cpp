@@ -459,7 +459,7 @@ void CellMapper::generateStructuredMeshFromFile(opp_set set, const opp_dat c_gbl
 #endif
     {
         std::stringstream s;
-        s << str(set_size, "dh_mapping_c%d");
+        s << str(set_size, "dh_c%d");
         s << str(gridSpacing, "_gs%2.4lE");
         s << str(boundingBox->domain_expansion.x, "_ex%2.4lE");
         s << str(boundingBox->domain_expansion.y, "_%2.4lE");
@@ -524,10 +524,23 @@ void CellMapper::generateStructuredMesh(opp_set set, const opp_dat c_gbl_id,
                     
                     size_t index = (dx + dy * globalGridDimsX + dz * globalGridDimsXY); 
 
-                    const opp_point centroid = getCentroidOfBox(opp_point(x, y ,z));
+                    opp_point centroid = getCentroidOfBox(opp_point(x, y ,z));
                     int cid = MAX_CELL_INDEX;
 
                     all_cell_checker(centroid, cid); // Find in which cell this centroid lies
+
+                    if (cid == MAX_CELL_INDEX) { // Change the centroid slightly to avoid edge cases
+                        centroid.x += gridSpacing / 100.0;
+                        all_cell_checker(centroid, cid);
+                    }
+                    if (cid == MAX_CELL_INDEX) { // Change the centroid slightly to avoid edge cases
+                        centroid.y += gridSpacing / 100.0;
+                        all_cell_checker(centroid, cid);
+                    }
+                    if (cid == MAX_CELL_INDEX) { // Change the centroid slightly to avoid edge cases
+                        centroid.z += gridSpacing / 100.0;
+                        all_cell_checker(centroid, cid);
+                    }
 
                     if (cid == MAX_CELL_INDEX) {
                         #pragma omp critical
@@ -656,7 +669,7 @@ void CellMapper::generateStructuredMesh(opp_set set, const opp_dat c_gbl_id,
         if (OPP_rank == OPP_ROOT) {
 
             std::stringstream s;
-            s << str(set_size, "dh_mapping_c%d");
+            s << str(set_size, "dh_c%d");
             s << str(gridSpacing, "_gs%2.4lE");
             s << str(boundingBox->domain_expansion.x, "_ex%2.4lE");
             s << str(boundingBox->domain_expansion.y, "_%2.4lE");

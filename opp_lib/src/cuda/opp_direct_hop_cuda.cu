@@ -718,7 +718,7 @@ void CellMapper::generateStructuredMeshFromFile(opp_set set, const opp_dat c_gbl
 #endif
     {
         std::stringstream s;
-        s << str(set_size, "dh_mapping_c%d");
+        s << str(set_size, "dh_c%d");
         s << str(gridSpacing, "_gs%2.4lE");
         s << str(boundingBox->domain_expansion.x, "_ex%2.4lE");
         s << str(boundingBox->domain_expansion.y, "_%2.4lE");
