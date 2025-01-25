@@ -683,7 +683,7 @@ void CellMapper::convertToLocalMappingsIncRank(const opp_dat global_cell_id_dat)
         }
     }
 
-    MPI_CHECK(MPI_Barrier(MPI_COMM_WORLD));
+    waitBarrier();
 
     if (comm->rank_intra == 0) {
         MPI_CHECK(MPI_Allreduce(MPI_IN_PLACE, structMeshToCellMapping, globalGridSize, 

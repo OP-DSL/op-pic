@@ -462,7 +462,7 @@ void opp_particle_move__move_deposit_kernel(opp_set set, opp_map c2c_map, opp_ma
 
     opp_profiler->start("Mv_AllMv0");
 
-    const int array_count = opp_params->get<OPP_INT>("red_arr_count");
+    const int array_count = opp_params->get<OPP_INT>("gpu_reduction_arrays");
     OPP_REAL** arg5_dat_thread_data_d = opp_create_thread_level_data<OPP_REAL>(args[5]);
 
     // ----------------------------------------------------------------------------

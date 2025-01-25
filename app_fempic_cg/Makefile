@@ -255,9 +255,9 @@ hip_mpi: mklib fempic_opp+hip_mpi opp_kernels+hip_mpi field_solver+hip_mpi
 hip_mpi_hdf5: mklib fempic_hdf5_opp+hip_mpi opp_kernels+hip_mpi field_solver+hip_mpi opp_mpi_hdf5+hip_mpi
 		 $(MPICPP) $(CPPFLAGS) -DUSE_MPI -o $(BIN)/hip_mpi_hdf5 \
 		 	$(OBJ)/fempic_hdf5_opp_hip_mpi.o \
-			$(OBJ)/opp_kernels_hip_mpi_hdf5.o \
+			$(OBJ)/opp_kernels_hip_mpi.o \
 			$(OBJ)/opp_mpi_hdf5_hip_mpi_hdf5.o \
-			$(OBJ)/field_solver_hip_mpi_hdf5.o \
+			$(OBJ)/field_solver_hip_mpi.o \
 			$(ALL_LIBS) $(HIP_LIB) -lopp_hip_mpi_pet -lz -lhdf5
 
 # ----------------------------------------------------------------------------------------------------------------------

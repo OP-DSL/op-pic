@@ -220,7 +220,7 @@ void opp_device_exit()
 
     for (auto& dat : opp_dats) {
         // if (dat->thread_data_d) {
-        //     const int count = opp_params->get<OPP_INT>("red_arr_count");
+        //     const int count = opp_params->get<OPP_INT>("gpu_reduction_arrays");
         //     for (int thr = 2; thr < count; thr++) { 
         //         opp_mem::dev_free((dat->thread_data_d)[thr]); 
         //     }

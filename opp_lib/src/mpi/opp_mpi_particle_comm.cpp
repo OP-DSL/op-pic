@@ -968,6 +968,8 @@ void GlobalParticleMover::markParticleToMove(opp_set set, int partIndex, int ran
 //*******************************************************************************
 void GlobalParticleMover::initGlobalMove() {
     
+    if (OPP_DBG) opp_printf("GlobalParticleMover", "initGlobalMove START");
+
     opp_profiler->start("MvDH_Init");
 
     this->h_send_ranks.clear();

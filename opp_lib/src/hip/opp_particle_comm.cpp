@@ -324,7 +324,7 @@ void opp_part_pack_device(opp_set set)
                 send_rank_buf.buf_export_index = 0;
                 send_rank_buf.buf_export = opp_mem::host_malloc<char>(send_rank_buf.buf_export_capacity);
 
-                // opp_printf("opp_part_pack", "alloc buf_export cap %d", send_rank_buf.buf_export_capacity);
+                // if (OPP_DBG) opp_printf("opp_part_pack", "alloc buf_export cap %d", send_rank_buf.buf_export_capacity);
             }
             else {
                 // Assume that there are some particles left already, increase capacity beyond buf_export_index
@@ -332,7 +332,7 @@ void opp_part_pack_device(opp_set set)
                                                             OPP_mpi_part_alloc_mult * req_buf_size;
                 opp_mem::host_realloc<char>(send_rank_buf.buf_export, send_rank_buf.buf_export_capacity);
                 
-                // opp_printf("opp_part_pack", "realloc buf_export cap %d", send_rank_buf.buf_export_capacity);
+                // if (OPP_DBG) opp_printf("opp_part_pack", "realloc buf_export cap %d", send_rank_buf.buf_export_capacity);
             }        
         }
     }
@@ -853,8 +853,8 @@ void opp_part_unpack_device_direct(opp_set set)
             const int nblocks = (recv_count - 1) / threads + 1;
             int64_t offset = 0;
 
-            // opp_printf("opp_part_unpack_device_direct", "recv count %d || to dat starting from %lld", 
-            //     recv_count, particle_start[i]);
+            if (OPP_DBG) opp_printf("opp_part_unpack_device_direct", "recv count %d || to dat starting from %lld", 
+                            recv_count, particle_start[i]);
 
             for (auto& dat : *(set->particle_dats)) 
             {

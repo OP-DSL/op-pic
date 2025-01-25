@@ -17,7 +17,7 @@ STRING global_mesh  = <path_to_mesh_files>/mesh.dat
 STRING inlet_mesh   = <path_to_mesh_files>/inlet.dat
 STRING wall_mesh    = <path_to_mesh_files>/wall.dat
 # OR
-STRING hdf_filename = /home/zl/phd/neso_test/OP-PIC_Configs/fempic/mesh_files/box_48000.hdf5
+STRING hdf_filename = <path_to_hdf5_mesh_files>/box_48000.hdf5
 
 STRING rand_file    = /cosma/home/do018/dc-lant1/phd/box_mesh_gen/random_100k.dat
 
@@ -39,6 +39,7 @@ BOOL opp_dh_data_generate = false
 # block k-means mpi-block
 STRING cluster = block
 BOOL use_reg_red = false
+INT gpu_reduction_arrays = 16
 
 # HoleFill_All Sort_All Shuffle_All Sort_Periodic Shuffle_Periodic
 STRING opp_fill = Shuffle_Periodic

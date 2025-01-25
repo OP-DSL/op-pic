@@ -536,7 +536,7 @@ template <typename T>
 inline T** opp_create_thread_level_data(opp_arg arg) 
 {
     opp_dat dat = arg.dat;
-    const int array_count = opp_params->get<OPP_INT>("red_arr_count");
+    const int array_count = opp_params->get<OPP_INT>("gpu_reduction_arrays");
     const int array_size = (dat->set->size + dat->set->exec_size + dat->set->nonexec_size) * dat->dim;
     if (OPP_main_loop_iter == 0) {
         dat->thread_data->resize(array_count);
@@ -579,7 +579,7 @@ template <typename T>
 inline void opp_reduce_thread_level_data(opp_arg arg) 
 {
     opp_dat dat = arg.dat;
-    const int array_count = opp_params->get<OPP_INT>("red_arr_count");
+    const int array_count = opp_params->get<OPP_INT>("gpu_reduction_arrays");
     const int array_size = (dat->set->size + dat->set->exec_size + dat->set->nonexec_size) * dat->dim;
     const int num_blocks = (array_size - 1) / OPP_gpu_threads_per_block + 1;
     reduce_arrays_kernel<<<num_blocks, OPP_gpu_threads_per_block>>>(

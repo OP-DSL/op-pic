@@ -39,7 +39,7 @@ BOOL opp_dh_data_generate = false
 # block k-means mpi-block
 STRING cluster = block
 BOOL use_reg_red = false
-INT red_arr_count = 16
+INT gpu_reduction_arrays = 16
 
 # HoleFill_All Sort_All Shuffle_All Sort_Periodic Shuffle_Periodic
 STRING opp_fill = HoleFill_All
