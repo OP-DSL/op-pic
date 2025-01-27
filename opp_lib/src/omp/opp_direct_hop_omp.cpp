@@ -501,64 +501,62 @@ void CellMapper::generateStructuredMesh(opp_set set, const opp_dat c_gbl_id,
     createStructMeshMappingArrays();
 
     // Step 1 : Get centroids of the structured mesh cells and try to relate them to unstructured mesh indices
-    if (OPP_rank == 0) opp_printf("OPP", "generateStructuredMesh Step 1 Start");
+    if (OPP_rank == 0) opp_printf("OPP", "generateStructuredMesh Step 1 Start %s", get_time_str().c_str());
     opp_profiler->start("Setup_Mover_s1");
 
     const int omp_nthreads = omp_get_max_threads();
-    opp_printf("OPP", "generateStructuredMesh omp_nthreads %d", omp_nthreads);
+    opp_printf("OPP", "generateStructuredMesh omp_nthreads %d parallelized y %zu", omp_nthreads, (localGridEnd.y - localGridStart.y));
 
-    // #pragma omp parallel for
-    // for (size_t dz = localGridStart.z; dz < localGridEnd.z; dz++) {       
-    #pragma omp parallel for
-    for (int thr = 0; thr < omp_nthreads; thr++) {
+    std::vector<std::vector<std::pair<size_t, opp_point>>> thread_level_removed_coords(omp_nthreads);
     
-        const size_t start  = ((localGridEnd.z - localGridStart.z) * thr) / omp_nthreads;
-        const size_t finish = ((localGridEnd.z - localGridStart.z) * (thr+1)) / omp_nthreads;
-        
-        for (size_t dz = start; dz < finish; dz++) {    
-            double z = min_glb_coords.z + dz * gridSpacing;        
-            for (size_t dy = localGridStart.y; dy < localGridEnd.y; dy++) {            
-                double y = min_glb_coords.y + dy * gridSpacing;           
-                for (size_t dx = localGridStart.x; dx < localGridEnd.x; dx++) {                
-                    double x = min_glb_coords.x + dx * gridSpacing;               
-                    
-                    size_t index = (dx + dy * globalGridDimsX + dz * globalGridDimsXY); 
+    #pragma omp parallel for schedule(dynamic, 1) collapse(3)
+    for (size_t dy = localGridStart.y; dy < localGridEnd.y; dy++) {                    
+        for (size_t dz = localGridStart.z; dz < localGridEnd.z; dz++) {    
+            for (size_t dx = localGridStart.x; dx < localGridEnd.x; dx++) { 
 
-                    opp_point centroid = getCentroidOfBox(opp_point(x, y ,z));
-                    int cid = MAX_CELL_INDEX;
+                double y = min_glb_coords.y + dy * gridSpacing;          
+                double z = min_glb_coords.z + dz * gridSpacing;      
+                double x = min_glb_coords.x + dx * gridSpacing;    
+                
+                size_t index = (dx + dy * globalGridDimsX + dz * globalGridDimsXY); 
 
-                    all_cell_checker(centroid, cid); // Find in which cell this centroid lies
+                opp_point centroid = getCentroidOfBox(opp_point(x, y ,z));
+                int cid = MAX_CELL_INDEX;
 
-                    if (cid == MAX_CELL_INDEX) { // Change the centroid slightly to avoid edge cases
-                        centroid.x += gridSpacing / 100.0;
-                        all_cell_checker(centroid, cid);
-                    }
-                    if (cid == MAX_CELL_INDEX) { // Change the centroid slightly to avoid edge cases
-                        centroid.y += gridSpacing / 100.0;
-                        all_cell_checker(centroid, cid);
-                    }
-                    if (cid == MAX_CELL_INDEX) { // Change the centroid slightly to avoid edge cases
-                        centroid.z += gridSpacing / 100.0;
-                        all_cell_checker(centroid, cid);
-                    }
+                all_cell_checker(centroid, cid); // Find in which cell this centroid lies
 
-                    if (cid == MAX_CELL_INDEX) {
-                        #pragma omp critical
-                        {
-                            removed_coords.insert(std::make_pair(index, opp_point(x, y ,z)));
-                        }
-                    }
-                    else if (cid < set->size) { // write only if the structured cell belong to the current MPI rank                    
-                        enrichStructuredMesh(index, ((int*)c_gbl_id->data)[cid], OPP_rank);
-                    }
+                if (cid == MAX_CELL_INDEX) { // Change the centroid slightly to avoid edge cases
+                    centroid.x += gridSpacing / 100.0;
+                    all_cell_checker(centroid, cid);
+                }
+                if (cid == MAX_CELL_INDEX) { // Change the centroid slightly to avoid edge cases
+                    centroid.y += gridSpacing / 100.0;
+                    all_cell_checker(centroid, cid);
+                }
+                if (cid == MAX_CELL_INDEX) { // Change the centroid slightly to avoid edge cases
+                    centroid.z += gridSpacing / 100.0;
+                    all_cell_checker(centroid, cid);
+                }
+
+                if (cid == MAX_CELL_INDEX) {
+                    #pragma omp critical
+                    thread_level_removed_coords[omp_get_thread_num()].emplace_back(index, opp_point(x, y, z));
+                }
+                else if (cid < set->size) { // write only if the structured cell belong to the current MPI rank                    
+                    enrichStructuredMesh(index, ((int*)c_gbl_id->data)[cid], OPP_rank);
                 }
             }
+        }
+    }
+    for (int thr = 0; thr < omp_nthreads; thr++) {
+        for (const auto& item : thread_level_removed_coords[thr]) {
+            removed_coords.insert(item);
         }
     }
     opp_profiler->end("Setup_Mover_s1");
 
     // Step 2 : For MPI, get the inter-node values reduced to the structured mesh
-    if (OPP_rank == 0) opp_printf("OPP", "generateStructuredMesh Step 2 Start");
+    if (OPP_rank == 0) opp_printf("OPP", "generateStructuredMesh Step 2 Start %s", get_time_str().c_str());
     opp_profiler->start("Setup_Mover_s2");
 #ifdef USE_MPI
     reduceInterNodeMappings(1);
@@ -581,7 +579,7 @@ void CellMapper::generateStructuredMesh(opp_set set, const opp_dat c_gbl_id,
 
     // Step 3 : Iterate over NEED_REMOVE points, Check whether atleast one vertex of the structured mesh is within 
     //          an unstructured mesh cell. If multiple are found, get the minimum cell index to match with MPI
-    if (OPP_rank == 0) opp_printf("OPP", "generateStructuredMesh Step 3 Start");
+    if (OPP_rank == 0) opp_printf("OPP", "generateStructuredMesh Step 3 Start %s", get_time_str().c_str());
     opp_profiler->start("Setup_Mover_s3");
     std::vector<size_t> removed_coords_keys;
     removed_coords_keys.reserve(removed_coords.size());
@@ -591,53 +589,49 @@ void CellMapper::generateStructuredMesh(opp_set set, const opp_dat c_gbl_id,
     std::vector<std::vector<std::pair<int, int>>> tmp_add_per_thr;
     tmp_add_per_thr.resize(opp_nthreads);
 
-    #pragma omp parallel for
-    for (int thr = 0; thr < opp_nthreads; thr++) {
+    const size_t size = removed_coords_keys.size();
+    #pragma omp parallel for schedule(dynamic, 1)
+    for (size_t i = 0; i < size; i++) {
     
-        const size_t start  = (removed_coords_keys.size() * thr) / opp_nthreads;
-        const size_t finish = (removed_coords_keys.size() * (thr+1)) / opp_nthreads;
-      
-        for (size_t i = start; i < finish; i++) {
+        const size_t index = removed_coords_keys[i];
+        opp_point& p = removed_coords[index];
+        double &x = p.x, &y = p.y, &z = p.z;
         
-            const size_t index = removed_coords_keys[i];
-            opp_point& p = removed_coords[index];
-            double &x = p.x, &y = p.y, &z = p.z;
-            
-            const double gs = gridSpacing;
-            int most_suitable_cid = MAX_CELL_INDEX, most_suitable_gbl_cid = MAX_CELL_INDEX;
+        const double gs = gridSpacing;
+        int most_suitable_cid = MAX_CELL_INDEX, most_suitable_gbl_cid = MAX_CELL_INDEX;
 
-            std::vector<opp_point> vertices;
-            vertices.push_back(opp_point(GET_VERT(x,x),    GET_VERT(y,y),    GET_VERT(z,z)));
-            vertices.push_back(opp_point(GET_VERT(x,x),    GET_VERT(y,y+gs), GET_VERT(z,z)));
-            vertices.push_back(opp_point(GET_VERT(x,x+gs), GET_VERT(y,y),    GET_VERT(z,z)));
-            vertices.push_back(opp_point(GET_VERT(x,x+gs), GET_VERT(y,y+gs), GET_VERT(z,z)));
-            if (dim == 3) {
-                vertices.push_back(opp_point(GET_VERT(x,x),    GET_VERT(y,y),    GET_VERT(z,z+gs)));
-                vertices.push_back(opp_point(GET_VERT(x,x),    GET_VERT(y,y+gs), GET_VERT(z,z+gs)));
-                vertices.push_back(opp_point(GET_VERT(x,x+gs), GET_VERT(y,y),    GET_VERT(z,z+gs)));
-                vertices.push_back(opp_point(GET_VERT(x,x+gs), GET_VERT(y,y+gs), GET_VERT(z,z+gs)));
-            }
+        std::vector<opp_point> vertices;
+        vertices.push_back(opp_point(GET_VERT(x,x),    GET_VERT(y,y),    GET_VERT(z,z)));
+        vertices.push_back(opp_point(GET_VERT(x,x),    GET_VERT(y,y+gs), GET_VERT(z,z)));
+        vertices.push_back(opp_point(GET_VERT(x,x+gs), GET_VERT(y,y),    GET_VERT(z,z)));
+        vertices.push_back(opp_point(GET_VERT(x,x+gs), GET_VERT(y,y+gs), GET_VERT(z,z)));
+        if (dim == 3) {
+            vertices.push_back(opp_point(GET_VERT(x,x),    GET_VERT(y,y),    GET_VERT(z,z+gs)));
+            vertices.push_back(opp_point(GET_VERT(x,x),    GET_VERT(y,y+gs), GET_VERT(z,z+gs)));
+            vertices.push_back(opp_point(GET_VERT(x,x+gs), GET_VERT(y,y),    GET_VERT(z,z+gs)));
+            vertices.push_back(opp_point(GET_VERT(x,x+gs), GET_VERT(y,y+gs), GET_VERT(z,z+gs)));
+        }
 
-            for (const auto& point : vertices) {
-                int cid = MAX_CELL_INDEX;
+        for (const auto& point : vertices) {
+            int cid = MAX_CELL_INDEX;
 
-                all_cell_checker(point, cid);
+            all_cell_checker(point, cid);
 
-                if ((cid != MAX_CELL_INDEX) && (cid < set->size)) { 
-                    const int gbl_cid = ((OPP_INT*)c_gbl_id->data)[cid];
-                    if (most_suitable_gbl_cid > gbl_cid) {
-                        most_suitable_gbl_cid = gbl_cid;
-                        most_suitable_cid = cid;
-                    }
+            if ((cid != MAX_CELL_INDEX) && (cid < set->size)) { 
+                const int gbl_cid = ((OPP_INT*)c_gbl_id->data)[cid];
+                if (most_suitable_gbl_cid > gbl_cid) {
+                    most_suitable_gbl_cid = gbl_cid;
+                    most_suitable_cid = cid;
                 }
-            }    
-
-            // Allow neighbours to write on-behalf of the current rank, to reduce issues
-            const int avail_gbl_cid = structMeshToCellMapping[index]; 
-            if ((most_suitable_gbl_cid != MAX_CELL_INDEX) && (most_suitable_gbl_cid < avail_gbl_cid) && 
-                        (most_suitable_cid < set->size)) {
-                tmp_add_per_thr[thr].push_back(std::make_pair(index, most_suitable_gbl_cid));      
             }
+        }    
+
+        // Allow neighbours to write on-behalf of the current rank, to reduce issues
+        const int avail_gbl_cid = structMeshToCellMapping[index]; 
+        if ((most_suitable_gbl_cid != MAX_CELL_INDEX) && (most_suitable_gbl_cid < avail_gbl_cid) && 
+                    (most_suitable_cid < set->size)) {
+            #pragma omp critical
+            tmp_add_per_thr[omp_get_thread_num()].push_back(std::make_pair(index, most_suitable_gbl_cid));      
         }
     }
     
@@ -651,7 +645,7 @@ void CellMapper::generateStructuredMesh(opp_set set, const opp_dat c_gbl_id,
     opp_profiler->end("Setup_Mover_s3");
 
     // Step 4 : For MPI, get the inter-node values reduced to the structured mesh
-    if (OPP_rank == 0) opp_printf("OPP", "generateStructuredMesh Step 4 Start");
+    if (OPP_rank == OPP_ROOT) opp_printf("OPP", "generateStructuredMesh Step 4 Start %s", get_time_str().c_str());
     opp_profiler->start("Setup_Mover_s4");
     reduceInterNodeMappings(2);
     opp_profiler->end("Setup_Mover_s4");
@@ -675,7 +669,7 @@ void CellMapper::generateStructuredMesh(opp_set set, const opp_dat c_gbl_id,
             s << str(boundingBox->domain_expansion.y, "_%2.4lE");
             s << str(boundingBox->domain_expansion.z, "_%2.4lE.bin");
 
-            opp_printf("OPP", "generateStructuredMesh Step Dumping File Start");
+            opp_printf("OPP", "generateStructuredMesh Step Dumping File Start %s", get_time_str().c_str());
 
             opp_compress_write(s.str(), structMeshToCellMapping, 
                 globalGridSize);
@@ -685,6 +679,8 @@ void CellMapper::generateStructuredMesh(opp_set set, const opp_dat c_gbl_id,
                 opp_decompress_read(s.str(), globalGridSize * sizeof(int), 
                                     decompressedData.data());
                 
+                opp_printf("OPP", "generateStructuredMesh Check MEMORY and FILE");
+
                 for (size_t i = 0; i < globalGridSize; i++) {
                     if (decompressedData[i] != structMeshToCellMapping[i]) {
                         opp_printf("OPP", "Incorrect value from file at %d - file %d - system %d",
@@ -696,10 +692,10 @@ void CellMapper::generateStructuredMesh(opp_set set, const opp_dat c_gbl_id,
     }
 
     // Step 5 : For MPI, convert the global cell coordinates to rank local coordinates for increased performance
-    if (OPP_rank == 0) opp_printf("OPP", "generateStructuredMesh Step 5 Start");
+    if (OPP_rank == 0) opp_printf("OPP", "generateStructuredMesh Step 5 Start %s", get_time_str().c_str());
     opp_profiler->start("Setup_Mover_s5");
     convertToLocalMappings(c_gbl_id);
     opp_profiler->end("Setup_Mover_s5");
 
-    if (OPP_rank == 0) opp_printf("OPP", "generateStructuredMesh DONE");
+    if (OPP_rank == 0) opp_printf("OPP", "generateStructuredMesh DONE %s", get_time_str().c_str());
 }

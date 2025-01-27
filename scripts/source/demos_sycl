@@ -97,3 +97,8 @@ export LD_LIBRARY_PATH=$HDF5_INSTALL_PATH/lib:$LD_LIBRARY_PATH
 # export CC_COMPILER=nvc++
 # export MPI_COMPILER=mpicxx
 # export PETSC_INSTALL_PATH=/home/zl/lib_install/petsc-3.20.5-nvhpc23.1-mpi_kos
+
+# export OMP_PLACES=cores
+# export OMP_PROC_BIND=close
+# export OMP_NUM_THREADS=32
+# use mpirun --bind-to none -np 4 bin/omp_mpi_hdf5 configs/coarse.param for omp+mpi runs
