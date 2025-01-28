@@ -486,3 +486,80 @@ inline void write_array_to_file(const T* array, size_t size, const std::string& 
     }
     outFile.close();
 }
+
+//*******************************************************************************
+template <typename T>
+inline T** opp_create_thread_level_data(opp_arg arg) 
+{
+    opp_dat dat = arg.dat;
+    const int array_count = opp_params->get<OPP_INT>("gpu_reduction_arrays");
+    const int array_size = (dat->set->size + dat->set->exec_size + dat->set->nonexec_size) * dat->dim;
+    const int num_blocks = (array_size - 1) / OPP_gpu_threads_per_block + 1;
+    if (OPP_main_loop_iter == 0) {
+        dat->thread_data->resize(array_count);
+        dat->thread_data->at(0) = dat->data_d;
+        if (array_count > 1)
+            dat->thread_data->at(1) = dat->data_swap_d;
+        for (int i = 2; i < array_count; ++i) {
+            dat->thread_data->at(i) = (char*)opp_mem::dev_malloc<T>(array_size);
+        }
+        dat->thread_data_d = (char**)opp_mem::dev_malloc<T*>(array_count);
+        opp_queue->memcpy(dat->thread_data_d, dat->thread_data->data(), array_count * sizeof(char*)).wait();
+    }
+    else if (dat->set->is_particle) {
+        dat->thread_data->at(0) = dat->data_d;  // Move loop can swap device arrays
+        if (array_count > 1)
+            dat->thread_data->at(1) = dat->data_swap_d;
+        opp_queue->memcpy(dat->thread_data_d, dat->thread_data->data(), array_count * sizeof(char*)).wait();
+    }
+
+    opp_queue->submit([&](sycl::handler &cgh) {
+
+        T** arrays_d = (T**)dat->thread_data_d;
+
+        auto kernel = [=](sycl::nd_item<1> item) {
+            const int idx = item.get_global_linear_id();
+            if (idx < array_size) {
+                for (int i = 1; i < array_count; i++) {
+                    arrays_d[i][idx] = 0.0;
+                }
+            }
+        };
+
+        cgh.parallel_for<class opp_create_thread_level_data>(
+            sycl::nd_range<1>(OPP_gpu_threads_per_block * num_blocks, OPP_gpu_threads_per_block), kernel);
+    });
+
+    OPP_DEVICE_SYNCHRONIZE();  
+
+    return (T**)dat->thread_data_d;
+}
+
+//*******************************************************************************
+template <typename T>
+inline void opp_reduce_thread_level_data(opp_arg arg) 
+{
+    opp_queue->submit([&](sycl::handler &cgh) {
+
+        opp_dat dat = arg.dat;
+        const int array_count = opp_params->get<OPP_INT>("gpu_reduction_arrays");
+        const int array_size = (dat->set->size + dat->set->exec_size + dat->set->nonexec_size) * dat->dim;        
+        const int num_blocks = (array_size - 1) / OPP_gpu_threads_per_block + 1;
+
+        T** arrays_d = (T**)dat->thread_data_d;
+        
+        auto kernel = [=](sycl::nd_item<1> item) {
+            const int idx = item.get_global_linear_id();
+            if (idx < array_size) {
+                for (int j = 1; j < array_count; ++j) {  // Start from the second array
+                    arrays_d[0][idx] += arrays_d[j][idx];
+                }
+            }
+        };
+
+        cgh.parallel_for<class opp_reduce_thread_level_data>(
+            sycl::nd_range<1>(OPP_gpu_threads_per_block * num_blocks, OPP_gpu_threads_per_block), kernel);
+    });
+
+    OPP_DEVICE_SYNCHRONIZE();  
+}

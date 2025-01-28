@@ -62,6 +62,9 @@ void opp_particle_move__move_deposit_kernel(opp_set set, opp_map c2c_map, opp_ma
 
     int num_blocks = 200;
 
+    const int array_count = opp_params->get<OPP_INT>("gpu_reduction_arrays");
+    OPP_REAL** arg5_dat_thread_data_d = opp_create_thread_level_data<OPP_REAL>(args[5]);
+
     do {
         opp_set_stride(comm_iteration_s, comm_iteration, OPP_comm_iteration);
         opp_set_stride(opp_k2_dat0_stride_s, opp_k2_dat0_stride, args[0].dat->set->set_capacity);
@@ -103,7 +106,7 @@ void opp_particle_move__move_deposit_kernel(opp_set set, opp_map c2c_map, opp_ma
             OPP_REAL* dat2_sycl = (OPP_REAL*)args[2].data_d;     // p_streak_mid
             OPP_REAL* dat3_sycl = (OPP_REAL*)args[3].data_d;     // p_weight
             OPP_REAL* dat4_sycl = (OPP_REAL*)args[4].data_d;     // c_interp
-            OPP_REAL* dat5_sycl = (OPP_REAL*)args[5].data_d;     // c_acc
+            OPP_REAL** dat5_sycl = arg5_dat_thread_data_d;     // c_acc
             
             OPP_INT *p2c_map_sycl = (OPP_INT *)p2c_map->p2c_dat->data_d;
             const OPP_INT *c2c_map_sycl = (OPP_INT *)c2c_map->map_d; 
@@ -437,6 +440,7 @@ void opp_particle_move__move_deposit_kernel(opp_set set, opp_map c2c_map, opp_ma
                     bool iter_one_flag = (comm_iteration_sycl[0] > 0) ? false : true;
 
                     OPP_REAL arg5_p2c_local[12];
+                    OPP_REAL* tmp5 = dat5_sycl[item.get_local_id(0) % array_count];
                     
                     do {
                         const OPP_INT p2c = opp_p2c[0];
@@ -456,7 +460,7 @@ void opp_particle_move__move_deposit_kernel(opp_set set, opp_map c2c_map, opp_ma
              
                         ); 
                         for (int d = 0; d < 12; ++d)
-                            opp_atomic_fetch_add(dat5_sycl + p2c + (d * opp_k2_dat5_stride_sycl[0]), arg5_p2c_local[d]);
+                            opp_atomic_fetch_add(tmp5 + p2c + (d * opp_k2_dat5_stride_sycl[0]), arg5_p2c_local[d]);
                     
                   
                     } while (opp_part_check_status(move_flag, iter_one_flag, opp_p2c, n));
@@ -469,6 +473,8 @@ void opp_particle_move__move_deposit_kernel(opp_set set, opp_map c2c_map, opp_ma
         });
     
     } while (opp_finalize_particle_move(set)); // MPI communication iteration
+
+    opp_reduce_thread_level_data<OPP_REAL>(args[5]);
 
     opp_set_dirtybit_grouped(nargs, args, Device_GPU);
     OPP_DEVICE_SYNCHRONIZE();

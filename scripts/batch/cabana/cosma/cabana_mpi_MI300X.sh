@@ -28,28 +28,32 @@ export OMP_PROC_BIND=close
 vel_mult=0.0
 expand=1
 
-for config in 750 1500 3000; do
-    for run in 1 2 3; do
-        for gpus in 2 4 8; do
+for gpus in 4 2 1; do
+    for config in 3000 1500 750; do
+        for gpu_red_arrays in 1024 512 256 128 64 32 16 8 4 2 1; do
+            for run in 1 2; do
 
-            echo "Running MPI BLOCK " $config $run $gpus $vel_mult
+                echo "Running MPI BLOCK " $config $run $gpus $vel_mult
 
-            folder=$runFolder/$config"_mpi"
+                folder=$runFolder/$config"_mpi"
 
-            mkdir -p $folder
-            cp $file $folder
-            currentfilename=$folder/$configFile
-                   
-            (( rnz=$gpus*60*$expand ))
-            (( dexp=$gpus*$expand ))
-            sed -i "s/INT nz = 60/INT nz = ${rnz}/" ${currentfilename}
+                mkdir -p $folder
+                cp $file $folder
+                currentfilename=$folder/$configFile
+                    
+                (( rnz=$gpus*60*$expand ))
+                (( dexp=$gpus*$expand ))
+                sed -i "s/INT nz = 60/INT nz = ${rnz}/" ${currentfilename}
 
-            sed -i "s/INT num_part_per_cell = 1500/INT num_part_per_cell = ${config}/" ${currentfilename}
-            sed -i "s/INT domain_expansion = 1/INT domain_expansion = ${dexp}/" ${currentfilename}
-            # sed -i "s/REAL velY_mult_const = 0.0/REAL velY_mult_const = ${vel_mult}/" ${currentfilename}
-            # sed -i "s/REAL velZ_mult_const = 0.0/REAL velZ_mult_const = ${vel_mult}/" ${currentfilename}
+                sed -i "s/INT num_part_per_cell = 1500/INT num_part_per_cell = ${config}/" ${currentfilename}
+                sed -i "s/INT domain_expansion = 1/INT domain_expansion = ${dexp}/" ${currentfilename}
+                # sed -i "s/REAL velY_mult_const = 0.0/REAL velY_mult_const = ${vel_mult}/" ${currentfilename}
+                # sed -i "s/REAL velZ_mult_const = 0.0/REAL velZ_mult_const = ${vel_mult}/" ${currentfilename}
 
-            mpirun -np $gpus $binary $currentfilename > $folder/log_G${gpus}_D${config}_R${run}.log;
+                sed -i "s/INT gpu_reduction_arrays = 16/INT gpu_reduction_arrays = ${gpu_red_arrays}/" ${currentfilename}
+
+                mpirun -np $gpus $binary $currentfilename > $folder/log_G${gpus}_M${config}_D1_ARR${gpu_red_arrays}R${run}.log;
+            done
         done
     done
 done

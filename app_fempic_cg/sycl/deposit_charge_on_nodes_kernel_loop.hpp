@@ -54,6 +54,9 @@ void opp_par_loop_all__deposit_charge_on_nodes_kernel(opp_set set,
 
     if (iter_size > 0) {
 
+        const int array_count = opp_params->get<OPP_INT>("gpu_reduction_arrays");
+        OPP_REAL** arg1_dat_thread_data_d = opp_create_thread_level_data<OPP_REAL>(args[1]);
+        
         opp_queue->submit([&](sycl::handler &cgh) {
 
             const OPP_INT* opp_k5_dat0_stride_sycl = opp_k5_dat0_stride_s;
@@ -62,7 +65,7 @@ void opp_par_loop_all__deposit_charge_on_nodes_kernel(opp_set set,
     
 
             OPP_REAL* dat0_sycl = (OPP_REAL*)args[0].data_d;     // p_lc
-            OPP_REAL* dat1_sycl = (OPP_REAL*)args[1].data_d;     // n_charge_den
+            OPP_REAL** dat1_sycl = arg1_dat_thread_data_d;     // n_charge_den
             const OPP_INT* map0_sycl = args[1].map_data_d;     // c2n_map
 
             const OPP_INT *p2c_map = (OPP_INT *)set->mesh_relation_dat->data_d;
@@ -114,17 +117,19 @@ void opp_par_loop_all__deposit_charge_on_nodes_kernel(opp_set set,
                         arg4_3_local // n_charge_den 
                     );
 
-                    for (int d = 0; d < 1; ++d)
-                        opp_atomic_fetch_add(dat1_sycl + map0_sycl[opp_k5_map0_stride_sycl[0] * 0 + opp_p2c[0]] + (d * opp_k5_dat1_stride_sycl[0]), arg1_0_local[d]);
+                    OPP_REAL* tmp1 = dat1_sycl[item.get_local_id(0) % array_count];
 
                     for (int d = 0; d < 1; ++d)
-                        opp_atomic_fetch_add(dat1_sycl + map0_sycl[opp_k5_map0_stride_sycl[0] * 1 + opp_p2c[0]] + (d * opp_k5_dat1_stride_sycl[0]), arg2_1_local[d]);
+                        opp_atomic_fetch_add(tmp1 + map0_sycl[opp_k5_map0_stride_sycl[0] * 0 + opp_p2c[0]] + (d * opp_k5_dat1_stride_sycl[0]), arg1_0_local[d]);
 
                     for (int d = 0; d < 1; ++d)
-                        opp_atomic_fetch_add(dat1_sycl + map0_sycl[opp_k5_map0_stride_sycl[0] * 2 + opp_p2c[0]] + (d * opp_k5_dat1_stride_sycl[0]), arg3_2_local[d]);
+                        opp_atomic_fetch_add(tmp1 + map0_sycl[opp_k5_map0_stride_sycl[0] * 1 + opp_p2c[0]] + (d * opp_k5_dat1_stride_sycl[0]), arg2_1_local[d]);
 
                     for (int d = 0; d < 1; ++d)
-                        opp_atomic_fetch_add(dat1_sycl + map0_sycl[opp_k5_map0_stride_sycl[0] * 3 + opp_p2c[0]] + (d * opp_k5_dat1_stride_sycl[0]), arg4_3_local[d]);
+                        opp_atomic_fetch_add(tmp1 + map0_sycl[opp_k5_map0_stride_sycl[0] * 2 + opp_p2c[0]] + (d * opp_k5_dat1_stride_sycl[0]), arg3_2_local[d]);
+
+                    for (int d = 0; d < 1; ++d)
+                        opp_atomic_fetch_add(tmp1 + map0_sycl[opp_k5_map0_stride_sycl[0] * 3 + opp_p2c[0]] + (d * opp_k5_dat1_stride_sycl[0]), arg4_3_local[d]);
                 }
     
             };
@@ -133,6 +138,9 @@ void opp_par_loop_all__deposit_charge_on_nodes_kernel(opp_set set,
             cgh.parallel_for<class deposit_charge_on_nodes_kernel>(
                 sycl::nd_range<1>(block_size * num_blocks, block_size), kernel);
         });
+
+        OPP_DEVICE_SYNCHRONIZE(); 
+        opp_reduce_thread_level_data<OPP_REAL>(args[1]);
     }
 
     opp_set_dirtybit_grouped(nargs, args, Device_GPU);
