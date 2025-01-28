@@ -35,6 +35,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //*********************************************
 
 #include "opp_sycl.h"
+#include "device_kernels/sycl_inline_kernels.h"
 
 OPP_REAL* CONST_dt_s = nullptr;
 OPP_REAL* CONST_qsp_s = nullptr;
@@ -43,12 +44,6 @@ OPP_REAL* CONST_p_s = nullptr;
 OPP_REAL* CONST_qdt_2mc_s = nullptr;
 OPP_REAL* CONST_dt_eps0_s = nullptr;
 OPP_REAL* CONST_acc_coef_s = nullptr;
-    
-OPP_INT* cells_set_size_s = nullptr;
-OPP_INT cells_set_size = -1;
-
-OPP_INT* comm_iteration_s = nullptr;
-OPP_INT comm_iteration = -1;
 
 void opp_decl_const_impl(int dim, int size, char* data, const char* name) {
     

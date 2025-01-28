@@ -49,7 +49,7 @@ void opp_particle_move__move_deposit_kernel(opp_set set, opp_map c2c_map, opp_ma
     const opp_set c_set = c2c_map->from;
     const OPP_INT c2c_stride = c_set->size + c_set->exec_size + c_set->nonexec_size;
 
-    opp_set_stride(cells_set_size_s, cells_set_size, set->cells_set->size);
+    opp_set_stride(OPP_cells_set_size_d, OPP_cells_set_size, set->cells_set->size);
     opp_set_stride(opp_k2_c2c_map_stride_s, opp_k2_c2c_map_stride, c2c_stride);
 
     opp_mpi_halo_wait_all(nargs, args);
@@ -66,7 +66,7 @@ void opp_particle_move__move_deposit_kernel(opp_set set, opp_map c2c_map, opp_ma
     OPP_REAL** arg5_dat_thread_data_d = opp_create_thread_level_data<OPP_REAL>(args[5]);
 
     do {
-        opp_set_stride(comm_iteration_s, comm_iteration, OPP_comm_iteration);
+        opp_set_stride(OPP_comm_iteration_d, OPP_comm_iteration_h, OPP_comm_iteration);
         opp_set_stride(opp_k2_dat0_stride_s, opp_k2_dat0_stride, args[0].dat->set->set_capacity);
         opp_set_stride(opp_k2_dat1_stride_s, opp_k2_dat1_stride, args[1].dat->set->set_capacity);
         opp_set_stride(opp_k2_dat2_stride_s, opp_k2_dat2_stride, args[2].dat->set->set_capacity);
@@ -80,8 +80,8 @@ void opp_particle_move__move_deposit_kernel(opp_set set, opp_map c2c_map, opp_ma
 
         opp_queue->submit([&](sycl::handler &cgh) {
             
-            const OPP_INT* comm_iteration_sycl = comm_iteration_s;
-            const OPP_INT* opp_cell_set_size_sycl = cells_set_size_s;
+            const OPP_INT* comm_iteration = OPP_comm_iteration_d;
+            const OPP_INT* cell_set_size = OPP_cells_set_size_d;
 
             OPP_INT *remove_count = (OPP_INT *)set->particle_remove_count_d;
             OPP_INT *remove_part_indices = (OPP_INT *)OPP_remove_particle_indices_d;
@@ -397,38 +397,6 @@ void opp_particle_move__move_deposit_kernel(opp_set set, opp_map c2c_map, opp_ma
             };
 
             // -----------------------------------------------------------------------------------------
-            auto opp_part_check_status = 
-                [=](char& move_flag, bool& iter_flag, int* c_idx, int p_idx) -> bool {
-                
-                iter_flag = false;
-                if (move_flag == OPP_MOVE_DONE) {
-                    return false;
-                }
-                else if (move_flag == OPP_NEED_REMOVE) {
-                    c_idx[0] = MAX_CELL_INDEX;
-                    const int removeIdx = opp_atomic_fetch_add(remove_count, 1);
-                    remove_part_indices[removeIdx] = p_idx;
-
-                    return false;
-                }
-            #ifdef USE_MPI
-                else if (c_idx[0] >= opp_cell_set_size_sycl[0]) {
-                    // cell_id is not owned by the current mpi rank, need to communicate
-                    const int moveIdx = opp_atomic_fetch_add(move_count, 1);
-                    move_part_indices[moveIdx] = p_idx;
-                    move_cell_indices[moveIdx] = c_idx[0];
-
-                    // To be removed from the current rank, packing will be done prior exchange & removal
-                    const int removeIdx = opp_atomic_fetch_add(remove_count, 1);
-                    remove_part_indices[removeIdx] = p_idx;
-
-                    return false;
-                }
-            #endif
-                return true; // cell_id is an own cell and move_flag == OPP_NEED_MOVE
-            };
-
-            // -----------------------------------------------------------------------------------------
             auto opp_move_kernel = [=](sycl::nd_item<1> item) {
                 
                 const int tid = item.get_global_linear_id();
@@ -437,7 +405,7 @@ void opp_particle_move__move_deposit_kernel(opp_set set, opp_map c2c_map, opp_ma
                 if (n < iter_end) {
                     OPP_INT *opp_p2c = (p2c_map_sycl + n);
                     char move_flag = OPP_NEED_MOVE;
-                    bool iter_one_flag = (comm_iteration_sycl[0] > 0) ? false : true;
+                    bool iter_one_flag = (comm_iteration[0] > 0) ? false : true;
 
                     OPP_REAL arg5_p2c_local[12];
                     OPP_REAL* tmp5 = dat5_sycl[item.get_local_id(0) % array_count];
@@ -463,7 +431,9 @@ void opp_particle_move__move_deposit_kernel(opp_set set, opp_map c2c_map, opp_ma
                             opp_atomic_fetch_add(tmp5 + p2c + (d * opp_k2_dat5_stride_sycl[0]), arg5_p2c_local[d]);
                     
                   
-                    } while (opp_part_check_status(move_flag, iter_one_flag, opp_p2c, n));
+                    } while (opp_part_check_status_device(move_flag, iter_one_flag, opp_p2c, n, 
+                                remove_count, remove_part_indices, 
+                                move_part_indices, move_cell_indices, move_count, cell_set_size));
                 }        
             };
 

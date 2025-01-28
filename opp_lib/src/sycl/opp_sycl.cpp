@@ -85,7 +85,7 @@ void opp_init(int argc, char **argv)
 
     opp_init_core(argc, argv);
     opp_params->write(std::cout);
-    opp_sycl_init(argc, argv);
+    opp_device_init(argc, argv);
 
     OPP_auto_soa = 1; // TODO : Make this configurable with args
 
@@ -131,7 +131,7 @@ void opp_exit()
     opp_part_comm_destroy(); // free memory allocated for particle communication
 #endif
 
-    opp_sycl_exit();
+    opp_device_exit();
     opp_exit_core();
 
 #ifdef USE_PETSC
@@ -151,7 +151,7 @@ void opp_abort(std::string s)
 }
 
 //****************************************
-void opp_sycl_init(int argc, char **argv) {
+void opp_device_init(int argc, char **argv) {
 
     char temp[64];
     bool run_on_gpu = true;
@@ -161,13 +161,13 @@ void opp_sycl_init(int argc, char **argv) {
             run_on_gpu = false;
     }
 
-    if (OPP_DBG) opp_printf("opp_sycl_init", "run_on_gpu=%s", run_on_gpu ? "TRUE" : "FALSE");
+    if (OPP_DBG) opp_printf("opp_device_init", "run_on_gpu=%s", run_on_gpu ? "TRUE" : "FALSE");
 
     try {
 //         std::vector<sycl::device> selected_devices;
 //         std::vector<sycl::device> all_devices = sycl::device::get_devices();   
 //         if (all_devices.size() == 0) {
-//             opp_printf("opp_sycl_init", "Error: no supporting devices found");
+//             opp_printf("opp_device_init", "Error: no supporting devices found");
 //             opp_abort();
 //         }
 //         for (const auto& dev : all_devices) {
@@ -177,7 +177,7 @@ void opp_sycl_init(int argc, char **argv) {
 //                 else if (dev.is_gpu()) device_type = "GPU";
 //                 else if (dev.is_accelerator()) device_type = "Accelerator";
 //                 else device_type = "Unknown";
-//                 std::cout << "opp_sycl_init[" << OPP_rank << "] - Detected device [ " 
+//                 std::cout << "opp_device_init[" << OPP_rank << "] - Detected device [ " 
 //                     << dev.get_info<sycl::info::device::name>() << " (" 
 //                     << device_type << ") ]" << std::endl;
 //             }
@@ -187,7 +187,7 @@ void opp_sycl_init(int argc, char **argv) {
 //             }
 //         }
 //         if (selected_devices.size() == 0) {
-//             opp_printf("opp_sycl_init", "Requested %s but none found", run_on_gpu ? "GPUs" : "CPUs");
+//             opp_printf("opp_device_init", "Requested %s but none found", run_on_gpu ? "GPUs" : "CPUs");
 //             opp_abort();
 //         }
 // #ifdef USE_MPI
@@ -212,12 +212,12 @@ void opp_sycl_init(int argc, char **argv) {
         
         std::cerr << exc.what() << "Exception caught at file:" << __FILE__
                     << ", line:" << __LINE__ << std::endl;
-        opp_abort("opp_sycl_init - Error... Init device Device Failed");
+        opp_abort("opp_device_init - Error... Init device Device Failed");
     }
 }
 
 //****************************************
-void opp_sycl_exit() 
+void opp_device_exit() 
 {
     for (auto& set : opp_sets) {
         if (set->is_particle) 

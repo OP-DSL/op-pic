@@ -74,6 +74,7 @@ constexpr int const_blocks = 200;
 #define ADDITIONAL_PARAMETERS , sycl::nd_item<1> item
 #define OPP_ATOMIC_FETCH_ADD(address, value) opp_atomic_fetch_add(address, value)
 
+/*******************************************************************************/
 extern int* opp_saved_mesh_relation_d;
 
 extern OPP_INT* hf_from_indices_dp;
@@ -102,8 +103,8 @@ extern opp_dh_indices dh_indices_d;
 extern opp_dh_indices dh_indices_h;
 
 //*************************************************************************************************
-void opp_sycl_init(int argc, char **argv);
-void opp_sycl_exit();
+void opp_device_init(int argc, char **argv);
+void opp_device_exit();
 
 void opp_upload_map(opp_map map, bool create_new = false);
 void opp_create_dat_device_arrays(opp_dat dat, bool create_new = false);
@@ -123,6 +124,47 @@ void opp_mpi_print_dat_to_txtfile(opp_dat dat, const char *file_name);
 
 /*******************************************************************************/
 void particle_sort_device(opp_set set, bool hole_filling);
+
+/*******************************************************************************/
+// template<typename T>
+// inline void opp_mpi_reduce(opp_arg *args, T *data) 
+// {
+// #ifdef USE_MPI
+//     if constexpr (std::is_same<T, double>::value) {
+//         opp_mpi_reduce_double(args, data);
+//     } else if constexpr (std::is_same<T, int>::value) {
+//         opp_mpi_reduce_int(args, data);
+//     } else {
+//         static_assert(std::is_same<T, double>::value || std::is_same<T, int>::value, 
+//                       "Unsupported data type for opp_mpi_reduce.");
+//     }
+// #else
+//     (void)args;
+//     (void)data;
+// #endif
+// }
+
+template<typename T, typename std::enable_if<std::is_same<T, OPP_REAL>::value, int>::type = 0>
+void opp_mpi_reduce(opp_arg *args, T *data) 
+{
+#ifdef USE_MPI
+    opp_mpi_reduce_double(args, data);
+#else
+    (void)args;
+    (void)data;
+#endif
+}
+
+template<typename T, typename std::enable_if<std::is_same<T, OPP_INT>::value, int>::type = 0>
+void opp_mpi_reduce(opp_arg *args, T *data) 
+{
+#ifdef USE_MPI
+    opp_mpi_reduce_int(args, data);
+#else
+    (void)args;
+    (void)data;
+#endif
+}
 
 /*******************************************************************************/
 class opp_mem {
@@ -271,25 +313,6 @@ public:
 };
 
 /*******************************************************************************/
-template<typename T>
-inline void opp_mpi_reduce(opp_arg *args, T *data) 
-{
-#ifdef USE_MPI
-    if constexpr (std::is_same<T, double>::value) {
-        opp_mpi_reduce_double(args, data);
-    } else if constexpr (std::is_same<T, int>::value) {
-        opp_mpi_reduce_int(args, data);
-    } else {
-        static_assert(std::is_same<T, double>::value || std::is_same<T, int>::value, 
-                      "Unsupported data type for opp_mpi_reduce.");
-    }
-#else
-    (void)args;
-    (void)data;
-#endif
-}
-
-/*******************************************************************************/
 // routines to resize constant/reduct arrays, if necessary
 
 void opp_reallocReductArrays(int reduct_bytes);
@@ -299,55 +322,6 @@ void opp_mvReductArraysToHost(int reduct_bytes);
 void opp_reallocConstArrays(int consts_bytes);
 void opp_mvConstArraysToDevice(int consts_bytes);
 void opp_mvConstArraysToHost(int consts_bytes);
-
-template <opp_access reduction, int intel, class T, class out_acc, class local_acc>
-void opp_reduction(out_acc dat_g, int offset, T dat_l, local_acc temp, sycl::nd_item<1> &item) {
-    T dat_t;
-
-    /* important to finish all previous activity */
-    item.barrier(sycl::access::fence_space::local_space); 
-
-    size_t tid = item.get_local_id(0);
-    temp[tid] = dat_l;
-
-    for (size_t d = item.get_local_range(0) / 2; d > 0; d >>= 1) {
-        item.barrier(sycl::access::fence_space::local_space);
-        if (tid < d) {
-        dat_t = temp[tid + d];
-
-        switch (reduction) {
-        case OPP_INC:
-            dat_l = dat_l + dat_t;
-            break;
-        case OPP_MIN:
-            if (dat_t < dat_l)
-                dat_l = dat_t;
-            break;
-        case OPP_MAX:
-            if (dat_t > dat_l)
-                dat_l = dat_t;
-            break;
-        }
-        temp[tid] = dat_l;
-        }
-    }
-
-    if (tid == 0) {
-        switch (reduction) {
-        case OPP_INC:
-            dat_g[offset] = dat_g[offset] + dat_l;
-            break;
-        case OPP_MIN:
-            if (dat_l < dat_g[offset])
-            dat_g[offset] = dat_l;
-            break;
-        case OPP_MAX:
-            if (dat_l > dat_g[offset])
-            dat_g[offset] = dat_l;
-            break;
-        }
-    }
-}
 
 /*******************************************************************************/
 template <typename T>
@@ -486,6 +460,11 @@ inline void write_array_to_file(const T* array, size_t size, const std::string& 
     }
     outFile.close();
 }
+
+/*******************************************************************************/
+// in opp_direct_hop_sycl.cpp
+void opp_init_dh_device(opp_set set); 
+void opp_gather_dh_move_indices(opp_set set); // gathers all device global move info to the global mover for communication
 
 //*******************************************************************************
 template <typename T>

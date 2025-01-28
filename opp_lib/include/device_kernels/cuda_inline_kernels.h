@@ -70,7 +70,7 @@ __inline__ __device__ bool opp_part_check_status_device(char& move_flag, bool& i
     else if (*cell_id >= OPP_cells_set_size_d)
     {
         // cell_id cell is not owned by the current mpi rank, need to communicate
-        int moveArrayIndex = atomicAdd(move_count, 1);
+        const int moveArrayIndex = atomicAdd(move_count, 1);
         move_part_indices[moveArrayIndex] = particle_index;
         move_cell_indices[moveArrayIndex] = *cell_id;
 

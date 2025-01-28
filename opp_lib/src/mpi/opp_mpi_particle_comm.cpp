@@ -628,17 +628,20 @@ void opp_part_set_comm_init(opp_set set)
         recv_reqs.push_back(req);  
     }
 
-    std::vector<MPI_Status> recv_reqs_statuses(recv_reqs.size());
-    MPI_Waitall(recv_reqs.size(), &recv_reqs[0], recv_reqs_statuses.data());
-    bool error = false;
-    for (size_t i = 0; i < recv_reqs_statuses.size(); ++i) {
-        if (recv_reqs_statuses[i].MPI_ERROR != MPI_SUCCESS) {
-            opp_printf("opp_part_set_comm_init", "Error in recv request ", i, recv_reqs_statuses[i].MPI_ERROR);
-            error = true;
+    if (recv_reqs.size() > 0) 
+    {
+        std::vector<MPI_Status> recv_reqs_statuses(recv_reqs.size()); 
+        MPI_Waitall(recv_reqs.size(), &recv_reqs[0], recv_reqs_statuses.data()); 
+        bool error = false;
+        for (size_t i = 0; i < recv_reqs_statuses.size(); ++i) {
+            if (recv_reqs_statuses[i].MPI_ERROR != MPI_SUCCESS) {
+                opp_printf("opp_part_set_comm_init", "Error in recv request ", i, recv_reqs_statuses[i].MPI_ERROR);
+                error = true;
+            }
         }
+        if (error)
+            opp_abort("Error in opp_part_set_comm_init");
     }
-    if (error)
-        opp_abort("Error in opp_part_set_comm_init");
 
     // print the per rank received buffers
     if (OPP_DBG)
@@ -684,7 +687,7 @@ void opp_part_set_comm_init(opp_set set)
 
             opp_part_comm_neighbour_data[set].insert({local_index, comm_data});
 
-            // opp_printf("opp_part_comm_init", "set:[%s] li:[%d] nr:[%d] ni:[%d]", 
+            // opp_printf("opp_part_set_comm_init", "set:[%s] li:[%d] nr:[%d] ni:[%d]", 
             //     set->cells_set->name, local_index, comm_data.cell_residing_rank, comm_data.local_index);
         }
     }  
