@@ -121,7 +121,7 @@ constexpr int MIN_INT = std::numeric_limits<int>::min();
     int err = cmd; \
     if (err != MPI_SUCCESS) { \
         std::stringstream ss; \
-        ss << "MPI error " << err << " at " << __FILE__ << ":" << __LINE__; \
+        ss << "MPI error " << err << " at " << __FILE__ << ":" << __LINE__ << " on rank: " << OPP_rank; \
         opp_abort(ss.str()); \
     } \
 }

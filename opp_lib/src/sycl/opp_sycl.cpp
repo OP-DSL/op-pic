@@ -43,6 +43,11 @@ char *OPP_consts_h = nullptr, *OPP_consts_d = nullptr;
 
 std::vector<char*> opp_consts;
 
+char opp_move_status_flag = OPP_MOVE_DONE;
+bool opp_move_hop_iter_one_flag = true;
+OPP_INT* opp_p2c = nullptr;
+OPP_INT* opp_c2c = nullptr;
+
 opp_dh_indices dh_indices_h;
 opp_dh_indices dh_indices_d;
 

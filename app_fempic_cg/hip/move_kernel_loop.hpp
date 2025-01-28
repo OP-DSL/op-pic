@@ -227,7 +227,7 @@ void opp_particle_move__move_kernel(opp_set set, opp_map c2c_map, opp_map p2c_ma
             throw std::runtime_error(std::string("dev_copy_to_symbol: ") + hipGetErrorString(err2));
         }
 
-        // check whether particles needs to be moved over global move routine
+        // check whether particles need to be moved via the global move routine
         opp_dev_checkForGlobalMove3D_kernel<<<num_blocks, block_size>>>(
             (OPP_REAL*)args[0].data_d,    // p_pos 
             (OPP_INT *)args[4].data_d,    // p2c_map
