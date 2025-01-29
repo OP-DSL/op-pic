@@ -223,7 +223,12 @@ class CppHip(Scheme):
         config: Dict[str, Any],
         kernel_idx: int,
     ) -> str:
-        return "// Implement the hip host kernel"
+        kernel_entities = app.findEntities(loop.kernel, program)
+        if len(kernel_entities) == 0:
+            raise ParseError(f"unable to find kernel: {loop.kernel}")
+
+        extracted_entities = ctk.extractDependencies(kernel_entities, app)
+        return ctk.writeSource(extracted_entities)
     
 Scheme.register(CppHip)
 
@@ -285,6 +290,11 @@ class CppSycl(Scheme):
         config: Dict[str, Any],
         kernel_idx: int,
     ) -> str:
-        return "// Implement the sycl host kernel"
+        kernel_entities = app.findEntities(loop.kernel, program)
+        if len(kernel_entities) == 0:
+            raise ParseError(f"unable to find kernel: {loop.kernel}")
+
+        extracted_entities = ctk.extractDependencies(kernel_entities, app)
+        return ctk.writeSource(extracted_entities)
     
 Scheme.register(CppSycl)

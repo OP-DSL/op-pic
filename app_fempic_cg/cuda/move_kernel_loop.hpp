@@ -184,7 +184,7 @@ void opp_particle_move__move_kernel(opp_set set, opp_map c2c_map, opp_map p2c_ma
     args[3] = arg3;
     args[4] = opp_arg_dat(p2c_map->p2c_dat, OPP_RW); // required to make dirty or should manually make it dirty
 
-    const int iter_size = opp_mpi_halo_exchanges_grouped(set, nargs, args, Device_GPU);
+    opp_mpi_halo_exchanges_grouped(set, nargs, args, Device_GPU);
 
     const OPP_INT c2c_stride = c2c_map->from->size + c2c_map->from->exec_size + c2c_map->from->nonexec_size;
 
@@ -202,11 +202,6 @@ void opp_particle_move__move_kernel(opp_set set, opp_map c2c_map, opp_map p2c_ma
     int num_blocks = 200;
 
     opp_init_particle_move(set, nargs, args);
-
-    opp_mem::dev_copy_to_symbol<OPP_INT>(OPP_comm_iteration_d, &OPP_comm_iteration, 1);
-
-    num_blocks = (OPP_iter_end - OPP_iter_start - 1) / block_size + 1;
-
     if (useGlobalMove) {
            
 #ifdef USE_MPI         
@@ -221,6 +216,7 @@ void opp_particle_move__move_kernel(opp_set set, opp_map c2c_map, opp_map p2c_ma
         cutilSafeCall(cudaMemcpyToSymbol(opp_maxSavedDHGrid_d, opp_maxSavedDHGrid, 3 * sizeof(size_t)));
         
         // check whether particles need to be moved via the global move routine
+        num_blocks = (OPP_iter_end - OPP_iter_start - 1) / block_size + 1;
         opp_dev_checkForGlobalMove3D_kernel<<<num_blocks, block_size>>>(
             (OPP_REAL*)args[0].data_d,    // p_pos 
             (OPP_INT *)args[4].data_d,    // p2c_map
@@ -248,16 +244,22 @@ void opp_particle_move__move_kernel(opp_set set, opp_map c2c_map, opp_map p2c_ma
 #endif
     }
 
+
+    // ----------------------------------------------------------------------------
+    // check whether all particles not marked for global comm is within cell, 
+    // and if not mark to move between cells within the MPI rank, mark for neighbour comm
+
+
+    opp_profiler->start("Mv_AllMv0");
+
+    opp_mem::dev_copy_to_symbol<OPP_INT>(OPP_comm_iteration_d, &OPP_comm_iteration, 1);
+    num_blocks = (OPP_iter_end - OPP_iter_start - 1) / block_size + 1;
+
     opp_mem::dev_copy_to_symbol<OPP_INT>(opp_k4_dat0_stride_d, &opp_k4_dat0_stride, &(args[0].dat->set->set_capacity), 1);
     opp_mem::dev_copy_to_symbol<OPP_INT>(opp_k4_dat1_stride_d, &opp_k4_dat1_stride, &(args[1].dat->set->set_capacity), 1);
     opp_mem::dev_copy_to_symbol<OPP_INT>(opp_k4_dat2_stride_d, &opp_k4_dat2_stride, &(args[2].dat->set->set_capacity), 1);
     opp_mem::dev_copy_to_symbol<OPP_INT>(opp_k4_dat3_stride_d, &opp_k4_dat3_stride, &(args[3].dat->set->set_capacity), 1);
 
-
-    opp_profiler->start("Mv_AllMv0");
-    // ----------------------------------------------------------------------------
-    // check whether all particles not marked for global comm is within cell, 
-    // and if not mark to move between cells within the MPI rank, mark for neighbour comm
     opp_profiler->start("move_kernel_only");
     opp_dev_move_kernel<<<num_blocks, block_size>>>(
         (OPP_REAL *)args[0].data_d,    // p_pos
@@ -277,7 +279,7 @@ void opp_particle_move__move_kernel(opp_set set, opp_map c2c_map, opp_map p2c_ma
     OPP_DEVICE_SYNCHRONIZE();   
     opp_profiler->end("move_kernel_only");
     opp_profiler->end("Mv_AllMv0");
-
+    
 #ifdef USE_MPI 
     // ----------------------------------------------------------------------------
     // finalize the global move routine and iterate over newly added particles and check whether they need neighbour comm
@@ -299,13 +301,16 @@ void opp_particle_move__move_kernel(opp_set set, opp_map c2c_map, opp_map p2c_ma
             // mark for neighbour comm. Do only for the globally moved particles 
             const int start2 = (set->size - set->diff);
             const int end2 = set->size;
+      
+            opp_mem::dev_copy_to_symbol<OPP_INT>(OPP_comm_iteration_d, &OPP_comm_iteration, 1);
             num_blocks = (end2 - start2 - 1) / block_size + 1;
+
             opp_mem::dev_copy_to_symbol<OPP_INT>(opp_k4_dat0_stride_d, &opp_k4_dat0_stride, &(args[0].dat->set->set_capacity), 1);
             opp_mem::dev_copy_to_symbol<OPP_INT>(opp_k4_dat1_stride_d, &opp_k4_dat1_stride, &(args[1].dat->set->set_capacity), 1);
             opp_mem::dev_copy_to_symbol<OPP_INT>(opp_k4_dat2_stride_d, &opp_k4_dat2_stride, &(args[2].dat->set->set_capacity), 1);
             opp_mem::dev_copy_to_symbol<OPP_INT>(opp_k4_dat3_stride_d, &opp_k4_dat3_stride, &(args[3].dat->set->set_capacity), 1);
 
-            opp_profiler->start("move_kernel_only");      
+            opp_profiler->start("move_kernel_only");
             opp_dev_move_kernel<<<num_blocks, block_size>>>(
                 (OPP_REAL *)args[0].data_d,    // p_pos
                 (OPP_REAL *)args[1].data_d,    // p_lc
@@ -321,7 +326,7 @@ void opp_particle_move__move_kernel(opp_set set, opp_map c2c_map, opp_map p2c_ma
                 start2,
                 end2
             );
-            OPP_DEVICE_SYNCHRONIZE(); 
+            OPP_DEVICE_SYNCHRONIZE();   
             opp_profiler->end("move_kernel_only");
 
             opp_profiler->end("GblMv_AllMv");
@@ -334,15 +339,16 @@ void opp_particle_move__move_kernel(opp_set set, opp_map c2c_map, opp_map p2c_ma
     // then iterate over the newly added particles
     while (opp_finalize_particle_move(set)) {
 
+        opp_init_particle_move(set, nargs, args);
+
+        opp_mem::dev_copy_to_symbol<OPP_INT>(OPP_comm_iteration_d, &OPP_comm_iteration, 1);
+        num_blocks = (OPP_iter_end - OPP_iter_start - 1) / block_size + 1;
+
         opp_mem::dev_copy_to_symbol<OPP_INT>(opp_k4_dat0_stride_d, &opp_k4_dat0_stride, &(args[0].dat->set->set_capacity), 1);
         opp_mem::dev_copy_to_symbol<OPP_INT>(opp_k4_dat1_stride_d, &opp_k4_dat1_stride, &(args[1].dat->set->set_capacity), 1);
         opp_mem::dev_copy_to_symbol<OPP_INT>(opp_k4_dat2_stride_d, &opp_k4_dat2_stride, &(args[2].dat->set->set_capacity), 1);
         opp_mem::dev_copy_to_symbol<OPP_INT>(opp_k4_dat3_stride_d, &opp_k4_dat3_stride, &(args[3].dat->set->set_capacity), 1);
 
-        opp_init_particle_move(set, nargs, args);
-        opp_mem::dev_copy_to_symbol<OPP_INT>(OPP_comm_iteration_d, &OPP_comm_iteration, 1);
-
-        num_blocks = (OPP_iter_end - OPP_iter_start - 1) / block_size + 1;
         opp_profiler->start("move_kernel_only");
         opp_dev_move_kernel<<<num_blocks, block_size>>>(
             (OPP_REAL *)args[0].data_d,    // p_pos
@@ -362,6 +368,8 @@ void opp_particle_move__move_kernel(opp_set set, opp_map c2c_map, opp_map p2c_ma
         OPP_DEVICE_SYNCHRONIZE();   
         opp_profiler->end("move_kernel_only");
     }
+
+
 
     opp_set_dirtybit_grouped(nargs, args, Device_GPU);
     OPP_DEVICE_SYNCHRONIZE();   

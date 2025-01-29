@@ -224,7 +224,6 @@ void opp_par_loop_all__deposit_charge_on_nodes_kernel(opp_set set,
         {
             const int array_count = opp_params->get<OPP_INT>("gpu_reduction_arrays");
             OPP_REAL** arg1_dat_thread_data_d = opp_create_thread_level_data<OPP_REAL>(args[1]);
-
             opp_dev_deposit_charge_on_nodes_kernel<<<num_blocks, block_size>>>(
                 (OPP_REAL *)args[0].data_d,     // p_lc
                 arg1_dat_thread_data_d, array_count,     // n_charge_den
@@ -233,7 +232,6 @@ void opp_par_loop_all__deposit_charge_on_nodes_kernel(opp_set set,
                 start,
                 end
             );
-
             OPP_DEVICE_SYNCHRONIZE(); 
             opp_reduce_thread_level_data<OPP_REAL>(args[1]);
         }

@@ -15,7 +15,7 @@ namespace host {
 
 {% endblock %}
 
-{% macro stride_cuda(arg) -%}
+{% macro stride_device(arg) -%}
 {{-" * opp_k%s_dat%s_stride_d" % (kernel_idx, arg.dat_id) if lh.dat(arg) is soa-}}
 {%- endmacro %}
 
@@ -41,21 +41,21 @@ namespace host {
     {% endif %}
 {% endmacro %}
 
-{% macro opt_cuda_cond(arg) %}
+{% macro opt_device_cond(arg) %}
     {%- if arg is opt -%}optflags & 1 << {{lh.optIdx(arg)}}{%- endif -%}
 {% endmacro %}
 
-{% macro opt_cuda_cond_comp(arg) %}
-    {%- if arg is opt -%}{{opt_cuda_cond(arg)}} && {% endif -%}
+{% macro opt_device_cond_comp(arg) %}
+    {%- if arg is opt -%}{{opt_device_cond(arg)}} && {% endif -%}
 {% endmacro %}
 
-{% macro opt_cuda_tern(arg, alt = "NULL") %}
-    {%- if arg is opt -%}{{opt_cuda_cond(arg)}} ? {{caller()}} : {{alt}}{%- else -%}{{caller()}}{%- endif -%}
+{% macro opt_device_tern(arg, alt = "NULL") %}
+    {%- if arg is opt -%}{{opt_device_cond(arg)}} ? {{caller()}} : {{alt}}{%- else -%}{{caller()}}{%- endif -%}
 {% endmacro %}
 
-{% macro opt_cuda_if(arg) %}
+{% macro opt_device_if(arg) %}
     {% if arg is opt %}
-    if ({{opt_cuda_cond(arg)}}) {
+    if ({{opt_device_cond(arg)}}) {
     {{caller()|indent-}}
     {{"}"|indent(first = true)}}
     {% else %}
@@ -76,7 +76,7 @@ map{{arg.map_id}}[opp_k{{kernel_idx}}_map{{lh.map(arg).id}}_stride_d * {{arg.map
 {%- endif -%}    
 {%- endmacro %}
 
-{% macro arg_to_pointer_cuda(arg) -%}
+{% macro arg_to_pointer_device(arg) -%}
 
     {%- if arg is gbl %}
         {% if arg is reduction %}
@@ -164,7 +164,11 @@ __constant__ OPP_INT opp_k{{kernel_idx}}_c2c_map_stride_d;
 __global__ void opp_dev_{{lh.kernel}}(
     {{-"\n    const unsigned optflags," if lh.args|opt|length > 0}}
     {% for dat in lh.dats %}
+        {% if dat is indirect_reduction(lh) and lh is particle_loop %}
+    {{dat.typ}} **__restrict__ dat{{dat.id}}, const OPP_INT dat{{dat.id}}_arr_count,     // {{dat.ptr}}
+        {% else %}
     {{"const " if dat is read_in(lh)}}{{dat.typ}} *__restrict__ dat{{dat.id}},     // {{dat.ptr}}
+        {% endif %}
     {% endfor %}
     OPP_INT *__restrict__ p2c_map,
     const OPP_INT *__restrict__ c2c_map,
@@ -188,7 +192,7 @@ __global__ void opp_dev_{{lh.kernel}}(
 {
     {% for arg in lh.args|gbl|reduction %}
     {{arg.typ}} gbl{{arg.id}}_local[{{arg.dim}}];
-    for (int d = 0; {{opt_cuda_cond_comp(arg)}}d < {{arg.dim}}; ++d)
+    for (int d = 0; {{opt_device_cond_comp(arg)}}d < {{arg.dim}}; ++d)
         gbl{{arg.id}}_local[d] = {% if arg is inc -%}
             {{arg.typ}}_ZERO
         {%- else -%}
@@ -203,9 +207,11 @@ __global__ void opp_dev_{{lh.kernel}}(
         const int n = {{"thread_id + start" if config.atomics else "col_reord[thread_id + start]"}};
 
         OPP_INT *opp_p2c = (p2c_map + n);
+    {% if lh.dh_loop_required %}
         if (opp_p2c[0] == MAX_CELL_INDEX) {
             return;
         }
+    {% endif %}
 
         char move_flag = OPP_NEED_MOVE;
         bool iter_one_flag = (OPP_comm_iteration_d > 0) ? false : true;
@@ -218,13 +224,19 @@ __global__ void opp_dev_{{lh.kernel}}(
             {% endif %}
 
         {% endfor %}
+        {% for dat in lh.dats if config.atomics and lh is particle_loop %}
+            {% if dat is indirect_reduction(lh) %}
+        {{dat.typ}}* tmp{{dat.id}} = dat{{dat.id}}[threadIdx.x % dat{{dat.id}}_arr_count];
+
+            {% endif %}
+        {% endfor %}
         do
         {
             const OPP_INT p2c = opp_p2c[0]; // get the value here, since the kernel might change it
             const OPP_INT* opp_c2c = c2c_map + p2c;           
 
         {% for arg in lh.args_expanded|dat|indirect|reduction if config.atomics %}
-            for (int d = 0; {{opt_cuda_cond_comp(arg)}}d < {{lh.dat(arg).dim}}; ++d)
+            for (int d = 0; {{opt_device_cond_comp(arg)}}d < {{lh.dat(arg).dim}}; ++d)
             {% if arg is p2c_mapped and not double_indirect %}
                 arg{{arg.id}}_p2c_local[d] = {{lh.dat(arg).typ}}_ZERO;
             {% else %}
@@ -235,16 +247,21 @@ __global__ void opp_dev_{{lh.kernel}}(
             opp_k{{kernel_idx}}::{{lh.kernel}}(
                 move_flag, iter_one_flag, opp_c2c, opp_p2c,
                 {% for arg in lh.args %}
-                {%+ call opt_cuda_tern(arg) %}{{arg_to_pointer_cuda(arg)}}{% endcall %}{{"," if not loop.last}} // {% if arg is dat %}{{lh.dat(arg).ptr}} {% endif +%}
+                {%+ call opt_device_tern(arg) %}{{arg_to_pointer_device(arg)}}{% endcall %}{{"," if not loop.last}} // {% if arg is dat %}{{lh.dat(arg).ptr}} {% endif +%}
                 {% endfor %}          
             );
 
+        {% if lh is particle_loop and config.atomics %}
+        {% set dat_name = "tmp" -%}
+        {% else %}
+        {% set dat_name = "dat" -%}
+        {% endif %}
         {% for arg in lh.args_expanded|dat|indirect|reduction if config.atomics %}
-            for (int d = 0; {{opt_cuda_cond_comp(arg)}}d < {{lh.dat(arg).dim}}; ++d)
+            for (int d = 0; {{opt_device_cond_comp(arg)}}d < {{lh.dat(arg).dim}}; ++d)
             {% if arg is p2c_mapped and not double_indirect %}
-                atomicAdd(dat{{arg.dat_id}} + {{map_lookup(arg, kernel_idx)}} + (d{{stride_cuda(arg)}}), arg{{arg.id}}_p2c_local[d]);
+                atomicAdd({{dat_name}}{{arg.dat_id}} + {{map_lookup(arg, kernel_idx)}} + (d{{stride_device(arg)}}), arg{{arg.id}}_p2c_local[d]);
             {% else %}
-                atomicAdd(dat{{arg.dat_id}} + {{map_lookup(arg, kernel_idx)}} + (d{{stride_cuda(arg)}}), arg{{arg.id}}_{{arg.map_idx}}_local[d]); // TODO: this looks incorrect
+                atomicAdd({{dat_name}}{{arg.dat_id}} + {{map_lookup(arg, kernel_idx)}} + (d{{stride_device(arg)}}), arg{{arg.id}}_{{arg.map_idx}}_local[d]); // TODO: this looks incorrect
             {% endif %}        
         {% endfor %}
         } while (opp_part_check_status_device(move_flag, iter_one_flag, opp_p2c, n, 
@@ -253,7 +270,7 @@ __global__ void opp_dev_{{lh.kernel}}(
     }
     {% for arg in lh.args|gbl|reduction %}
 
-    for (int d = 0; {{opt_cuda_cond_comp(arg)}}d < {{arg.dim}}; ++d)
+    for (int d = 0; {{opt_device_cond_comp(arg)}}d < {{arg.dim}}; ++d)
         opp_reduction<OPP_{{arg.access_type.name}}>(gbl{{arg.id}} + blockIdx.x * {{arg.dim}} + d, gbl{{arg.id}}_local[d]);
     {% endfor %}
 }
@@ -284,7 +301,7 @@ void opp_particle_move__{{lh.kernel}}(opp_set set, opp_map c2c_map, opp_map p2c_
     {% endfor %}
     args[{{lh.args|length}}] = opp_arg_dat(p2c_map->p2c_dat, OPP_RW); // required to make dirty or should manually make it dirty
 
-    const int iter_size = opp_mpi_halo_exchanges_grouped(set, nargs, args, Device_GPU);
+    opp_mpi_halo_exchanges_grouped(set, nargs, args, Device_GPU);
     {% if lh is double_indirect_reduc %}
 
 #ifdef USE_MPI
@@ -338,18 +355,28 @@ void opp_particle_move__{{lh.kernel}}(opp_set set, opp_map c2c_map, opp_map p2c_
     int num_blocks = 200;
 
     opp_init_particle_move(set, nargs, args);
-
-    opp_mem::dev_copy_to_symbol<OPP_INT>(OPP_comm_iteration_d, &OPP_comm_iteration, 1);
-
-    num_blocks = (OPP_iter_end - OPP_iter_start - 1) / block_size + 1;
-
 {% endblock %}
 
 {% macro kernel_call(shared_size) %}
+opp_mem::dev_copy_to_symbol<OPP_INT>(OPP_comm_iteration_d, &OPP_comm_iteration, 1);
+num_blocks = ({{varargs[1]}} - {{varargs[0]}} - 1) / block_size + 1;
+
+    {% for dat in lh.dats|soa %}
+opp_mem::dev_copy_to_symbol<OPP_INT>(opp_k{{kernel_idx}}_dat{{dat.id}}_stride_d, &opp_k{{kernel_idx}}_dat{{dat.id}}_stride, &(args[{{dat.arg_id}}].dat->set->set_capacity), 1);
+    {% endfor %}
+    {% for map in lh.maps %}
+opp_mem::dev_copy_to_symbol<OPP_INT>(opp_k{{kernel_idx}}_map{{map.id}}_stride_d, &opp_k{{kernel_idx}}_map{{map.id}}_stride, &(args[{{map.arg_id}}].size), 1);
+    {% endfor %}
+
+opp_profiler->start("move_kernel_only");
 opp_dev_{{lh.kernel}}<<<num_blocks, block_size
 {{-(", %s" % shared_size) if lh.args|gbl|reduction|length > 0}}>>>(
     {% for dat in lh.dats %}
+        {% if dat is indirect_reduction(lh) and lh is particle_loop %}
+    arg{{dat.arg_id}}_dat_thread_data_d, array_count,    // {{dat.ptr}}
+        {% else %}
     ({{dat.typ}} *)args[{{dat.arg_id}}].data_d,    // {{dat.ptr}}
+        {% endif %}
     {% endfor %}
     (OPP_INT *)args[{{lh.args|length}}].data_d,    // p2c_map
     (OPP_INT *)c2c_map->map_d,    // c2c_map
@@ -368,9 +395,11 @@ opp_dev_{{lh.kernel}}<<<num_blocks, block_size
     {{extra_arg}}{{"," if not loop.last}}
     {% endfor %}
 );
+OPP_DEVICE_SYNCHRONIZE();   
+opp_profiler->end("move_kernel_only");
 {%- endmacro %}
 
-{% block host_loop %}
+{%- macro dh_check_for_global_move() %}
     if (useGlobalMove) {
            
 #ifdef USE_MPI         
@@ -381,8 +410,11 @@ opp_dev_{{lh.kernel}}<<<num_blocks, block_size
 
         opp_mem::dev_copy_to_symbol<OPP_INT>(cellMapper_pos_stride_d, &cellMapper_pos_stride, &(args[0].dat->set->set_capacity), 1);
         opp_mem::dev_copy_to_symbol<OPP_INT>(OPP_rank_d, &OPP_rank, 1);
-
-        // check whether particles needs to be moved over global move routine
+        cutilSafeCall(cudaMemcpyToSymbol(opp_minSavedDHGrid_d, opp_minSavedDHGrid, 3 * sizeof(size_t)));
+        cutilSafeCall(cudaMemcpyToSymbol(opp_maxSavedDHGrid_d, opp_maxSavedDHGrid, 3 * sizeof(size_t)));
+        
+        // check whether particles need to be moved via the global move routine
+        num_blocks = (OPP_iter_end - OPP_iter_start - 1) / block_size + 1;
         opp_dev_checkForGlobalMove{{lh.dat(lh.args[0]).dim}}D_kernel<<<num_blocks, block_size>>>(
             (OPP_REAL*)args[0].data_d,    // {{lh.dat(lh.args[0]).ptr}} 
             (OPP_INT *)args[{{lh.args|length}}].data_d,    // p2c_map
@@ -409,23 +441,46 @@ opp_dev_{{lh.kernel}}<<<num_blocks, block_size
         globalMover->communicate(set);
 #endif
     }
+{%- endmacro %}
 
-    {% for dat in lh.dats|soa %}
-    opp_mem::dev_copy_to_symbol<OPP_INT>(opp_k{{kernel_idx}}_dat{{dat.id}}_stride_d, &opp_k{{kernel_idx}}_dat{{dat.id}}_stride, &(args[{{dat.arg_id}}].dat->set->set_capacity), 1);
-    {% endfor %}
-    {% for map in lh.maps %}
-    opp_mem::dev_copy_to_symbol<OPP_INT>(opp_k{{kernel_idx}}_map{{map.id}}_stride_d, &opp_k{{kernel_idx}}_map{{map.id}}_stride, &(args[{{map.arg_id}}].size), 1);
-    {% endfor %}
+{%- macro dh_finalize() %}
+#ifdef USE_MPI 
+    // ----------------------------------------------------------------------------
+    // finalize the global move routine and iterate over newly added particles and check whether they need neighbour comm
+    if (useGlobalMove) { 
+        
+        opp_profiler->start("GblMv_finalize");
+        const int finalized = globalMover->finalize(set);
+        opp_profiler->end("GblMv_finalize");
 
+        if (finalized > 0) {
+            opp_profiler->start("GblMv_AllMv");
+
+            // need to change arg data since particle resize in globalMover::finalize could change the pointer in dat->data 
+            for (int i = 0; i < nargs; i++)
+                if (args[i].argtype == OPP_ARG_DAT && args[i].dat->set->is_particle)
+                    args[i].data_d = args[i].dat->data_d;
+
+            // check whether the new particle is within cell, and if not move between cells within the MPI rank, 
+            // mark for neighbour comm. Do only for the globally moved particles 
+            const int start2 = (set->size - set->diff);
+            const int end2 = set->size;
+      
+            {{kernel_call("(reduction_size * block_size)",
+                    "start2", "end2")|indent(12)}}
+
+            opp_profiler->end("GblMv_AllMv");
+        }
+    }
+#endif
+{%- endmacro %}
+
+{%- macro generate_storage_for_global_reductions() -%}
     {% if lh.args|gbl|reduction|length > 0 %}
         {% if lh is direct %}
     int max_blocks = num_blocks;
         {% elif config.atomics %}
     int max_blocks = (MAX(set->core_size, set->size + set->exec_size - set->core_size) - 1) / block_size + 1;
-        {% else %}
-    int max_blocks = 0;
-    for (int col = 0; col < plan->ncolors; ++col)
-        max_blocks = MAX(max_blocks, plan->ncolblk[col]);
         {% endif %}
 
     int reduction_bytes = 0;
@@ -461,78 +516,9 @@ opp_dev_{{lh.kernel}}<<<num_blocks, block_size
 
     opp_mvReductArraysToDevice(reduction_bytes);
     {% endif %}
+{%- endmacro %}
 
-    opp_profiler->start("Mv_AllMv0");
-    // ----------------------------------------------------------------------------
-    // check whether all particles not marked for global comm is within cell, 
-    // and if not mark to move between cells within the MPI rank, mark for neighbour comm
-    opp_profiler->start("move_kernel_only");
-    {{kernel_call("(reduction_size * block_size)",
-            "OPP_iter_start", "OPP_iter_end")|indent(4)}}
-    OPP_DEVICE_SYNCHRONIZE();   
-    opp_profiler->end("move_kernel_only");
-    opp_profiler->end("Mv_AllMv0");
-
-#ifdef USE_MPI 
-    // ----------------------------------------------------------------------------
-    // finalize the global move routine and iterate over newly added particles and check whether they need neighbour comm
-    if (useGlobalMove && globalMover->finalize(set) > 0) {
-        
-        opp_profiler->start("GblMv_AllMv");
-
-        // need to change arg data since particle resize in globalMover::finalize could change the pointer in dat->data 
-        for (int i = 0; i < nargs; i++)
-            if (args[i].argtype == OPP_ARG_DAT && args[i].dat->set->is_particle)
-                args[i].data_d = args[i].dat->data_d;
-
-        // check whether the new particle is within cell, and if not move between cells within the MPI rank, 
-        // mark for neighbour comm. Do only for the globally moved particles 
-        const int start2 = (set->size - set->diff);
-        const int end2 = set->size;
-        num_blocks = (end2 - start2 - 1) / block_size + 1;
-    {% for dat in lh.dats|soa %}
-        opp_mem::dev_copy_to_symbol<OPP_INT>(opp_k{{kernel_idx}}_dat{{dat.id}}_stride_d, &opp_k{{kernel_idx}}_dat{{dat.id}}_stride, &(args[{{dat.arg_id}}].dat->set->set_capacity), 1);
-    {% endfor %}
-    {% for map in lh.maps %}
-        opp_mem::dev_copy_to_symbol<OPP_INT>(opp_k{{kernel_idx}}_map{{map.id}}_stride_d, &opp_k{{kernel_idx}}_map{{map.id}}_stride, &(args[{{map.arg_id}}].size), 1);
-    {% endfor %}
-
-        opp_profiler->start("move_kernel_only");      
-        {{kernel_call("(reduction_size * block_size)",
-                "start2", "end2")|indent(8)}}
-        OPP_DEVICE_SYNCHRONIZE(); 
-        opp_profiler->end("move_kernel_only");
-
-        opp_profiler->end("GblMv_AllMv");
-    }
-#endif
-
-    // ----------------------------------------------------------------------------
-    // Do neighbour communication and if atleast one particle is received by the currect rank, 
-    // then iterate over the newly added particles
-    while (opp_finalize_particle_move(set)) {
-
-    {% for dat in lh.dats|soa %}
-        opp_mem::dev_copy_to_symbol<OPP_INT>(opp_k{{kernel_idx}}_dat{{dat.id}}_stride_d, &opp_k{{kernel_idx}}_dat{{dat.id}}_stride, &(args[{{dat.arg_id}}].dat->set->set_capacity), 1);
-    {% endfor %}
-    {% for map in lh.maps %}
-        opp_mem::dev_copy_to_symbol<OPP_INT>(opp_k{{kernel_idx}}_map{{map.id}}_stride_d, &opp_k{{kernel_idx}}_map{{map.id}}_stride, &(args[{{map.arg_id}}].size), 1);
-    {% endfor %}
-
-        opp_init_particle_move(set, nargs, args);
-        opp_mem::dev_copy_to_symbol<OPP_INT>(OPP_comm_iteration_d, &OPP_comm_iteration, 1);
-
-        num_blocks = (OPP_iter_end - OPP_iter_start - 1) / block_size + 1;
-        opp_profiler->start("move_kernel_only");
-        {{kernel_call("(reduction_size * block_size)",
-                "OPP_iter_start", "OPP_iter_end")|indent(8)}}
-        OPP_DEVICE_SYNCHRONIZE();   
-        opp_profiler->end("move_kernel_only");
-    }
-
-{% endblock %}
-
-{% block host_epilogue %}
+{%- macro reduce_global_reductions() -%}
     {% if lh.args|gbl|read_write|length > 0 or lh.args|gbl|write|length > 0 %}
     mvConstArraysToHost(const_bytes);
     
@@ -563,6 +549,64 @@ opp_dev_{{lh.kernel}}<<<num_blocks, block_size
         {% endcall %}
 
     {% endfor %}
+{%- endmacro %}
+
+{%- macro create_arrays_for_particle_indirect_reductions() -%}
+    {% if lh.args|dat|indirect|reduction|length > 0 and lh is particle_loop %}
+    const int array_count = opp_params->get<OPP_INT>("gpu_reduction_arrays");
+    {% endif %}
+    {% for dat in lh.dats %}
+        {% if dat is indirect_reduction(lh) and lh is particle_loop %}
+    {{dat.typ}}** arg{{dat.id}}_dat_thread_data_d = opp_create_thread_level_data<{{dat.typ}}>(args[{{dat.arg_id}}]);
+
+        {% endif %}
+    {% endfor %}
+{%- endmacro %}
+
+{%- macro reduce_particle_indirect_reduction_arrays() -%}
+    {% for dat in lh.dats %}
+        {% if dat is indirect_reduction(lh) and lh is particle_loop %}
+    opp_reduce_thread_level_data<{{dat.typ}}>(args[{{dat.id}}]);
+        {% endif %}
+    {% endfor %}
+{%- endmacro %}
+
+{% block host_loop %}
+    {% if lh.dh_loop_required %}
+{{ dh_check_for_global_move() }}
+
+    {% endif%}
+
+    // ----------------------------------------------------------------------------
+    // check whether all particles not marked for global comm is within cell, 
+    // and if not mark to move between cells within the MPI rank, mark for neighbour comm
+{{ generate_storage_for_global_reductions() }}
+{{ create_arrays_for_particle_indirect_reductions() }}
+    opp_profiler->start("Mv_AllMv0");
+
+    {{kernel_call("(reduction_size * block_size)",
+            "OPP_iter_start", "OPP_iter_end")|indent(4)}}
+    opp_profiler->end("Mv_AllMv0");
+    {% if lh.dh_loop_required %}    
+{{ dh_finalize() }}
+    {% endif%}
+
+    // ----------------------------------------------------------------------------
+    // Do neighbour communication and if atleast one particle is received by the currect rank, 
+    // then iterate over the newly added particles
+    while (opp_finalize_particle_move(set)) {
+
+        opp_init_particle_move(set, nargs, args);
+
+        {{kernel_call("(reduction_size * block_size)",
+                "OPP_iter_start", "OPP_iter_end")|indent(8)}}
+    }
+
+{{ reduce_global_reductions() }}
+{{ reduce_particle_indirect_reduction_arrays() }}
+{% endblock %}
+
+{% block host_epilogue %}
     opp_set_dirtybit_grouped(nargs, args, Device_GPU);
     OPP_DEVICE_SYNCHRONIZE();   
     {% if lh is double_indirect_reduc %}
@@ -659,7 +703,7 @@ void opp_init_direct_hop_cg(double grid_spacing, const opp_dat c_gbl_id, const o
                 }
             }
         };
-        
+
         if (opp_params->get<OPP_BOOL>("opp_dh_data_generate")) {
             cellMapper->generateStructuredMesh(c_gbl_id->set, c_gbl_id, all_cell_checker);
         }
