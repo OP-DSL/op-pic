@@ -81,7 +81,7 @@ endif
 HDF5 ?= 0
 ifeq ($(HDF5), 1)
 	ALL_INC  += -I$(HDF5_INSTALL_PATH)/include 
-	ALL_LIBS += -L$(HDF5_INSTALL_PATH)/lib
+	ALL_LIBS += -Wl,-rpath,$(HDF5_INSTALL_PATH)/lib -L$(HDF5_INSTALL_PATH)/lib
 endif
 
 ALL_INC    += -I$(OPP_PATH)/include $(PETSC_INC)
@@ -212,10 +212,10 @@ cuda_mpi: mklib opp_kernels+cuda_mpi fempic_opp+cuda_mpi field_solver+cuda_mpi
 
 cuda_mpi_hdf5: mklib opp_kernels+cuda_mpi fempic_hdf5_opp+cuda_mpi field_solver+cuda_mpi opp_mpi_hdf5+cuda_mpi
 	     $(MPICPP) $(CPPFLAGS) -DUSE_MPI -o $(BIN)/cuda_mpi_hdf5 \
-		 	$(OBJ)/field_solver_cuda_mpi_hdf5.o \
+		 	$(OBJ)/field_solver_cuda_mpi.o \
 			$(OBJ)/fempic_hdf5_opp_cuda_mpi.o \
 			$(OBJ)/opp_mpi_hdf5_cuda_mpi_hdf5.o \
-			$(OBJ)/opp_kernels_cuda_mpi_hdf5.o \
+			$(OBJ)/opp_kernels_cuda_mpi.o \
 			$(ALL_LIBS) $(CUDA_LIB) -lopp_cuda_mpi_pet -lz -lhdf5
 
 # ----------------------------------------------------------------------------------------------------------------------
