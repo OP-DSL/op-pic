@@ -60,41 +60,20 @@ void opp_particle_sort(opp_set set)
 }
 
 //****************************************
-__global__ void copy_int(const int*__restrict in_dat_d, int*__restrict out_dat_d, const int*__restrict indices, 
+template <typename T>
+__global__ void copy_from(const T*__restrict in_dat_d, T*__restrict out_dat_d, const int*__restrict from_idx, 
                         int in_stride, int out_stride, int in_offset, int out_offset, int dim, int size) 
 {
     const int tid = OPP_DEVICE_GLOBAL_LINEAR_ID;
     if (tid < size) {
-        const int idx = indices[tid];
+        const int idx = from_idx[tid];
         for (int d = 0; d < dim; d++) {
             out_dat_d[out_offset + tid + d * out_stride] = in_dat_d[in_offset + idx + d * in_stride];
         }
     }
 }
-__global__ void copy_real(const double*__restrict in_dat_d, double*__restrict out_dat_d, const int*__restrict indices, 
-                        int in_stride, int out_stride, int in_offset, int out_offset, int dim, int size) 
-{
-    const int tid = OPP_DEVICE_GLOBAL_LINEAR_ID;
-    if (tid < size) {
-        const int idx = indices[tid];
-        for (int d = 0; d < dim; d++) {
-            out_dat_d[out_offset + tid + d * out_stride] = in_dat_d[in_offset + idx + d * in_stride];
-        }
-    }
-}
-__global__ void copy_from_to_int(const int*__restrict in_dat_d, int*__restrict out_dat_d, const int*__restrict from_idx, 
-            const int*__restrict to_idx, int in_stride, int out_stride, int in_offset, int out_offset, int dim, int size) 
-{
-    const int tid = OPP_DEVICE_GLOBAL_LINEAR_ID;
-    if (tid < size) {
-        const int f_idx = from_idx[tid];
-        const int t_idx = to_idx[tid];
-        for (int d = 0; d < dim; d++) {
-            out_dat_d[out_offset + t_idx + d * out_stride] = in_dat_d[in_offset + f_idx + d * in_stride];
-        }
-    }
-}
-__global__ void copy_from_to_real(const double*__restrict in_dat_d, double*__restrict out_dat_d, const int*__restrict from_idx, 
+template <typename T>
+__global__ void copy_from_to(const T*__restrict in_dat_d, T*__restrict out_dat_d, const int*__restrict from_idx, 
             const int*__restrict to_idx, int in_stride, int out_stride, int in_offset, int out_offset, int dim, int size) 
 {
     const int tid = OPP_DEVICE_GLOBAL_LINEAR_ID;
@@ -119,7 +98,7 @@ void sort_dat_according_to_index_int(opp_dat dat, const thrust::device_vector<in
     // copy_according_to_index<int>(dat->thrust_int, dat->thrust_int_sort, new_idx_dv, 
     //         set_capacity, set_capacity, 0, out_start_idx, size, dat->dim);
     const int nblocks  = (size - 1) / opp_const_threads_per_block + 1;
-    copy_int <<<nblocks, opp_const_threads_per_block>>> (
+    copy_from<OPP_INT> <<<nblocks, opp_const_threads_per_block>>> (
         opp_get_dev_raw_ptr(*(dat->thrust_int)),
         opp_get_dev_raw_ptr(*(dat->thrust_int_sort)),
         opp_get_dev_raw_ptr(new_idx_dv),
@@ -157,7 +136,7 @@ void sort_dat_according_to_index_double(opp_dat dat, const thrust::device_vector
     // copy_according_to_index<double>(dat->thrust_real, dat->thrust_real_sort, new_idx_dv, 
     //         set_capacity, set_capacity, 0, out_start_idx, size, dat->dim);
     const int nblocks  = (size - 1) / opp_const_threads_per_block + 1;
-    copy_real <<<nblocks, opp_const_threads_per_block>>> (
+    copy_from<OPP_REAL> <<<nblocks, opp_const_threads_per_block>>> (
         opp_get_dev_raw_ptr(*(dat->thrust_real)),
         opp_get_dev_raw_ptr(*(dat->thrust_real_sort)),
         opp_get_dev_raw_ptr(new_idx_dv),
@@ -266,6 +245,20 @@ void particle_sort_device(opp_set set, bool shuffle)
     opp_profiler->end("PS_Dats");
 }
 
+__global__ void generate_hd_from_indices_kernel(OPP_INT* tmp_swap_indices, OPP_INT* hf_from_indices, 
+                                        const OPP_INT* cid, size_t part_remove_count) {
+    const size_t idx = OPP_DEVICE_GLOBAL_LINEAR_ID;
+    if (idx < part_remove_count) {
+        while (true) {
+            const OPP_INT pos = atomicAdd(tmp_swap_indices, -1);
+            if (cid[pos] != MAX_CELL_INDEX) {
+                hf_from_indices[idx] = pos;
+                break;
+            }
+        }
+    }
+};
+
 //****************************************
 // This assumes all the device data to be valid
 void particle_hole_fill_device(opp_set set)
@@ -285,6 +278,7 @@ void particle_hole_fill_device(opp_set set)
                     OPP_remove_particle_indices_dv.begin() + part_remove_count);
     opp_profiler->end("HF_SORT");
 
+#ifdef USE_OLD_HOLE_FILL
     // resize hf_sequence_dv and hf_from_indices_dv if required
     if (hf_sequence_dv.capacity() < set_capacity) {
         hf_sequence_dv.resize(set_capacity);
@@ -305,7 +299,28 @@ void particle_hole_fill_device(opp_set set)
         [] __device__(int i) { return i != MAX_CELL_INDEX; });
     hf_from_indices_dv.resize(part_remove_count);
     opp_profiler->end("HF_COPY_IF");
+#else
+    OPP_INT* tmp_swap_indices_dp = (OPP_INT *)set->particle_remove_count_d; // using dev ptr temporarily
+    OPP_INT tmp = set_size_plus_removed - 1;
+    opp_mem::copy_host_to_dev<int>(tmp_swap_indices_dp, &tmp, 1);
+    hf_from_indices_dv.resize(set_size_plus_removed);
 
+    // Find the hole fill from indices (order may not be preserved)
+    opp_profiler->start("HF_COPY_IF");
+    generate_hd_from_indices_kernel<<<nblocks, opp_const_threads_per_block>>>(
+        tmp_swap_indices_dp, opp_get_dev_raw_ptr(hf_from_indices_dv), 
+        (OPP_INT*)set->mesh_relation_dat->data_d, part_remove_count);
+    OPP_DEVICE_SYNCHRONIZE();
+    opp_profiler->end("HF_COPY_IF");
+
+    // Sort the hole fill from indices to avoid hole-filling issues
+    opp_profiler->start("HF_COPY_IF_SORT");
+    thrust::sort(thrust::device,
+        hf_from_indices_dv.begin(), hf_from_indices_dv.begin() + part_remove_count, 
+        thrust::greater<int>());
+    opp_profiler->end("HF_COPY_IF_SORT");
+#endif    
+    
     opp_profiler->start("HF_Dats");
     // For all the dats, fill the holes using the swap_indices
     for (opp_dat& dat : *(set->particle_dats)) {
@@ -320,7 +335,7 @@ void particle_hole_fill_device(opp_set set)
 
         if (strcmp(dat->type, "int") == 0) {
             
-            copy_from_to_int <<<nblocks, opp_const_threads_per_block>>> (
+            copy_from_to<OPP_INT> <<<nblocks, opp_const_threads_per_block>>> (
                 opp_get_dev_raw_ptr(*(dat->thrust_int)),
                 opp_get_dev_raw_ptr(*(dat->thrust_int)),
                 from_indices, to_indices,
@@ -330,7 +345,7 @@ void particle_hole_fill_device(opp_set set)
         }
         else if (strcmp(dat->type, "double") == 0) {
             
-            copy_from_to_real <<<nblocks, opp_const_threads_per_block>>> (
+            copy_from_to<OPP_REAL> <<<nblocks, opp_const_threads_per_block>>> (
                 opp_get_dev_raw_ptr(*(dat->thrust_real)),
                 opp_get_dev_raw_ptr(*(dat->thrust_real)),
                 from_indices, to_indices,
