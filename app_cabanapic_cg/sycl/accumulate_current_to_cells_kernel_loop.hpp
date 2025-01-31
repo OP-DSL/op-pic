@@ -60,7 +60,7 @@ void opp_par_loop_all__accumulate_current_to_cells_kernel(opp_set set,
     opp_mpi_halo_wait_all(nargs, args);
 
     if (iter_size > 0) {
-
+        
         opp_queue->submit([&](sycl::handler &cgh) {
 
             const OPP_INT* opp_k3_dat0_stride_sycl = opp_k3_dat0_stride_s;

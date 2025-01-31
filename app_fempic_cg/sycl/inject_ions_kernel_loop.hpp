@@ -84,7 +84,7 @@ void opp_par_loop_injected__inject_ions_kernel(opp_set set,
     opp_mpi_halo_wait_all(nargs, args);
 
     if (iter_size > 0) {
-
+        
         opp_queue->submit([&](sycl::handler &cgh) {
 
             const OPP_INT* opp_k2_dat0_stride_sycl = opp_k2_dat0_stride_s;
@@ -100,8 +100,8 @@ void opp_par_loop_injected__inject_ions_kernel(opp_set set,
             const OPP_INT* opp_k2_map0_stride_sycl = opp_k2_map0_stride_s;
     
             const OPP_REAL* CONST_charge_sycl = CONST_charge_s;
-            const OPP_REAL* CONST_ion_velocity_sycl = CONST_ion_velocity_s;
             const OPP_REAL* CONST_dt_sycl = CONST_dt_s;
+            const OPP_REAL* CONST_ion_velocity_sycl = CONST_ion_velocity_s;
             const OPP_REAL* CONST_mass_sycl = CONST_mass_s;
 
             OPP_REAL* dat0_sycl = (OPP_REAL*)args[0].data_d;     // p_pos

@@ -217,6 +217,8 @@ void opp_particle_move__move_kernel(opp_set set, opp_map c2c_map, opp_map p2c_ma
         globalMover->communicate(set);
 #endif
     }
+
+
     // ----------------------------------------------------------------------------
     // check whether all particles not marked for global comm is within cell, 
     // and if not mark to move between cells within the MPI rank, mark for neighbour comm

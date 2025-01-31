@@ -117,19 +117,19 @@ void opp_par_loop_all__deposit_charge_on_nodes_kernel(opp_set set,
                         arg4_3_local // n_charge_den 
                     );
 
-                    OPP_REAL* tmp1 = dat1_sycl[item.get_local_id(0) % array_count];
+                    OPP_REAL* tmp1_sycl = dat1_sycl[item.get_local_id(0) % array_count];
 
                     for (int d = 0; d < 1; ++d)
-                        opp_atomic_fetch_add(tmp1 + map0_sycl[opp_k5_map0_stride_sycl[0] * 0 + opp_p2c[0]] + (d * opp_k5_dat1_stride_sycl[0]), arg1_0_local[d]);
+                        opp_atomic_fetch_add(tmp1_sycl + map0_sycl[opp_k5_map0_stride_sycl[0] * 0 + opp_p2c[0]] + (d * opp_k5_dat1_stride_sycl[0]), arg1_0_local[d]);
 
                     for (int d = 0; d < 1; ++d)
-                        opp_atomic_fetch_add(tmp1 + map0_sycl[opp_k5_map0_stride_sycl[0] * 1 + opp_p2c[0]] + (d * opp_k5_dat1_stride_sycl[0]), arg2_1_local[d]);
+                        opp_atomic_fetch_add(tmp1_sycl + map0_sycl[opp_k5_map0_stride_sycl[0] * 1 + opp_p2c[0]] + (d * opp_k5_dat1_stride_sycl[0]), arg2_1_local[d]);
 
                     for (int d = 0; d < 1; ++d)
-                        opp_atomic_fetch_add(tmp1 + map0_sycl[opp_k5_map0_stride_sycl[0] * 2 + opp_p2c[0]] + (d * opp_k5_dat1_stride_sycl[0]), arg3_2_local[d]);
+                        opp_atomic_fetch_add(tmp1_sycl + map0_sycl[opp_k5_map0_stride_sycl[0] * 2 + opp_p2c[0]] + (d * opp_k5_dat1_stride_sycl[0]), arg3_2_local[d]);
 
                     for (int d = 0; d < 1; ++d)
-                        opp_atomic_fetch_add(tmp1 + map0_sycl[opp_k5_map0_stride_sycl[0] * 3 + opp_p2c[0]] + (d * opp_k5_dat1_stride_sycl[0]), arg4_3_local[d]);
+                        opp_atomic_fetch_add(tmp1_sycl + map0_sycl[opp_k5_map0_stride_sycl[0] * 3 + opp_p2c[0]] + (d * opp_k5_dat1_stride_sycl[0]), arg4_3_local[d]);
                 }
     
             };

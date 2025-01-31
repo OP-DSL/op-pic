@@ -45,6 +45,14 @@ OPP_REAL* CONST_qdt_2mc_s = nullptr;
 OPP_REAL* CONST_dt_eps0_s = nullptr;
 OPP_REAL* CONST_acc_coef_s = nullptr;
 
+OPP_REAL CONST_dt[1];
+OPP_REAL CONST_qsp[1];
+OPP_REAL CONST_cdt_d[3];
+OPP_REAL CONST_p[3];
+OPP_REAL CONST_qdt_2mc[1];
+OPP_REAL CONST_dt_eps0[1];
+OPP_REAL CONST_acc_coef[3];
+
 void opp_decl_const_impl(int dim, int size, char* data, const char* name) {
     
     if (OPP_DBG)
@@ -53,36 +61,43 @@ void opp_decl_const_impl(int dim, int size, char* data, const char* name) {
     if (!strcmp(name, "CONST_dt")) {
         opp_register_const<OPP_REAL>(CONST_dt_s, dim);
         opp_mem::copy_host_to_dev<OPP_REAL>(CONST_dt_s, (OPP_REAL*)data, dim);
+        std::memcpy(CONST_dt, data, (size*dim));
         return;
     }
     if (!strcmp(name, "CONST_qsp")) {
         opp_register_const<OPP_REAL>(CONST_qsp_s, dim);
         opp_mem::copy_host_to_dev<OPP_REAL>(CONST_qsp_s, (OPP_REAL*)data, dim);
+        std::memcpy(CONST_qsp, data, (size*dim));
         return;
     }
     if (!strcmp(name, "CONST_cdt_d")) {
         opp_register_const<OPP_REAL>(CONST_cdt_d_s, dim);
         opp_mem::copy_host_to_dev<OPP_REAL>(CONST_cdt_d_s, (OPP_REAL*)data, dim);
+        std::memcpy(CONST_cdt_d, data, (size*dim));
         return;
     }
     if (!strcmp(name, "CONST_p")) {
         opp_register_const<OPP_REAL>(CONST_p_s, dim);
         opp_mem::copy_host_to_dev<OPP_REAL>(CONST_p_s, (OPP_REAL*)data, dim);
+        std::memcpy(CONST_p, data, (size*dim));
         return;
     }
     if (!strcmp(name, "CONST_qdt_2mc")) {
         opp_register_const<OPP_REAL>(CONST_qdt_2mc_s, dim);
         opp_mem::copy_host_to_dev<OPP_REAL>(CONST_qdt_2mc_s, (OPP_REAL*)data, dim);
+        std::memcpy(CONST_qdt_2mc, data, (size*dim));
         return;
     }
     if (!strcmp(name, "CONST_dt_eps0")) {
         opp_register_const<OPP_REAL>(CONST_dt_eps0_s, dim);
         opp_mem::copy_host_to_dev<OPP_REAL>(CONST_dt_eps0_s, (OPP_REAL*)data, dim);
+        std::memcpy(CONST_dt_eps0, data, (size*dim));
         return;
     }
     if (!strcmp(name, "CONST_acc_coef")) {
         opp_register_const<OPP_REAL>(CONST_acc_coef_s, dim);
         opp_mem::copy_host_to_dev<OPP_REAL>(CONST_acc_coef_s, (OPP_REAL*)data, dim);
+        std::memcpy(CONST_acc_coef, data, (size*dim));
         return;
     }
 

@@ -523,6 +523,8 @@ inline T** opp_create_thread_level_data(opp_arg arg)
 template <typename T>
 inline void opp_reduce_thread_level_data(opp_arg arg) 
 {
+    OPP_DEVICE_SYNCHRONIZE(); 
+    
     opp_queue->submit([&](sycl::handler &cgh) {
 
         opp_dat dat = arg.dat;

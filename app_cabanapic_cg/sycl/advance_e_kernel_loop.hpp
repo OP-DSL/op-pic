@@ -59,7 +59,7 @@ void opp_par_loop_all__advance_e_kernel(opp_set set,
     opp_mpi_halo_wait_all(nargs, args);
 
     if (iter_size > 0) {
-
+        
         opp_queue->submit([&](sycl::handler &cgh) {
 
             const OPP_INT* opp_k7_dat0_stride_sycl = opp_k7_dat0_stride_s;

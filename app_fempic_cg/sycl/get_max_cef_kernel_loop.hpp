@@ -62,7 +62,7 @@ void opp_par_loop_all__get_max_cef_kernel(opp_set set,
     opp_mvReductArraysToDevice(reduction_bytes);
     
     if (iter_size > 0) {
-
+        
         opp_queue->submit([&](sycl::handler &cgh) {
 
             const OPP_INT* opp_k8_dat0_stride_sycl = opp_k8_dat0_stride_s;

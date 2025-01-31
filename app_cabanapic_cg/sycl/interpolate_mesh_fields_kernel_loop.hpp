@@ -71,7 +71,7 @@ void opp_par_loop_all__interpolate_mesh_fields_kernel(opp_set set,
     opp_mpi_halo_wait_all(nargs, args);
 
     if (iter_size > 0) {
-
+        
         opp_queue->submit([&](sycl::handler &cgh) {
 
             const OPP_INT* opp_k1_dat0_stride_sycl = opp_k1_dat0_stride_s;

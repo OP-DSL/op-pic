@@ -27,12 +27,6 @@ enum CellAcc {
     jfz = 2 * 4,
 };
 
-enum Dim {
-    x = 0,
-    y = 1,
-    z = 2,
-};
-
 __device__ inline void weight_current_to_accumulator_kernel(
         double* cell_acc,
         const double* q,
@@ -81,6 +75,12 @@ enum CellInterp {
     dcbydy,
     cbz,
     dcbzdz,
+};
+
+enum Dim {
+    x = 0,
+    y = 1,
+    z = 2,
 };
 
 __device__ inline void move_deposit_kernel(
@@ -405,6 +405,7 @@ void opp_particle_move__move_deposit_kernel(opp_set set, opp_map c2c_map, opp_ma
     int num_blocks = 200;
 
     opp_init_particle_move(set, nargs, args);
+
     // ----------------------------------------------------------------------------
     // check whether all particles not marked for global comm is within cell, 
     // and if not mark to move between cells within the MPI rank, mark for neighbour comm

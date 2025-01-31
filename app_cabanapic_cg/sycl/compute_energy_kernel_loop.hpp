@@ -67,7 +67,7 @@ void opp_par_loop_all__compute_energy_kernel(opp_set set,
     opp_mvReductArraysToDevice(reduction_bytes);
     
     if (iter_size > 0) {
-
+        
         opp_queue->submit([&](sycl::handler &cgh) {
 
             const OPP_INT* opp_k8_dat0_stride_sycl = opp_k8_dat0_stride_s;

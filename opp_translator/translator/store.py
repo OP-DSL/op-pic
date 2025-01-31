@@ -156,6 +156,7 @@ class Program:
                     const_id = findIdx(self.consts, lambda d: d.ptr == node.spelling)
                     if const_id is not None:
                         loop.addConst(self.consts[const_id])
+            loop.consts.sort(key=lambda c: c.ptr.strip())
         for loop in self.loops:
             for arg in loop.args:
                 if isinstance(arg, OPP.ArgDat):

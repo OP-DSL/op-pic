@@ -328,7 +328,7 @@ class Loop:
     dats: List[Dat]
     maps: List[Map]
 
-    consts: Set[Const]
+    consts: List[Const]
 
     fallback: bool
     dh_loop_required = False
@@ -351,7 +351,7 @@ class Loop:
         self.args = []
         self.args_expanded = []
 
-        self.consts = set()
+        self.consts = []
 
         self.fallback = False
 
@@ -457,7 +457,9 @@ class Loop:
         return idx
 
     def addConst(self, const: Const) -> None:
-        self.consts.add(const)
+        id = findIdx(self.consts, lambda m: m.ptr == const.ptr)
+        if id is None:
+            self.consts.append(const)
 
     def arg(self, x: Union[Dat, int]) -> Optional[Arg]:
         if isinstance(x, Dat):

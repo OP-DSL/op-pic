@@ -132,9 +132,9 @@ void opp_dev_move_kernel_sycl(opp_set set, const int nargs, opp_arg *args, opp_m
             }
 
             if (!(point_lc[(0) * opp_k4_dat1_stride_sycl[0]] < 0.0 || point_lc[(0) * opp_k4_dat1_stride_sycl[0]] > 1.0 ||
-                    point_lc[(1) * opp_k4_dat1_stride_sycl[0]] < 0.0 || point_lc[(1) * opp_k4_dat1_stride_sycl[0]] > 1.0 ||
-                    point_lc[(2) * opp_k4_dat1_stride_sycl[0]] < 0.0 || point_lc[(2) * opp_k4_dat1_stride_sycl[0]] > 1.0 ||
-                    point_lc[(3) * opp_k4_dat1_stride_sycl[0]] < 0.0 || point_lc[(3) * opp_k4_dat1_stride_sycl[0]] > 1.0)) {
+                  point_lc[(1) * opp_k4_dat1_stride_sycl[0]] < 0.0 || point_lc[(1) * opp_k4_dat1_stride_sycl[0]] > 1.0 ||
+                  point_lc[(2) * opp_k4_dat1_stride_sycl[0]] < 0.0 || point_lc[(2) * opp_k4_dat1_stride_sycl[0]] > 1.0 ||
+                  point_lc[(3) * opp_k4_dat1_stride_sycl[0]] < 0.0 || point_lc[(3) * opp_k4_dat1_stride_sycl[0]] > 1.0)) {
 
                 { opp_move_status_flag = OPP_MOVE_DONE; };
                 return;
@@ -176,7 +176,7 @@ void opp_dev_move_kernel_sycl(opp_set set, const int nargs, opp_arg *args, opp_m
                 
                 char move_flag = OPP_NEED_MOVE;
                 bool iter_one_flag = (comm_iteration[0] > 0) ? false : true;
-                
+
                 do {
                     const OPP_INT p2c = opp_p2c[0];
                     const OPP_INT* opp_c2c = c2c_map_sycl + p2c;
@@ -187,9 +187,9 @@ void opp_dev_move_kernel_sycl(opp_set set, const int nargs, opp_arg *args, opp_m
                         dat1_sycl + n, // p_lc 
                         dat2_sycl + p2c, // c_volume 
                         dat3_sycl + p2c // c_det 
-            
+         
                     ); 
-                
+            
                 } while (opp_part_check_status_device(move_flag, iter_one_flag, opp_p2c, n, 
                             remove_count, remove_part_indices, 
                             move_part_indices, move_cell_indices, move_count, cell_set_size));
@@ -205,7 +205,7 @@ void opp_dev_move_kernel_sycl(opp_set set, const int nargs, opp_arg *args, opp_m
 
     opp_profiler->end("move_kernel_only");
 }
-}
+} // end of namespace
 
 //--------------------------------------------------------------
 void opp_particle_move__move_kernel(opp_set set, opp_map c2c_map, opp_map p2c_map,

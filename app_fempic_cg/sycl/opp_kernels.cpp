@@ -45,6 +45,14 @@ OPP_REAL* CONST_mass_s = nullptr;
 OPP_REAL* CONST_charge_s = nullptr;
 OPP_REAL* CONST_wall_potential_s = nullptr;
 
+OPP_REAL CONST_spwt[1];
+OPP_REAL CONST_ion_velocity[1];
+OPP_REAL CONST_dt[1];
+OPP_REAL CONST_plasma_den[1];
+OPP_REAL CONST_mass[1];
+OPP_REAL CONST_charge[1];
+OPP_REAL CONST_wall_potential[1];
+
 void opp_decl_const_impl(int dim, int size, char* data, const char* name) {
     
     if (OPP_DBG)
@@ -53,36 +61,43 @@ void opp_decl_const_impl(int dim, int size, char* data, const char* name) {
     if (!strcmp(name, "CONST_spwt")) {
         opp_register_const<OPP_REAL>(CONST_spwt_s, dim);
         opp_mem::copy_host_to_dev<OPP_REAL>(CONST_spwt_s, (OPP_REAL*)data, dim);
+        std::memcpy(CONST_spwt, data, (size*dim));
         return;
     }
     if (!strcmp(name, "CONST_ion_velocity")) {
         opp_register_const<OPP_REAL>(CONST_ion_velocity_s, dim);
         opp_mem::copy_host_to_dev<OPP_REAL>(CONST_ion_velocity_s, (OPP_REAL*)data, dim);
+        std::memcpy(CONST_ion_velocity, data, (size*dim));
         return;
     }
     if (!strcmp(name, "CONST_dt")) {
         opp_register_const<OPP_REAL>(CONST_dt_s, dim);
         opp_mem::copy_host_to_dev<OPP_REAL>(CONST_dt_s, (OPP_REAL*)data, dim);
+        std::memcpy(CONST_dt, data, (size*dim));
         return;
     }
     if (!strcmp(name, "CONST_plasma_den")) {
         opp_register_const<OPP_REAL>(CONST_plasma_den_s, dim);
         opp_mem::copy_host_to_dev<OPP_REAL>(CONST_plasma_den_s, (OPP_REAL*)data, dim);
+        std::memcpy(CONST_plasma_den, data, (size*dim));
         return;
     }
     if (!strcmp(name, "CONST_mass")) {
         opp_register_const<OPP_REAL>(CONST_mass_s, dim);
         opp_mem::copy_host_to_dev<OPP_REAL>(CONST_mass_s, (OPP_REAL*)data, dim);
+        std::memcpy(CONST_mass, data, (size*dim));
         return;
     }
     if (!strcmp(name, "CONST_charge")) {
         opp_register_const<OPP_REAL>(CONST_charge_s, dim);
         opp_mem::copy_host_to_dev<OPP_REAL>(CONST_charge_s, (OPP_REAL*)data, dim);
+        std::memcpy(CONST_charge, data, (size*dim));
         return;
     }
     if (!strcmp(name, "CONST_wall_potential")) {
         opp_register_const<OPP_REAL>(CONST_wall_potential_s, dim);
         opp_mem::copy_host_to_dev<OPP_REAL>(CONST_wall_potential_s, (OPP_REAL*)data, dim);
+        std::memcpy(CONST_wall_potential, data, (size*dim));
         return;
     }
 
