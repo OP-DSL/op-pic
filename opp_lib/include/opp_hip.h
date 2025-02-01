@@ -99,6 +99,7 @@ constexpr int const_blocks = 200;
 #define OPP_ATOMIC_FETCH_ADD(address, value) atomicAdd(address, value)
 
 /*******************************************************************************/
+extern bool opp_use_segmented_reductions;
 extern int* opp_saved_mesh_relation_d;
 extern size_t opp_saved_mesh_relation_size;
 

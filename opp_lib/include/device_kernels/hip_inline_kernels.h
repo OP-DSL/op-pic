@@ -391,3 +391,145 @@ __global__ void opp_dev_checkForGlobalMove3D_kernel(
             move_cell_indices, move_rank_indices, move_count);
     }
 }
+
+// --------------------------------------------------------------
+namespace opp_sr { // Segmented Reductions Routines 
+__global__ void sequence_array(OPP_INT *__restrict__ array, const int start, const int end) 
+{
+    const int n = OPP_DEVICE_GLOBAL_LINEAR_ID + start;
+    if (n < end) {
+        array[n] = n; 
+    }
+}
+template <typename T>
+__global__ void reset_values(T *__restrict__ values, const int start, const int end) 
+{
+    const int n = OPP_DEVICE_GLOBAL_LINEAR_ID + start;
+    if (n < end) {
+        values[n] = 0.0; 
+    }
+}
+template <typename T>
+__global__ void set_values_by_key(const OPP_INT *__restrict__ from_indices, 
+    const T *__restrict__ from_values, T *__restrict__ to_array,
+    const int start, const int end, const int dim, const OPP_INT from_stride, const OPP_INT to_stride) 
+{
+    const int n = OPP_DEVICE_GLOBAL_LINEAR_ID + start;
+    if (n < end) {
+        const int idx = from_indices[n];
+        for (int d = 0; d < dim; d++) {
+            to_array[n + d * to_stride] = from_values[idx + d * from_stride];
+        }
+    }
+}
+template <typename T>
+__global__ void set_values(const OPP_INT *__restrict to_indices,
+    const T *__restrict from_values, T *__restrict to_array,
+    const int start, const int end, const int dim, const OPP_INT from_stride, const OPP_INT to_stride) 
+{
+    const int n = OPP_DEVICE_GLOBAL_LINEAR_ID + start;
+    if (n < end) {
+        const int idx = to_indices[n];  
+        for (int d = 0; d < dim; d++) {
+            to_array[idx + d * to_stride] += from_values[n + d * from_stride];
+        }
+    }
+}
+
+template <typename T>
+void init_arrays(const int reduc_dim, const size_t operating_size, const size_t resize_size,
+                thrust::device_vector<OPP_INT>& keys1, thrust::device_vector<T>& values1, 
+                thrust::device_vector<OPP_INT>& keys2, thrust::device_vector<T>& values2) 
+{
+    // Resize the key/value device arrays only if current vector is small
+    opp_profiler->start("SRM_Resize");
+    if (resize_size > keys1.size()) {
+        keys1.resize(resize_size);
+        keys2.resize(resize_size);
+        values2.resize(resize_size * reduc_dim);
+        values1.resize(resize_size * reduc_dim);
+    }
+    opp_profiler->end("SRM_Resize");
+
+    // Reset the key/value device arrays
+    opp_profiler->start("SRM_Init");
+    
+    const int num_blocks1 = (operating_size - 1) / OPP_gpu_threads_per_block + 1;
+    opp_sr::reset_values<OPP_INT> <<<num_blocks1, OPP_gpu_threads_per_block>>>(
+        opp_get_dev_raw_ptr<OPP_INT>(keys1), 0, keys1.size());
+    opp_sr::sequence_array<<<num_blocks1, OPP_gpu_threads_per_block>>>(
+        opp_get_dev_raw_ptr<OPP_INT>(keys2), 0, keys2.size());
+    
+    const int num_blocks2 = (values2.size() - 1) / OPP_gpu_threads_per_block + 1;
+    opp_sr::reset_values<T> <<<num_blocks2, OPP_gpu_threads_per_block>>>(
+        opp_get_dev_raw_ptr<T>(values2), 0, values2.size());
+
+    OPP_DEVICE_SYNCHRONIZE();
+    opp_profiler->end("SRM_Init");
+} 
+
+template <typename T>
+void clear_arrays(thrust::device_vector<OPP_INT>& keys1, thrust::device_vector<T>& values1,
+                  thrust::device_vector<OPP_INT>& keys2, thrust::device_vector<T>& values2)
+{
+    // Last: clear the thrust vectors if this is the last iteration (avoid crash)
+    if (opp_params->get<OPP_INT>("num_steps") == (OPP_main_loop_iter + 1)) { 
+        values1.clear(); values1.shrink_to_fit();
+        keys1.clear(); keys1.shrink_to_fit();
+        values2.clear(); values2.shrink_to_fit();
+        keys2.clear(); keys2.shrink_to_fit();
+    } 
+}
+
+template <typename T>
+void do_segmented_reductions(opp_arg arg, const int iter_size,
+                             thrust::device_vector<OPP_INT>& keys1, thrust::device_vector<T>& values1,
+                             thrust::device_vector<OPP_INT>& keys2, thrust::device_vector<T>& values2)
+{
+    const int num_blocks = (iter_size - 1) / OPP_gpu_threads_per_block + 1;
+    opp_dat dat = arg.dat;
+
+    // Sort by keys to bring the identical keys together and store the order in keys2
+    opp_profiler->start("SRM_SortByKey");
+    thrust::sort_by_key(thrust::device, keys1.begin(), (keys1.begin() + iter_size), keys2.begin());
+    opp_profiler->end("SRM_SortByKey"); 
+
+    // Sort values according to keys2
+    opp_profiler->start("SRM_AssignByKey"); 
+    opp_sr::set_values_by_key<T> <<<num_blocks, OPP_gpu_threads_per_block>>>(
+        opp_get_dev_raw_ptr<OPP_INT>(keys2), opp_get_dev_raw_ptr<T>(values1),
+        opp_get_dev_raw_ptr<T>(values2),
+        0, iter_size, dat->dim, iter_size, iter_size);
+    OPP_DEVICE_SYNCHRONIZE();
+    opp_profiler->end("SRM_AssignByKey"); 
+
+    // Compute the unique keys and their corresponding values
+    opp_profiler->start("SRM_RedByKey");
+    auto new_end = thrust::reduce_by_key(thrust::device,
+        keys1.begin(), keys1.begin() + iter_size,
+        values2.begin(),
+        keys2.begin(),
+        values1.begin());  
+    const size_t reduced_size = (new_end.first - keys2.begin());
+
+    for (int d = 1; d < dat->dim; ++d) {
+        thrust::reduce_by_key(thrust::device,
+            keys1.begin(), keys1.begin() + iter_size,
+            values2.begin() + d * iter_size,
+            thrust::make_discard_iterator(), values1.begin() + d * iter_size);     
+    }      
+    opp_profiler->end("SRM_RedByKey");
+
+    // Assign reduced values to the nodes using keys/values
+    opp_profiler->start("SRM_Assign");
+    const int num_blocks2 = reduced_size / OPP_gpu_threads_per_block + 1;
+    opp_sr::set_values<T> <<<num_blocks2, OPP_gpu_threads_per_block>>> (
+        opp_get_dev_raw_ptr<OPP_INT>(keys2),
+        opp_get_dev_raw_ptr<T>(values1), (T *)dat->data_d,
+        0, reduced_size, dat->dim, iter_size, dat->set->set_capacity);
+    
+    OPP_DEVICE_SYNCHRONIZE();
+
+    opp_profiler->end("SRM_Assign");
+}
+};

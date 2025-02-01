@@ -28,7 +28,7 @@ STRING opp_fill = HoleFill_All
 INT opp_fill_period = 4
 
 BOOL opp_global_move = false
-BOOL use_reg_red = false
+BOOL opp_segmented_red = true
 INT gpu_reduction_arrays = 16
 
 STRING hdf_filename = /home/zl/phd/neso_test/OP-PIC_Configs/cabana/mesh_files/cab_48000.hdf5

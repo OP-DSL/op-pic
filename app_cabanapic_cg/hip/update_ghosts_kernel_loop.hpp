@@ -17,6 +17,9 @@ __constant__ OPP_INT opp_k6_sr_set_stride_d;
 thrust::device_vector<OPP_INT> sr_dat1_keys_dv;
 thrust::device_vector<OPP_REAL> sr_dat1_values_dv;
 
+thrust::device_vector<OPP_INT> sr_dat1_keys_dv2;
+thrust::device_vector<OPP_REAL> sr_dat1_values_dv2;
+
 namespace opp_k6 {
 __device__ inline void update_ghosts_kernel(
     const int* c_mask_ug,
@@ -114,11 +117,10 @@ __global__ void opp_dev_sr_update_ghosts_kernel( // Used for Segmented Reduction
             gbl4 // 
         );
 
-        int offset = 0;
-        for (int d = 0; d < 3; ++d, ++offset) {
-            sr_dat1_values[n + opp_k6_sr_set_stride_d * offset] = arg2_0_local[d];
-            sr_dat1_keys[n + opp_k6_sr_set_stride_d * offset] = map0[opp_k6_map0_stride_d * 0 + n] + (d * opp_k6_dat1_stride_d);
-        }
+        for (int d = 0; d < 3; ++d) {
+            sr_dat1_values[n + opp_k6_sr_set_stride_d * d] = arg2_0_local[d]; 
+        }    
+        sr_dat1_keys[n] = map0[opp_k6_map0_stride_d * 0 + n];
     }
     
 }
@@ -195,7 +197,7 @@ void opp_par_loop_all__update_ghosts_kernel(opp_set set,
         const OPP_INT end = iter_size;
         num_blocks = (end - start - 1) / block_size + 1;
 
-        if (!opp_params->get<OPP_BOOL>("use_reg_red")) // Do atomics ----------       
+        if (!opp_use_segmented_reductions) // Do atomics ----------       
         {
             opp_dev_update_ghosts_kernel<<<num_blocks, block_size>>>(
                 (OPP_INT *)args[0].data_d,     // c_mask_ug
@@ -210,21 +212,19 @@ void opp_par_loop_all__update_ghosts_kernel(opp_set set,
      
         else // Do segmented reductions ----------       
         {
-            opp_mem::dev_copy_to_symbol<OPP_INT>(opp_k6_sr_set_stride_d, &opp_k6_sr_set_stride, &(set->size), 1);
+            opp_mem::dev_copy_to_symbol<OPP_INT>(opp_k6_sr_set_stride_d, &opp_k6_sr_set_stride, &(iter_size), 1);
 
             size_t operating_size_dat1 = 0, resize_size_dat1 = 0;
 
             operating_size_dat1 += (size_t)(args[2].dat->dim);
             resize_size_dat1 += (size_t)(args[2].dat->dim);
 
-            operating_size_dat1 *= (size_t)(set->size);
+            operating_size_dat1 *= (size_t)(iter_size); // this might need to be + set->exec_size ..., or simply iter_size | even for opp_k6_sr_set_stride
             resize_size_dat1 *= (size_t)(set->set_capacity);
 
-            if (resize_size_dat1 > sr_dat1_keys_dv.size()) { // resize only if current vector is small        
-                sr_dat1_keys_dv.resize(resize_size_dat1, 0);
-                sr_dat1_values_dv.resize(resize_size_dat1, 0);
-            }
-        
+            opp_sr::init_arrays<OPP_REAL>(args[1].dat->dim, operating_size_dat1, resize_size_dat1,
+                        sr_dat1_keys_dv, sr_dat1_values_dv, sr_dat1_keys_dv2, sr_dat1_values_dv2);
+
             // Create key/value pairs
             opp_profiler->start("SR_CrKeyVal");
             opp_dev_sr_update_ghosts_kernel<<<num_blocks, block_size>>>( 
@@ -241,44 +241,14 @@ void opp_par_loop_all__update_ghosts_kernel(opp_set set,
             OPP_DEVICE_SYNCHRONIZE();
             opp_profiler->end("SR_CrKeyVal");
 
-            // Sort by keys to bring the identical keys together
-            opp_profiler->start("SR_SortByKey");
-            thrust::sort_by_key(sr_dat1_keys_dv.begin(), sr_dat1_keys_dv.begin() + operating_size_dat1, 
-                sr_dat1_values_dv.begin());
-            opp_profiler->end("SR_SortByKey");
-
-            // Compute the unique keys and their corresponding values
-            opp_profiler->start("SR_RedByKey");
-            auto new_end = thrust::reduce_by_key(
-                sr_dat1_keys_dv.begin(), sr_dat1_keys_dv.begin() + operating_size_dat1,
-                sr_dat1_values_dv.begin(),
-                sr_dat1_keys_dv.begin(),
-                sr_dat1_values_dv.begin());        
-            opp_profiler->end("SR_RedByKey");
-
-            const size_t reduced_size = (new_end.first - sr_dat1_keys_dv.begin());
-            
-            // Assign reduced values to the nodes using keys/values
-            opp_profiler->start("SR_Assign");                
-            opp_k6::assign_values<<<num_blocks, block_size>>> ( // TODO : check whether num_blocks is correct
-                opp_get_dev_raw_ptr<OPP_INT>(sr_dat1_keys_dv),
-                opp_get_dev_raw_ptr<OPP_REAL>(sr_dat1_values_dv),
-                (OPP_REAL *) args[1].data_d,
-                0, reduced_size);
-            OPP_DEVICE_SYNCHRONIZE();
-            opp_profiler->end("SR_Assign");
-
-            // Last: clear the thrust vectors if this is the last iteration (avoid crash)
-            if (opp_params->get<OPP_INT>("num_steps") == (OPP_main_loop_iter + 1)) {
-                OPP_DEVICE_SYNCHRONIZE();
-                sr_dat1_values_dv.clear(); sr_dat1_values_dv.shrink_to_fit();
-                sr_dat1_keys_dv.clear(); sr_dat1_keys_dv.shrink_to_fit();
-            }        
+            opp_sr::do_segmented_reductions<OPP_REAL>(args[2], iter_size,
+                        sr_dat1_keys_dv, sr_dat1_values_dv, sr_dat1_keys_dv2, sr_dat1_values_dv2);       
         }
     }
     args[3].data = (char *)arg3_host_data;
     args[4].data = (char *)arg4_host_data;
 
+    opp_sr::clear_arrays<OPP_REAL>(sr_dat1_keys_dv, sr_dat1_values_dv, sr_dat1_keys_dv2, sr_dat1_values_dv2);
 
     opp_set_dirtybit_grouped(nargs, args, Device_GPU);
     OPP_DEVICE_SYNCHRONIZE();   

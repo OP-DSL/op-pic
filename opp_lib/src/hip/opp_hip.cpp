@@ -34,6 +34,8 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "opp_increase_part_count.cpp"
 #include "opp_hip_utils.cpp"
 
+bool opp_use_segmented_reductions = false;
+
 // arrays for global constants and reductions
 int OPP_consts_bytes = 0, OPP_reduct_bytes = 0;
 char *OPP_reduct_h = nullptr, *OPP_reduct_d = nullptr;
@@ -101,6 +103,8 @@ void opp_init(int argc, char **argv)
     if (gpu_direct > 0 && gpu_direct < INT_MAX)
         OPP_gpu_direct = gpu_direct;
 
+    opp_use_segmented_reductions = opp_params->get<OPP_BOOL>("opp_segmented_red");
+
     int deviceId = -1;
     cutilSafeCall(hipGetDevice(&deviceId));
     hipDeviceProp_t prop;
@@ -115,8 +119,10 @@ void opp_init(int argc, char **argv)
     }
 
     opp_printf("opp_init", 
-        "Device: %d [%s] on Host [%s] threads=%d Shared_Mem=%lubytes GPU_Direct=%d", deviceId, 
-        prop.name, hostname, OPP_gpu_threads_per_block, prop.sharedMemPerBlock, OPP_gpu_direct);
+        "Device: %d [%s] on Host [%s] threads=%d Shared_Mem=%lubytes GPU_Direct=%d - %s", deviceId, 
+        prop.name, hostname, OPP_gpu_threads_per_block, prop.sharedMemPerBlock, OPP_gpu_direct,
+        opp_use_segmented_reductions ? "USE_SEGMENTED_REDUCTIONS" : "USE_ATOMICS");
+
 
     std::vector<std::string> vec = {
         "Mv_Pack1", "Mv_Pack2", "Mv_Pack3", "Mv_Pack4", "Mv_Pack5", "Mv_Pack6", "HF_COPY_IF", "HF_Dats", "HF_SORT", 
