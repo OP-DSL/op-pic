@@ -38,33 +38,6 @@ enum CellAcc {
     jfz = 2 * 4,
 };
 
-enum CellInterp {
-    ex = 0,
-    dexdy,
-    dexdz,
-    d2exdydz,
-    ey,
-    deydz,
-    deydx,
-    d2eydzdx,
-    ez,
-    dezdx,
-    dezdy,
-    d2ezdxdy,
-    cbx,
-    dcbxdx,
-    cby,
-    dcbydy,
-    cbz,
-    dcbzdz,
-};
-
-enum Dim {
-    x = 0,
-    y = 1,
-    z = 2,
-};
-
 __device__ inline void weight_current_to_accumulator_kernel(
         double* cell_acc,
         const double* q,
@@ -93,6 +66,33 @@ __device__ inline void weight_current_to_accumulator_kernel(
     cell_acc[CellAcc::jfz + 2] += v2;
     cell_acc[CellAcc::jfz + 3] += v3;
 }
+
+enum Dim {
+    x = 0,
+    y = 1,
+    z = 2,
+};
+
+enum CellInterp {
+    ex = 0,
+    dexdy,
+    dexdz,
+    d2exdydz,
+    ey,
+    deydz,
+    deydx,
+    d2eydzdx,
+    ez,
+    dezdx,
+    dezdy,
+    d2ezdxdy,
+    cbx,
+    dcbxdx,
+    cby,
+    dcbydy,
+    cbz,
+    dcbzdz,
+};
 
 __device__ inline void move_deposit_kernel(
     char& opp_move_status_flag, const bool opp_move_hop_iter_one_flag, // Added by code-gen
@@ -481,12 +481,17 @@ void opp_particle_move__move_deposit_kernel(opp_set set, opp_map c2c_map, opp_ma
 
     int num_blocks = 200;
 
+    opp_init_particle_move(set, nargs, args);
+
     const int array_count = opp_params->get<OPP_INT>("gpu_reduction_arrays");
     if (!opp_use_segmented_reductions) {
         opp_create_thread_level_data<OPP_REAL>(args[5]);
     }
 
-    opp_init_particle_move(set, nargs, args);
+
+    opp_profiler->start("Mv_AllMv0");
+    // ----------------------------------------------------------------------------
+    // Multi-hop move particles within current MPI rank and if not mark for neighbour comm
 
     opp_mem::dev_copy_to_symbol<OPP_INT>(OPP_comm_iteration_d, &OPP_comm_iteration, 1);
     num_blocks = (OPP_iter_end - OPP_iter_start - 1) / block_size + 1;
@@ -498,9 +503,6 @@ void opp_particle_move__move_deposit_kernel(opp_set set, opp_map c2c_map, opp_ma
     opp_mem::dev_copy_to_symbol<OPP_INT>(opp_k2_dat4_stride_d, &opp_k2_dat4_stride, &(args[4].dat->set->set_capacity), 1);
     opp_mem::dev_copy_to_symbol<OPP_INT>(opp_k2_dat5_stride_d, &opp_k2_dat5_stride, &(args[5].dat->set->set_capacity), 1);
 
-    opp_profiler->start("Mv_AllMv0");
-    // ----------------------------------------------------------------------------
-    // Multi-hop move particles within current MPI rank and if not mark for neighbour comm
     if (!opp_use_segmented_reductions) // Do atomics ----------       
     {
         opp_profiler->start("move_kernel_only");
@@ -524,7 +526,6 @@ void opp_particle_move__move_deposit_kernel(opp_set set, opp_map c2c_map, opp_ma
         OPP_DEVICE_SYNCHRONIZE(); 
         opp_profiler->end("move_kernel_only");
     }
-    
     else // Do segmented reductions ----------       
     {
         opp_mem::dev_copy_to_symbol<OPP_INT>(opp_k2_sr_set_stride_d, &opp_k2_sr_set_stride, &set->size, 1);
@@ -575,6 +576,11 @@ void opp_particle_move__move_deposit_kernel(opp_set set, opp_map c2c_map, opp_ma
     // then iterate over the newly added particles
     while (opp_finalize_particle_move(set)) {
 
+        opp_init_particle_move(set, nargs, args);
+
+        opp_mem::dev_copy_to_symbol<OPP_INT>(OPP_comm_iteration_d, &OPP_comm_iteration, 1);
+        num_blocks = (OPP_iter_end - OPP_iter_start - 1) / block_size + 1;
+        
         opp_mem::dev_copy_to_symbol<OPP_INT>(opp_k2_dat0_stride_d, &opp_k2_dat0_stride, &(args[0].dat->set->set_capacity), 1);
         opp_mem::dev_copy_to_symbol<OPP_INT>(opp_k2_dat1_stride_d, &opp_k2_dat1_stride, &(args[1].dat->set->set_capacity), 1);
         opp_mem::dev_copy_to_symbol<OPP_INT>(opp_k2_dat2_stride_d, &opp_k2_dat2_stride, &(args[2].dat->set->set_capacity), 1);
@@ -582,10 +588,6 @@ void opp_particle_move__move_deposit_kernel(opp_set set, opp_map c2c_map, opp_ma
         opp_mem::dev_copy_to_symbol<OPP_INT>(opp_k2_dat4_stride_d, &opp_k2_dat4_stride, &(args[4].dat->set->set_capacity), 1);
         opp_mem::dev_copy_to_symbol<OPP_INT>(opp_k2_dat5_stride_d, &opp_k2_dat5_stride, &(args[5].dat->set->set_capacity), 1);
 
-        opp_init_particle_move(set, nargs, args);
-        opp_mem::dev_copy_to_symbol<OPP_INT>(OPP_comm_iteration_d, &OPP_comm_iteration, 1);
-        
-        num_blocks = (OPP_iter_end - OPP_iter_start - 1) / block_size + 1;
         if (!opp_use_segmented_reductions) // Do atomics ----------       
         {
             opp_profiler->start("move_kernel_only");
@@ -609,7 +611,6 @@ void opp_particle_move__move_deposit_kernel(opp_set set, opp_map c2c_map, opp_ma
             OPP_DEVICE_SYNCHRONIZE(); 
             opp_profiler->end("move_kernel_only");
         }
-        
         else // Do segmented reductions ----------       
         {
             // opp_mem::dev_copy_to_symbol<OPP_INT>(opp_k2_sr_set_stride_d, &opp_k2_sr_set_stride, &set->size, 1);
@@ -656,6 +657,7 @@ void opp_particle_move__move_deposit_kernel(opp_set set, opp_map c2c_map, opp_ma
 
     if (!opp_use_segmented_reductions) {
         opp_reduce_thread_level_data<OPP_REAL>(args[5]);
+
     }
     else {
         opp_sr::clear_arrays<OPP_REAL>(sr_dat5_keys_dv, sr_dat5_values_dv, sr_dat5_keys_dv2, sr_dat5_values_dv2);

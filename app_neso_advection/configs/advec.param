@@ -13,8 +13,14 @@ REAL opp_allocation_multiple = 1.1
 INT opp_threads_per_block   = 256
 BOOL opp_profile_all        = false
 INT opp_gpu_direct = 0
+
 BOOL opp_global_move = false
 REAL grid_spacing    = 0.5
+BOOL opp_dh_data_generate = false
+# Use opp_dh_data_generate = true and OPP_DH_DATA_DUMP=1 in args to dump the structured mesh
+
+BOOL opp_segmented_red = false
+INT gpu_reduction_arrays = 16
 
 # HoleFill_All Sort_All Shuffle_All Sort_Periodic Shuffle_Periodic
 STRING opp_fill = HoleFill_All

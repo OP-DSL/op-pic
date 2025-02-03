@@ -76,7 +76,7 @@ for run in 1 2 3; do
         echo "RUNNING -> 1e18 On "$totalGPUs" GPUs with unsafe atomics"
         srun --cpu-bind=${CPU_BIND} ${binary} ${currentfilename} | tee $folder/log_N${num_nodes}_G${totalGPUs}_C${config}_D10_UA_R${run}.log;
 
-        sed -i "s/BOOL use_reg_red = false/BOOL use_reg_red = true/" ${currentfilename}
+        sed -i "s/BOOL opp_segmented_red = false/BOOL opp_segmented_red = true/" ${currentfilename}
         echo "RUNNING -> 1e18 On "$totalGPUs" GPUs with seg red"
         srun --cpu-bind=${CPU_BIND} ${binary} ${currentfilename} | tee $folder/log_N${num_nodes}_G${totalGPUs}_C${config}_D10_SR_R${run}.log;
         # ---------------------
@@ -116,7 +116,7 @@ for run in 1 2 3; do
         echo "RUNNING -> 1e18 On "$totalGPUs" GPUs with unsafe atomics"
         srun --cpu-bind=${CPU_BIND} ${binary} ${currentfilename} | tee $folder/log_N${num_nodes}_G${totalGPUs}_C${config}_D13_UA_R${run}.log;
 
-        sed -i "s/BOOL use_reg_red = false/BOOL use_reg_red = true/" ${currentfilename}
+        sed -i "s/BOOL opp_segmented_red = false/BOOL opp_segmented_red = true/" ${currentfilename}
         echo "RUNNING -> 1e18 On "$totalGPUs" GPUs with seg red"
         srun --cpu-bind=${CPU_BIND} ${binary} ${currentfilename} | tee $folder/log_N${num_nodes}_G${totalGPUs}_C${config}_D13_SR_R${run}.log;
         # ---------------------

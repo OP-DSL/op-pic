@@ -170,9 +170,9 @@ void opp_par_loop_all__verify_kernel(opp_set set,
         for (int d = 0; d < 1; ++d)
             arg2_host_data[d] += ((OPP_INT *)args[2].data)[b * 1 + d];
     }
-
     args[2].data = (char *)arg2_host_data;
     opp_mpi_reduce(&args[2], arg2_host_data);
+
 
     opp_set_dirtybit_grouped(nargs, args, Device_GPU);
     OPP_DEVICE_SYNCHRONIZE();   

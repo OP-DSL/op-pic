@@ -124,9 +124,9 @@ void opp_par_loop_all__get_max_cef_kernel(opp_set set,
         for (int d = 0; d < 1; ++d)
             arg1_host_data[d] = MAX(arg1_host_data[d], ((OPP_REAL *)args[1].data)[b * 1 + d]);
     }
-
     args[1].data = (char *)arg1_host_data;
     opp_mpi_reduce(&args[1], arg1_host_data);
+
 
     opp_set_dirtybit_grouped(nargs, args, Device_GPU);
     OPP_DEVICE_SYNCHRONIZE();   

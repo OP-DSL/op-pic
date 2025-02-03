@@ -49,7 +49,7 @@ for gpus in 8 4 2 1; do
                 sed -i "s|STRING hdf_filename = <path_to_hdf5_mesh_files>/box_48000.hdf5|STRING hdf_filename = /cosma/home/do018/dc-lant1/phd/Artifacts/mesh_files/box_${actual_config}.hdf5|" ${currentfilename}
 
                 if [ "$use_seg_red" -eq 1 ]; then
-                    sed -i "s/BOOL use_reg_red = false/BOOL use_reg_red = true/" ${currentfilename}
+                    sed -i "s/BOOL opp_segmented_red = false/BOOL opp_segmented_red = true/" ${currentfilename}
                 fi
                 if [ "$use_hole_fill" -eq 1 ]; then
                     sed -i "s/STRING opp_fill = Shuffle_Periodic/STRING opp_fill = HoleFill_All/" ${currentfilename}

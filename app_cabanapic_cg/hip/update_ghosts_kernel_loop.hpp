@@ -118,9 +118,9 @@ __global__ void opp_dev_sr_update_ghosts_kernel( // Used for Segmented Reduction
         );
 
         for (int d = 0; d < 3; ++d) {
-            sr_dat1_values[n + opp_k6_sr_set_stride_d * d] = arg2_0_local[d]; 
+            sr_dat1_values[1 * n + 0 + opp_k6_sr_set_stride_d * d] = arg2_0_local[d]; 
         }    
-        sr_dat1_keys[n] = map0[opp_k6_map0_stride_d * 0 + n];
+        sr_dat1_keys[1 * n + 0] = map0[opp_k6_map0_stride_d * 0 + n];
     }
     
 }
@@ -212,19 +212,21 @@ void opp_par_loop_all__update_ghosts_kernel(opp_set set,
      
         else // Do segmented reductions ----------       
         {
-            opp_mem::dev_copy_to_symbol<OPP_INT>(opp_k6_sr_set_stride_d, &opp_k6_sr_set_stride, &(iter_size), 1);
-
             size_t operating_size_dat1 = 0, resize_size_dat1 = 0;
 
             operating_size_dat1 += (size_t)(args[2].dat->dim);
             resize_size_dat1 += (size_t)(args[2].dat->dim);
 
-            operating_size_dat1 *= (size_t)(iter_size); // this might need to be + set->exec_size ..., or simply iter_size | even for opp_k6_sr_set_stride
+            operating_size_dat1 *= (size_t)(iter_size);
             resize_size_dat1 *= (size_t)(set->set_capacity);
 
-            opp_sr::init_arrays<OPP_REAL>(args[1].dat->dim, operating_size_dat1, resize_size_dat1,
-                        sr_dat1_keys_dv, sr_dat1_values_dv, sr_dat1_keys_dv2, sr_dat1_values_dv2);
+            int k6_stride = 0;
+            k6_stride += iter_size * 1;
+            opp_mem::dev_copy_to_symbol<OPP_INT>(opp_k6_sr_set_stride_d, &opp_k6_sr_set_stride, &(k6_stride), 1);
 
+            opp_sr::init_arrays<OPP_REAL>(args[2].dat->dim, operating_size_dat1, resize_size_dat1,
+                        sr_dat1_keys_dv, sr_dat1_values_dv, sr_dat1_keys_dv2, sr_dat1_values_dv2);
+        
             // Create key/value pairs
             opp_profiler->start("SR_CrKeyVal");
             opp_dev_sr_update_ghosts_kernel<<<num_blocks, block_size>>>( 
@@ -241,8 +243,8 @@ void opp_par_loop_all__update_ghosts_kernel(opp_set set,
             OPP_DEVICE_SYNCHRONIZE();
             opp_profiler->end("SR_CrKeyVal");
 
-            opp_sr::do_segmented_reductions<OPP_REAL>(args[2], iter_size,
-                        sr_dat1_keys_dv, sr_dat1_values_dv, sr_dat1_keys_dv2, sr_dat1_values_dv2);       
+            opp_sr::do_segmented_reductions<OPP_REAL>(args[2], k6_stride,
+                        sr_dat1_keys_dv, sr_dat1_values_dv, sr_dat1_keys_dv2, sr_dat1_values_dv2);
         }
     }
     args[3].data = (char *)arg3_host_data;

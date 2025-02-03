@@ -91,7 +91,7 @@ for run in 1 2 3; do
         sed -i "s/STRING hdf_filename = <path_to_hdf5_mesh_file>/STRING hdf_filename = ${escaped_folder}\/box_${config}.hdf5/" ${currentfilename}
         sed -i "s/STRING rand_file    = <path_to_hdf5_mesh_file>/STRING rand_file    = ${escaped_folder}\/random_100k.dat/" ${currentfilename}
         if [ "$use_seg_red" -eq 1 ]; then
-            sed -i "s/BOOL use_reg_red = false/BOOL use_reg_red = true/" ${currentfilename}
+            sed -i "s/BOOL opp_segmented_red = false/BOOL opp_segmented_red = true/" ${currentfilename}
         fi
         if [ "$config" -eq 12288000 ]; then
             sed -i "s/REAL plasma_den     = 1e18/REAL plasma_den     = 9.9e17/" ${currentfilename}

@@ -190,7 +190,7 @@ void opp_init_direct_hop_cg(double grid_spacing, const opp_dat c_gbl_id, const o
         else {
             cellMapper->generateStructuredMeshFromFile(c_gbl_id->set, c_gbl_id);  
         }
-
+        
         opp_profiler->reg("GlbToLocal");
         opp_profiler->reg("GblMv_Move");
         opp_profiler->reg("GblMv_AllMv");

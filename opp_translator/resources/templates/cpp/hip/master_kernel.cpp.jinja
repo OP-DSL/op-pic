@@ -11,6 +11,10 @@
 
 {% block const_decls %}
     {% for const in app.consts() %}
+{{const.typ}} {{const.ptr}}[{{const.dim}}];
+    {% endfor %}
+
+    {% for const in app.consts() %}
 __constant__ {{const.typ}} {{const.ptr}}_d[{{const.dim}}];
     {% endfor %}
 {% endblock %}
@@ -18,5 +22,6 @@ __constant__ {{const.typ}} {{const.ptr}}_d[{{const.dim}}];
 {% block const_decl_func %}
     {% call(const) const_decl_func("") %}
 cutilSafeCall(hipMemcpyToSymbol(HIP_SYMBOL({{const.ptr}}_d), data, dim * size));
+        std::memcpy(&{{const.ptr}}, data, (size*dim));
     {%- endcall %}
 {% endblock %}

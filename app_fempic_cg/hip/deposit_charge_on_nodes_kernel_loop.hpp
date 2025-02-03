@@ -17,6 +17,9 @@ __constant__ OPP_INT opp_k5_sr_set_stride_d;
 thrust::device_vector<OPP_INT> sr_dat1_keys_dv;
 thrust::device_vector<OPP_REAL> sr_dat1_values_dv;
 
+thrust::device_vector<OPP_INT> sr_dat1_keys_dv2;
+thrust::device_vector<OPP_REAL> sr_dat1_values_dv2;
+
 namespace opp_k5 {
 __device__ inline void deposit_charge_on_nodes_kernel(
     const double *part_lc,
@@ -152,23 +155,22 @@ __global__ void opp_dev_sr_deposit_charge_on_nodes_kernel( // Used for Segmented
             arg4_3_local // n_charge_den 
         );
 
-        int offset = 0;
-        for (int d = 0; d < 1; ++d, ++offset) {
-            sr_dat1_values[n + opp_k5_sr_set_stride_d * offset] = arg1_0_local[d];
-            sr_dat1_keys[n + opp_k5_sr_set_stride_d * offset] = map0[opp_k5_map0_stride_d * 0 + opp_p2c[0]] + (d * opp_k5_dat1_stride_d);
-        }
-        for (int d = 0; d < 1; ++d, ++offset) {
-            sr_dat1_values[n + opp_k5_sr_set_stride_d * offset] = arg2_1_local[d];
-            sr_dat1_keys[n + opp_k5_sr_set_stride_d * offset] = map0[opp_k5_map0_stride_d * 1 + opp_p2c[0]] + (d * opp_k5_dat1_stride_d);
-        }
-        for (int d = 0; d < 1; ++d, ++offset) {
-            sr_dat1_values[n + opp_k5_sr_set_stride_d * offset] = arg3_2_local[d];
-            sr_dat1_keys[n + opp_k5_sr_set_stride_d * offset] = map0[opp_k5_map0_stride_d * 2 + opp_p2c[0]] + (d * opp_k5_dat1_stride_d);
-        }
-        for (int d = 0; d < 1; ++d, ++offset) {
-            sr_dat1_values[n + opp_k5_sr_set_stride_d * offset] = arg4_3_local[d];
-            sr_dat1_keys[n + opp_k5_sr_set_stride_d * offset] = map0[opp_k5_map0_stride_d * 3 + opp_p2c[0]] + (d * opp_k5_dat1_stride_d);
-        }
+        for (int d = 0; d < 1; ++d) {
+            sr_dat1_values[4 * n + 0 + opp_k5_sr_set_stride_d * d] = arg1_0_local[d]; 
+        }    
+        sr_dat1_keys[4 * n + 0] = map0[opp_k5_map0_stride_d * 0 + opp_p2c[0]];
+        for (int d = 0; d < 1; ++d) {
+            sr_dat1_values[4 * n + 1 + opp_k5_sr_set_stride_d * d] = arg2_1_local[d]; 
+        }    
+        sr_dat1_keys[4 * n + 1] = map0[opp_k5_map0_stride_d * 1 + opp_p2c[0]];
+        for (int d = 0; d < 1; ++d) {
+            sr_dat1_values[4 * n + 2 + opp_k5_sr_set_stride_d * d] = arg3_2_local[d]; 
+        }    
+        sr_dat1_keys[4 * n + 2] = map0[opp_k5_map0_stride_d * 2 + opp_p2c[0]];
+        for (int d = 0; d < 1; ++d) {
+            sr_dat1_values[4 * n + 3 + opp_k5_sr_set_stride_d * d] = arg4_3_local[d]; 
+        }    
+        sr_dat1_keys[4 * n + 3] = map0[opp_k5_map0_stride_d * 3 + opp_p2c[0]];
     }
     
 }
@@ -220,7 +222,7 @@ void opp_par_loop_all__deposit_charge_on_nodes_kernel(opp_set set,
         const OPP_INT end = iter_size;
         num_blocks = (end - start - 1) / block_size + 1;
 
-        if (!opp_params->get<OPP_BOOL>("use_reg_red")) // Do atomics ----------       
+        if (!opp_use_segmented_reductions) // Do atomics ----------       
         {
             const int array_count = opp_params->get<OPP_INT>("gpu_reduction_arrays");
             OPP_REAL** arg1_dat_thread_data_d = opp_create_thread_level_data<OPP_REAL>(args[1]);
@@ -238,8 +240,6 @@ void opp_par_loop_all__deposit_charge_on_nodes_kernel(opp_set set,
      
         else // Do segmented reductions ----------       
         {
-            opp_mem::dev_copy_to_symbol<OPP_INT>(opp_k5_sr_set_stride_d, &opp_k5_sr_set_stride, &(set->size), 1);
-
             size_t operating_size_dat1 = 0, resize_size_dat1 = 0;
 
             operating_size_dat1 += (size_t)(args[1].dat->dim);
@@ -251,13 +251,15 @@ void opp_par_loop_all__deposit_charge_on_nodes_kernel(opp_set set,
             operating_size_dat1 += (size_t)(args[4].dat->dim);
             resize_size_dat1 += (size_t)(args[4].dat->dim);
 
-            operating_size_dat1 *= (size_t)(set->size);
+            operating_size_dat1 *= (size_t)(iter_size);
             resize_size_dat1 *= (size_t)(set->set_capacity);
 
-            if (resize_size_dat1 > sr_dat1_keys_dv.size()) { // resize only if current vector is small        
-                sr_dat1_keys_dv.resize(resize_size_dat1, 0);
-                sr_dat1_values_dv.resize(resize_size_dat1, 0);
-            }
+            int k5_stride = 0;
+            k5_stride += iter_size * 4;
+            opp_mem::dev_copy_to_symbol<OPP_INT>(opp_k5_sr_set_stride_d, &opp_k5_sr_set_stride, &(k5_stride), 1);
+
+            opp_sr::init_arrays<OPP_REAL>(args[1].dat->dim, operating_size_dat1, resize_size_dat1,
+                        sr_dat1_keys_dv, sr_dat1_values_dv, sr_dat1_keys_dv2, sr_dat1_values_dv2);
         
             // Create key/value pairs
             opp_profiler->start("SR_CrKeyVal");
@@ -273,41 +275,11 @@ void opp_par_loop_all__deposit_charge_on_nodes_kernel(opp_set set,
             OPP_DEVICE_SYNCHRONIZE();
             opp_profiler->end("SR_CrKeyVal");
 
-            // Sort by keys to bring the identical keys together
-            opp_profiler->start("SR_SortByKey");
-            thrust::sort_by_key(sr_dat1_keys_dv.begin(), sr_dat1_keys_dv.begin() + operating_size_dat1, 
-                sr_dat1_values_dv.begin());
-            opp_profiler->end("SR_SortByKey");
-
-            // Compute the unique keys and their corresponding values
-            opp_profiler->start("SR_RedByKey");
-            auto new_end = thrust::reduce_by_key(
-                sr_dat1_keys_dv.begin(), sr_dat1_keys_dv.begin() + operating_size_dat1,
-                sr_dat1_values_dv.begin(),
-                sr_dat1_keys_dv.begin(),
-                sr_dat1_values_dv.begin());        
-            opp_profiler->end("SR_RedByKey");
-
-            const size_t reduced_size = (new_end.first - sr_dat1_keys_dv.begin());
-            
-            // Assign reduced values to the nodes using keys/values
-            opp_profiler->start("SR_Assign");                
-            opp_k5::assign_values<<<num_blocks, block_size>>> ( // TODO : check whether num_blocks is correct
-                opp_get_dev_raw_ptr<OPP_INT>(sr_dat1_keys_dv),
-                opp_get_dev_raw_ptr<OPP_REAL>(sr_dat1_values_dv),
-                (OPP_REAL *) args[1].data_d,
-                0, reduced_size);
-            OPP_DEVICE_SYNCHRONIZE();
-            opp_profiler->end("SR_Assign");
-
-            // Last: clear the thrust vectors if this is the last iteration (avoid crash)
-            if (opp_params->get<OPP_INT>("num_steps") == (OPP_main_loop_iter + 1)) {
-                OPP_DEVICE_SYNCHRONIZE();
-                sr_dat1_values_dv.clear(); sr_dat1_values_dv.shrink_to_fit();
-                sr_dat1_keys_dv.clear(); sr_dat1_keys_dv.shrink_to_fit();
-            }        
+            opp_sr::do_segmented_reductions<OPP_REAL>(args[1], k5_stride,
+                        sr_dat1_keys_dv, sr_dat1_values_dv, sr_dat1_keys_dv2, sr_dat1_values_dv2);
         }
     }
+    opp_sr::clear_arrays<OPP_REAL>(sr_dat1_keys_dv, sr_dat1_values_dv, sr_dat1_keys_dv2, sr_dat1_values_dv2);
 
     opp_set_dirtybit_grouped(nargs, args, Device_GPU);
     OPP_DEVICE_SYNCHRONIZE();   

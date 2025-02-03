@@ -37,6 +37,14 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "opp_hip.h"
 #include "device_kernels/hip_inline_kernels.h"
 
+OPP_REAL CONST_dt[1];
+OPP_REAL CONST_qsp[1];
+OPP_REAL CONST_cdt_d[3];
+OPP_REAL CONST_p[3];
+OPP_REAL CONST_qdt_2mc[1];
+OPP_REAL CONST_dt_eps0[1];
+OPP_REAL CONST_acc_coef[3];
+
 __constant__ OPP_REAL CONST_dt_d[1];
 __constant__ OPP_REAL CONST_qsp_d[1];
 __constant__ OPP_REAL CONST_cdt_d_d[3];
@@ -52,30 +60,37 @@ void opp_decl_const_impl(int dim, int size, char* data, const char* name) {
 
     if (!strcmp(name, "CONST_dt")) {
         cutilSafeCall(hipMemcpyToSymbol(HIP_SYMBOL(CONST_dt_d), data, dim * size));
+        std::memcpy(&CONST_dt, data, (size*dim));
         return;
     }
     if (!strcmp(name, "CONST_qsp")) {
         cutilSafeCall(hipMemcpyToSymbol(HIP_SYMBOL(CONST_qsp_d), data, dim * size));
+        std::memcpy(&CONST_qsp, data, (size*dim));
         return;
     }
     if (!strcmp(name, "CONST_cdt_d")) {
         cutilSafeCall(hipMemcpyToSymbol(HIP_SYMBOL(CONST_cdt_d_d), data, dim * size));
+        std::memcpy(&CONST_cdt_d, data, (size*dim));
         return;
     }
     if (!strcmp(name, "CONST_p")) {
         cutilSafeCall(hipMemcpyToSymbol(HIP_SYMBOL(CONST_p_d), data, dim * size));
+        std::memcpy(&CONST_p, data, (size*dim));
         return;
     }
     if (!strcmp(name, "CONST_qdt_2mc")) {
         cutilSafeCall(hipMemcpyToSymbol(HIP_SYMBOL(CONST_qdt_2mc_d), data, dim * size));
+        std::memcpy(&CONST_qdt_2mc, data, (size*dim));
         return;
     }
     if (!strcmp(name, "CONST_dt_eps0")) {
         cutilSafeCall(hipMemcpyToSymbol(HIP_SYMBOL(CONST_dt_eps0_d), data, dim * size));
+        std::memcpy(&CONST_dt_eps0, data, (size*dim));
         return;
     }
     if (!strcmp(name, "CONST_acc_coef")) {
         cutilSafeCall(hipMemcpyToSymbol(HIP_SYMBOL(CONST_acc_coef_d), data, dim * size));
+        std::memcpy(&CONST_acc_coef, data, (size*dim));
         return;
     }
 

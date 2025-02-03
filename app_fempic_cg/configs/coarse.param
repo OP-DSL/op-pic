@@ -17,7 +17,7 @@ STRING global_mesh  = /home/zl/phd/box_mesh_gen/48000/mesh.dat
 STRING inlet_mesh   = /home/zl/phd/box_mesh_gen/48000/inlet.dat
 STRING wall_mesh    = /home/zl/phd/box_mesh_gen/48000/wall.dat
 # OR
-STRING hdf_filename = /home/zl/phd/neso_test/OP-PIC_Configs/fempic/mesh_files/box_48000.hdf5
+STRING hdf_filename = /home/zl/phd/box_mesh_gen/hdf5/box_96000.hdf5
 
 STRING rand_file    = /home/zl/phd/box_mesh_gen/random_100k.dat
 
@@ -25,7 +25,7 @@ BOOL invert_normals = false
 
 BOOL opp_auto_sort          = false
 REAL opp_allocation_multiple = 11
-INT opp_threads_per_block   = 256
+INT opp_threads_per_block   = 512
 
 BOOL opp_profile_all        = false
 INT opp_gpu_direct = 0
@@ -38,7 +38,7 @@ BOOL opp_dh_data_generate = false
 
 # block k-means mpi-block
 STRING cluster = block
-BOOL use_reg_red = false
+BOOL opp_segmented_red = false
 INT gpu_reduction_arrays = 16
 
 # HoleFill_All Sort_All Shuffle_All Sort_Periodic Shuffle_Periodic

@@ -18,7 +18,7 @@ STRING cluster = block
 # System parameters
 BOOL opp_auto_sort          = false
 REAL opp_allocation_multiple = 1.1
-INT opp_threads_per_block   = 256
+INT opp_threads_per_block   = 512
 BOOL opp_profile_all        = false
 BOOL print_final   = true
 INT opp_gpu_direct = 0
@@ -28,7 +28,8 @@ STRING opp_fill = HoleFill_All
 INT opp_fill_period = 4
 
 BOOL opp_global_move = false
-BOOL use_reg_red = false
+BOOL opp_segmented_red = false
+INT gpu_reduction_arrays = 16
 
 STRING hdf_filename = /home/zl/phd/neso_test/OP-PIC_Configs/cabana/mesh_files/cab_48000.hdf5
 INT domain_expansion = 1

@@ -38,7 +38,7 @@ BOOL opp_global_move = false
 # block k-means mpi-block
 STRING cluster = block
 
-BOOL use_reg_red = true
+BOOL opp_segmented_red = true
 INT sed_red_block           = 100000000
 
 # HoleFill_All Sort_All Shuffle_All Sort_Periodic Shuffle_Periodic

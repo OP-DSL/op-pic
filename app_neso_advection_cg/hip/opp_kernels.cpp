@@ -37,6 +37,11 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "opp_hip.h"
 #include "device_kernels/hip_inline_kernels.h"
 
+OPP_REAL CONST_extents[2];
+OPP_REAL CONST_dt[1];
+OPP_REAL CONST_cell_width[1];
+OPP_INT CONST_ndimcells[2];
+
 __constant__ OPP_REAL CONST_extents_d[2];
 __constant__ OPP_REAL CONST_dt_d[1];
 __constant__ OPP_REAL CONST_cell_width_d[1];
@@ -49,18 +54,22 @@ void opp_decl_const_impl(int dim, int size, char* data, const char* name) {
 
     if (!strcmp(name, "CONST_extents")) {
         cutilSafeCall(hipMemcpyToSymbol(HIP_SYMBOL(CONST_extents_d), data, dim * size));
+        std::memcpy(&CONST_extents, data, (size*dim));
         return;
     }
     if (!strcmp(name, "CONST_dt")) {
         cutilSafeCall(hipMemcpyToSymbol(HIP_SYMBOL(CONST_dt_d), data, dim * size));
+        std::memcpy(&CONST_dt, data, (size*dim));
         return;
     }
     if (!strcmp(name, "CONST_cell_width")) {
         cutilSafeCall(hipMemcpyToSymbol(HIP_SYMBOL(CONST_cell_width_d), data, dim * size));
+        std::memcpy(&CONST_cell_width, data, (size*dim));
         return;
     }
     if (!strcmp(name, "CONST_ndimcells")) {
         cutilSafeCall(hipMemcpyToSymbol(HIP_SYMBOL(CONST_ndimcells_d), data, dim * size));
+        std::memcpy(&CONST_ndimcells, data, (size*dim));
         return;
     }
 

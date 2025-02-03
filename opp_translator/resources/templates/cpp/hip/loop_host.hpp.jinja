@@ -148,6 +148,9 @@ __constant__ OPP_INT opp_k{{kernel_idx}}_sr_set_stride_d;
     {% for arg in lh.args|dat|indirect|reduction|not_already_mapped(lh) if config.seg_red %}
 thrust::device_vector<OPP_INT> sr_dat{{lh.dat(arg).id}}_keys_dv;
 thrust::device_vector<{{lh.dat(arg).typ}}> sr_dat{{lh.dat(arg).id}}_values_dv;
+
+thrust::device_vector<OPP_INT> sr_dat{{lh.dat(arg).id}}_keys_dv2;
+thrust::device_vector<{{lh.dat(arg).typ}}> sr_dat{{lh.dat(arg).id}}_values_dv2;
     {% endfor %}
 {% endblock %}
 
@@ -322,14 +325,21 @@ __global__ void opp_dev_sr_{{lh.kernel}}( // Used for Segmented Reductions
             {% endfor %}
         );
 
-        int offset = 0;
+        {% set counters = namespace(data={}) %}
+        {% set occurrences = namespace(data={}) %}
+        {% for arg in lh.args|dat|indirect|reduction|not_already_mapped(lh) %}
+            {% set _ = counters.data.update({arg.dat_id: 0}) %}
+            {% set x_ = occurrences.data.update({arg.dat_id: 0}) %}
+        {% endfor %}
+        {% for arg in lh.args|dat|indirect|reduction %}
+            {% set _ = counters.data.update({arg.dat_id: counters.data[arg.dat_id] + 1}) %}
+        {% endfor %}
         {% for arg in lh.args_expanded|indirect|reduction if config.atomics %}
-        for (int d = 0; {{opt_hip_cond_comp(arg)}}d < {{lh.dat(arg).dim}}; ++d, ++offset) {
-            {#% for datx in lh.dats|same_iter_set_dat(lh) %#}
-            sr_dat{{arg.dat_id}}_values[n + opp_k{{kernel_idx}}_sr_set_stride_d * offset] = arg{{arg.id}}_{{arg.map_idx}}_local[d];
-            sr_dat{{arg.dat_id}}_keys[n + opp_k{{kernel_idx}}_sr_set_stride_d * offset] = {{map_lookup(arg, kernel_idx)}} + (d{{stride_hip(arg)}});
-            {#% endfor %#}
-        }
+        for (int d = 0; {{opt_hip_cond_comp(arg)}}d < {{lh.dat(arg).dim}}; ++d) {
+            sr_dat{{arg.dat_id}}_values[{{ counters.data[arg.dat_id] }} * n + {{ occurrences.data[arg.dat_id] }} + opp_k{{kernel_idx}}_sr_set_stride_d * d] = arg{{arg.id}}_{{arg.map_idx}}_local[d]; 
+        }    
+        sr_dat{{arg.dat_id}}_keys[{{ counters.data[arg.dat_id] }} * n + {{ occurrences.data[arg.dat_id] }}] = {{map_lookup(arg, kernel_idx)}};
+        {% set y_ = occurrences.data.update({arg.dat_id: occurrences.data[arg.dat_id] + 1}) %}
         {% endfor %}
     }
     {% for arg in lh.args|gbl|reduction %}
@@ -567,7 +577,7 @@ opp_dev_sr_{{lh.kernel}}<<<num_blocks, block_size{{-(", %s" % shared_size) if lh
 
         {% endif %}
     {% if lh is indirect and lh.args|dat|indirect|reduction|length > 0 and config.atomics and config.seg_red %}
-        if (!opp_params->get<OPP_BOOL>("use_reg_red")) // Do atomics ----------       
+        if (!opp_use_segmented_reductions) // Do atomics ----------       
     {% endif %}
     {% if lh is direct or config.atomics %}
         {
@@ -596,8 +606,6 @@ opp_dev_sr_{{lh.kernel}}<<<num_blocks, block_size{{-(", %s" % shared_size) if lh
     {% endif %}
     {% if lh is indirect and lh.args|dat|indirect|reduction|length > 0 and config.seg_red %}
         {
-            opp_mem::dev_copy_to_symbol<OPP_INT>(opp_k{{kernel_idx}}_sr_set_stride_d, &opp_k{{kernel_idx}}_sr_set_stride, &(set->size), 1);
-
         {% for arg in lh.args|dat|indirect|reduction|not_already_mapped(lh) %}
             size_t operating_size_dat{{arg.dat_id}} = 0, resize_size_dat{{arg.dat_id}} = 0;
         {% endfor %}
@@ -608,15 +616,26 @@ opp_dev_sr_{{lh.kernel}}<<<num_blocks, block_size{{-(", %s" % shared_size) if lh
         {% endfor %}
 
         {% for arg in lh.args|dat|indirect|reduction|not_already_mapped(lh) %}
-            operating_size_dat{{arg.dat_id}} *= (size_t)(set->size);
+            operating_size_dat{{arg.dat_id}} *= (size_t)(iter_size);
             resize_size_dat{{arg.dat_id}} *= (size_t)(set->set_capacity);
         {% endfor %}
 
+        {% set counters = namespace(data={}) %}
         {% for arg in lh.args|dat|indirect|reduction|not_already_mapped(lh) %}
-            if (resize_size_dat{{arg.dat_id}} > sr_dat{{arg.dat_id}}_keys_dv.size()) { // resize only if current vector is small        
-                sr_dat{{arg.dat_id}}_keys_dv.resize(resize_size_dat{{arg.dat_id}}, 0);
-                sr_dat{{arg.dat_id}}_values_dv.resize(resize_size_dat{{arg.dat_id}}, 0);
-            }
+            {% set _ = counters.data.update({arg.dat_id: 0}) %}
+        {% endfor %}
+        {% for arg in lh.args|dat|indirect|reduction %}
+            {% set _ = counters.data.update({arg.dat_id: counters.data[arg.dat_id] + 1}) %}
+        {% endfor %}
+            int k{{kernel_idx}}_stride = 0;
+        {% for arg in lh.args|dat|indirect|reduction|not_already_mapped(lh) %}
+            k{{kernel_idx}}_stride += iter_size * {{ counters.data[arg.dat_id] }};
+        {% endfor %}
+            opp_mem::dev_copy_to_symbol<OPP_INT>(opp_k{{kernel_idx}}_sr_set_stride_d, &opp_k{{kernel_idx}}_sr_set_stride, &(k{{kernel_idx}}_stride), 1);
+
+        {% for arg in lh.args|dat|indirect|reduction|not_already_mapped(lh) %}
+            opp_sr::init_arrays<{{lh.dat(arg).typ}}>(args[{{arg.id}}].dat->dim, operating_size_dat{{arg.dat_id}}, resize_size_dat{{arg.dat_id}},
+                        sr_dat{{arg.dat_id}}_keys_dv, sr_dat{{arg.dat_id}}_values_dv, sr_dat{{arg.dat_id}}_keys_dv2, sr_dat{{arg.dat_id}}_values_dv2);
         {% endfor %}
         
             // Create key/value pairs
@@ -627,39 +646,8 @@ opp_dev_sr_{{lh.kernel}}<<<num_blocks, block_size{{-(", %s" % shared_size) if lh
             opp_profiler->end("SR_CrKeyVal");
 
         {% for arg in lh.args|dat|indirect|reduction|not_already_mapped(lh) %}
-            // Sort by keys to bring the identical keys together
-            opp_profiler->start("SR_SortByKey");
-            thrust::sort_by_key(sr_dat{{arg.dat_id}}_keys_dv.begin(), sr_dat{{arg.dat_id}}_keys_dv.begin() + operating_size_dat{{arg.dat_id}}, 
-                sr_dat{{arg.dat_id}}_values_dv.begin());
-            opp_profiler->end("SR_SortByKey");
-
-            // Compute the unique keys and their corresponding values
-            opp_profiler->start("SR_RedByKey");
-            auto new_end = thrust::reduce_by_key(
-                sr_dat{{arg.dat_id}}_keys_dv.begin(), sr_dat{{arg.dat_id}}_keys_dv.begin() + operating_size_dat{{arg.dat_id}},
-                sr_dat{{arg.dat_id}}_values_dv.begin(),
-                sr_dat{{arg.dat_id}}_keys_dv.begin(),
-                sr_dat{{arg.dat_id}}_values_dv.begin());        
-            opp_profiler->end("SR_RedByKey");
-
-            const size_t reduced_size = (new_end.first - sr_dat{{arg.dat_id}}_keys_dv.begin());
-            
-            // Assign reduced values to the nodes using keys/values
-            opp_profiler->start("SR_Assign");                
-            opp_k{{kernel_idx}}::assign_values<<<num_blocks, block_size>>> ( // TODO : check whether num_blocks is correct
-                opp_get_dev_raw_ptr<OPP_INT>(sr_dat{{arg.dat_id}}_keys_dv),
-                opp_get_dev_raw_ptr<OPP_REAL>(sr_dat{{arg.dat_id}}_values_dv),
-                (OPP_REAL *) args[{{arg.dat_id}}].data_d,
-                0, reduced_size);
-            OPP_DEVICE_SYNCHRONIZE();
-            opp_profiler->end("SR_Assign");
-
-            // Last: clear the thrust vectors if this is the last iteration (avoid crash)
-            if (opp_params->get<OPP_INT>("num_steps") == (OPP_main_loop_iter + 1)) {
-                OPP_DEVICE_SYNCHRONIZE();
-                sr_dat{{arg.dat_id}}_values_dv.clear(); sr_dat{{arg.dat_id}}_values_dv.shrink_to_fit();
-                sr_dat{{arg.dat_id}}_keys_dv.clear(); sr_dat{{arg.dat_id}}_keys_dv.shrink_to_fit();
-            }        
+            opp_sr::do_segmented_reductions<{{lh.dat(arg).typ}}>(args[{{arg.id}}], k{{kernel_idx}}_stride,
+                        sr_dat{{arg.dat_id}}_keys_dv, sr_dat{{arg.dat_id}}_values_dv, sr_dat{{arg.dat_id}}_keys_dv2, sr_dat{{arg.dat_id}}_values_dv2);
         {% endfor %}
         }
     {% endif %}
@@ -694,7 +682,6 @@ opp_dev_sr_{{lh.kernel}}<<<num_blocks, block_size{{-(", %s" % shared_size) if lh
         {% endif %}
     }
     {% endfor %}
-
     {% for arg in lh.args|gbl|reduction %}
         {% call opt_if(arg) %}
     args[{{arg.id}}].data = (char *)arg{{arg.id}}_host_data;
@@ -702,6 +689,10 @@ opp_dev_sr_{{lh.kernel}}<<<num_blocks, block_size{{-(", %s" % shared_size) if lh
         {% endcall %}
 
     {% endfor %}
+    {% for arg in lh.args|dat|indirect|reduction|not_already_mapped(lh) %}
+    opp_sr::clear_arrays<{{lh.dat(arg).typ}}>(sr_dat{{arg.dat_id}}_keys_dv, sr_dat{{arg.dat_id}}_values_dv, sr_dat{{arg.dat_id}}_keys_dv2, sr_dat{{arg.dat_id}}_values_dv2);
+    {% endfor %}
+
     opp_set_dirtybit_grouped(nargs, args, Device_GPU);
     OPP_DEVICE_SYNCHRONIZE();   
     {% if lh is double_indirect_reduc %}

@@ -56,7 +56,7 @@ for config in 48000 96000 192000; do
                 sed -i "s|STRING wall_mesh    = <path_to_mesh_files>/wall.dat|STRING wall_mesh    = /cosma/home/do018/dc-lant1/phd/box_mesh_gen/${actual_config}/wall.dat|" ${currentfilename}
 
                 if [ "$use_seg_red" -eq 1 ]; then
-                    sed -i "s/BOOL use_reg_red = false/BOOL use_reg_red = true/" ${currentfilename}
+                    sed -i "s/BOOL opp_segmented_red = false/BOOL opp_segmented_red = true/" ${currentfilename}
                 fi
                 if [ "$use_hole_fill" -eq 1 ]; then
                     sed -i "s/STRING opp_fill = Shuffle_Periodic/STRING opp_fill = HoleFill_All/" ${currentfilename}
