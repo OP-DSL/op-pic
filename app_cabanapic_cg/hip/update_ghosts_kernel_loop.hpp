@@ -31,24 +31,6 @@ __device__ inline void update_ghosts_kernel(
     if (c_mask_ug[(*m_idx) * opp_k6_dat0_stride_d] == 1)
         to_cell[*dim] += from_cell[(*dim) * opp_k6_dat1_stride_d];
 }
-
-//--------------------------------------------------------------
-__global__ void assign_values( // Used for Segmented Reductions
-    const OPP_INT *__restrict keys,
-    const OPP_REAL *__restrict values,
-    OPP_REAL *__restrict dat,
-    const int start,
-    const int end) 
-{
-    const int tid = threadIdx.x + blockIdx.x * blockDim.x;
-
-    if (tid + start < end) 
-    {
-        const int n = tid + start;
-        const int mapping = keys[n];  
-        dat[mapping] += values[n];
-    }
-}
 }
 
 //--------------------------------------------------------------

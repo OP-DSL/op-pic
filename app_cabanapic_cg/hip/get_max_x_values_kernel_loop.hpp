@@ -28,7 +28,6 @@ __device__ inline void get_max_x_values_kernel(
 
     *max_b = ((*cell_b > *max_b) ? (*cell_b) : (*max_b));
 }
-
 }
 
 //--------------------------------------------------------------

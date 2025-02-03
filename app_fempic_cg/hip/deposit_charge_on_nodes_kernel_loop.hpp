@@ -33,24 +33,6 @@ __device__ inline void deposit_charge_on_nodes_kernel(
     node_charge_den2[0] += part_lc[(2) * opp_k5_dat0_stride_d];
     node_charge_den3[0] += part_lc[(3) * opp_k5_dat0_stride_d];
 }
-
-//--------------------------------------------------------------
-__global__ void assign_values( // Used for Segmented Reductions
-    const OPP_INT *__restrict keys,
-    const OPP_REAL *__restrict values,
-    OPP_REAL *__restrict dat,
-    const int start,
-    const int end) 
-{
-    const int tid = threadIdx.x + blockIdx.x * blockDim.x;
-
-    if (tid + start < end) 
-    {
-        const int n = tid + start;
-        const int mapping = keys[n];  
-        dat[mapping] += values[n];
-    }
-}
 }
 
 //--------------------------------------------------------------

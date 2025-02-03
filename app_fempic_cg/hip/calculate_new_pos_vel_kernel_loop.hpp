@@ -25,7 +25,6 @@ __device__ inline void calculate_new_pos_vel_kernel(
         part_pos[(i) * opp_k3_dat1_stride_d] += part_vel[(i) * opp_k3_dat2_stride_d] * (CONST_dt_d[0]);
     }
 }
-
 }
 
 //--------------------------------------------------------------

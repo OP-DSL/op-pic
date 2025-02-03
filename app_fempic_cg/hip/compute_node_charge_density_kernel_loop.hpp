@@ -18,7 +18,6 @@ __device__ inline void compute_node_charge_density_kernel(
 ) {
     (*node_charge_den) *= (CONST_spwt_d[0] / node_volume[(0) * opp_k6_dat1_stride_d]);
 }
-
 }
 
 //--------------------------------------------------------------

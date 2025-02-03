@@ -37,6 +37,14 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "opp_hip.h"
 #include "device_kernels/hip_inline_kernels.h"
 
+OPP_REAL CONST_spwt[1];
+OPP_REAL CONST_ion_velocity[1];
+OPP_REAL CONST_dt[1];
+OPP_REAL CONST_plasma_den[1];
+OPP_REAL CONST_mass[1];
+OPP_REAL CONST_charge[1];
+OPP_REAL CONST_wall_potential[1];
+
 __constant__ OPP_REAL CONST_spwt_d[1];
 __constant__ OPP_REAL CONST_ion_velocity_d[1];
 __constant__ OPP_REAL CONST_dt_d[1];
@@ -52,30 +60,37 @@ void opp_decl_const_impl(int dim, int size, char* data, const char* name) {
 
     if (!strcmp(name, "CONST_spwt")) {
         cutilSafeCall(hipMemcpyToSymbol(HIP_SYMBOL(CONST_spwt_d), data, dim * size));
+        std::memcpy(&CONST_spwt, data, (size*dim));
         return;
     }
     if (!strcmp(name, "CONST_ion_velocity")) {
         cutilSafeCall(hipMemcpyToSymbol(HIP_SYMBOL(CONST_ion_velocity_d), data, dim * size));
+        std::memcpy(&CONST_ion_velocity, data, (size*dim));
         return;
     }
     if (!strcmp(name, "CONST_dt")) {
         cutilSafeCall(hipMemcpyToSymbol(HIP_SYMBOL(CONST_dt_d), data, dim * size));
+        std::memcpy(&CONST_dt, data, (size*dim));
         return;
     }
     if (!strcmp(name, "CONST_plasma_den")) {
         cutilSafeCall(hipMemcpyToSymbol(HIP_SYMBOL(CONST_plasma_den_d), data, dim * size));
+        std::memcpy(&CONST_plasma_den, data, (size*dim));
         return;
     }
     if (!strcmp(name, "CONST_mass")) {
         cutilSafeCall(hipMemcpyToSymbol(HIP_SYMBOL(CONST_mass_d), data, dim * size));
+        std::memcpy(&CONST_mass, data, (size*dim));
         return;
     }
     if (!strcmp(name, "CONST_charge")) {
         cutilSafeCall(hipMemcpyToSymbol(HIP_SYMBOL(CONST_charge_d), data, dim * size));
+        std::memcpy(&CONST_charge, data, (size*dim));
         return;
     }
     if (!strcmp(name, "CONST_wall_potential")) {
         cutilSafeCall(hipMemcpyToSymbol(HIP_SYMBOL(CONST_wall_potential_d), data, dim * size));
+        std::memcpy(&CONST_wall_potential, data, (size*dim));
         return;
     }
 

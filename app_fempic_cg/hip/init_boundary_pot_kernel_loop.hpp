@@ -25,7 +25,6 @@ __device__ inline void init_boundary_pot_kernel(
             *n_bnd_pot = 0; /*default*/
     }
 }
-
 }
 
 //--------------------------------------------------------------

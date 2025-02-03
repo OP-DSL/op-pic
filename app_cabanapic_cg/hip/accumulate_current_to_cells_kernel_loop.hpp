@@ -57,7 +57,6 @@ __device__ inline void accumulate_current_to_cells_kernel(
                                                     cell_xyd_acc[(CellAcc::jfz + 3) * opp_k3_dat1_stride_d]);
     }
 }
-
 }
 
 //--------------------------------------------------------------

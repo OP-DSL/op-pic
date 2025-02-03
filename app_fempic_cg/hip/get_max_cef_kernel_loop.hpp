@@ -18,7 +18,6 @@ __device__ inline void get_max_cef_kernel(
         *max_val = ((val[(dim) * opp_k8_dat0_stride_d] > *max_val) ? (val[(dim) * opp_k8_dat0_stride_d]) : (*max_val));
     }
 }
-
 }
 
 //--------------------------------------------------------------

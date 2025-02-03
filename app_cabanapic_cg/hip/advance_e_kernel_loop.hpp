@@ -48,7 +48,6 @@ __device__ inline void advance_e_kernel (
             CONST_p_d[Dim::y] * (cell0_b[(Dim::x) * opp_k7_dat0_stride_d] - cell_y_b[(Dim::x) * opp_k7_dat0_stride_d]) );
     }
 }
-
 }
 
 //--------------------------------------------------------------

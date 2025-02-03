@@ -33,7 +33,6 @@ __device__ inline void update_ghosts_B_kernel(
         to_cell[(Dim::z) * opp_k5_dat1_stride_d] = from_cell[(Dim::z) * opp_k5_dat1_stride_d];
     }
 }
-
 }
 
 //--------------------------------------------------------------

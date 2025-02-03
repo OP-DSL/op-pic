@@ -54,10 +54,10 @@ class Cuda(Target):
     name = "cuda"
     suffix = "cuda"
     kernel_translation = True
-    config = {"grouped": True, "device": 2, "atomics": True, "seg_red": True, "color2": False, "gbl_inc_atomic": False, "omp": False}
+    config = {"grouped": True, "device": 2, "atomics": True, "seg_red": False, "color2": False, "gbl_inc_atomic": False, "omp": False}
     
     def defaultConfig(self) -> Dict[str, Any]:
-        return {"grouped": True, "device": 2, "atomics": True, "seg_red": True, "color2": False, "gbl_inc_atomic": False, "omp": False}
+        return {"grouped": True, "device": 2, "atomics": True, "seg_red": False, "color2": False, "gbl_inc_atomic": False, "omp": False}
 
 class Hip(Target):
     name = "hip"

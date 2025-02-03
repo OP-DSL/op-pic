@@ -33,7 +33,6 @@ __device__ inline void compute_electric_field_kernel(
         cell_electric_field[(dim) * opp_k7_dat0_stride_d] -= (c1 + c2 + c3 + c4);
     }
 }
-
 }
 
 //--------------------------------------------------------------

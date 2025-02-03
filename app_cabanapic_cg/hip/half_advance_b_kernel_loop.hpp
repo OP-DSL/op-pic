@@ -42,7 +42,6 @@ __device__ inline void half_advance_b_kernel (
                             - 0.5 * CONST_p_d[Dim::y] * (cell_y_e[(Dim::x) * opp_k4_dat0_stride_d] - cell0_e[(Dim::x) * opp_k4_dat0_stride_d]));
     }
 }
-
 }
 
 //--------------------------------------------------------------

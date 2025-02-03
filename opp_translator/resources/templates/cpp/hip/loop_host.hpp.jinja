@@ -4,26 +4,6 @@
 
 namespace opp_k{{kernel_idx}} {
 {{kernel_func}}
-
-{% if lh is indirect and lh.args|dat|indirect|reduction|length > 0 and config.seg_red %}
-//--------------------------------------------------------------
-__global__ void assign_values( // Used for Segmented Reductions
-    const OPP_INT *__restrict keys,
-    const OPP_REAL *__restrict values,
-    OPP_REAL *__restrict dat,
-    const int start,
-    const int end) 
-{
-    const int tid = threadIdx.x + blockIdx.x * blockDim.x;
-
-    if (tid + start < end) 
-    {
-        const int n = tid + start;
-        const int mapping = keys[n];  
-        dat[mapping] += values[n];
-    }
-}
-{% endif %}
 }
 
 {% endblock %}

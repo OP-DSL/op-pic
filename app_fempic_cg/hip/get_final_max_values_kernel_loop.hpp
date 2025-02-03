@@ -21,7 +21,6 @@ __device__ inline void get_final_max_values_kernel(
     *max_n_charge_den = ((abs(*n_charge_den) > *max_n_charge_den) ? (abs(*n_charge_den)) : (*max_n_charge_den));
     *max_n_pot = ((*n_pot > *max_n_pot) ? (*n_pot) : (*max_n_pot));
 }
-
 }
 
 //--------------------------------------------------------------

@@ -116,7 +116,6 @@ __device__ inline void interpolate_mesh_fields_kernel(
         cell0_interp[(CellInterp::dcbzdz) * opp_k1_dat2_stride_d] = (1.0 / 2.0)*( w1 - w0 );
     }
 }
-
 }
 
 //--------------------------------------------------------------

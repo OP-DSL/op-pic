@@ -30,7 +30,6 @@ __device__ inline void compute_energy_kernel(
                     cell_field[(Dim::z) * opp_k8_dat1_stride_d] * cell_field[(Dim::z) * opp_k8_dat1_stride_d];
     }
 }
-
 }
 
 //--------------------------------------------------------------

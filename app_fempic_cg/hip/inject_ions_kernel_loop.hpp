@@ -58,7 +58,6 @@ __device__ inline void inject_ions_kernel(
 
     (*part_cell_connectivity) = (*cell_id);
 }
-
 }
 
 //--------------------------------------------------------------

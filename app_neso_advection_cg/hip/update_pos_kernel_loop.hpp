@@ -24,7 +24,6 @@ __device__ inline void update_pos_kernel(const double* part_vel, double* p_pos)
         p_pos[(dm) * opp_k1_dat1_stride_d] = std::fmod(temp_pos, CONST_extents_d[dm]);
     }
 }
-
 }
 
 //--------------------------------------------------------------
