@@ -482,10 +482,99 @@ void opp_particle_move__move_deposit_kernel(opp_set set, opp_map c2c_map, opp_ma
     int num_blocks = 200;
 
     const int array_count = opp_params->get<OPP_INT>("gpu_reduction_arrays");
-    OPP_REAL** arg5_dat_thread_data_d = opp_create_thread_level_data<OPP_REAL>(args[5]);
+    if (!opp_use_segmented_reductions) {
+        opp_create_thread_level_data<OPP_REAL>(args[5]);
+    }
 
-    do 
+    opp_init_particle_move(set, nargs, args);
+
+    opp_mem::dev_copy_to_symbol<OPP_INT>(OPP_comm_iteration_d, &OPP_comm_iteration, 1);
+    num_blocks = (OPP_iter_end - OPP_iter_start - 1) / block_size + 1;
+    
+    opp_mem::dev_copy_to_symbol<OPP_INT>(opp_k2_dat0_stride_d, &opp_k2_dat0_stride, &(args[0].dat->set->set_capacity), 1);
+    opp_mem::dev_copy_to_symbol<OPP_INT>(opp_k2_dat1_stride_d, &opp_k2_dat1_stride, &(args[1].dat->set->set_capacity), 1);
+    opp_mem::dev_copy_to_symbol<OPP_INT>(opp_k2_dat2_stride_d, &opp_k2_dat2_stride, &(args[2].dat->set->set_capacity), 1);
+    opp_mem::dev_copy_to_symbol<OPP_INT>(opp_k2_dat3_stride_d, &opp_k2_dat3_stride, &(args[3].dat->set->set_capacity), 1);
+    opp_mem::dev_copy_to_symbol<OPP_INT>(opp_k2_dat4_stride_d, &opp_k2_dat4_stride, &(args[4].dat->set->set_capacity), 1);
+    opp_mem::dev_copy_to_symbol<OPP_INT>(opp_k2_dat5_stride_d, &opp_k2_dat5_stride, &(args[5].dat->set->set_capacity), 1);
+
+    opp_profiler->start("Mv_AllMv0");
+    // ----------------------------------------------------------------------------
+    // Multi-hop move particles within current MPI rank and if not mark for neighbour comm
+    if (!opp_use_segmented_reductions) // Do atomics ----------       
     {
+        opp_profiler->start("move_kernel_only");
+        opp_dev_move_deposit_kernel<<<num_blocks, block_size>>>(
+            (OPP_REAL *)args[0].data_d,    // p_vel
+            (OPP_REAL *)args[1].data_d,    // p_pos
+            (OPP_REAL *)args[2].data_d,    // p_streak_mid
+            (OPP_REAL *)args[3].data_d,    // p_weight
+            (OPP_REAL *)args[4].data_d,    // c_interp
+            (OPP_REAL**)args[5].dat->thread_data_d, array_count,    // c_acc
+            (OPP_INT *)args[6].data_d,    // p2c_map
+            (OPP_INT *)c2c_map->map_d,    // c2c_map
+            (OPP_INT *)set->particle_remove_count_d,
+            (OPP_INT *)OPP_remove_particle_indices_d,
+            (OPP_INT *)OPP_move_particle_indices_d,
+            (OPP_INT *)OPP_move_cell_indices_d,
+            (OPP_INT *)OPP_move_count_d,
+            OPP_iter_start,
+            OPP_iter_end
+        );
+        OPP_DEVICE_SYNCHRONIZE(); 
+        opp_profiler->end("move_kernel_only");
+    }
+    
+    else // Do segmented reductions ----------       
+    {
+        opp_mem::dev_copy_to_symbol<OPP_INT>(opp_k2_sr_set_stride_d, &opp_k2_sr_set_stride, &set->size, 1);
+
+        size_t operating_size_dat5 = 0, resize_size_dat5 = 0;
+
+        operating_size_dat5 += (size_t)1;
+        resize_size_dat5 += (size_t)1;
+
+        operating_size_dat5 *= (size_t)(OPP_iter_end - OPP_iter_start);
+        resize_size_dat5 *= (size_t)(set->set_capacity);
+
+        opp_sr::init_arrays<OPP_REAL>(args[5].dat->dim, operating_size_dat5, resize_size_dat5,
+                    sr_dat5_keys_dv, sr_dat5_values_dv, sr_dat5_keys_dv2, sr_dat5_values_dv2);
+
+        // Create key/value pairs
+        opp_profiler->start("SRM_CrKeyVal");
+        opp_dev_sr_move_deposit_kernel<<<num_blocks, block_size>>>( 
+            (OPP_REAL *)args[0].data_d,     // p_vel
+            (OPP_REAL *)args[1].data_d,     // p_pos
+            (OPP_REAL *)args[2].data_d,     // p_streak_mid
+            (OPP_REAL *)args[3].data_d,     // p_weight
+            (OPP_REAL *)args[4].data_d,     // c_interp
+            (OPP_REAL *)args[5].data_d,     // c_acc
+            (OPP_INT *)args[6].data_d,    // p2c_map
+            (OPP_INT *)c2c_map->map_d,    // c2c_map
+            (OPP_INT *)set->particle_remove_count_d,
+            (OPP_INT *)OPP_remove_particle_indices_d,
+            (OPP_INT *)OPP_move_particle_indices_d,
+            (OPP_INT *)OPP_move_cell_indices_d,
+            (OPP_INT *)OPP_move_count_d,
+            opp_get_dev_raw_ptr<OPP_REAL>(sr_dat5_values_dv),     // sr values for c_acc
+            opp_get_dev_raw_ptr<OPP_INT>(sr_dat5_keys_dv),     // sr keys for c_acc
+            OPP_iter_start,
+            OPP_iter_end
+        );
+        OPP_DEVICE_SYNCHRONIZE();
+        opp_profiler->end("SRM_CrKeyVal");
+
+        opp_sr::do_segmented_reductions<OPP_REAL>(args[5], (OPP_iter_end - OPP_iter_start), 
+                    sr_dat5_keys_dv, sr_dat5_values_dv, sr_dat5_keys_dv2, sr_dat5_values_dv2);
+    }
+
+    opp_profiler->end("Mv_AllMv0");
+
+    // ----------------------------------------------------------------------------
+    // Do neighbour communication and if atleast one particle is received by the currect rank, 
+    // then iterate over the newly added particles
+    while (opp_finalize_particle_move(set)) {
+
         opp_mem::dev_copy_to_symbol<OPP_INT>(opp_k2_dat0_stride_d, &opp_k2_dat0_stride, &(args[0].dat->set->set_capacity), 1);
         opp_mem::dev_copy_to_symbol<OPP_INT>(opp_k2_dat1_stride_d, &opp_k2_dat1_stride, &(args[1].dat->set->set_capacity), 1);
         opp_mem::dev_copy_to_symbol<OPP_INT>(opp_k2_dat2_stride_d, &opp_k2_dat2_stride, &(args[2].dat->set->set_capacity), 1);
@@ -495,18 +584,18 @@ void opp_particle_move__move_deposit_kernel(opp_set set, opp_map c2c_map, opp_ma
 
         opp_init_particle_move(set, nargs, args);
         opp_mem::dev_copy_to_symbol<OPP_INT>(OPP_comm_iteration_d, &OPP_comm_iteration, 1);
-
+        
         num_blocks = (OPP_iter_end - OPP_iter_start - 1) / block_size + 1;
-
         if (!opp_use_segmented_reductions) // Do atomics ----------       
         {
+            opp_profiler->start("move_kernel_only");
             opp_dev_move_deposit_kernel<<<num_blocks, block_size>>>(
                 (OPP_REAL *)args[0].data_d,    // p_vel
                 (OPP_REAL *)args[1].data_d,    // p_pos
                 (OPP_REAL *)args[2].data_d,    // p_streak_mid
                 (OPP_REAL *)args[3].data_d,    // p_weight
                 (OPP_REAL *)args[4].data_d,    // c_interp
-                arg5_dat_thread_data_d, array_count,    // c_acc
+                (OPP_REAL**)args[5].dat->thread_data_d, array_count,    // c_acc
                 (OPP_INT *)args[6].data_d,    // p2c_map
                 (OPP_INT *)c2c_map->map_d,    // c2c_map
                 (OPP_INT *)set->particle_remove_count_d,
@@ -517,24 +606,24 @@ void opp_particle_move__move_deposit_kernel(opp_set set, opp_map c2c_map, opp_ma
                 OPP_iter_start,
                 OPP_iter_end
             );
-
             OPP_DEVICE_SYNCHRONIZE(); 
+            opp_profiler->end("move_kernel_only");
         }
-     
+        
         else // Do segmented reductions ----------       
         {
-            opp_mem::dev_copy_to_symbol<OPP_INT>(opp_k2_sr_set_stride_d, &opp_k2_sr_set_stride, &set->size, 1);
+            // opp_mem::dev_copy_to_symbol<OPP_INT>(opp_k2_sr_set_stride_d, &opp_k2_sr_set_stride, &set->size, 1);
 
-            size_t operating_size_dat5 = 0, resize_size_dat5 = 0;
+            // size_t operating_size_dat5 = 0, resize_size_dat5 = 0;
 
-            operating_size_dat5 += (size_t)1;
-            resize_size_dat5 += (size_t)1;
+            // operating_size_dat5 += (size_t)1;
+            // resize_size_dat5 += (size_t)1;
 
-            operating_size_dat5 *= (size_t)(OPP_iter_end - OPP_iter_start);
-            resize_size_dat5 *= (size_t)(set->set_capacity);
+            // operating_size_dat5 *= (size_t)(OPP_iter_end - OPP_iter_start);
+            // resize_size_dat5 *= (size_t)(set->set_capacity);
 
-            opp_sr::init_arrays<OPP_REAL>(args[5].dat->dim, operating_size_dat5, resize_size_dat5,
-                        sr_dat5_keys_dv, sr_dat5_values_dv, sr_dat5_keys_dv2, sr_dat5_values_dv2);
+            // opp_sr::init_arrays<OPP_REAL>(args[5].dat->dim, operating_size_dat5, resize_size_dat5,
+            //             sr_dat5_keys_dv, sr_dat5_values_dv, sr_dat5_keys_dv2, sr_dat5_values_dv2);
 
             // Create key/value pairs
             opp_profiler->start("SRM_CrKeyVal");
@@ -560,13 +649,17 @@ void opp_particle_move__move_deposit_kernel(opp_set set, opp_map c2c_map, opp_ma
             OPP_DEVICE_SYNCHRONIZE();
             opp_profiler->end("SRM_CrKeyVal");
 
-            opp_sr::do_segmented_reductions<OPP_REAL>(args[5], (OPP_iter_end - OPP_iter_start), 
-                        sr_dat5_keys_dv, sr_dat5_values_dv, sr_dat5_keys_dv2, sr_dat5_values_dv2);
+            // opp_sr::do_segmented_reductions<OPP_REAL>(args[5], (OPP_iter_end - OPP_iter_start), 
+            //             sr_dat5_keys_dv, sr_dat5_values_dv, sr_dat5_keys_dv2, sr_dat5_values_dv2);
         }
+    }
 
-    } while (opp_finalize_particle_move(set)); 
-
-    opp_sr::clear_arrays<OPP_REAL>(sr_dat5_keys_dv, sr_dat5_values_dv, sr_dat5_keys_dv2, sr_dat5_values_dv2);
+    if (!opp_use_segmented_reductions) {
+        opp_reduce_thread_level_data<OPP_REAL>(args[5]);
+    }
+    else {
+        opp_sr::clear_arrays<OPP_REAL>(sr_dat5_keys_dv, sr_dat5_values_dv, sr_dat5_keys_dv2, sr_dat5_values_dv2);
+    }
 
     opp_set_dirtybit_grouped(nargs, args, Device_GPU);
     OPP_DEVICE_SYNCHRONIZE();   
