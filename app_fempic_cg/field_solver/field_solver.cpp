@@ -61,7 +61,7 @@ FESolver::FESolver(
         n_nodes_set, n_nodes_inc_halo, n_cells_set, n_cells_inc_halo);
 
     // this is required since n_bnd_pot_dat is updated using an opp_par_loop
-    opp_mpi_force_halo_update_if_dirty(n_bnd_pot_dat->set, {n_bnd_pot_dat}, DEVICE_TYPE); 
+    opp_mpi_force_halo_update_if_dirty(n_bnd_pot_dat->set, { n_bnd_pot_dat }, Device_CPU); 
 
     calculate_neq(n_type_dat);
 
@@ -119,7 +119,7 @@ void FESolver::compute_phi(opp_arg arg0, opp_arg arg1, opp_arg arg2)
 
     opp_profiler->start("FSolve_solv_init");
     init_f1_and_J(arg1.dat); // ion_den
-    opp_profiler->start("FSolve_solv_init");
+    opp_profiler->end("FSolve_solv_init");
 
     opp_profiler->start("FSolve_f1");
     build_f1_vector();
