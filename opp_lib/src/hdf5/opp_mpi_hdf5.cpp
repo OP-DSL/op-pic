@@ -123,15 +123,19 @@ int opp_decl_set_hdf5_data(char const *file, char const *name) {
     return l_size;
 }
 
-opp_set opp_decl_set_hdf5(char const *file, char const *name) {
+opp_set opp_decl_set_hdf5(char const *file, char const *name) { 
 
-    int l_size = opp_decl_set_hdf5_data(file, name);
+    int l_size = 0;
+    if (OPP_IS_VALID_PROCESS)
+        l_size = opp_decl_set_hdf5_data(file, name);
     return opp_decl_set(l_size, name);
 }
 
-opp_set opp_decl_particle_set_hdf5(char const *file, char const *name, opp_set cells_set) {
+opp_set opp_decl_particle_set_hdf5(char const *file, char const *name, opp_set cells_set) { 
 
-    int l_size = opp_decl_set_hdf5_data(file, name);
+    int l_size = 0;
+    if (OPP_IS_VALID_PROCESS)
+        l_size = opp_decl_set_hdf5_data(file, name);
     return opp_decl_particle_set(l_size, name, cells_set);
 }
 
@@ -218,7 +222,7 @@ opp_set opp_decl_particle_set_hdf5(char const *file, char const *name, opp_set c
 *******************************************************************************/
 
 opp_map opp_decl_map_hdf5(opp_set from, opp_set to, int dim, char const *file,
-                        char const *name) {
+                        char const *name) { OPP_RETURN_NULL_IF_INVALID_PROCESS;
   
     // create new communicator
     int my_rank, comm_size;
@@ -493,7 +497,7 @@ char* opp_get_hdf5_dat_data(opp_set set, int dim, char const *type, char const *
     return data;
 }
 
-opp_dat opp_decl_dat_hdf5(opp_set set, int dim, opp_data_type dtype, char const *file, char const *name) {
+opp_dat opp_decl_dat_hdf5(opp_set set, int dim, opp_data_type dtype, char const *file, char const *name) { OPP_RETURN_NULL_IF_INVALID_PROCESS;
     
     std::string type = "";
     int size = -1;
@@ -513,7 +517,7 @@ opp_dat opp_decl_dat_hdf5(opp_set set, int dim, opp_data_type dtype, char const 
 * Routine to read in a constant from a named hdf5 file
 *******************************************************************************/
 void opp_get_const_hdf5(char const *name, int dim, char const *type, char *const_data, 
-                            char const *file_name) {
+                            char const *file_name) { OPP_RETURN_IF_INVALID_PROCESS;
     
     // create new communicator
     int my_rank, comm_size;
@@ -629,7 +633,7 @@ void opp_get_const_hdf5(char const *name, int dim, char const *type, char *const
 /*******************************************************************************
 * Routine to write all to a named hdf5 file
 *******************************************************************************/
-void opp_dump_to_hdf5(char const *file_name) {
+void opp_dump_to_hdf5(char const *file_name) { OPP_RETURN_IF_INVALID_PROCESS;
 
     opp_printf("opp_dump_to_hdf5", "Writing to %s", file_name);
 
@@ -1111,7 +1115,7 @@ void opp_dump_to_hdf5(char const *file_name) {
 * if the data set given at path does not exists in file creates data set
 *******************************************************************************/
 
-void opp_fetch_data_hdf5(opp_dat data, char const *file_name, char const *path_name) {
+void opp_fetch_data_hdf5(opp_dat data, char const *file_name, char const *path_name) { OPP_RETURN_IF_INVALID_PROCESS;
 
     // letting know that writing is happening ...
     opp_printf("opp_fetch_data_hdf5", "Fetching from '%s' to '%s'\n", path_name, file_name);
@@ -1452,7 +1456,7 @@ void opp_fetch_data_hdf5(opp_dat data, char const *file_name, char const *path_n
 * if the data set does not exists in file creates data set
 *******************************************************************************/
 
-void opp_fetch_data_hdf5_file(opp_dat dat, char const *file_name) {
+void opp_fetch_data_hdf5_file(opp_dat dat, char const *file_name) { OPP_RETURN_IF_INVALID_PROCESS;
 
     opp_fetch_data_hdf5(dat, file_name, dat->name);
 }
@@ -1487,7 +1491,7 @@ void opp_fetch_data_hdf5_file(opp_dat dat, char const *file_name) {
 * If the data set does not exists in file creates data set
 *******************************************************************************/
 
-void opp_fetch_data_hdf5_file_path(opp_dat dat, char const *file_name, char const *path_name) {
+void opp_fetch_data_hdf5_file_path(opp_dat dat, char const *file_name, char const *path_name) { OPP_RETURN_IF_INVALID_PROCESS;
 
     opp_fetch_data_hdf5(dat, file_name, path_name);
 }
