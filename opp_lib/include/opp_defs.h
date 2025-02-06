@@ -171,6 +171,13 @@ constexpr int MIN_INT = std::numeric_limits<int>::min();
 
 #define LOG_STR_LEN 100000
 
+#define OPP_IS_VALID_PROCESS (OPP_rank >= 0)
+#define OPP_RETURN_IF_INVALID_PROCESS if (OPP_rank < 0) return;
+#define OPP_RETURN_NULL_IF_INVALID_PROCESS if (OPP_rank < 0) return nullptr;
+#define OPP_RETURN_ZERO_IF_INVALID_PROCESS if (OPP_rank < 0) return 0;
+#define OPP_RETURN_EMPTY_IF_INVALID_PROCESS if (OPP_rank < 0) return "";
+#define OPP_RETURN_ARG_IF_INVALID_PROCESS if (OPP_rank < 0) return opp_arg();
+
 //*************************************************************************************************
 enum opp_iterate_type
 {

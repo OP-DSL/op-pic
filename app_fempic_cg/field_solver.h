@@ -84,16 +84,16 @@ protected:
     std::vector<double> f1Local;
     std::vector<double> tempNEQ1, tempNEQ2, tempNEQ3;
 
-    const int n_nodes_set = 0;
-    const int n_nodes_inc_halo = 0; 
-    const int n_cells_set = 0;
-    const int n_cells_inc_halo = 0;
+    int n_nodes_set = 0;
+    int n_nodes_inc_halo = 0; 
+    int n_cells_set = 0;
+    int n_cells_inc_halo = 0;
 
     int neq = 0;        /*number of unknowns/equations*/
     int global_neq = 0;
     int own_start = 0;
     int own_end = 0;
-
+    
     /*quadrature points*/
     const double l[2] = { -sqrt(1.0/3.0), sqrt(1.0/3.0) };
     const double W[2] = { 1, 1 };
@@ -105,7 +105,7 @@ protected:
     KSP         ksp;            /* linear solver context */
     KSPConvergedReason reason;
 
-    std::vector<int> vec_col;                // in use - indices related to current MPI rank
+    std::vector<int> vec_col, ex_indices;                // in use - indices related to current MPI rank
 
     double *dLocal_d = nullptr;
     double *f1Local_d = nullptr;
@@ -113,6 +113,7 @@ protected:
     double *tempNEQ2_d = nullptr;
     double *tempNEQ3_d = nullptr;
     double *detJ_d = nullptr; 
+    double* tmpDptr = nullptr;
 
     int *node_to_eq_map_d= nullptr;
     

@@ -46,7 +46,8 @@ void opp_par_loop_all__compute_node_charge_density_kernel(opp_set set,
     opp_arg arg0, // n_charge_den | OPP_RW
     opp_arg arg1 // n_volume | OPP_READ
 ) 
-{
+{ OPP_RETURN_IF_INVALID_PROCESS;
+
     const int nargs = 2;
     opp_arg args[nargs];
 

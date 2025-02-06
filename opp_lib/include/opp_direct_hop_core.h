@@ -51,7 +51,7 @@ public:
     opp_point domain_expansion;
 
     //***********************************
-    BoundingBox(int dim, opp_point minCoordinate, opp_point maxCoordinate) : dim(dim) {
+    BoundingBox(int dim, opp_point minCoordinate, opp_point maxCoordinate) : dim(dim) { OPP_RETURN_IF_INVALID_PROCESS;
 
         this->boundingBox[0] = minCoordinate;
         this->boundingBox[1] = maxCoordinate;
@@ -68,7 +68,7 @@ public:
 
     //***********************************
     BoundingBox(const opp_dat node_pos_dat, int dim, const opp_point expansion) 
-        : dim(dim), domain_expansion(expansion) {
+        : dim(dim), domain_expansion(expansion) { OPP_RETURN_IF_INVALID_PROCESS;
 
         if (dim != 3 && dim != 2) {
             opp_abort(std::string("For now, only 2D/3D BoundingBox is implemented"));
@@ -123,7 +123,7 @@ public:
                 this->boundingBox[1].x, this->boundingBox[1].y, this->boundingBox[1].z);
     }
     
-    BoundingBox(const BoundingBox& other) : dim(other.dim) {
+    BoundingBox(const BoundingBox& other) : dim(other.dim) { OPP_RETURN_IF_INVALID_PROCESS;
         this->boundingBox[0] = other.boundingBox[0];
         this->boundingBox[1] = other.boundingBox[1];
         this->globalBoundingBox[0] = other.globalBoundingBox[0];
@@ -180,11 +180,11 @@ private:
 #ifdef USE_MPI
         const double* localMin = reinterpret_cast<const double*>(&(this->boundingBox[0]));
         double* globalMin = reinterpret_cast<double*>(&(this->globalBoundingBox[0]));    
-        MPI_Allreduce(localMin, globalMin, dim, MPI_DOUBLE, MPI_MIN, MPI_COMM_WORLD);
+        MPI_Allreduce(localMin, globalMin, dim, MPI_DOUBLE, MPI_MIN, OPP_MPI_WORLD);
 
         const double* localMax = reinterpret_cast<const double*>(&(this->boundingBox[1]));
         double* globalMax = reinterpret_cast<double*>(&(this->globalBoundingBox[1]));    
-        MPI_Allreduce(localMax, globalMax, dim, MPI_DOUBLE, MPI_MAX, MPI_COMM_WORLD);
+        MPI_Allreduce(localMax, globalMax, dim, MPI_DOUBLE, MPI_MAX, OPP_MPI_WORLD);
 
         // This is to avoid min and max corrdinates to not have MAX_REAL and MIN_REAL when current rank has no work
         if (count == 0) {
@@ -504,7 +504,7 @@ public:
     inline void waitBarrier()
     {
     #ifdef USE_MPI
-        MPI_CHECK(MPI_Barrier(MPI_COMM_WORLD));
+        MPI_CHECK(MPI_Barrier(OPP_MPI_WORLD));
         MPI_CHECK(MPI_Win_fence(0, win_structMeshToCellMapping)); 
         MPI_CHECK(MPI_Win_fence(0, win_structMeshToRankMapping)); 
     #endif

@@ -34,6 +34,10 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <opp_defs.h>
 
+#ifdef USE_MPI
+extern MPI_Comm OPP_MPI_WORLD;
+#endif
+
 #ifndef MIN
 #define MIN(a, b) ((a < b) ? (a) : (b))
 #endif
@@ -268,9 +272,9 @@ inline void opp_printf(const char* function, const char *format, ...)
 inline void opp_get_global_values(const int64_t value, int64_t& gbl_value, int64_t& gbl_max, int64_t& gbl_min) 
 {
 #ifdef USE_MPI
-    MPI_Reduce(&value, &gbl_value, 1, MPI_INT64_T, MPI_SUM, OPP_ROOT, MPI_COMM_WORLD);
-    MPI_Reduce(&value, &gbl_max, 1, MPI_INT64_T, MPI_MAX, 0, MPI_COMM_WORLD);
-    MPI_Reduce(&value, &gbl_min, 1, MPI_INT64_T, MPI_MIN, 0, MPI_COMM_WORLD);
+    MPI_Reduce(&value, &gbl_value, 1, MPI_INT64_T, MPI_SUM, OPP_ROOT, OPP_MPI_WORLD);
+    MPI_Reduce(&value, &gbl_max, 1, MPI_INT64_T, MPI_MAX, 0, OPP_MPI_WORLD);
+    MPI_Reduce(&value, &gbl_min, 1, MPI_INT64_T, MPI_MIN, 0, OPP_MPI_WORLD);
 #else
     gbl_value = value;
     gbl_max = value;
@@ -283,7 +287,7 @@ inline int64_t opp_get_global_value(int64_t value) {
 
     int64_t gbl_value = 0;
 #ifdef USE_MPI
-        MPI_Reduce(&value, &gbl_value, 1, MPI_INT64_T, MPI_SUM, OPP_ROOT, MPI_COMM_WORLD);
+        MPI_Reduce(&value, &gbl_value, 1, MPI_INT64_T, MPI_SUM, OPP_ROOT, OPP_MPI_WORLD);
 #else
         gbl_value = value;
 #endif
@@ -300,7 +304,7 @@ inline void opp_log_set_size_statistics(opp_set set, int log_boundary_count = 1)
     std::map<int, std::map<int,int>> particle_counts;
 
     std::vector<int> count_per_iter(OPP_comm_size, 0);
-    MPI_Gather(&(set->size), 1, MPI_INT, count_per_iter.data(), 1, MPI_INT, 0, MPI_COMM_WORLD);
+    MPI_Gather(&(set->size), 1, MPI_INT, count_per_iter.data(), 1, MPI_INT, 0, OPP_MPI_WORLD);
     int sum = 0, average = 0;
 
     auto& cc = particle_counts[OPP_main_loop_iter];

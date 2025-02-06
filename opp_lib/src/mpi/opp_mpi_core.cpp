@@ -107,7 +107,7 @@ void opp_partition_core(std::string lib_name, opp_set prime_set, opp_map prime_m
         recv_vec.resize(OPP_comm_size * 3);
 
         std::vector<int> sizes{ set->size, set->exec_size, set->nonexec_size };
-        MPI_Gather(&(sizes[0]), 3, MPI_INT, &(recv_vec[0]), 3, MPI_INT, OPP_ROOT, MPI_COMM_WORLD);
+        MPI_Gather(&(sizes[0]), 3, MPI_INT, &(recv_vec[0]), 3, MPI_INT, OPP_ROOT, OPP_MPI_WORLD);
     }
 
     // print the set sizes of all ranks after partitioning
@@ -281,13 +281,13 @@ Comm::Comm(MPI_Comm comm_parent) {
 
 Comm::~Comm() {
 
-    if ((this->comm_intra != MPI_COMM_NULL) && (this->comm_intra != MPI_COMM_WORLD)) {
+    if ((this->comm_intra != MPI_COMM_NULL) && (this->comm_intra != OPP_MPI_WORLD)) {
         
         MPI_CHECK(MPI_Comm_free(&this->comm_intra))
         this->comm_intra = MPI_COMM_NULL;
     }
 
-    if ((this->comm_inter != MPI_COMM_NULL) && (this->comm_inter != MPI_COMM_WORLD)) {
+    if ((this->comm_inter != MPI_COMM_NULL) && (this->comm_inter != OPP_MPI_WORLD)) {
 
         MPI_CHECK(MPI_Comm_free(&this->comm_inter))
         this->comm_intra = MPI_COMM_NULL;
@@ -319,7 +319,7 @@ void __opp_colour_cartesian_mesh(const int ndim, std::vector<int> cell_counts, o
     for (int dimx = 0; dimx < ndim; dimx++)  // reorder the mpi_dims to match the actual domain
         mpi_dims_reordered[cell_count_ordering[dimx]] = mpi_dims[dimx];
 
-    MPI_Cart_create(MPI_COMM_WORLD, ndim, mpi_dims_reordered.data(), periods, 1, &comm_cart);
+    MPI_Cart_create(OPP_MPI_WORLD, ndim, mpi_dims_reordered.data(), periods, 1, &comm_cart);
     MPI_Cart_get(comm_cart, ndim, mpi_dims, periods, coords);
 
     for (int dimx = 0; dimx < ndim; dimx++) 
@@ -333,8 +333,8 @@ void __opp_colour_cartesian_mesh(const int ndim, std::vector<int> cell_counts, o
     std::vector<int> all_cell_starts(OPP_comm_size * ndim);
     std::vector<int> all_cell_ends(OPP_comm_size * ndim);
 
-    MPI_Allgather(cell_starts, ndim, MPI_INT, all_cell_starts.data(), ndim, MPI_INT, MPI_COMM_WORLD);
-    MPI_Allgather(cell_ends, ndim, MPI_INT, all_cell_ends.data(), ndim, MPI_INT, MPI_COMM_WORLD);
+    MPI_Allgather(cell_starts, ndim, MPI_INT, all_cell_starts.data(), ndim, MPI_INT, OPP_MPI_WORLD);
+    MPI_Allgather(cell_ends, ndim, MPI_INT, all_cell_ends.data(), ndim, MPI_INT, OPP_MPI_WORLD);
 
     if (OPP_rank == OPP_ROOT) {
         std::string log = "";
@@ -420,23 +420,23 @@ void opp_mpi_reduce_double(opp_arg *arg, double *data)
 
         if (arg->acc == OPP_INC) {
             MPI_Allreduce((double *)arg->data, result, arg->dim, MPI_DOUBLE, MPI_SUM,
-                            MPI_COMM_WORLD);
+                            OPP_MPI_WORLD);
             memcpy(arg->data, result, sizeof(double) * arg->dim);
         } 
         else if (arg->acc == OPP_MAX) {
             MPI_Allreduce((double *)arg->data, result, arg->dim, MPI_DOUBLE, MPI_MAX,
-                            MPI_COMM_WORLD);
+                            OPP_MPI_WORLD);
             memcpy(arg->data, result, sizeof(double) * arg->dim);
         } 
         else if (arg->acc == OPP_MIN) {
             MPI_Allreduce((double *)arg->data, result, arg->dim, MPI_DOUBLE, MPI_MIN,
-                            MPI_COMM_WORLD);
+                            OPP_MPI_WORLD);
             memcpy(arg->data, result, sizeof(double) * arg->dim);
         } 
         else if (arg->acc == OPP_WRITE) {
             result = (double *)opp_host_malloc(arg->dim * OPP_comm_size * sizeof(double)); // memory leak
             MPI_Allgather((double *)arg->data, arg->dim, MPI_DOUBLE, result, arg->dim,
-                            MPI_DOUBLE, MPI_COMM_WORLD);
+                            MPI_DOUBLE, OPP_MPI_WORLD);
             
             for (int i = 1; i < OPP_comm_size; i++) {
                 for (int j = 0; j < arg->dim; j++) {
@@ -474,23 +474,23 @@ void opp_mpi_reduce_int(opp_arg *arg, int *data)
 
         if (arg->acc == OPP_INC) {
             MPI_Allreduce((int *)arg->data, result, arg->dim, MPI_INT, MPI_SUM,
-                            MPI_COMM_WORLD);
+                            OPP_MPI_WORLD);
             memcpy(arg->data, result, sizeof(int) * arg->dim);
         } 
         else if (arg->acc == OPP_MAX) {
             MPI_Allreduce((int *)arg->data, result, arg->dim, MPI_INT, MPI_MAX,
-                            MPI_COMM_WORLD);
+                            OPP_MPI_WORLD);
             memcpy(arg->data, result, sizeof(int) * arg->dim);
         } 
         else if (arg->acc == OPP_MIN) {
             MPI_Allreduce((int *)arg->data, result, arg->dim, MPI_INT, MPI_MIN,
-                            MPI_COMM_WORLD);
+                            OPP_MPI_WORLD);
             memcpy(arg->data, result, sizeof(int) * arg->dim);
         } 
         else if (arg->acc == OPP_WRITE) {
             result = (int *)opp_host_malloc(arg->dim * OPP_comm_size * sizeof(int)); // memory leak
             MPI_Allgather((int *)arg->data, arg->dim, MPI_INT, result, arg->dim,
-                            MPI_INT, MPI_COMM_WORLD);
+                            MPI_INT, OPP_MPI_WORLD);
             for (int i = 1; i < OPP_comm_size; i++) {
                 for (int j = 0; j < arg->dim; j++) {
                     if (result[i * arg->dim + j] != 0)

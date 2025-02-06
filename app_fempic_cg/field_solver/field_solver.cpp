@@ -51,30 +51,40 @@ FESolver::FESolver(
         CONST_n0(opp_params->get<OPP_REAL>("plasma_den")),
         CONST_kTe(Kb * opp_params->get<OPP_REAL>("electron_temperature")),
         CONST_EPS0(EPS0),
-        CONST_QE(QE),
-        n_nodes_set(n_type_dat->set->size),
-        n_nodes_inc_halo(n_type_dat->set->size + n_type_dat->set->exec_size + n_type_dat->set->nonexec_size),
-        n_cells_set(c2n_map->from->size),
-        n_cells_inc_halo(c2n_map->from->size + c2n_map->from->exec_size)
+        CONST_QE(QE)
 {
-    if (OPP_DBG) opp_printf("FESolver", "n_nodes_set %d | n_nodes_inc_halo %d | n_cells_set %d | n_cells_inc_halo %d", 
-        n_nodes_set, n_nodes_inc_halo, n_cells_set, n_cells_inc_halo);
+    if (OPP_IS_VALID_PROCESS) {
+        n_nodes_set = n_type_dat->set->size;
+        n_nodes_inc_halo = n_type_dat->set->size + n_type_dat->set->exec_size + n_type_dat->set->nonexec_size;
+        n_cells_set = c2n_map->from->size;
+        n_cells_inc_halo = c2n_map->from->size + c2n_map->from->exec_size;
 
-    // this is required since n_bnd_pot_dat is updated using an opp_par_loop
-    opp_mpi_force_halo_update_if_dirty(n_bnd_pot_dat->set, { n_bnd_pot_dat }, Device_CPU); 
+        if (OPP_DBG) 
+            opp_printf("FESolver", "n_nodes_set %d | n_nodes_inc_halo %d | n_cells_set %d | n_cells_inc_halo %d", 
+                n_nodes_set, n_nodes_inc_halo, n_cells_set, n_cells_inc_halo);
 
-    calculate_neq(n_type_dat);
+        // this is required since n_bnd_pot_dat is updated using an opp_par_loop
+        opp_mpi_force_halo_update_if_dirty(n_bnd_pot_dat->set, { n_bnd_pot_dat }, Device_CPU); 
 
-    node_to_eq_map.resize(n_nodes_inc_halo);
+        calculate_neq(n_type_dat);
 
-    NX.resize(n_cells_inc_halo);
-    detJ.resize(n_cells_inc_halo);
-    
-    dLocal.resize(neq, 0.0);
-    f1Local.resize(neq, 0.0);
-    tempNEQ1.resize(neq, 0.0);
-    tempNEQ2.resize(neq, 0.0);
-    tempNEQ3.resize(neq, 0.0);
+        node_to_eq_map.resize(n_nodes_inc_halo);
+
+        NX.resize(n_cells_inc_halo);
+        detJ.resize(n_cells_inc_halo);
+        
+        dLocal.resize(neq, 0.0);
+        f1Local.resize(neq, 0.0);
+        tempNEQ1.resize(neq, 0.0);
+        tempNEQ2.resize(neq, 0.0);
+        tempNEQ3.resize(neq, 0.0);
+    }
+
+#ifdef USE_MPI
+    MPI_Allreduce(&neq, &global_neq, 1, MPI_INT, MPI_SUM, PETSC_COMM_WORLD);
+#else
+    global_neq = neq;
+#endif
 
     init_petsc_structures();
     init_node_to_eq_map(n_type_dat);
@@ -170,7 +180,8 @@ void FESolver::calculate_neq(const opp_dat n_type_dat)
 
 //*************************************************************************************************
 void FESolver::init_node_to_eq_map(const opp_dat n_type_dat) // relation from node indices to equation indices
-{
+{ OPP_RETURN_IF_INVALID_PROCESS;
+
     int eq = 0;
     for (int n = 0; n < n_nodes_inc_halo; n++)
     {
@@ -230,15 +241,15 @@ void FESolver::init_petsc_structures()
     MatCreate(PETSC_COMM_WORLD, &Jmat);
     MatCreate(PETSC_COMM_WORLD, &Kmat);
 
-    MatSetSizes(Jmat, neq, neq, PETSC_DETERMINE, PETSC_DETERMINE);
-    MatSetSizes(Kmat, neq, neq, PETSC_DETERMINE, PETSC_DETERMINE);
+    MatSetSizes(Jmat, PETSC_DECIDE, PETSC_DECIDE, global_neq, global_neq);
+    MatSetSizes(Kmat, PETSC_DECIDE, PETSC_DECIDE, global_neq, global_neq);
 
 #ifndef USE_MPI
     MatSetType(Jmat, MATSEQAIJ); MatSetType(Kmat, MATSEQAIJ);
-    VecCreateSeq(PETSC_COMM_WORLD, neq, &Bvec);
+    VecCreateSeq(PETSC_COMM_WORLD, global_neq, &Bvec);
 #else
     MatSetType(Jmat, MATMPIAIJ); MatSetType(Kmat, MATMPIAIJ);
-    VecCreateMPI(PETSC_COMM_WORLD, neq, PETSC_DETERMINE, &Bvec);
+    VecCreateMPI(PETSC_COMM_WORLD, PETSC_DECIDE, global_neq, &Bvec); 
 #endif
 
     MatSetUp(Jmat); MatSetUp(Kmat);
@@ -248,23 +259,66 @@ void FESolver::init_petsc_structures()
 
     duplicate_vec(&Bvec, &F0vec);
     duplicate_vec(&Bvec, &F1vec);
-    duplicate_vec(&Bvec, &Dvec);
+    // duplicate_vec(&Bvec, &Dvec); // Dvec is created as a ghost vector below
     duplicate_vec(&Bvec, &Yvec);
-
-    VecGetOwnershipRange(Bvec, &own_start, &own_end);
-    VecGetSize(Bvec, &global_neq);
 
     KSPCreate(PETSC_COMM_WORLD, &ksp);
     KSPSetType(ksp, KSPCG);
     KSPSetOperators(ksp, Jmat, Jmat);
-    // KSPSetTolerances(ksp, 1.e-2 / (neq * neq), 1.e-50, PETSC_DEFAULT, PETSC_DEFAULT); 
-    KSPSetTolerances(ksp, 1.e-100, 1.e-100, PETSC_DEFAULT , PETSC_DEFAULT); 
+    KSPSetTolerances(ksp, 1.e-10, 1.e-10, PETSC_DEFAULT , PETSC_DEFAULT); 
     KSPSetFromOptions(ksp); 
     //PetscViewerSetFormat(PETSC_VIEWER_STDOUT_WORLD, PETSC_VIEWER_ASCII_MATLAB);
 
     vec_col.resize(neq);
-    for (int i = 0; i < neq; i++) 
-        vec_col[i] = (i + own_start);
+    std::vector<int> ghost_vec_indices, ghost_indices;
+
+    int pet_own_start = 0, pet_own_end = 0;
+    VecGetOwnershipRange(Bvec, &pet_own_start, &pet_own_end);
+    
+    if (OPP_IS_VALID_PROCESS) {
+
+        std::vector<int> neq_per_rank(OPP_comm_size, 0);
+#ifdef USE_MPI       
+        MPI_Allgather(&neq, 1, MPI_INT, neq_per_rank.data(), 1, MPI_INT, OPP_MPI_WORLD);
+#endif
+
+        for (int i = 0; i < OPP_rank; ++i)
+            own_start += neq_per_rank[i];
+        own_end = own_start + neq;
+
+        for (int i = 0; i < neq; i++) 
+            vec_col[i] = (i + own_start);
+
+        for (int i = pet_own_start; i < pet_own_end; ++i) {
+            ghost_vec_indices.push_back(i);
+        }
+        for (auto gbl_idx : vec_col) {
+            if (gbl_idx < pet_own_start || gbl_idx >= pet_own_end) {
+                ghost_vec_indices.push_back(gbl_idx);
+                ghost_indices.push_back(gbl_idx);
+            }
+        }
+
+        for (size_t i = 0; i < vec_col.size(); ++i) {
+            auto it = std::find(ghost_vec_indices.begin(), ghost_vec_indices.end(), vec_col[i]);
+            
+            if (it != ghost_vec_indices.end()) {
+                ex_indices.push_back(std::distance(ghost_vec_indices.begin(), it));
+            } 
+            else {
+                opp_printf("ERROR", 
+                    "init_petsc_structures - vec_col value %d not in ghost_vec_indices", i);
+            }
+        }
+    }
+
+    if (OPP_DBG)
+        opp_printf("init_petsc_structures", 
+            "pet_own_start %d pet_own_end %d | neq %d | own_start %d own_end %d | ghost_indices %zu", 
+            pet_own_start, pet_own_end, neq, own_start, own_end, ghost_indices.size());
+
+    VecCreateGhost(PETSC_COMM_WORLD, (pet_own_end - pet_own_start), global_neq, 
+                    ghost_indices.size(), ghost_indices.data(), &Dvec);
 }
 
 //*************************************************************************************************
@@ -334,7 +388,8 @@ void FESolver::pre_assembly(const opp_dat n_bnd_pot)
 //*************************************************************************************************
 void FESolver::initialze_matrix(std::map<int, std::map<int, double>>& sparse_K)
 {
-    if (OPP_DBG) opp_printf("FESolver", "initialze_matrix START");
+    if (OPP_DBG) 
+        opp_printf("FESolver", "initialze_matrix START own_start %d own_end %d", own_start, own_end);
 
     std::vector<int> matCol(neq);                         // Number of non zero columns per row
     std::vector<std::vector<int>> matIndex(neq);          // Non zero column indices per row
@@ -373,13 +428,15 @@ void FESolver::initialze_matrix(std::map<int, std::map<int, double>>& sparse_K)
         off_diag_max_fields = (off_diag_max_fields > off_diag) ? off_diag_max_fields : off_diag;  
     }
 
-#ifndef USE_MPI
-    MatSeqAIJSetPreallocation(Kmat, diag_max_fields, nullptr);
-    MatSeqAIJSetPreallocation(Jmat, diag_max_fields, nullptr);
-#else
-    MatMPIAIJSetPreallocation(Kmat, diag_max_fields, NULL, off_diag_max_fields, NULL);
-    MatMPIAIJSetPreallocation(Jmat, diag_max_fields, NULL, off_diag_max_fields, NULL);
-#endif
+// #ifndef USE_MPI
+//     MatSeqAIJSetPreallocation(Kmat, diag_max_fields, nullptr);
+//     MatSeqAIJSetPreallocation(Jmat, diag_max_fields, nullptr);
+// #else
+//     MatMPIAIJSetPreallocation(Kmat, diag_max_fields, NULL, off_diag_max_fields, NULL);
+//     MatMPIAIJSetPreallocation(Jmat, diag_max_fields, NULL, off_diag_max_fields, NULL);
+// #endif
+//     MatSetOption(Kmat, MAT_NEW_NONZERO_ALLOCATION_ERR, PETSC_FALSE);
+//     MatSetOption(Jmat, MAT_NEW_NONZERO_ALLOCATION_ERR, PETSC_FALSE);
 
     if (OPP_DBG) opp_printf("FESolver", "initialze_matrix diag_max_fields=%d off_diag_max_fields=%d", 
         diag_max_fields, off_diag_max_fields);
@@ -410,8 +467,9 @@ void FESolver::duplicate_vec(Vec* vec_mimic, Vec* vec_new)
 }
 
 //*************************************************************************************************
-void FESolver::enrich_cell_shape_deriv(opp_dat cell_shape_deriv)
-{
+void FESolver::enrich_cell_shape_deriv(opp_dat cell_shape_deriv) 
+{ OPP_RETURN_IF_INVALID_PROCESS;
+
     if (OPP_DBG) opp_printf("FESolver", "enrich_cell_shape_deriv START");
 
     opp_profiler->start("EnrichCellShapeDeriv");
@@ -489,7 +547,8 @@ void FESolver::add_fe(Vec *Fvec, int e, double fe[4])
 
 /*computes derivatives of the shape functions for all elements constants since using linear elements*/
 void FESolver::compute_nx(const opp_dat n_pos) 
-{ 
+{ OPP_RETURN_IF_INVALID_PROCESS;
+
     /*derivatives of the shape functions vs. xi*/
     double na_xi[4][3] = {{1,0,0}, {0,1,0}, {0,0,1}, {-1,-1,-1}};
 
@@ -544,8 +603,7 @@ void FESolver::sanity_check()
     MatGetOwnershipRange(Kmat, &k_row_start, &k_row_end);
 
     if (is_neq(j_gm, j_gn) || is_neq(k_gm, k_gn) || is_neq(j_gm, global_neq) ||
-        is_neq(j_row_start, k_row_start) || is_neq(j_row_end, k_row_end) || 
-        is_neq(j_row_start, own_start) || is_neq(j_row_end, own_end))
+        is_neq(j_row_start, k_row_start) || is_neq(j_row_end, k_row_end))
     {
         opp_printf("FESolver::FESolver", "Error... Matrix vector sizes issue");
     }      
