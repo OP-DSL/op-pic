@@ -303,7 +303,8 @@ opp_set opp_decl_set(int size, char const *name)
 opp_set opp_decl_particle_set(int size, char const *name, opp_set cells_set)
 {
     opp_set set = opp_decl_particle_set_core(size, name, cells_set);
-    set->particle_remove_count_d = opp_mem::dev_malloc<OPP_INT>(1);
+    if (OPP_IS_VALID_PROCESS)
+        set->particle_remove_count_d = opp_mem::dev_malloc<OPP_INT>(1);
     return set;
 }
 opp_set opp_decl_particle_set(char const *name, opp_set cells_set)
