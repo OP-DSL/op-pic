@@ -20,9 +20,9 @@ export MPICH_CC=$(spack location -i intel-oneapi-compilers@2024.2.1)/compiler/20
 spack load intel-oneapi-dpct@2024.2.1
 
 export CPPFLAGS_ADD="-fp-model precise"
-export SYCLFLAGS_ADD="-fp-model precise -fsycl-targets=nvptx64-nvidia-cuda -Xsycl-target-backend=nvptx64-nvidia-cuda --cuda-gpu-arch=sm_80 "
+# export SYCLFLAGS_ADD="-fp-model precise -fsycl-targets=nvptx64-nvidia-cuda -Xsycl-target-backend=nvptx64-nvidia-cuda --cuda-gpu-arch=sm_80 "
 # export SYCLFLAGS_ADD=" -fsycl-targets=spir64_x86_64 "
-# export SYCLFLAGS_ADD="-fp-model precise -fsycl-targets=nvptx64-nvidia-cuda -Xsycl-target-backend=nvptx64-nvidia-cuda --cuda-gpu-arch=sm_80 -Xcuda-ptxas --maxrregcount=128"
+export SYCLFLAGS_ADD="-fp-model precise -fsycl-targets=nvptx64-nvidia-cuda -Xsycl-target-backend=nvptx64-nvidia-cuda --cuda-gpu-arch=sm_80 -Xcuda-ptxas --maxrregcount=128"
 
 module load cuda/12.3 
 export CUDA_INSTALL_PATH=/mnt/lustre/tursafs1/apps/cuda/12.3

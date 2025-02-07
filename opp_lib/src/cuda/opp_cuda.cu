@@ -93,7 +93,7 @@ void opp_init(int argc, char **argv)
     if (OPP_rank == OPP_ROOT) {
         std::string log = "Running on CUDA";
 #ifdef USE_MPI
-        log += "+MPI with " + std::to_string(OPP_comm_size) + " ranks";
+        log += "+MPI with " + std::to_string(OPP_comm_size) + " GPU ranks, but with " + std::to_string(size) + " total ranks";
 #endif        
         opp_printf("OP-PIC", "%s", log.c_str());
         opp_printf("OP-PIC", "---------------------------------------------");
