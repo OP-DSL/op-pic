@@ -68,27 +68,48 @@ void opp_init(int argc, char **argv)
         MPI_Init(&argc, &argv);
 #endif
 
-#ifdef USE_MPI
-    OPP_MPI_WORLD = MPI_COMM_WORLD;
+    opp_init_core(argc, argv);
 
-    MPI_Comm_rank(OPP_MPI_WORLD, &OPP_rank);
-    MPI_Comm_size(OPP_MPI_WORLD, &OPP_comm_size);
+#ifdef USE_MPI
+    int size = -1, rank = -1;
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+    MPI_Comm_size(MPI_COMM_WORLD, &size);
+
+    const int opp_partitions = opp_params->get<OPP_INT>("opp_partitions"); 
+    if (size % opp_partitions != 0) {
+        opp_abort("The MPI ranks is not divisible by partition count");
+    }
+
+    const int gap = size / opp_partitions;
+    int color = (rank % gap == 0) ? 1 : MPI_UNDEFINED;
+    MPI_Comm_split(MPI_COMM_WORLD, color, rank, &OPP_MPI_WORLD);
+
+    if (color != MPI_UNDEFINED) {
+        MPI_CHECK(MPI_Comm_rank(OPP_MPI_WORLD, &OPP_rank))
+        MPI_CHECK(MPI_Comm_size(OPP_MPI_WORLD, &OPP_comm_size))
+    } 
+    else {
+        // Handle case where the rank is not part of the new communicator
+        OPP_rank = -1 * rank;
+        OPP_comm_size = 0;
+    }
 #endif
 
     if (OPP_rank == OPP_ROOT) {
         std::string log = "Running on SYCL";
 #ifdef USE_MPI
-        log += "+MPI with " + std::to_string(OPP_comm_size) + " ranks";
+        log += "+MPI with " + std::to_string(OPP_comm_size) + " GPU ranks, but with " + std::to_string(size) + " total ranks";
 #endif        
         opp_printf("OP-PIC", "%s", log.c_str());
         opp_printf("OP-PIC", "---------------------------------------------");
     }
 
 #ifdef USE_MPI
-    MPI_Barrier(MPI_COMM_WORLD);
+    MPI_Barrier(OPP_MPI_WORLD);
 #endif  
 
-    opp_init_core(argc, argv);
+    OPP_RETURN_IF_INVALID_PROCESS;
+
     opp_params->write(std::cout);
     opp_device_init(argc, argv);
 
@@ -122,21 +143,29 @@ void opp_init(int argc, char **argv)
 //****************************************
 void opp_exit()
 {
-    globalMover.reset();
-    cellMapper.reset();
-    boundingBox.reset();
-    comm.reset();
+#ifdef USE_MPI
+    MPI_Barrier(MPI_COMM_WORLD);
+#endif  
 
-    opp_mem::host_free(OPP_reduct_h);
-    opp_mem::host_free(OPP_consts_h);
+    if (OPP_IS_VALID_PROCESS) {
+
+        globalMover.reset();
+        cellMapper.reset();
+        boundingBox.reset();
+        comm.reset();
+
+        opp_mem::host_free(OPP_reduct_h);
+        opp_mem::host_free(OPP_consts_h);
 
 #ifdef USE_MPI 
-    opp_halo_destroy(); // free memory allocated to halos and mpi_buffers 
-    opp_partition_destroy(); // free memory used for holding partition information
-    opp_part_comm_destroy(); // free memory allocated for particle communication
+        opp_halo_destroy(); // free memory allocated to halos and mpi_buffers 
+        opp_partition_destroy(); // free memory used for holding partition information
+        opp_part_comm_destroy(); // free memory allocated for particle communication
 #endif
 
-    opp_device_exit();
+        opp_device_exit();
+    }
+
     opp_exit_core();
 
 #ifdef USE_PETSC
@@ -196,7 +225,7 @@ void opp_device_init(int argc, char **argv) {
 //             opp_abort();
 //         }
 // #ifdef USE_MPI
-//         opp::Comm comm(MPI_COMM_WORLD);
+//         opp::Comm comm(OPP_MPI_WORLD);
 //         const int int_rank = comm.rank_intra;
 // #else
 //         const int int_rank = OPP_rank;
@@ -280,7 +309,8 @@ opp_set opp_decl_set(int size, char const *name)
 opp_set opp_decl_particle_set(int size, char const *name, opp_set cells_set)
 {
     opp_set set = opp_decl_particle_set_core(size, name, cells_set);
-    set->particle_remove_count_d = opp_mem::dev_malloc<OPP_INT>(1);
+    if (OPP_IS_VALID_PROCESS)
+        set->particle_remove_count_d = opp_mem::dev_malloc<OPP_INT>(1);
     return set;
 }
 opp_set opp_decl_particle_set(char const *name, opp_set cells_set)
@@ -290,7 +320,7 @@ opp_set opp_decl_particle_set(char const *name, opp_set cells_set)
 
 //****************************************
 opp_map opp_decl_map(opp_set from, opp_set to, int dim, int *imap, char const *name)
-{
+{ OPP_RETURN_NULL_IF_INVALID_PROCESS;
     opp_map map = opp_decl_map_core(from, to, dim, imap, name);
 
     if (from->is_particle) {
@@ -306,7 +336,7 @@ opp_map opp_decl_map(opp_set from, opp_set to, int dim, int *imap, char const *n
 
 //****************************************
 opp_dat opp_decl_dat(opp_set set, int dim, opp_data_type dtype, void *data, char const *name)
-{
+{ OPP_RETURN_NULL_IF_INVALID_PROCESS;
     std::string type = "";
     int size = -1;
     getDatTypeSize(dtype, type, size);
@@ -321,7 +351,7 @@ opp_dat opp_decl_dat(opp_set set, int dim, opp_data_type dtype, void *data, char
 
 //********************************************************************************
 opp_map opp_decl_map_txt(opp_set from, opp_set to, int dim, const char* file_name, char const *name)
-{
+{ OPP_RETURN_NULL_IF_INVALID_PROCESS;
     int* map_data = (int*)opp_load_from_file_core(file_name, from->size, dim, "int", sizeof(int));
     opp_map map = opp_decl_map(from, to, dim, map_data, name);
     opp_mem::host_free(map_data);
@@ -331,7 +361,7 @@ opp_map opp_decl_map_txt(opp_set from, opp_set to, int dim, const char* file_nam
 
 //****************************************
 opp_dat opp_decl_dat_txt(opp_set set, int dim, opp_data_type dtype, const char* file_name, char const *name)
-{
+{ OPP_RETURN_NULL_IF_INVALID_PROCESS;
     std::string type = "";
     int size = -1;
     getDatTypeSize(dtype, type, size);
@@ -348,42 +378,42 @@ opp_dat opp_decl_dat_txt(opp_set set, int dim, opp_data_type dtype, const char* 
 //********************************************************************************
 opp_arg opp_arg_dat(opp_dat dat, int idx, opp_map map, int dim, const char *typ, opp_access acc, 
                         bool offset)
-{
+{ OPP_RETURN_ARG_IF_INVALID_PROCESS;
     if (dat == nullptr) opp_abort("dat is NULL at opp_arg_dat1");
     return opp_arg_dat_core(dat, idx, map, dat->dim, dat->type, nullptr, acc);
 }
 opp_arg opp_arg_dat(opp_dat dat, int idx, opp_map map, int dim, const char *typ, opp_map p2c_map, 
                         opp_access acc, bool offset)
-{
+{ OPP_RETURN_ARG_IF_INVALID_PROCESS;
     if (dat == nullptr) opp_abort("dat is NULL at opp_arg_dat2");
     return opp_arg_dat_core(dat, idx, map, dat->dim, dat->type, p2c_map->p2c_dat, acc);
 }
 
 //****************************************
 opp_arg opp_arg_dat(opp_dat dat, int idx, opp_map map, opp_map p2c_map, opp_access acc, bool offset)
-{
+{ OPP_RETURN_ARG_IF_INVALID_PROCESS;
     if (dat == nullptr) opp_abort("dat is NULL at opp_arg_dat3");
     return opp_arg_dat_core(dat, idx, map, dat->dim, dat->type, p2c_map->p2c_dat, acc);
 }
 opp_arg opp_arg_dat(opp_dat dat, int idx, opp_map map, opp_access acc, bool offset)
-{
+{ OPP_RETURN_ARG_IF_INVALID_PROCESS;
     if (dat == nullptr) opp_abort("dat is NULL at opp_arg_dat4");
     return opp_arg_dat_core(dat, idx, map, dat->dim, dat->type, nullptr, acc);
 }
 opp_arg opp_arg_dat(opp_dat dat, opp_map p2c_map, opp_access acc, bool offset)
-{
+{ OPP_RETURN_ARG_IF_INVALID_PROCESS;
     if (dat == nullptr) opp_abort("dat is NULL at opp_arg_dat5");
     return opp_arg_dat_core(dat, -1, NULL, dat->dim, dat->type, p2c_map->p2c_dat, acc);
 }
 opp_arg opp_arg_dat(opp_dat dat, opp_access acc, bool offset)
-{
+{ OPP_RETURN_ARG_IF_INVALID_PROCESS;
     if (dat == nullptr) opp_abort("dat is NULL at opp_arg_dat6");
     return opp_arg_dat_core(dat, -1, NULL, dat->dim, dat->type, nullptr, acc);
 }
 
 //****************************************
 opp_arg opp_arg_dat(opp_map data_map, opp_access acc, bool offset)
-{
+{ OPP_RETURN_ARG_IF_INVALID_PROCESS;
     if (data_map == nullptr) opp_abort("dat is NULL at opp_arg_dat7");
     if (data_map->from->is_particle)
         return opp_arg_dat_core(data_map->p2c_dat, -1, nullptr, 
@@ -391,7 +421,7 @@ opp_arg opp_arg_dat(opp_map data_map, opp_access acc, bool offset)
     return opp_arg_dat_core(data_map, -1, nullptr, nullptr, acc);
 }
 opp_arg opp_arg_dat(opp_map data_map, opp_map p2c_map, opp_access acc, bool offset)
-{
+{ OPP_RETURN_ARG_IF_INVALID_PROCESS;
     if (data_map == nullptr) opp_abort("dat is NULL at opp_arg_dat8");
     if (data_map->from->is_particle)
         return opp_arg_dat_core(data_map->p2c_dat, -1, nullptr, 
@@ -399,7 +429,7 @@ opp_arg opp_arg_dat(opp_map data_map, opp_map p2c_map, opp_access acc, bool offs
     return opp_arg_dat_core(data_map, -1, nullptr, p2c_map->p2c_dat, acc);
 }
 opp_arg opp_arg_dat(opp_map data_map, int idx, opp_map map, opp_access acc, bool offset)
-{
+{ OPP_RETURN_ARG_IF_INVALID_PROCESS;
     if (data_map == nullptr) opp_abort("dat is NULL at opp_arg_dat9");
     if (data_map->from->is_particle)
         return opp_arg_dat_core(data_map->p2c_dat, idx, map, 
@@ -407,7 +437,7 @@ opp_arg opp_arg_dat(opp_map data_map, int idx, opp_map map, opp_access acc, bool
     return opp_arg_dat_core(data_map, idx, map, nullptr, acc);
 }
 opp_arg opp_arg_dat(opp_map data_map, int idx, opp_map map, opp_map p2c_map, opp_access acc, bool offset)
-{
+{ OPP_RETURN_ARG_IF_INVALID_PROCESS;
     if (data_map == nullptr) opp_abort("dat is NULL at opp_arg_dat10");
     if (data_map->from->is_particle)
         return opp_arg_dat_core(data_map->p2c_dat, idx, map, 
@@ -417,7 +447,7 @@ opp_arg opp_arg_dat(opp_map data_map, int idx, opp_map map, opp_map p2c_map, opp
 
 //********************************************************************************
 void opp_print_dat_to_txtfile(opp_dat dat, const char *file_name_prefix, const char *file_name_suffix)
-{
+{ OPP_RETURN_IF_INVALID_PROCESS;
     if (OPP_DBG) opp_printf("opp_print_dat_to_txtfile", "writing file [%s %s] data %p data_d %p", 
                     file_name_prefix, file_name_suffix, dat->data, dat->data_d);
 
@@ -430,7 +460,7 @@ void opp_print_dat_to_txtfile(opp_dat dat, const char *file_name_prefix, const c
 
 //****************************************
 void opp_print_map_to_txtfile(opp_map map, const char *file_name_prefix, const char *file_name_suffix)
-{
+{ OPP_RETURN_IF_INVALID_PROCESS;
     if (OPP_DBG) opp_printf("opp_print_map_to_txtfile", "writing file [%s]", file_name_suffix);
     
     std::string prefix = std::string(file_name_prefix) + "_sycl" + std::to_string(OPP_rank) + "_";
@@ -440,7 +470,7 @@ void opp_print_map_to_txtfile(opp_map map, const char *file_name_prefix, const c
 
 //****************************************
 opp_dat opp_fetch_data(opp_dat dat) 
-{
+{ OPP_RETURN_NULL_IF_INVALID_PROCESS;
     if (dat->set->is_particle) {
         opp_printf("opp_fetch_data", "Error Cannot rearrange particle dats");
         opp_abort();
@@ -458,7 +488,7 @@ opp_dat opp_fetch_data(opp_dat dat)
 
 //****************************************
 void opp_mpi_print_dat_to_txtfile(opp_dat dat, const char *file_name) 
-{
+{ OPP_RETURN_IF_INVALID_PROCESS;
     OPP_DEVICE_SYNCHRONIZE();
 
 #ifdef USE_MPI
@@ -478,7 +508,7 @@ void opp_mpi_print_dat_to_txtfile(opp_dat dat, const char *file_name)
 
 //****************************************
 void opp_dump_dat(opp_dat dat)
-{
+{ OPP_RETURN_IF_INVALID_PROCESS;
     OPP_DEVICE_SYNCHRONIZE();
 
     if (dat->dirty_hd == Dirty::Host) opp_download_dat(dat);
@@ -489,7 +519,7 @@ void opp_dump_dat(opp_dat dat)
 //********************************************************************************
 // Set the complete dat to zero (upto array capacity)
 void opp_reset_dat_impl(opp_dat dat, char* val, opp_reset reset)
-{
+{ OPP_RETURN_IF_INVALID_PROCESS;
     if (OPP_DBG) 
         opp_printf("opp_reset_dat_impl", "dat [%s] dim [%d] dat size [%d] set size [%d] set capacity [%d]", 
             dat->name, dat->dim, dat->size, dat->set->size, dat->set->set_capacity);
@@ -520,7 +550,7 @@ void opp_reset_dat_impl(opp_dat dat, char* val, opp_reset reset)
 //*******************************************************************************
 // This routine assumes that the host data structures are clean
 void opp_partition(std::string lib_name, opp_set prime_set, opp_map prime_map, opp_dat data)
-{
+{ OPP_RETURN_IF_INVALID_PROCESS;
 #ifdef USE_MPI
     // remove all negative mappings and copy the first mapping of the current element for all negative mappings
     opp_sanitize_all_maps();

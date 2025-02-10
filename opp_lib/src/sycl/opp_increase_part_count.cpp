@@ -37,7 +37,8 @@ size_t opp_saved_mesh_relation_size = 0;
 
 //****************************************
 void opp_increase_particle_count(opp_set set, const OPP_INT insert_count)
-{ 
+{ OPP_RETURN_IF_INVALID_PROCESS;
+
     opp_profiler->start("opp_inc_part_count");
 
     const bool need_resizing = (set->set_capacity < (set->size + insert_count)) ? true : false;
@@ -84,7 +85,8 @@ void opp_increase_particle_count(opp_set set, const OPP_INT insert_count)
 //****************************************
 void opp_inc_part_count_with_distribution(opp_set set, OPP_INT insert_count, 
                                             opp_dat iface_dist, bool calc_new)
-{
+{ OPP_RETURN_IF_INVALID_PROCESS;
+
     if (OPP_DBG) 
         opp_printf("opp_inc_part_count_with_distribution", "insert_count [%d] %s", 
         insert_count, (calc_new ? "NEW" : "COPY"));

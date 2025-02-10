@@ -22,7 +22,8 @@ void opp_par_loop_all__compute_electric_field_kernel(opp_set set,
     opp_arg arg4, // n_potential | OPP_READ
     opp_arg arg5 // n_potential | OPP_READ
 ) 
-{
+{ OPP_RETURN_IF_INVALID_PROCESS;
+
     const int nargs = 6;
     opp_arg args[nargs];
 

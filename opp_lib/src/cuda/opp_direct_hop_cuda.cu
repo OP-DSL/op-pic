@@ -83,7 +83,7 @@ CellMapper::~CellMapper()
 void CellMapper::createStructMeshMappingArrays() 
 {
 #ifdef USE_MPI 
-    MPI_CHECK(MPI_Barrier(MPI_COMM_WORLD));
+    MPI_CHECK(MPI_Barrier(OPP_MPI_WORLD));
 
     //*************************** // One per shared memory (node)
     auto createPerNodeSharedMemArrays = [&](int*& mapping, MPI_Win& win) {
@@ -120,7 +120,7 @@ void CellMapper::createStructMeshMappingArrays()
     createPerNodeSharedMemArrays(structMeshToCellMapping, win_structMeshToCellMapping);
     createPerNodeSharedMemArrays(structMeshToRankMapping, win_structMeshToRankMapping);
 
-    MPI_CHECK(MPI_Barrier(MPI_COMM_WORLD));
+    MPI_CHECK(MPI_Barrier(OPP_MPI_WORLD));
 
     structMeshToRankMapping_d = opp_mem::dev_malloc<OPP_INT>(globalGridSize);
 #else
@@ -435,7 +435,7 @@ void CellMapper::hostToDeviceTransferMappings() {
         //         printStructuredMesh("structMeshToRankMappingBC", tmp_ranks.data(), 
         //                                 globalGridSize, false, globalGridDimsX);   
         //     }
-        //     MPI_Barrier(MPI_COMM_WORLD);  
+        //     MPI_Barrier(OPP_MPI_WORLD);  
         // }
     }
 
@@ -683,7 +683,7 @@ void CellMapper::convertToLocalMappingsIncRank(const opp_dat global_cell_id_dat)
         }
     }
 
-    MPI_CHECK(MPI_Barrier(MPI_COMM_WORLD));
+    MPI_CHECK(MPI_Barrier(OPP_MPI_WORLD));
 
     if (comm->rank_intra == 0) {
         MPI_CHECK(MPI_Allreduce(MPI_IN_PLACE, structMeshToCellMapping, globalGridSize, 
@@ -710,7 +710,7 @@ void CellMapper::generateStructuredMeshFromFile(opp_set set, const opp_dat c_gbl
 
 #ifdef USE_MPI
     int set_size = 0;
-    MPI_Reduce(&(set->size), &set_size, 1, MPI_INT, MPI_SUM, 0, MPI_COMM_WORLD);
+    MPI_Reduce(&(set->size), &set_size, 1, MPI_INT, MPI_SUM, 0, OPP_MPI_WORLD);
 
     if (comm->rank_intra == 0) // read only with the node-main rank
 #else
@@ -834,7 +834,7 @@ void opp_gather_dh_move_indices(opp_set set)
 //         }   
 //         printf("[dh_indices_h.cell_indices %d on RANK - %d]\n%s\n\n", *(dh_indices_h.move_count), OPP_rank, ss3.str().c_str());
 //     }
-//     MPI_Barrier(MPI_COMM_WORLD);
+//     MPI_Barrier(OPP_MPI_WORLD);
 // }
 
     for (OPP_INT i = 0; i < *(dh_indices_h.move_count); i++) {
