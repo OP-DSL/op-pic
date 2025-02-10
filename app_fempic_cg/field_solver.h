@@ -104,6 +104,7 @@ protected:
     Mat         Jmat, Kmat;                                 
     KSP         ksp;            /* linear solver context */
     KSPConvergedReason reason;
+    // PC pc;
 
     std::vector<int> vec_col;                // in use - indices related to current MPI rank
 

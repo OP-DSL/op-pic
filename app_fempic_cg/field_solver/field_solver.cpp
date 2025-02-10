@@ -258,7 +258,7 @@ void FESolver::init_petsc_structures()
     KSPSetType(ksp, KSPCG);
     KSPSetOperators(ksp, Jmat, Jmat);
     // KSPSetTolerances(ksp, 1.e-2 / (neq * neq), 1.e-50, PETSC_DEFAULT, PETSC_DEFAULT); 
-    KSPSetTolerances(ksp, 1.e-100, 1.e-100, PETSC_DEFAULT , PETSC_DEFAULT); 
+    KSPSetTolerances(ksp, 1.e-10, 1.e-10, PETSC_DEFAULT , PETSC_DEFAULT); 
     KSPSetFromOptions(ksp); 
     //PetscViewerSetFormat(PETSC_VIEWER_STDOUT_WORLD, PETSC_VIEWER_ASCII_MATLAB);
 
@@ -323,7 +323,7 @@ void FESolver::pre_assembly(const opp_dat n_bnd_pot)
 
     initialze_matrix(sparse_K);
 
-    const double scalar2 = 1 / (SCALLING * SCALLING); 
+    const double scalar2 = 1.0 / (SCALLING * SCALLING); 
 
     VecScale(F0vec, scalar2);   // downscalling since NX is scalled to avoid precision issues
     MatScale(Kmat, scalar2);    // downscalling since NX is scalled to avoid precision issues

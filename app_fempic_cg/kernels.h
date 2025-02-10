@@ -197,15 +197,15 @@ inline void get_final_max_values_kernel(
     OPP_REAL* max_n_pot
 ) {
     *max_n_charge_den = MAX(abs(*n_charge_den), *max_n_charge_den);
-    *max_n_pot = MAX(*n_pot, *max_n_pot);
+    *max_n_pot = MAX(abs(*n_pot), *max_n_pot);
 }
 
 //*************************************************************************************************
-inline void get_max_cef_kernel(
+inline void get_sigma_ef_sq_kernel(
     const OPP_REAL* val,
     OPP_REAL* max_val
 ) {
     for (int dim = 0; dim < KERNEL_DIM; ++dim) {
-        *max_val = MAX(val[dim], *max_val);
+        *max_val += (val[dim] * val[dim]);
     }
 }

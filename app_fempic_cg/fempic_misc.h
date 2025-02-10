@@ -195,14 +195,14 @@ inline void print_per_cell_particle_counts(opp_dat c_part_count, opp_dat part_me
 
 /*************************************************************************************************
  * This is a utility function create a global level log string using local values
- * @param max_c_ef - this is already reduced glocally by the opp_par_loop
+ * @param c_ef_energy - this is already reduced glocally by the opp_par_loop
  * @param max_n_potential - this is already reduced glocally by the opp_par_loop
  * @param local_part_count - these are local values
  * @param local_parts_injected - these are local values
  * @param local_part_removed - these are local values
  * @return std::string
 */
-inline std::string get_global_level_log(double max_c_ef, double max_n_potential, 
+inline std::string get_global_level_log(double c_ef_energy, double max_n_potential, 
     int local_part_count, int local_parts_injected, int local_part_removed)
 {
     std::string log = "";
@@ -240,16 +240,16 @@ inline std::string get_global_level_log(double max_c_ef, double max_n_potential,
     log += std::string("\t np: ") + str(global_part_size, "%" PRId64);
     log += std::string(" (") + str(global_inj_size, "%" PRId64);
     log += std::string(" added, ") + str(global_removed, "%" PRId64);
-    log += std::string(" removed)\t max c_ef: ") + str(max_c_ef, "%2.15lE");
+    log += std::string(" removed)\t cef energy: ") + str(c_ef_energy, "%2.15lE");
     log += std::string(" max n_pot: ") + str(max_n_potential, "%2.15lE");
     log += std::string(" | max_comm_iteration: ") + str(global_max_comm_iteration, "%d");
 
-    log += std::string(" | Gbl parts: ") + str(glb_parts, "%" PRId64);
-    log += std::string(" Min: ") + str(gbl_min_parts, "%" PRId64);
-    log += std::string(" Max: ") + str(gbl_max_parts, "%" PRId64);
-    log += std::string(" | Gbl comms: ") + str(glb_part_comms, "%" PRId64);
-    log += std::string(" Min: ") + str(gbl_min_part_comms, "%" PRId64);
-    log += std::string(" Max: ") + str(gbl_max_part_comms, "%" PRId64);
+//     log += std::string(" | Gbl parts: ") + str(glb_parts, "%" PRId64);
+//     log += std::string(" Min: ") + str(gbl_min_parts, "%" PRId64);
+//     log += std::string(" Max: ") + str(gbl_max_parts, "%" PRId64);
+//     log += std::string(" | Gbl comms: ") + str(glb_part_comms, "%" PRId64);
+//     log += std::string(" Min: ") + str(gbl_min_part_comms, "%" PRId64);
+//     log += std::string(" Max: ") + str(gbl_max_part_comms, "%" PRId64);
 #ifdef LOG_HOPS
     log += std::string(" | Hops: Min: ") + str(gbl_min_max_hops, "%" PRId64);
     log += std::string(" Max: ") + str(gbl_max_max_hops, "%" PRId64);

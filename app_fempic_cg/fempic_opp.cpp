@@ -44,7 +44,7 @@ void opp_particle_move__move_kernel(opp_set,opp_map,opp_map,opp_arg,opp_arg,opp_
 void opp_par_loop_all__deposit_charge_on_nodes_kernel(opp_set,opp_arg,opp_arg,opp_arg,opp_arg,opp_arg);
 void opp_par_loop_all__compute_node_charge_density_kernel(opp_set,opp_arg,opp_arg);
 void opp_par_loop_all__compute_electric_field_kernel(opp_set,opp_arg,opp_arg,opp_arg,opp_arg,opp_arg,opp_arg);
-void opp_par_loop_all__get_max_cef_kernel(opp_set,opp_arg,opp_arg);
+void opp_par_loop_all__get_sigma_ef_sq_kernel(opp_set,opp_arg,opp_arg);
 void opp_par_loop_all__get_final_max_values_kernel(opp_set,opp_arg,opp_arg,opp_arg,opp_arg);
 void opp_init_direct_hop_cg(double,const opp_dat,const opp::BoundingBox&,opp_map,opp_map,opp_arg,opp_arg,opp_arg,opp_arg);
 
@@ -219,18 +219,20 @@ int main(int argc, char **argv)
 
             if (print_final_log)
             {
-                OPP_REAL max_n_chg_den = 0.0, max_n_pot = 0.0, max_c_ef = 0.0;
+                OPP_REAL max_n_chg_den = 0.0, max_n_pot = 0.0, ef_energy = 0.0,  sigma_ef_sq = 0.0;
 
-                opp_par_loop_all__get_max_cef_kernel(cell_set, 
+                opp_par_loop_all__get_sigma_ef_sq_kernel(cell_set, 
                     opp_arg_dat(c_ef, OPP_READ),
-                    opp_arg_gbl(&max_c_ef, 1, "double", OPP_MAX));
+                    opp_arg_gbl(&sigma_ef_sq, 1, "double", OPP_INC));
+                constexpr double mesh_volume = 4e-9;
+                ef_energy = (Epsilon0 / 2) *  sigma_ef_sq * mesh_volume;
                 opp_par_loop_all__get_final_max_values_kernel(node_set, 
                     opp_arg_dat(n_charge_den, OPP_READ),
                     opp_arg_gbl(&max_n_chg_den, 1, "double", OPP_MAX),
                     opp_arg_dat(n_potential, OPP_READ),
                     opp_arg_gbl(&max_n_pot, 1, "double", OPP_MAX));
 
-                log = get_global_level_log(max_c_ef, max_n_pot, particle_set->size, inject_count, 
+                log = get_global_level_log(ef_energy, max_n_pot, particle_set->size, inject_count, 
                     (old_nparts - particle_set->size));
             }
 

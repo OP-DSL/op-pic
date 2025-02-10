@@ -57,11 +57,11 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #define DET_FIELDS         4
 #define ALL_DET            (NEIGHB_C * DET_FIELDS)
 
-const double EPS0 = 8.8541878e-12;      /*permittivity of free space*/
-const double QE   = 1.602e-19;          /*elementary charge*/
-const double AMU  = 1.660538921e-27;    /*atomic mass unit*/
-const double Kb   = 8.617333262e-5;     /*Boltzmann's  constant*/
-
+constexpr double EPS0     = 8.8541878e-12;      /*permittivity of free space*/
+constexpr double QE       = 1.602e-19;          /*elementary charge*/
+constexpr double AMU      = 1.660538921e-27;    /*atomic mass unit*/
+constexpr double Kb       = 8.617333262e-5;     /*Boltzmann's  constant*/
+constexpr double Epsilon0 = 8.854187817e-12;
 /***************************************************************************************************
  * @brief Utility class to temporarily hold the mesh data until it is loaded by OP-PIC
  */

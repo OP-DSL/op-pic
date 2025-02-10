@@ -210,18 +210,20 @@ int main(int argc, char **argv)
 
             if (print_final_log)
             {
-                OPP_REAL max_n_chg_den = 0.0, max_n_pot = 0.0, max_c_ef = 0.0;
+                OPP_REAL max_n_chg_den = 0.0, max_n_pot = 0.0, ef_energy = 0.0,  sigma_ef_sq = 0.0;
 
-                opp_par_loop(get_max_cef_kernel, "get_max_cef", cell_set, OPP_ITERATE_ALL,
+                opp_par_loop(get_sigma_ef_sq_kernel, "get_sigma_ef_sq", cell_set, OPP_ITERATE_ALL,
                     opp_arg_dat(c_ef, OPP_READ),
-                    opp_arg_gbl(&max_c_ef, 1, "double", OPP_MAX));
+                    opp_arg_gbl(&sigma_ef_sq, 1, "double", OPP_INC));
+                constexpr double mesh_volume = 4e-9;
+                ef_energy = (Epsilon0 / 2) *  sigma_ef_sq * mesh_volume;
                 opp_par_loop(get_final_max_values_kernel, "get_final_max_values", node_set, OPP_ITERATE_ALL,
                     opp_arg_dat(n_charge_den, OPP_READ),
                     opp_arg_gbl(&max_n_chg_den, 1, "double", OPP_MAX),
                     opp_arg_dat(n_potential, OPP_READ),
                     opp_arg_gbl(&max_n_pot, 1, "double", OPP_MAX));
 
-                log = get_global_level_log(max_c_ef, max_n_pot, particle_set->size, inject_count, 
+                log = get_global_level_log(ef_energy, max_n_pot, particle_set->size, inject_count, 
                     (old_nparts - particle_set->size));
             }
 

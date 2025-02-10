@@ -109,7 +109,7 @@ void opp_par_loop_all__get_final_max_values_kernel(opp_set set,
                 double* max_n_pot
             ) {
                 *max_n_charge_den = ((abs(*n_charge_den) > *max_n_charge_den) ? (abs(*n_charge_den)) : (*max_n_charge_den));
-                *max_n_pot = ((*n_pot > *max_n_pot) ? (*n_pot) : (*max_n_pot));
+                *max_n_pot = ((abs(*n_pot) > *max_n_pot) ? (abs(*n_pot)) : (*max_n_pot));
             };
 
             // -----------------------------------------------------------------------------------------

@@ -95,7 +95,7 @@ void opp_decl_const_impl(int dim, int size, char* data, const char* name) {
 
 #include "compute_electric_field_kernel_loop.hpp"
 
-#include "get_max_cef_kernel_loop.hpp"
+#include "get_sigma_ef_sq_kernel_loop.hpp"
 
 #include "get_final_max_values_kernel_loop.hpp"
 
