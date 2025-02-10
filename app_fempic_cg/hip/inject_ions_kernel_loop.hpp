@@ -116,7 +116,8 @@ void opp_par_loop_injected__inject_ions_kernel(opp_set set,
     opp_arg arg8, // if_n_pos | OPP_READ
     opp_arg arg9 // dp_rand | OPP_READ
 ) 
-{
+{ OPP_RETURN_IF_INVALID_PROCESS;
+
     const int nargs = 10;
     opp_arg args[nargs];
 

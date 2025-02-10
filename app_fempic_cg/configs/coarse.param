@@ -45,4 +45,4 @@ INT gpu_reduction_arrays = 16
 STRING opp_fill = HoleFill_All
 INT opp_fill_period = 4
 
-INT opp_partitions = 2
+INT opp_partitions = 1

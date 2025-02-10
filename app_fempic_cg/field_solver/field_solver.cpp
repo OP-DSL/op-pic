@@ -377,7 +377,7 @@ void FESolver::pre_assembly(const opp_dat n_bnd_pot)
 
     initialze_matrix(sparse_K);
 
-    const double scalar2 = 1 / (SCALLING * SCALLING); 
+    const double scalar2 = 1.0 / (SCALLING * SCALLING); 
 
     VecScale(F0vec, scalar2);   // downscalling since NX is scalled to avoid precision issues
     MatScale(Kmat, scalar2);    // downscalling since NX is scalled to avoid precision issues

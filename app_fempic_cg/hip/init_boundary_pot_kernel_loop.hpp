@@ -52,7 +52,8 @@ void opp_par_loop_all__init_boundary_pot_kernel(opp_set set,
     opp_arg arg0, // n_type | OPP_READ
     opp_arg arg1 // n_bnd_pot | OPP_WRITE
 ) 
-{
+{ OPP_RETURN_IF_INVALID_PROCESS;
+
     const int nargs = 2;
     opp_arg args[nargs];
 

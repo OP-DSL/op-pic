@@ -164,7 +164,8 @@ void opp_par_loop_all__deposit_charge_on_nodes_kernel(opp_set set,
     opp_arg arg3, // n_charge_den | OPP_INC
     opp_arg arg4 // n_charge_den | OPP_INC
 ) 
-{
+{ OPP_RETURN_IF_INVALID_PROCESS;
+
     const int nargs = 5;
     opp_arg args[nargs];
 

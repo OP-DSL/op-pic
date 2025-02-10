@@ -60,7 +60,8 @@ void opp_par_loop_all__calculate_new_pos_vel_kernel(opp_set set,
     opp_arg arg1, // p_pos | OPP_WRITE
     opp_arg arg2 // p_vel | OPP_WRITE
 ) 
-{
+{ OPP_RETURN_IF_INVALID_PROCESS;
+
     const int nargs = 3;
     opp_arg args[nargs];
 
