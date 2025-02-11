@@ -59,37 +59,37 @@ void opp_decl_const_impl(int dim, int size, char* data, const char* name) {
         opp_printf("opp_decl_const_impl", "Registering %s", name);
 
     if (!strcmp(name, "CONST_dt")) {
-        cutilSafeCall(hipMemcpyToSymbol(HIP_SYMBOL(CONST_dt_d), data, dim * size));
+        OPP_DEV_CHECK(hipMemcpyToSymbol(HIP_SYMBOL(CONST_dt_d), data, dim * size));
         std::memcpy(&CONST_dt, data, (size*dim));
         return;
     }
     if (!strcmp(name, "CONST_qsp")) {
-        cutilSafeCall(hipMemcpyToSymbol(HIP_SYMBOL(CONST_qsp_d), data, dim * size));
+        OPP_DEV_CHECK(hipMemcpyToSymbol(HIP_SYMBOL(CONST_qsp_d), data, dim * size));
         std::memcpy(&CONST_qsp, data, (size*dim));
         return;
     }
     if (!strcmp(name, "CONST_cdt_d")) {
-        cutilSafeCall(hipMemcpyToSymbol(HIP_SYMBOL(CONST_cdt_d_d), data, dim * size));
+        OPP_DEV_CHECK(hipMemcpyToSymbol(HIP_SYMBOL(CONST_cdt_d_d), data, dim * size));
         std::memcpy(&CONST_cdt_d, data, (size*dim));
         return;
     }
     if (!strcmp(name, "CONST_p")) {
-        cutilSafeCall(hipMemcpyToSymbol(HIP_SYMBOL(CONST_p_d), data, dim * size));
+        OPP_DEV_CHECK(hipMemcpyToSymbol(HIP_SYMBOL(CONST_p_d), data, dim * size));
         std::memcpy(&CONST_p, data, (size*dim));
         return;
     }
     if (!strcmp(name, "CONST_qdt_2mc")) {
-        cutilSafeCall(hipMemcpyToSymbol(HIP_SYMBOL(CONST_qdt_2mc_d), data, dim * size));
+        OPP_DEV_CHECK(hipMemcpyToSymbol(HIP_SYMBOL(CONST_qdt_2mc_d), data, dim * size));
         std::memcpy(&CONST_qdt_2mc, data, (size*dim));
         return;
     }
     if (!strcmp(name, "CONST_dt_eps0")) {
-        cutilSafeCall(hipMemcpyToSymbol(HIP_SYMBOL(CONST_dt_eps0_d), data, dim * size));
+        OPP_DEV_CHECK(hipMemcpyToSymbol(HIP_SYMBOL(CONST_dt_eps0_d), data, dim * size));
         std::memcpy(&CONST_dt_eps0, data, (size*dim));
         return;
     }
     if (!strcmp(name, "CONST_acc_coef")) {
-        cutilSafeCall(hipMemcpyToSymbol(HIP_SYMBOL(CONST_acc_coef_d), data, dim * size));
+        OPP_DEV_CHECK(hipMemcpyToSymbol(HIP_SYMBOL(CONST_acc_coef_d), data, dim * size));
         std::memcpy(&CONST_acc_coef, data, (size*dim));
         return;
     }

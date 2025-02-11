@@ -506,7 +506,7 @@ void opp_particle_move__move_deposit_kernel(opp_set set, opp_map c2c_map, opp_ma
     if (!opp_use_segmented_reductions) // Do atomics ----------       
     {
         opp_profiler->start("move_kernel_only");
-        opp_dev_move_deposit_kernel<<<num_blocks, block_size>>>(
+        opp_dev_move_deposit_kernel<<<num_blocks, block_size, 0, *opp_stream>>>(
             (OPP_REAL *)args[0].data_d,    // p_vel
             (OPP_REAL *)args[1].data_d,    // p_pos
             (OPP_REAL *)args[2].data_d,    // p_streak_mid
@@ -543,7 +543,7 @@ void opp_particle_move__move_deposit_kernel(opp_set set, opp_map c2c_map, opp_ma
 
         // Create key/value pairs
         opp_profiler->start("SRM_CrKeyVal");
-        opp_dev_sr_move_deposit_kernel<<<num_blocks, block_size>>>( 
+        opp_dev_sr_move_deposit_kernel<<<num_blocks, block_size, 0, *opp_stream>>>( 
             (OPP_REAL *)args[0].data_d,     // p_vel
             (OPP_REAL *)args[1].data_d,     // p_pos
             (OPP_REAL *)args[2].data_d,     // p_streak_mid
@@ -591,7 +591,7 @@ void opp_particle_move__move_deposit_kernel(opp_set set, opp_map c2c_map, opp_ma
         if (!opp_use_segmented_reductions) // Do atomics ----------       
         {
             opp_profiler->start("move_kernel_only");
-            opp_dev_move_deposit_kernel<<<num_blocks, block_size>>>(
+            opp_dev_move_deposit_kernel<<<num_blocks, block_size, 0, *opp_stream>>>(
                 (OPP_REAL *)args[0].data_d,    // p_vel
                 (OPP_REAL *)args[1].data_d,    // p_pos
                 (OPP_REAL *)args[2].data_d,    // p_streak_mid
@@ -628,7 +628,7 @@ void opp_particle_move__move_deposit_kernel(opp_set set, opp_map c2c_map, opp_ma
 
             // Create key/value pairs
             opp_profiler->start("SRM_CrKeyVal");
-            opp_dev_sr_move_deposit_kernel<<<num_blocks, block_size>>>( 
+            opp_dev_sr_move_deposit_kernel<<<num_blocks, block_size, 0, *opp_stream>>>( 
                 (OPP_REAL *)args[0].data_d,     // p_vel
                 (OPP_REAL *)args[1].data_d,     // p_pos
                 (OPP_REAL *)args[2].data_d,     // p_streak_mid

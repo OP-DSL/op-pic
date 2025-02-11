@@ -102,7 +102,7 @@ namespace opp {
     #include <cuda_runtime.h>
     extern cudaStream_t* opp_stream;
 #elif defined(USE_HIP)
-    #include <hip/hip_runtime.h>
+    #include <hip/hip_runtime_api.h>
     extern hipStream_t* opp_stream;
 #endif
 

@@ -59,37 +59,37 @@ void opp_decl_const_impl(int dim, int size, char* data, const char* name) {
         opp_printf("opp_decl_const_impl", "Registering %s", name);
 
     if (!strcmp(name, "CONST_dt")) {
-        cutilSafeCall(cudaMemcpyToSymbol(CONST_dt_d, data, dim * size));
+        OPP_DEV_CHECK(cudaMemcpyToSymbol(CONST_dt_d, data, dim * size));
         std::memcpy(&CONST_dt, data, (size*dim));
         return;
     }
     if (!strcmp(name, "CONST_qsp")) {
-        cutilSafeCall(cudaMemcpyToSymbol(CONST_qsp_d, data, dim * size));
+        OPP_DEV_CHECK(cudaMemcpyToSymbol(CONST_qsp_d, data, dim * size));
         std::memcpy(&CONST_qsp, data, (size*dim));
         return;
     }
     if (!strcmp(name, "CONST_cdt_d")) {
-        cutilSafeCall(cudaMemcpyToSymbol(CONST_cdt_d_d, data, dim * size));
+        OPP_DEV_CHECK(cudaMemcpyToSymbol(CONST_cdt_d_d, data, dim * size));
         std::memcpy(&CONST_cdt_d, data, (size*dim));
         return;
     }
     if (!strcmp(name, "CONST_p")) {
-        cutilSafeCall(cudaMemcpyToSymbol(CONST_p_d, data, dim * size));
+        OPP_DEV_CHECK(cudaMemcpyToSymbol(CONST_p_d, data, dim * size));
         std::memcpy(&CONST_p, data, (size*dim));
         return;
     }
     if (!strcmp(name, "CONST_qdt_2mc")) {
-        cutilSafeCall(cudaMemcpyToSymbol(CONST_qdt_2mc_d, data, dim * size));
+        OPP_DEV_CHECK(cudaMemcpyToSymbol(CONST_qdt_2mc_d, data, dim * size));
         std::memcpy(&CONST_qdt_2mc, data, (size*dim));
         return;
     }
     if (!strcmp(name, "CONST_dt_eps0")) {
-        cutilSafeCall(cudaMemcpyToSymbol(CONST_dt_eps0_d, data, dim * size));
+        OPP_DEV_CHECK(cudaMemcpyToSymbol(CONST_dt_eps0_d, data, dim * size));
         std::memcpy(&CONST_dt_eps0, data, (size*dim));
         return;
     }
     if (!strcmp(name, "CONST_acc_coef")) {
-        cutilSafeCall(cudaMemcpyToSymbol(CONST_acc_coef_d, data, dim * size));
+        OPP_DEV_CHECK(cudaMemcpyToSymbol(CONST_acc_coef_d, data, dim * size));
         std::memcpy(&CONST_acc_coef, data, (size*dim));
         return;
     }

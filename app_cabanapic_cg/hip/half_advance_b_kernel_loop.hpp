@@ -120,7 +120,7 @@ void opp_par_loop_all__half_advance_b_kernel(opp_set set,
         num_blocks = (end - start - 1) / block_size + 1;
 
         {
-            opp_dev_half_advance_b_kernel<<<num_blocks, block_size>>>(
+            opp_dev_half_advance_b_kernel<<<num_blocks, block_size, 0, *opp_stream>>>(
                 (OPP_REAL *)args[0].data_d,     // c_e
                 (OPP_REAL *)args[4].data_d,     // c_b
                 (OPP_INT *)args[5].data_d,     // c_mask_ghost

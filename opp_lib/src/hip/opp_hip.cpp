@@ -73,23 +73,30 @@ void opp_init(int argc, char **argv)
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     MPI_Comm_size(MPI_COMM_WORLD, &size);
 
-    const int opp_partitions = opp_params->get<OPP_INT>("opp_partitions"); 
-    if (size % opp_partitions != 0) {
-        opp_abort("The MPI ranks is not divisible by partition count");
+    const int opp_partitions = opp_params->get<OPP_INT>("opp_partitions", false); 
+    if (opp_partitions != INT_MAX) {
+        if (size % opp_partitions != 0) {
+            opp_abort("The MPI ranks is not divisible by partition count");
+        }
+
+        const int gap = size / opp_partitions;
+        int color = (rank % gap == 0) ? 1 : MPI_UNDEFINED;
+        MPI_Comm_split(MPI_COMM_WORLD, color, rank, &OPP_MPI_WORLD);
+
+        if (color != MPI_UNDEFINED) {
+            MPI_CHECK(MPI_Comm_rank(OPP_MPI_WORLD, &OPP_rank))
+            MPI_CHECK(MPI_Comm_size(OPP_MPI_WORLD, &OPP_comm_size))
+        } 
+        else {
+            // Handle case where the rank is not part of the new communicator
+            OPP_rank = -1 * rank;
+            OPP_comm_size = 0;
+        }
     }
-
-    const int gap = size / opp_partitions;
-    int color = (rank % gap == 0) ? 1 : MPI_UNDEFINED;
-    MPI_Comm_split(MPI_COMM_WORLD, color, rank, &OPP_MPI_WORLD);
-
-    if (color != MPI_UNDEFINED) {
-        MPI_CHECK(MPI_Comm_rank(OPP_MPI_WORLD, &OPP_rank))
-        MPI_CHECK(MPI_Comm_size(OPP_MPI_WORLD, &OPP_comm_size))
-    } 
     else {
-        // Handle case where the rank is not part of the new communicator
-        OPP_rank = -1 * rank;
-        OPP_comm_size = 0;
+        OPP_MPI_WORLD = MPI_COMM_WORLD;
+        OPP_rank = rank;
+        OPP_comm_size = size;
     }
 #endif
 
@@ -101,6 +108,7 @@ void opp_init(int argc, char **argv)
         opp_printf("OP-PIC", "%s", log.c_str());
         opp_printf("OP-PIC", "---------------------------------------------");
     }
+    // opp_printf("OP-PIC", "old rank %d new rank %d", rank, OPP_rank);
 
 #ifdef USE_MPI
     MPI_Barrier(OPP_MPI_WORLD);

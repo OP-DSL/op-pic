@@ -123,22 +123,22 @@ omp_mpi: mklib cabana_opp_omp_mpi opp_kernels_omp_mpi
 
 # ----------------------------------------------------------------------------------------------------------------------
 opp_kernels_cuda:
-		 $(NVCC) $(NVCCFLAGS) -c cuda/opp_kernels.cu -o $(OBJ)/opp_kernels_cuda.o $(ALL_INC) $(CUDA_INC)
+		 $(NVCC) $(NVCCFLAGS) -DUSE_CUDA -c cuda/opp_kernels.cu -o $(OBJ)/opp_kernels_cuda.o $(ALL_INC) $(CUDA_INC)
 cabana_opp_cuda:
-		 $(CPP) $(CPPFLAGS) -c cabana_opp.cpp -o $(OBJ)/cabana_opp_cuda.o $(ALL_INC)
+		 $(CPP) $(CPPFLAGS) -DUSE_CUDA -c cabana_opp.cpp -o $(OBJ)/cabana_opp_cuda.o $(ALL_INC)
 cuda: mklib cabana_opp_cuda opp_kernels_cuda
-	     $(CPP) $(CPPFLAGS) -o $(BIN)/cuda \
+	     $(CPP) $(CPPFLAGS) -DUSE_CUDA -o $(BIN)/cuda \
 		 	$(OBJ)/cabana_opp_cuda.o \
 			$(OBJ)/opp_kernels_cuda.o \
 			$(ALL_INC) $(CUDA_INC) $(ALL_LIBS) $(CUDA_LIB) -lopp_cuda -lz
 
 # ----------------------------------------------------------------------------------------------------------------------
 opp_kernels_cuda_mpi:
-		 $(NVCC) $(NVCCFLAGS) -DUSE_MPI -c cuda/opp_kernels.cu -o $(OBJ)/opp_kernels_cuda_mpi.o $(ALL_INC) $(CUDA_INC)
+		 $(NVCC) $(NVCCFLAGS) -DUSE_CUDA -DUSE_MPI -c cuda/opp_kernels.cu -o $(OBJ)/opp_kernels_cuda_mpi.o $(ALL_INC) $(CUDA_INC)
 cabana_opp_cuda_mpi:
-	     $(MPICPP) $(CPPFLAGS) -DUSE_MPI -c cabana_opp.cpp -o $(OBJ)/cabana_opp_cuda_mpi.o $(ALL_INC)
+	     $(MPICPP) $(CPPFLAGS) -DUSE_CUDA -DUSE_MPI -c cabana_opp.cpp -o $(OBJ)/cabana_opp_cuda_mpi.o $(ALL_INC)
 cuda_mpi: mklib cabana_opp_cuda_mpi opp_kernels_cuda_mpi
-	     $(MPICPP) $(CPPFLAGS) -DUSE_MPI -o $(BIN)/cuda_mpi \
+	     $(MPICPP) $(CPPFLAGS) -DUSE_CUDA -DUSE_MPI -o $(BIN)/cuda_mpi \
 			$(OBJ)/cabana_opp_cuda_mpi.o \
 			$(OBJ)/opp_kernels_cuda_mpi.o \
 			$(ALL_INC) $(CUDA_INC) $(ALL_LIBS) $(CUDA_LIB) -lopp_cuda_mpi -lz
@@ -167,22 +167,22 @@ sycl_mpi: mklib opp_kernels_sycl_mpi cabana_opp_sycl_mpi
 
 # ----------------------------------------------------------------------------------------------------------------------
 opp_kernels_hip:
-		 $(HIPCC) $(HIPCCFLAGS) -c hip/opp_kernels.cpp -o $(OBJ)/opp_kernels_hip.o $(ALL_INC) $(HIP_INC)
+		 $(HIPCC) $(HIPCCFLAGS) -DUSE_HIP -c hip/opp_kernels.cpp -o $(OBJ)/opp_kernels_hip.o $(ALL_INC) $(HIP_INC)
 cabana_opp_hip:
-	     $(MPICPP) $(CPPFLAGS) -c cabana_opp.cpp -o $(OBJ)/cabana_opp_hip.o $(ALL_INC)
+	     $(MPICPP) $(CPPFLAGS) -DUSE_HIP -c cabana_opp.cpp -o $(OBJ)/cabana_opp_hip.o $(ALL_INC) -D__HIP_PLATFORM_AMD__ -I$(ROCM_INSTALL_DIR)/include
 hip: mklib cabana_opp_hip opp_kernels_hip
-	     $(MPICPP) $(CPPFLAGS) -o $(BIN)/hip \
+	     $(MPICPP) $(CPPFLAGS) -DUSE_HIP -o $(BIN)/hip \
 			$(OBJ)/cabana_opp_hip.o \
 			$(OBJ)/opp_kernels_hip.o \
 			$(ALL_LIBS) $(HIP_LIB) -lopp_hip -lz
 
 # ----------------------------------------------------------------------------------------------------------------------
 opp_kernels_hip_mpi:
-		 $(HIPCC) $(HIPCCFLAGS) -DUSE_MPI -c hip/opp_kernels.cpp -o $(OBJ)/opp_kernels_hip_mpi.o $(ALL_INC) $(HIP_INC)
+		 $(HIPCC) $(HIPCCFLAGS) -DUSE_HIP -DUSE_MPI -c hip/opp_kernels.cpp -o $(OBJ)/opp_kernels_hip_mpi.o $(ALL_INC) $(HIP_INC)
 cabana_opp_hip_mpi:
-	     $(MPICPP) $(CPPFLAGS) -DUSE_MPI -c cabana_opp.cpp -o $(OBJ)/cabana_opp_hip_mpi.o $(ALL_INC)
+	     $(MPICPP) $(CPPFLAGS) -DUSE_HIP -DUSE_MPI -c cabana_opp.cpp -o $(OBJ)/cabana_opp_hip_mpi.o $(ALL_INC) -D__HIP_PLATFORM_AMD__ -I$(ROCM_INSTALL_DIR)/include
 hip_mpi: mklib opp_kernels_hip_mpi cabana_opp_hip_mpi
-	     $(MPICPP) $(CPPFLAGS) -o $(BIN)/hip_mpi \
+	     $(MPICPP) $(CPPFLAGS) -DUSE_HIP -o $(BIN)/hip_mpi \
 			$(OBJ)/cabana_opp_hip_mpi.o \
 			$(OBJ)/opp_kernels_hip_mpi.o \
 			$(ALL_LIBS) $(HIP_LIB) -lopp_hip_mpi -lz
