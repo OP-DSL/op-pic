@@ -587,16 +587,16 @@ void opp_part_pack_and_exchange_device_direct(opp_set set)
 
     std::map<int, hipStream_t> streams;
 
-    cutilSafeCall(hipStreamCreate(&(streams[-1])));
-    cutilSafeCall(hipStreamCreate(&(streams[-2])));
+    OPP_DEV_CHECK(hipStreamCreate(&(streams[-1])));
+    OPP_DEV_CHECK(hipStreamCreate(&(streams[-2])));
 
     thrust::host_vector<int> tmp_cell_indices_hv(OPP_move_count_h);
-    cutilSafeCall(hipMemcpyAsync(thrust::raw_pointer_cast(tmp_cell_indices_hv.data()), 
+    OPP_DEV_CHECK(hipMemcpyAsync(thrust::raw_pointer_cast(tmp_cell_indices_hv.data()), 
             thrust::raw_pointer_cast(OPP_move_cell_indices_dv.data()),
             OPP_move_count_h * sizeof(int), hipMemcpyDeviceToHost, streams[-1]));
     
     thrust::host_vector<int> tmp_particle_indices_hv(OPP_move_count_h);
-    cutilSafeCall(hipMemcpyAsync(thrust::raw_pointer_cast(tmp_particle_indices_hv.data()), 
+    OPP_DEV_CHECK(hipMemcpyAsync(thrust::raw_pointer_cast(tmp_particle_indices_hv.data()), 
             thrust::raw_pointer_cast(OPP_move_particle_indices_dv.data()),
             OPP_move_count_h * sizeof(int), hipMemcpyDeviceToHost, streams[-2]));
 
@@ -621,8 +621,8 @@ void opp_part_pack_and_exchange_device_direct(opp_set set)
 
     std::map<int, opp_particle_comm_data>& set_part_com_data = opp_part_comm_neighbour_data[set];
 
-    cutilSafeCall(hipStreamSynchronize(streams[-1]));
-    cutilSafeCall(hipStreamSynchronize(streams[-2]));
+    OPP_DEV_CHECK(hipStreamSynchronize(streams[-1]));
+    OPP_DEV_CHECK(hipStreamSynchronize(streams[-2]));
 
     // enrich and arrange the particles to communicate with the correct external cell index and mpi rank
     for (int index = 0; index < OPP_move_count_h; index++)
@@ -644,14 +644,14 @@ void opp_part_pack_and_exchange_device_direct(opp_set set)
     for (const auto& x : particle_indices_hv)
     {
         const int rank = x.first;
-        cutilSafeCall(hipStreamCreate(&(streams[rank]))); 
+        OPP_DEV_CHECK(hipStreamCreate(&(streams[rank]))); 
         const size_t tmp_cpy_size = x.second.size();
 
         if (tmp_cpy_size > particle_indices_dv[rank].capacity()) 
             particle_indices_dv[rank].reserve(tmp_cpy_size * opp_comm_buff_resize_multiple);
         particle_indices_dv[rank].resize(tmp_cpy_size);
 
-        cutilSafeCall(hipMemcpyAsync(thrust::raw_pointer_cast(particle_indices_dv[rank].data()), 
+        OPP_DEV_CHECK(hipMemcpyAsync(thrust::raw_pointer_cast(particle_indices_dv[rank].data()), 
             x.second.data(), (tmp_cpy_size * sizeof(int)), hipMemcpyHostToDevice, streams[rank]));
         
         mpi_buffers->export_counts[rank] = tmp_cpy_size;
@@ -692,7 +692,7 @@ void opp_part_pack_and_exchange_device_direct(opp_set set)
         // for (int i = 0; i < h_vec.size(); ++i) log += std::to_string(h_vec[i]) + " ";
         // opp_printf("TO_SEND", "%s", log.c_str());
 
-        cutilSafeCall(hipStreamSynchronize(streams[send_rank]));
+        OPP_DEV_CHECK(hipStreamSynchronize(streams[send_rank]));
 
         for (auto& dat : *(set->particle_dats)) 
         {
@@ -701,7 +701,7 @@ void opp_part_pack_and_exchange_device_direct(opp_set set)
             if (dat->is_cell_index)
             {
                 // cell indices relative to the receiving rank is copied here
-                cutilSafeCall(hipMemcpyAsync((send_buff + offset), 
+                OPP_DEV_CHECK(hipMemcpyAsync((send_buff + offset), 
                     (char*)cell_indices_hv[send_rank].data(), dat_bytes_to_copy, 
                     hipMemcpyHostToDevice, streams[send_rank]));
             }
@@ -735,7 +735,7 @@ void opp_part_pack_and_exchange_device_direct(opp_set set)
 
     // since move particles ids are extracted already, mark cell index as MAX_CELL_ID to remove from current rank
     const int nblocks = (OPP_move_count_h - 1) / threads + 1;
-    setArrayToMaxCID<<<nblocks,threads>>> (
+    setArrayToMaxCID<<<nblocks,threads, 0, *opp_stream>>> (
         (OPP_INT*)set->mesh_relation_dat->data_d,
         (OPP_INT*)thrust::raw_pointer_cast(OPP_move_particle_indices_dv.data()),
         OPP_move_count_h);
@@ -760,7 +760,7 @@ void opp_part_pack_and_exchange_device_direct(opp_set set)
         MPI_Request req;
         const int64_t send_size = set->particle_size * send_count;
 
-        cutilSafeCall(hipStreamSynchronize(streams[send_rank])); // wait till hip aync copy is done
+        OPP_DEV_CHECK(hipStreamSynchronize(streams[send_rank])); // wait till hip aync copy is done
 
         char* send_buff = (char*)thrust::raw_pointer_cast(send_data[send_rank].data());
         MPI_Isend(send_buff, send_size, MPI_CHAR, send_rank, MPI_TAG_PART_EX, OPP_MPI_WORLD, &req);
@@ -863,7 +863,7 @@ void opp_part_unpack_device_direct(opp_set set)
 
                 if (strcmp(dat->type, "double") == 0)
                 {
-                    copy_doubleY<<<nblocks,threads>>> (
+                    copy_doubleY<<<nblocks,threads, 0, *opp_stream>>> (
                         (OPP_REAL*)(recv_buff + offset),
                         (OPP_REAL*)(dat->data_d + particle_start[i] * dat_per_dim_size),
                         recv_count, set->set_capacity, dat->dim, recv_count);
@@ -874,7 +874,7 @@ void opp_part_unpack_device_direct(opp_set set)
 
                     if (strcmp(dat->name, "p_index") == 0) x = 111;
 
-                    copy_intY<<<nblocks,threads>>> (
+                    copy_intY<<<nblocks,threads, 0, *opp_stream>>> (
                         (OPP_INT*)(recv_buff + offset),
                         (OPP_INT*)(dat->data_d + particle_start[i] * dat_per_dim_size),
                         recv_count, set->set_capacity, dat->dim, recv_count, x);

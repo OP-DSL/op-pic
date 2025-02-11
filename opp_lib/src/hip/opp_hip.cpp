@@ -34,6 +34,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "opp_increase_part_count.cpp"
 #include "opp_hip_utils.cpp"
 
+hipStream_t* opp_stream = nullptr;
 bool opp_use_segmented_reductions = false;
 
 // arrays for global constants and reductions
@@ -110,9 +111,9 @@ void opp_init(int argc, char **argv)
     opp_params->write(std::cout);
     opp_device_init(argc, argv);
 
-    // cutilSafeCall(hipDeviceSetCacheConfig(hipFuncCachePreferL1));
-    // cutilSafeCall(hipDeviceSetCacheConfig(hipFuncCachePreferShared));
-    // cutilSafeCall(hipDeviceSetSharedMemConfig(hipSharedMemBankSizeEightByte));
+    // OPP_DEV_CHECK(hipDeviceSetCacheConfig(hipFuncCachePreferL1));
+    // OPP_DEV_CHECK(hipDeviceSetCacheConfig(hipFuncCachePreferShared));
+    // OPP_DEV_CHECK(hipDeviceSetSharedMemConfig(hipSharedMemBankSizeEightByte));
 
     OPP_auto_soa = 1; // TODO : Make this configurable with args
 
@@ -127,9 +128,9 @@ void opp_init(int argc, char **argv)
     opp_use_segmented_reductions = opp_params->get<OPP_BOOL>("opp_segmented_red");
 
     int deviceId = -1;
-    cutilSafeCall(hipGetDevice(&deviceId));
+    OPP_DEV_CHECK(hipGetDevice(&deviceId));
     hipDeviceProp_t prop;
-    cutilSafeCall(hipGetDeviceProperties(&prop, deviceId));
+    OPP_DEV_CHECK(hipGetDeviceProperties(&prop, deviceId));
 
     OPP_gpu_shared_mem_per_block = prop.sharedMemPerBlock;
 
@@ -212,7 +213,7 @@ void opp_device_init(int argc, char **argv)
     (void)argc; (void)argv;
 
     int deviceCount;
-    cutilSafeCall(hipGetDeviceCount(&deviceCount));
+    OPP_DEV_CHECK(hipGetDeviceCount(&deviceCount));
     if (deviceCount == 0) {
         opp_abort("opp_hip_init: Error: no devices supporting DEVICE");
     }
@@ -238,6 +239,9 @@ void opp_device_init(int argc, char **argv)
                     << ", line:" << __LINE__ << std::endl;
         opp_abort("opp_hip_init: Error: Test Device Failed");  
     }
+
+    opp_stream = new hipStream_t();
+    OPP_DEV_CHECK(hipStreamCreate(opp_stream));
 }
 
 //****************************************
@@ -288,6 +292,8 @@ void opp_device_exit()
     for (auto it = recv_data.begin(); it != recv_data.end(); it++) {
         it->second.clear(); it->second.shrink_to_fit();
     }
+
+    OPP_DEV_CHECK(hipStreamDestroy(*opp_stream));
 }
 
 //****************************************
@@ -532,10 +538,10 @@ void opp_reset_dat_impl(opp_dat dat, char* val, opp_reset reset)
             opp_printf("opp_reset_dat_impl", "dat %s dim %lld bytes_to_copy_per_dim %zu %p offset %zu", 
                 dat->name, i, (end - start) * element_size, dat->data_d, data_d_offset);
 
-        cutilSafeCall(hipMemset((dat->data_d + data_d_offset), 0, (end - start) * element_size));  
+        OPP_DEV_CHECK(hipMemset((dat->data_d + data_d_offset), 0, (end - start) * element_size));  
     }
 #else
-    cutilSafeCall(hipMemset((double*)(dat->data_d), 0, dat->size * dat->set->set_capacity));
+    OPP_DEV_CHECK(hipMemset((double*)(dat->data_d), 0, dat->size * dat->set->set_capacity));
 #endif
 
     OPP_DEVICE_SYNCHRONIZE();

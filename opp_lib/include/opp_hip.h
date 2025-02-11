@@ -75,7 +75,7 @@ constexpr int const_blocks = 200;
 
 #define OPP_DEVICE_SYNCHRONIZE() \
     do { \
-        hipError_t err = hipDeviceSynchronize();\
+        hipError_t err = hipStreamSynchronize(*opp_stream); \
         if (hipSuccess != err) { \
             std::string log = std::string(__FILE__) + "(" + std::to_string(__LINE__) + \
                                 std::string(") Error : ") + hipGetErrorString(err); \
@@ -83,7 +83,7 @@ constexpr int const_blocks = 200;
         } \
     } while (0)
 
-#define cutilSafeCall(err) \
+#define OPP_DEV_CHECK(err) \
     do { \
         if (hipSuccess != err) { \
             std::string log = std::string(__FILE__) + "(" + std::to_string(__LINE__) + \
@@ -564,7 +564,7 @@ inline T** opp_create_thread_level_data(opp_arg arg)
     }
 
     const int num_blocks = (array_size - 1) / OPP_gpu_threads_per_block + 1;
-    zero_set_array_except_first_kernel<<<num_blocks, OPP_gpu_threads_per_block>>>(
+    zero_set_array_except_first_kernel<<<num_blocks, OPP_gpu_threads_per_block, 0, *opp_stream>>>(
         (T**)dat->thread_data_d, array_count, array_size);
     OPP_DEVICE_SYNCHRONIZE();
 
@@ -589,7 +589,7 @@ inline void opp_reduce_thread_level_data(opp_arg arg)
     const int array_count = opp_params->get<OPP_INT>("gpu_reduction_arrays");
     const int array_size = (dat->set->size + dat->set->exec_size + dat->set->nonexec_size) * dat->dim;
     const int num_blocks = (array_size - 1) / OPP_gpu_threads_per_block + 1;
-    reduce_arrays_kernel<<<num_blocks, OPP_gpu_threads_per_block>>>(
+    reduce_arrays_kernel<<<num_blocks, OPP_gpu_threads_per_block, 0, *opp_stream>>>(
         (T**)dat->thread_data_d, array_count, array_size);
     OPP_DEVICE_SYNCHRONIZE();    
 }

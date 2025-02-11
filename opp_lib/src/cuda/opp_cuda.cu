@@ -34,6 +34,8 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "opp_increase_part_count.cu"
 #include "opp_cuda_utils.cu"
 
+cudaStream_t* opp_stream = nullptr;
+
 // arrays for global constants and reductions
 int OPP_consts_bytes = 0, OPP_reduct_bytes = 0;
 char *OPP_reduct_h = nullptr, *OPP_reduct_d = nullptr;
@@ -109,9 +111,9 @@ void opp_init(int argc, char **argv)
     opp_params->write(std::cout);
     opp_device_init(argc, argv);
 
-    // cutilSafeCall(cudaDeviceSetCacheConfig(cudaFuncCachePreferL1));
-    cutilSafeCall(cudaDeviceSetCacheConfig(cudaFuncCachePreferShared));
-    cutilSafeCall(cudaDeviceSetSharedMemConfig(cudaSharedMemBankSizeEightByte));
+    // OPP_DEV_CHECK(cudaDeviceSetCacheConfig(cudaFuncCachePreferL1));
+    OPP_DEV_CHECK(cudaDeviceSetCacheConfig(cudaFuncCachePreferShared));
+    OPP_DEV_CHECK(cudaDeviceSetSharedMemConfig(cudaSharedMemBankSizeEightByte));
 
     OPP_auto_soa = 1; // TODO : Make this configurable with args
 
@@ -126,7 +128,7 @@ void opp_init(int argc, char **argv)
     int deviceId = -1;
     cudaGetDevice(&deviceId);
     cudaDeviceProp prop;
-    cutilSafeCall(cudaGetDeviceProperties(&prop, deviceId));
+    OPP_DEV_CHECK(cudaGetDeviceProperties(&prop, deviceId));
 
     OPP_gpu_shared_mem_per_block = prop.sharedMemPerBlock;
 
@@ -208,7 +210,7 @@ void opp_device_init(int argc, char **argv)
     (void)argc; (void)argv;
 
     int deviceCount;
-    cutilSafeCall(cudaGetDeviceCount(&deviceCount));
+    OPP_DEV_CHECK(cudaGetDeviceCount(&deviceCount));
     if (deviceCount == 0) {
         opp_abort("opp_cuda_init: Error: no devices supporting DEVICE");
     }
@@ -234,6 +236,9 @@ void opp_device_init(int argc, char **argv)
                     << ", line:" << __LINE__ << std::endl;
         opp_abort("opp_cuda_init: Error: Test Device Failed");  
     }
+
+    opp_stream = new cudaStream_t();
+    cudaStreamCreate(opp_stream);
 }
 
 //****************************************
@@ -291,6 +296,8 @@ void opp_device_exit()
     for (auto it = recv_data.begin(); it != recv_data.end(); it++) {
         it->second.clear(); it->second.shrink_to_fit();
     }
+
+    cudaStreamDestroy(*opp_stream);
 }
 
 //****************************************

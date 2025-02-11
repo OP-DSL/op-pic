@@ -91,10 +91,19 @@ namespace opp {
     #include <sycl/sycl.hpp>
     #define THRUST_REAL void
     #define THRUST_INT void    
-    extern sycl::queue* opp_queue;
 #else
     #define THRUST_REAL void
     #define THRUST_INT void
+#endif
+
+#if defined(USE_SYCL)
+    extern sycl::queue* opp_queue;
+#elif defined(USE_CUDA)
+    #include <cuda_runtime.h>
+    extern cudaStream_t* opp_stream;
+#elif defined(USE_HIP)
+    #include <hip/hip_runtime.h>
+    extern hipStream_t* opp_stream;
 #endif
 
 constexpr double MAX_REAL = std::numeric_limits<double>::max();

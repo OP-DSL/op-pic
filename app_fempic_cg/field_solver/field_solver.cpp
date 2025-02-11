@@ -312,7 +312,7 @@ void FESolver::init_petsc_structures()
         }
     }
 
-    if (OPP_DBG)
+    // if (OPP_DBG)
         opp_printf("init_petsc_structures", 
             "pet_own_start %d pet_own_end %d | neq %d | own_start %d own_end %d | ghost_indices %zu", 
             pet_own_start, pet_own_end, neq, own_start, own_end, ghost_indices.size());

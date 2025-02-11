@@ -440,11 +440,11 @@ void __opp_mpi_device_halo_exchange(opp_arg *arg, int exec_flag)
     } 
     else {
 
-        cutilSafeCall(cudaMemcpy(
+        OPP_DEV_CHECK(cudaMemcpy(
             mpi_buff->buf_exec, arg->dat->buffer_d,
             exp_exec_list->size * arg->dat->size, cudaMemcpyDeviceToHost));
 
-        cutilSafeCall(cudaMemcpy(
+        OPP_DEV_CHECK(cudaMemcpy(
             mpi_buff->buf_nonexec,
             arg->dat->buffer_d + exp_exec_list->size * arg->dat->size,
             exp_nonexec_list->size * arg->dat->size, cudaMemcpyDeviceToHost));
@@ -550,14 +550,14 @@ void __opp_mpi_device_halo_wait_all(opp_arg *arg)
             const int init = dat->set->size * dat->size;
             const int size = (dat->set->exec_size + dat->set->nonexec_size) * dat->size;
             
-            cutilSafeCall(cudaMemcpyAsync(dat->buffer_d_r, dat->data + init, size,
+            OPP_DEV_CHECK(cudaMemcpyAsync(dat->buffer_d_r, dat->data + init, size,
                                             cudaMemcpyHostToDevice, 0));
             scatter_data_from_buffer(*arg);
         } 
         else {
             const int init = dat->set->size * dat->size;
             
-            cutilSafeCall(cudaMemcpyAsync(dat->data_d + init, dat->data + init,
+            OPP_DEV_CHECK(cudaMemcpyAsync(dat->data_d + init, dat->data + init,
                             (OPP_import_exec_list[dat->set->index]->size +
                             OPP_import_nonexec_list[dat->set->index]->size) *
                             arg->dat->size, cudaMemcpyHostToDevice, 0));
