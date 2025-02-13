@@ -59,7 +59,8 @@ FESolver::FESolver(
         n_cells_set = c2n_map->from->size;
         n_cells_inc_halo = c2n_map->from->size + c2n_map->from->exec_size;
 
-        if (OPP_DBG) 
+        // if (OPP_DBG) 
+        OPP_RUN_ON_ROOT()
             opp_printf("FESolver", "n_nodes_set %d | n_nodes_inc_halo %d | n_cells_set %d | n_cells_inc_halo %d", 
                 n_nodes_set, n_nodes_inc_halo, n_cells_set, n_cells_inc_halo);
 
@@ -92,6 +93,9 @@ FESolver::FESolver(
     pre_assembly(n_bnd_pot_dat);
     sanity_check();
     init_device_variables();
+
+    OPP_RUN_ON_ROOT()
+            opp_printf("FESolver", "Init dome");
 }
 
 //*************************************************************************************************

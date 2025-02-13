@@ -412,7 +412,7 @@ void opp_init_direct_hop_cg(double grid_spacing, const opp_dat c_gbl_id, const o
 #ifdef USE_MPI
         opp_mpi_halo_exchanges_grouped(c_gbl_id->set, nargs, args, Device_CPU);
 
-        comm = std::make_shared<opp::Comm>(MPI_COMM_WORLD);
+        comm = std::make_shared<opp::Comm>(OPP_MPI_WORLD);
         globalMover = std::make_unique<opp::GlobalParticleMover>(comm->comm_parent);
 
         opp_mpi_halo_wait_all(nargs, args);

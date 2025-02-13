@@ -290,11 +290,11 @@ OBJ_HIP_MPI_CPP = 	$(patsubst $(SRC)/core/%.cpp,$(OBJ)/%+hip_mpi.o,$(SRC_HIP_MPI
 					$(patsubst $(SRC)/mpi/%.cpp,$(OBJ)/%+hip_mpi.o,$(SRC_HIP_MPI_CPP)) \
 					$(patsubst $(SRC)/hip/%.cpp,$(OBJ)/%+hip_mpi.o,$(SRC_HIP_MPI_CPP))
 $(OBJ)/%+hip_mpi.o: $(SRC)/core/%.cpp
-	$(HIPCC) $(HIPCCFLAGS) -DUSE_MPI -DUSE_THRUST -DUSE_HIP -c $< -o $@ $(OPP_INC) $(HIP_INC)
+	$(HIPCC) $(HIPCCFLAGS) -DUSE_MPI -DUSE_THRUST -DUSE_HIP -c $< -o $@ $(OPP_INC) $(HIP_INC) -D__HIP_PLATFORM_AMD__
 $(OBJ)/%+hip_mpi.o: $(SRC)/mpi/%.cpp
-	$(HIPCC) $(HIPCCFLAGS) -DUSE_MPI -DUSE_THRUST -DUSE_HIP -c $< -o $@ $(OPP_INC) $(HIP_INC)
+	$(HIPCC) $(HIPCCFLAGS) -DUSE_MPI -DUSE_THRUST -DUSE_HIP -c $< -o $@ $(OPP_INC) $(HIP_INC) -D__HIP_PLATFORM_AMD__
 $(OBJ)/%+hip_mpi.o: $(SRC)/hip/%.cpp
-	$(HIPCC) $(HIPCCFLAGS) -DUSE_MPI -DUSE_THRUST -DUSE_HIP -c $< -o $@ $(OPP_INC) $(HIP_INC)
+	$(HIPCC) $(HIPCCFLAGS) -DUSE_MPI -DUSE_THRUST -DUSE_HIP -c $< -o $@ $(OPP_INC) $(HIP_INC) -D__HIP_PLATFORM_AMD__
 
 hip_mpi_compile: $(OBJ_HIP_MPI_CPP)
 hip_mpi: clean mklib
