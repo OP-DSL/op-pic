@@ -125,7 +125,14 @@ void FESolver::build_j_matrix()
 //*************************************************************************************************
 void FESolver::compute_node_potential(const opp_dat n_bnd_pot_dat, opp_dat node_potential_dat) {
 
-    VecGetValues(Dvec, neq, vec_col.data(), dLocal.data()); 
+    // VecGetValues(Dvec, neq, vec_col.data(), dLocal.data()); 
+    VecGhostUpdateBegin(Dvec, INSERT_VALUES, SCATTER_FORWARD);
+    VecGhostUpdateEnd(Dvec, INSERT_VALUES, SCATTER_FORWARD);
+    VecGetArray(Dvec, &tmpDptr);
+    for (int i = 0; i < neq; i++) {
+        dLocal[i] = tmpDptr[ex_indices[i]];
+    }
+    VecRestoreArray(Dvec, &tmpDptr);
 
     const double* n_bnd_pot = (double*)(n_bnd_pot_dat->data);
     double* node_potential = (double*)(node_potential_dat->data);
