@@ -197,7 +197,7 @@ inline void get_final_max_values_kernel(
     OPP_REAL* max_n_pot
 ) {
     *max_n_charge_den = MAX(abs(*n_charge_den), *max_n_charge_den);
-    *max_n_pot = MAX(*n_pot, *max_n_pot);
+    *max_n_pot = MAX(abs(*n_pot), *max_n_pot);
 }
 
 //*************************************************************************************************

@@ -1,5 +1,5 @@
 
-// Auto-generated at 2024-12-14 12:59:21.584269 by opp-translator
+// Auto-generated at 2025-02-14 20:02:32.940822 by opp-translator
 /* 
 BSD 3-Clause License
 
@@ -37,9 +37,9 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "opp_lib.h"
 
-void opp_par_loop_all__update_pos_kernel(opp_set,opp_iterate_type,opp_arg,opp_arg,opp_arg);
+void opp_par_loop_all__update_pos_kernel(opp_set,opp_arg,opp_arg,opp_arg);
 void opp_particle_move__move_kernel(opp_set,opp_map,opp_map,opp_arg,opp_arg,opp_arg);
-void opp_par_loop_all__verify_kernel(opp_set,opp_iterate_type,opp_arg,opp_arg,opp_arg);
+void opp_par_loop_all__verify_kernel(opp_set,opp_arg,opp_arg,opp_arg);
 void opp_init_direct_hop_cg(double,const opp_dat,const opp::BoundingBox&,opp_map,opp_map,opp_arg,opp_arg,opp_arg);
 
 #include "advec_misc.h"
@@ -109,7 +109,7 @@ int main(int argc, char **argv)
     opp_profiler->start("MainLoop");
         for (OPP_main_loop_iter = 0; OPP_main_loop_iter < max_iter; OPP_main_loop_iter++)
         {
-            opp_par_loop_all__update_pos_kernel(part_set, OPP_ITERATE_ALL,
+            opp_par_loop_all__update_pos_kernel(part_set, 
                 opp_arg_dat(p_vel,  OPP_READ),
                 opp_arg_dat(p_pos,  OPP_RW),
                 opp_arg_dat(p_mdir, OPP_WRITE)
@@ -124,7 +124,7 @@ int main(int argc, char **argv)
             if (verify_parts)
             {
                 incorrect_part_count = 0;
-                opp_par_loop_all__verify_kernel(part_set, OPP_ITERATE_ALL,
+                opp_par_loop_all__verify_kernel(part_set, 
                     opp_arg_dat(p_pos,          OPP_READ),
                     opp_arg_dat(c_idx, p2c_map, OPP_READ),
                     opp_arg_gbl(&incorrect_part_count, 1, "int", OPP_INC)

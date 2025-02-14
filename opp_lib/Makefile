@@ -84,7 +84,7 @@ endif
 
 CUDA_INC   += -I$(CUDA_INSTALL_PATH)/include
 # for demos with gcc
-# CUDA_INC   = -I$(CUDA_INSTALL_PATH)/include -I$(MPI_INSTALL_PATH)/include
+CUDA_INC   = -I$(CUDA_INSTALL_PATH)/include -I$(MPI_INSTALL_PATH)/include
 
 HIP_INC   += -I$(ROCM_INSTALL_DIR)/include -I$(ROCM_THRUST_DIR)/include -I$(ROCM_PRIM_DIR)/include -I$(MPI_INSTALL_PATH)/include
 

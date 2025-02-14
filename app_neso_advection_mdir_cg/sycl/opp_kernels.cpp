@@ -35,17 +35,17 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //*********************************************
 
 #include "opp_sycl.h"
+#include "device_kernels/sycl_inline_kernels.h"
 
 OPP_REAL* CONST_extents_s = nullptr;
 OPP_REAL* CONST_dt_s = nullptr;
 OPP_REAL* CONST_cell_width_s = nullptr;
 OPP_INT* CONST_ndimcells_s = nullptr;
-    
-OPP_INT* cells_set_size_s = nullptr;
-OPP_INT cells_set_size = -1;
 
-OPP_INT* comm_iteration_s = nullptr;
-OPP_INT comm_iteration = -1;
+OPP_REAL CONST_extents[2];
+OPP_REAL CONST_dt[1];
+OPP_REAL CONST_cell_width[1];
+OPP_INT CONST_ndimcells[2];
 
 void opp_decl_const_impl(int dim, int size, char* data, const char* name) {
     
@@ -55,21 +55,25 @@ void opp_decl_const_impl(int dim, int size, char* data, const char* name) {
     if (!strcmp(name, "CONST_extents")) {
         opp_register_const<OPP_REAL>(CONST_extents_s, dim);
         opp_mem::copy_host_to_dev<OPP_REAL>(CONST_extents_s, (OPP_REAL*)data, dim);
+        std::memcpy(CONST_extents, data, (size*dim));
         return;
     }
     if (!strcmp(name, "CONST_dt")) {
         opp_register_const<OPP_REAL>(CONST_dt_s, dim);
         opp_mem::copy_host_to_dev<OPP_REAL>(CONST_dt_s, (OPP_REAL*)data, dim);
+        std::memcpy(CONST_dt, data, (size*dim));
         return;
     }
     if (!strcmp(name, "CONST_cell_width")) {
         opp_register_const<OPP_REAL>(CONST_cell_width_s, dim);
         opp_mem::copy_host_to_dev<OPP_REAL>(CONST_cell_width_s, (OPP_REAL*)data, dim);
+        std::memcpy(CONST_cell_width, data, (size*dim));
         return;
     }
     if (!strcmp(name, "CONST_ndimcells")) {
         opp_register_const<OPP_INT>(CONST_ndimcells_s, dim);
         opp_mem::copy_host_to_dev<OPP_INT>(CONST_ndimcells_s, (OPP_INT*)data, dim);
+        std::memcpy(CONST_ndimcells, data, (size*dim));
         return;
     }
 

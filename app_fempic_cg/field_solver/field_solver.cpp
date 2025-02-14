@@ -95,7 +95,7 @@ FESolver::FESolver(
     init_device_variables();
 
     OPP_RUN_ON_ROOT()
-            opp_printf("FESolver", "Init dome");
+            opp_printf("FESolver", "Init done");
 }
 
 //*************************************************************************************************

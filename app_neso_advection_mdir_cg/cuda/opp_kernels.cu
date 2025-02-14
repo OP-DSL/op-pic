@@ -53,22 +53,22 @@ void opp_decl_const_impl(int dim, int size, char* data, const char* name) {
         opp_printf("opp_decl_const_impl", "Registering %s", name);
 
     if (!strcmp(name, "CONST_extents")) {
-        cutilSafeCall(cudaMemcpyToSymbol(CONST_extents_d, data, dim * size));
+        OPP_DEV_CHECK(cudaMemcpyToSymbol(CONST_extents_d, data, dim * size));
         std::memcpy(&CONST_extents, data, (size*dim));
         return;
     }
     if (!strcmp(name, "CONST_dt")) {
-        cutilSafeCall(cudaMemcpyToSymbol(CONST_dt_d, data, dim * size));
+        OPP_DEV_CHECK(cudaMemcpyToSymbol(CONST_dt_d, data, dim * size));
         std::memcpy(&CONST_dt, data, (size*dim));
         return;
     }
     if (!strcmp(name, "CONST_cell_width")) {
-        cutilSafeCall(cudaMemcpyToSymbol(CONST_cell_width_d, data, dim * size));
+        OPP_DEV_CHECK(cudaMemcpyToSymbol(CONST_cell_width_d, data, dim * size));
         std::memcpy(&CONST_cell_width, data, (size*dim));
         return;
     }
     if (!strcmp(name, "CONST_ndimcells")) {
-        cutilSafeCall(cudaMemcpyToSymbol(CONST_ndimcells_d, data, dim * size));
+        OPP_DEV_CHECK(cudaMemcpyToSymbol(CONST_ndimcells_d, data, dim * size));
         std::memcpy(&CONST_ndimcells, data, (size*dim));
         return;
     }

@@ -10,7 +10,7 @@ OPP_INT* opp_k3_dat0_stride_s = nullptr;
 OPP_INT* opp_k3_dat1_stride_s = nullptr;
 
 //--------------------------------------------------------------
-void opp_par_loop_all__verify_kernel(opp_set set, opp_iterate_type, 
+void opp_par_loop_all__verify_kernel(opp_set set,
     opp_arg arg0, // p_pos | OPP_READ
     opp_arg arg1, // c_idx | OPP_READ
     opp_arg arg2 // | OPP_INC
@@ -67,7 +67,7 @@ void opp_par_loop_all__verify_kernel(opp_set set, opp_iterate_type,
     opp_mvReductArraysToDevice(reduction_bytes);
     
     if (iter_size > 0) {
-
+        
         opp_queue->submit([&](sycl::handler &cgh) {
 
             const OPP_INT* opp_k3_dat0_stride_sycl = opp_k3_dat0_stride_s;

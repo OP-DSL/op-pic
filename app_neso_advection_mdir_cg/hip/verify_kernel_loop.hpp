@@ -54,7 +54,6 @@ __device__ inline void verify_kernel(
         return;
     }
 }
-
 }
 
 //--------------------------------------------------------------
@@ -90,7 +89,7 @@ __global__ void opp_dev_verify_kernel(
 }
 
 //--------------------------------------------------------------
-void opp_par_loop_all__verify_kernel(opp_set set, opp_iterate_type, 
+void opp_par_loop_all__verify_kernel(opp_set set,
     opp_arg arg0, // p_pos | OPP_READ
     opp_arg arg1, // c_idx | OPP_READ
     opp_arg arg2 // | OPP_INC
@@ -112,14 +111,8 @@ void opp_par_loop_all__verify_kernel(opp_set set, opp_iterate_type,
  
     OPP_INT *arg2_host_data = (OPP_INT *)args[2].data;
 
-    if (opp_k3_dat0_stride != args[0].dat->set->set_capacity) {
-        opp_k3_dat0_stride = args[0].dat->set->set_capacity;
-        cutilSafeCall(hipMemcpyToSymbol(HIP_SYMBOL(opp_k3_dat0_stride_d), &opp_k3_dat0_stride, sizeof(OPP_INT)));
-    }
-    if (opp_k3_dat1_stride != args[1].dat->set->set_capacity) {
-        opp_k3_dat1_stride = args[1].dat->set->set_capacity;
-        cutilSafeCall(hipMemcpyToSymbol(HIP_SYMBOL(opp_k3_dat1_stride_d), &opp_k3_dat1_stride, sizeof(OPP_INT)));
-    }
+    opp_mem::dev_copy_to_symbol<OPP_INT>(opp_k3_dat0_stride_d, &opp_k3_dat0_stride, &(args[0].dat->set->set_capacity), 1);
+    opp_mem::dev_copy_to_symbol<OPP_INT>(opp_k3_dat1_stride_d, &opp_k3_dat1_stride, &(args[1].dat->set->set_capacity), 1);
 
 #ifdef OPP_BLOCK_SIZE_3
     const int block_size = OPP_BLOCK_SIZE_3;
@@ -176,9 +169,9 @@ void opp_par_loop_all__verify_kernel(opp_set set, opp_iterate_type,
         for (int d = 0; d < 1; ++d)
             arg2_host_data[d] += ((OPP_INT *)args[2].data)[b * 1 + d];
     }
-
     args[2].data = (char *)arg2_host_data;
     opp_mpi_reduce(&args[2], arg2_host_data);
+
 
     opp_set_dirtybit_grouped(nargs, args, Device_GPU);
     OPP_DEVICE_SYNCHRONIZE();   

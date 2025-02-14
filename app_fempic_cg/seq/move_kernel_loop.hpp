@@ -167,7 +167,7 @@ void opp_init_direct_hop_cg(double grid_spacing, const opp_dat c_gbl_id, const o
 #ifdef USE_MPI
         opp_mpi_halo_exchanges(c_gbl_id->set, nargs, args);
 
-        comm = std::make_shared<opp::Comm>(MPI_COMM_WORLD);
+        comm = std::make_shared<opp::Comm>(OPP_MPI_WORLD);
         globalMover = std::make_unique<opp::GlobalParticleMover>(comm->comm_parent);
 
         opp_mpi_halo_wait_all(nargs, args);
@@ -204,14 +204,14 @@ void opp_init_direct_hop_cg(double grid_spacing, const opp_dat c_gbl_id, const o
                 }
             }
         };
-        
+
         if (opp_params->get<OPP_BOOL>("opp_dh_data_generate")) {
             cellMapper->generateStructuredMesh(c_gbl_id->set, c_gbl_id, all_cell_checker);
         }
         else {
             cellMapper->generateStructuredMeshFromFile(c_gbl_id->set, c_gbl_id);  
-        }
-        
+        } 
+
         opp_profiler->reg("GlbToLocal");
         opp_profiler->reg("GblMv_Move");
         opp_profiler->reg("GblMv_AllMv");

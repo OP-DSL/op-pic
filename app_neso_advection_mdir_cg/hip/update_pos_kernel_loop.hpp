@@ -29,7 +29,6 @@ __device__ inline void update_pos_kernel(const double* p_vel, double* p_pos, int
         p_mdir[(dm) * opp_k1_dat2_stride_d] = (offset > 0) ? 1 : -1;
     }
 }
-
 }
 
 //--------------------------------------------------------------
@@ -55,7 +54,7 @@ __global__ void opp_dev_update_pos_kernel(
 }
 
 //--------------------------------------------------------------
-void opp_par_loop_all__update_pos_kernel(opp_set set, opp_iterate_type, 
+void opp_par_loop_all__update_pos_kernel(opp_set set,
     opp_arg arg0, // p_vel | OPP_READ
     opp_arg arg1, // p_pos | OPP_RW
     opp_arg arg2 // p_mdir | OPP_WRITE
@@ -75,18 +74,9 @@ void opp_par_loop_all__update_pos_kernel(opp_set set, opp_iterate_type,
     const int iter_size = opp_mpi_halo_exchanges_grouped(set, nargs, args, Device_GPU);
  
  
-    if (opp_k1_dat0_stride != args[0].dat->set->set_capacity) {
-        opp_k1_dat0_stride = args[0].dat->set->set_capacity;
-        cutilSafeCall(hipMemcpyToSymbol(HIP_SYMBOL(opp_k1_dat0_stride_d), &opp_k1_dat0_stride, sizeof(OPP_INT)));
-    }
-    if (opp_k1_dat1_stride != args[1].dat->set->set_capacity) {
-        opp_k1_dat1_stride = args[1].dat->set->set_capacity;
-        cutilSafeCall(hipMemcpyToSymbol(HIP_SYMBOL(opp_k1_dat1_stride_d), &opp_k1_dat1_stride, sizeof(OPP_INT)));
-    }
-    if (opp_k1_dat2_stride != args[2].dat->set->set_capacity) {
-        opp_k1_dat2_stride = args[2].dat->set->set_capacity;
-        cutilSafeCall(hipMemcpyToSymbol(HIP_SYMBOL(opp_k1_dat2_stride_d), &opp_k1_dat2_stride, sizeof(OPP_INT)));
-    }
+    opp_mem::dev_copy_to_symbol<OPP_INT>(opp_k1_dat0_stride_d, &opp_k1_dat0_stride, &(args[0].dat->set->set_capacity), 1);
+    opp_mem::dev_copy_to_symbol<OPP_INT>(opp_k1_dat1_stride_d, &opp_k1_dat1_stride, &(args[1].dat->set->set_capacity), 1);
+    opp_mem::dev_copy_to_symbol<OPP_INT>(opp_k1_dat2_stride_d, &opp_k1_dat2_stride, &(args[2].dat->set->set_capacity), 1);
 
 #ifdef OPP_BLOCK_SIZE_1
     const int block_size = OPP_BLOCK_SIZE_1;

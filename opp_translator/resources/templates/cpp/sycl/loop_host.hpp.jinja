@@ -209,7 +209,8 @@ void opp_par_loop_{{lh.iterator_type}}__{{lh.kernel}}(opp_set set,
     opp_arg arg{{arg.id}}{{"," if not loop.last}} // {% if arg is dat %}{{lh.dat(arg).ptr}} {% endif -%} | OPP_{{arg.access_type.name}}
     {% endfor %}
 ) 
-{
+{ OPP_RETURN_IF_INVALID_PROCESS;
+
     const int nargs = {{lh.args|length}};
     opp_arg args[nargs];
 

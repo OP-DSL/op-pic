@@ -260,7 +260,8 @@ void opp_particle_move__{{lh.kernel}}(opp_set set, opp_map c2c_map, opp_map p2c_
     opp_arg arg{{arg.id}}{{"," if not loop.last}}   // {% if arg is dat %}{{lh.dat(arg).ptr}} {% endif -%} | OPP_{{arg.access_type.name}}
     {% endfor %}
 ) 
-{
+{ OPP_RETURN_IF_INVALID_PROCESS;
+
     if (OPP_DBG) opp_printf("APP", "opp_particle_move__{{lh.kernel}} set_size %d", set->size);
 
     opp_profiler->start("{{lh.kernel}}");
@@ -577,7 +578,8 @@ void opp_init_direct_hop_cg(double grid_spacing, const opp_dat c_gbl_id, const o
     {% for arg in lh.args %}
     opp_arg arg{{arg.id}}{{"," if not loop.last}} // {% if arg is dat %}{{lh.dat(arg).ptr}} {% endif -%} | OPP_{{arg.access_type.name}}
     {% endfor %}
-) {
+) { OPP_RETURN_IF_INVALID_PROCESS;
+
     opp_profiler->start("Setup_Mover");
 
     useGlobalMove = opp_params->get<OPP_BOOL>("opp_global_move");
@@ -597,7 +599,7 @@ void opp_init_direct_hop_cg(double grid_spacing, const opp_dat c_gbl_id, const o
 #ifdef USE_MPI
         opp_mpi_halo_exchanges_grouped(c_gbl_id->set, nargs, args, Device_CPU);
 
-        comm = std::make_shared<opp::Comm>(MPI_COMM_WORLD);
+        comm = std::make_shared<opp::Comm>(OPP_MPI_WORLD);
         globalMover = std::make_unique<opp::GlobalParticleMover>(comm->comm_parent);
 
         opp_mpi_halo_wait_all(nargs, args);

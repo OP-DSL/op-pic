@@ -11,8 +11,8 @@ NVCC       = nvcc
 HIPCC      = $(HIP_COMPILER)
 SYCLCC     = icpx
 
-CPPFLAGS   = -std=c++14 -Wall -fPIC $(CPPFLAGS_ADD)
-NVCCFLAGS  = -std=c++14 -m64 -Xptxas -dlcm=ca $(NVCCFLAGS_ADD)
+CPPFLAGS   = -std=c++17 -Wall -fPIC $(CPPFLAGS_ADD)
+NVCCFLAGS  = -std=c++17 -m64 -Xptxas -dlcm=ca $(NVCCFLAGS_ADD)
 HIPCCFLAGS = $(HIPCCFLAGS_ADD) -std=c++17 -Wall -isystem -D__HIP_PLATFORM_AMD__
 SYCLFLAGS  = -w -fsycl -std=c++17 $(SYCLFLAGS_ADD)
 
@@ -105,7 +105,7 @@ omp_mpi: mklib advec_opp+omp_mpi opp_kernels+omp_mpi
 
 # ------------------------------------------------------------------------------------------
 advec_opp+cuda:
-	 $(CPP) $(CPPFLAGS) -DUSE_CUDA -c advec_opp.cpp -o $(OBJ)/advec_opp_cuda.o $(ALL_INC)
+	 $(CPP) $(CPPFLAGS) -DUSE_CUDA -c advec_opp.cpp -o $(OBJ)/advec_opp_cuda.o $(ALL_INC) $(CUDA_INC)
 opp_kernels+cuda:
 	 $(NVCC) $(NVCCFLAGS) -DUSE_CUDA -c cuda/opp_kernels.cu -o $(OBJ)/opp_kernels_cuda.o $(ALL_INC) $(CUDA_INC)
 cuda: mklib advec_opp+cuda opp_kernels+cuda

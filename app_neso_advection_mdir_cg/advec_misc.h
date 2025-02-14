@@ -295,8 +295,8 @@ inline std::string get_global_level_log(const opp_set part_set, const int incorr
     log += str(glb_part_comms, "**** Gbl comms: %" PRId64 "");
     log += str(gbl_max_part_comms, " Min %" PRId64 "");
     log += str(gbl_min_part_comms, " Max %" PRId64 " | ");
-    log += str(gbl_max_max_hops, "**** Hops: Min %" PRId64 "");
-    log += str(gbl_min_max_hops, " Max %" PRId64 " | ");
+    log += str(gbl_max_max_hops, "**** Hops: Max %" PRId64 "");
+    log += str(gbl_min_max_hops, " Min %" PRId64 " | ");
         
     return log;
 }

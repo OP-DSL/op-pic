@@ -53,7 +53,7 @@ __constant__ OPP_REAL CONST_mass_d[1];
 __constant__ OPP_REAL CONST_charge_d[1];
 __constant__ OPP_REAL CONST_wall_potential_d[1];
 
-void opp_decl_const_impl(int dim, int size, char* data, const char* name) { OPP_RETURN_IF_INVALID_PROCESS;
+void opp_decl_const_impl(int dim, int size, char* data, const char* name) {
     
     if (OPP_DBG)
         opp_printf("opp_decl_const_impl", "Registering %s", name);

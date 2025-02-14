@@ -21,7 +21,7 @@ __constant__ {{const.typ}} {{const.ptr}}_d[{{const.dim}}];
 
 {% block const_decl_func %}
     {% call(const) const_decl_func("") %}
-cutilSafeCall(cudaMemcpyToSymbol({{const.ptr}}_d, data, dim * size));
+OPP_DEV_CHECK(cudaMemcpyToSymbol({{const.ptr}}_d, data, dim * size));
         std::memcpy(&{{const.ptr}}, data, (size*dim));
     {%- endcall %}
 {% endblock %}
