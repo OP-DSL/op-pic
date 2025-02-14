@@ -505,7 +505,7 @@ opp_dev_{{lh.kernel}}<<<num_blocks, block_size
 {%- endmacro %}
 
 {% macro seg_red_kernel_call(shared_size) %}
-opp_dev_sr_{{lh.kernel}}<<<num_blocks, block_size{{-(", %s" % shared_size) if lh.args|gbl|reduction|length > 0}}>>>( 
+opp_dev_sr_{{lh.kernel}}<<<num_blocks, block_size{{-(", %s" % shared_size) if lh.args|gbl|reduction|length > 0 else ", 0"}}, *opp_stream>>>( 
     {% for dat in lh.dats %}
     ({{dat.typ}} *)args[{{dat.arg_id}}].data_d,     // {{dat.ptr}}
     {% endfor %}

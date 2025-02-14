@@ -90,7 +90,8 @@ void opp_par_loop_all__advance_e_kernel(opp_set set,
     opp_arg arg5, // c_e | OPP_INC
     opp_arg arg6 // c_mask_right | OPP_READ
 ) 
-{
+{ OPP_RETURN_IF_INVALID_PROCESS;
+
     const int nargs = 7;
     opp_arg args[nargs];
 

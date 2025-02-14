@@ -310,6 +310,7 @@ void opp_particle_move__move_deposit_kernel(opp_set set, opp_map c2c_map, opp_ma
     OPP_mesh_relation_data = (OPP_INT*)p2c_map->p2c_dat->data;
 #ifdef LOG_HOPS
     OPP_move_max_hops = 0;
+    OPP_move_moreX_hops = 0;
 #endif
 
     opp_mpi_halo_exchanges(set, nargs, args);
@@ -349,6 +350,7 @@ void opp_particle_move__move_deposit_kernel(opp_set set, opp_map c2c_map, opp_ma
 
 #ifdef LOG_HOPS
         OPP_move_max_hops = (OPP_move_max_hops < hops) ? hops : OPP_move_max_hops;
+        if (hops > X_HOPS) OPP_move_moreX_hops++;
 #endif    
     };
 

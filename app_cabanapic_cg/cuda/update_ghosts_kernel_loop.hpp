@@ -70,7 +70,8 @@ void opp_par_loop_all__update_ghosts_kernel(opp_set set,
     opp_arg arg3, // | OPP_READ
     opp_arg arg4 // | OPP_READ
 ) 
-{
+{ OPP_RETURN_IF_INVALID_PROCESS;
+
     const int nargs = 5;
     opp_arg args[nargs];
 

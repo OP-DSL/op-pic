@@ -25,7 +25,8 @@ void opp_par_loop_all__accumulate_current_to_cells_kernel(opp_set set,
     opp_arg arg7, // c_acc | OPP_READ
     opp_arg arg8 // c_mask_right | OPP_READ
 ) 
-{
+{ OPP_RETURN_IF_INVALID_PROCESS;
+
     const int nargs = 9;
     opp_arg args[nargs];
 

@@ -15,7 +15,8 @@ void opp_par_loop_all__compute_energy_kernel(opp_set set,
     opp_arg arg1, // c_e | OPP_READ
     opp_arg arg2 // | OPP_INC
 ) 
-{
+{ OPP_RETURN_IF_INVALID_PROCESS;
+
     const int nargs = 3;
     opp_arg args[nargs];
 

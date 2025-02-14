@@ -31,7 +31,8 @@ void opp_par_loop_all__interpolate_mesh_fields_kernel(opp_set set,
     opp_arg arg11, // c_interp | OPP_WRITE
     opp_arg arg12 // c_mask_ghost | OPP_READ
 ) 
-{
+{ OPP_RETURN_IF_INVALID_PROCESS;
+
     const int nargs = 13;
     opp_arg args[nargs];
 

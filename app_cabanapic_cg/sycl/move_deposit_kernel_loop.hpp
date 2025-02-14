@@ -427,7 +427,8 @@ void opp_particle_move__move_deposit_kernel(opp_set set, opp_map c2c_map, opp_ma
     opp_arg arg4,   // c_interp | OPP_READ
     opp_arg arg5   // c_acc | OPP_INC
 ) 
-{
+{ OPP_RETURN_IF_INVALID_PROCESS;
+
     if (OPP_DBG) opp_printf("APP", "opp_particle_move__move_deposit_kernel set_size %d", set->size);
 
     opp_profiler->start("move_deposit_kernel");

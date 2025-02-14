@@ -68,7 +68,8 @@ void opp_par_loop_all__update_ghosts_B_kernel(opp_set set,
     opp_arg arg2, // c_b | OPP_WRITE
     opp_arg arg3 // | OPP_READ
 ) 
-{
+{ OPP_RETURN_IF_INVALID_PROCESS;
+
     const int nargs = 4;
     opp_arg args[nargs];
 

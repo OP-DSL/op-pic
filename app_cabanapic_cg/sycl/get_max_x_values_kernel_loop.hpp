@@ -20,7 +20,8 @@ void opp_par_loop_all__get_max_x_values_kernel(opp_set set,
     opp_arg arg4, // c_b | OPP_READ
     opp_arg arg5 // | OPP_MAX
 ) 
-{
+{ OPP_RETURN_IF_INVALID_PROCESS;
+
     const int nargs = 6;
     opp_arg args[nargs];
 

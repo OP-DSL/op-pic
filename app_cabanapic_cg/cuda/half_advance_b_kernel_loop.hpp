@@ -82,7 +82,8 @@ void opp_par_loop_all__half_advance_b_kernel(opp_set set,
     opp_arg arg4, // c_b | OPP_INC
     opp_arg arg5 // c_mask_ghost | OPP_READ
 ) 
-{
+{ OPP_RETURN_IF_INVALID_PROCESS;
+
     const int nargs = 6;
     opp_arg args[nargs];
 

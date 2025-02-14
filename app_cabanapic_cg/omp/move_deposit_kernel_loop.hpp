@@ -319,6 +319,12 @@ void opp_particle_move__move_deposit_kernel(opp_set set, opp_map c2c_map, opp_ma
         
     opp_mpi_halo_wait_all(nargs, args);
 
+#ifdef LOG_HOPS
+    std::vector<int> int_hops(nthreads, 0);
+    std::vector<int> moreX_hops(nthreads, 0);
+    OPP_move_moreX_hops = 0;
+#endif
+
     // lambda function for multi hop particle movement
     auto multihop_mover = [&](const int n, const int thread, OPP_REAL* arg5_thread_data) {
 
@@ -332,6 +338,9 @@ void opp_particle_move__move_deposit_kernel(opp_set set, opp_map c2c_map, opp_ma
         char move_flag = OPP_MOVE_DONE;
         bool iter_one_flag = true;
 
+#ifdef LOG_HOPS
+        int hops = 0;
+#endif
         do {
             move_flag = OPP_MOVE_DONE;
             opp_c2c = c2c_map->map + (opp_p2c[0] * 6);
@@ -345,8 +354,15 @@ void opp_particle_move__move_deposit_kernel(opp_set set, opp_map c2c_map, opp_ma
                 (const OPP_REAL *)args[4].data + (opp_p2c[0] * 18),
                 arg5_thread_data + (opp_p2c[0] * 12)
             );
-
+#ifdef LOG_HOPS
+            hops++;
+#endif
         } while (opp_check_part_move_status(move_flag, iter_one_flag, opp_p2c[0], n, thread));
+
+#ifdef LOG_HOPS
+        int_hops[thread] = (int_hops[thread] < hops) ? hops : int_hops[thread];
+        if (hops > X_HOPS) moreX_hops[thread]++;
+#endif  
     };
 
     // ----------------------------------------------------------------------------
@@ -410,6 +426,10 @@ void opp_particle_move__move_deposit_kernel(opp_set set, opp_map c2c_map, opp_ma
     }
 
     opp_reduce_thread_level_data<OPP_REAL>(args[5]);
+#ifdef LOG_HOPS
+    OPP_move_max_hops = *std::max_element(int_hops.begin(), int_hops.end());
+    OPP_move_moreX_hops = std::accumulate(moreX_hops.begin(), moreX_hops.end(), 0);
+#endif
 
     opp_set_dirtybit(nargs, args);
 
