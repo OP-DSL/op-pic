@@ -59,7 +59,8 @@ void opp_par_loop_all__update_pos_kernel(opp_set set,
     opp_arg arg1, // p_pos | OPP_RW
     opp_arg arg2 // p_mdir | OPP_WRITE
 ) 
-{
+{ OPP_RETURN_IF_INVALID_PROCESS;
+
     const int nargs = 3;
     opp_arg args[nargs];
 
@@ -94,7 +95,7 @@ void opp_par_loop_all__update_pos_kernel(opp_set set,
         num_blocks = (end - start - 1) / block_size + 1;
 
         {
-            opp_dev_update_pos_kernel<<<num_blocks, block_size>>>(
+            opp_dev_update_pos_kernel<<<num_blocks, block_size, 0, *opp_stream>>>(
                 (OPP_REAL *)args[0].data_d,     // p_vel
                 (OPP_REAL *)args[1].data_d,     // p_pos
                 (OPP_INT *)args[2].data_d,     // p_mdir

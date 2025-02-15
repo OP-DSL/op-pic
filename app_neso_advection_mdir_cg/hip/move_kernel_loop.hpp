@@ -165,7 +165,8 @@ void opp_particle_move__move_kernel(opp_set set, opp_map c2c_map, opp_map p2c_ma
     opp_arg arg1,   // p_mdir | OPP_RW
     opp_arg arg2   // c_pos_ll | OPP_READ
 ) 
-{
+{ OPP_RETURN_IF_INVALID_PROCESS;
+
     if (OPP_DBG) opp_printf("APP", "opp_particle_move__move_kernel set_size %d", set->size);
 
     opp_profiler->start("move_kernel");
@@ -207,12 +208,12 @@ void opp_particle_move__move_kernel(opp_set set, opp_map c2c_map, opp_map p2c_ma
         opp_mem::dev_copy_to_symbol<OPP_INT>(cellMapper_pos_stride_d, &cellMapper_pos_stride, &(args[0].dat->set->set_capacity), 1);
         opp_mem::dev_copy_to_symbol<OPP_INT>(OPP_rank_d, &OPP_rank, 1);
 
-        OPP_DEV_CHECK(cudaMemcpyToSymbol(opp_minSavedDHGrid_d, opp_minSavedDHGrid, 3 * sizeof(size_t)));
-        OPP_DEV_CHECK(cudaMemcpyToSymbol(opp_maxSavedDHGrid_d, opp_maxSavedDHGrid, 3 * sizeof(size_t)));
+        OPP_DEV_CHECK(hipMemcpyToSymbol(HIP_SYMBOL(opp_minSavedDHGrid_d), opp_minSavedDHGrid, 3 * sizeof(size_t)));
+        OPP_DEV_CHECK(hipMemcpyToSymbol(HIP_SYMBOL(opp_maxSavedDHGrid_d), opp_maxSavedDHGrid, 3 * sizeof(size_t)));
 
         // check whether particles need to be moved via the global move routine
         num_blocks = (OPP_iter_end - OPP_iter_start - 1) / block_size + 1;
-        opp_dev_checkForGlobalMove2D_kernel<<<num_blocks, block_size>>>(
+        opp_dev_checkForGlobalMove2D_kernel<<<num_blocks, block_size, 0, *opp_stream>>>(
             (OPP_REAL*)args[0].data_d,    // p_pos 
             (OPP_INT *)args[3].data_d,    // p2c_map
             cellMapper->structMeshToCellMapping_d, 
@@ -256,7 +257,7 @@ void opp_particle_move__move_kernel(opp_set set, opp_map c2c_map, opp_map p2c_ma
 
     {
         opp_profiler->start("move_kernel_only");
-        opp_dev_move_kernel<<<num_blocks, block_size>>>(
+        opp_dev_move_kernel<<<num_blocks, block_size, 0, *opp_stream>>>(
             (OPP_REAL *)args[0].data_d,    // p_pos
             (OPP_INT *)args[1].data_d,    // p_mdir
             (OPP_REAL *)args[2].data_d,    // c_pos_ll
@@ -305,7 +306,7 @@ void opp_particle_move__move_kernel(opp_set set, opp_map c2c_map, opp_map p2c_ma
             opp_mem::dev_copy_to_symbol<OPP_INT>(opp_k2_dat2_stride_d, &opp_k2_dat2_stride, &(args[2].dat->set->set_capacity), 1);
 
             opp_profiler->start("move_kernel_only");      
-            opp_dev_move_kernel<<<num_blocks, block_size>>>(
+            opp_dev_move_kernel<<<num_blocks, block_size, 0, *opp_stream>>>(
                 (OPP_REAL *)args[0].data_d,    // p_pos
                 (OPP_INT *)args[1].data_d,    // p_mdir
                 (OPP_REAL *)args[2].data_d,    // c_pos_ll
@@ -343,7 +344,7 @@ void opp_particle_move__move_kernel(opp_set set, opp_map c2c_map, opp_map p2c_ma
 
         {
             opp_profiler->start("move_kernel_only");
-            opp_dev_move_kernel<<<num_blocks, block_size>>>(
+            opp_dev_move_kernel<<<num_blocks, block_size, 0, *opp_stream>>>(
                 (OPP_REAL *)args[0].data_d,    // p_pos
                 (OPP_INT *)args[1].data_d,    // p_mdir
                 (OPP_REAL *)args[2].data_d,    // c_pos_ll
@@ -374,7 +375,8 @@ void opp_init_direct_hop_cg(double grid_spacing, const opp_dat c_gbl_id, const o
     opp_arg arg0, // p_pos | OPP_READ
     opp_arg arg1, // p_mdir | OPP_RW
     opp_arg arg2 // c_pos_ll | OPP_READ
-) {
+) { OPP_RETURN_IF_INVALID_PROCESS;
+
     opp_profiler->start("Setup_Mover");
 
     useGlobalMove = opp_params->get<OPP_BOOL>("opp_global_move");
@@ -394,7 +396,7 @@ void opp_init_direct_hop_cg(double grid_spacing, const opp_dat c_gbl_id, const o
 #ifdef USE_MPI
         opp_mpi_halo_exchanges_grouped(c_gbl_id->set, nargs, args, Device_CPU);
 
-        comm = std::make_shared<opp::Comm>(MPI_COMM_WORLD);
+        comm = std::make_shared<opp::Comm>(OPP_MPI_WORLD);
         globalMover = std::make_unique<opp::GlobalParticleMover>(comm->comm_parent);
 
         opp_mpi_halo_wait_all(nargs, args);

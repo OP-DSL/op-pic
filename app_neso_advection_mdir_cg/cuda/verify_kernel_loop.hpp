@@ -95,7 +95,8 @@ void opp_par_loop_all__verify_kernel(opp_set set,
     opp_arg arg1, // c_idx | OPP_READ
     opp_arg arg2 // | OPP_INC
 ) 
-{
+{ OPP_RETURN_IF_INVALID_PROCESS;
+
     const int nargs = 3;
     opp_arg args[nargs];
 
@@ -153,7 +154,7 @@ void opp_par_loop_all__verify_kernel(opp_set set,
         const OPP_INT start = 0;
         const OPP_INT end = iter_size;
         {
-            opp_dev_verify_kernel<<<num_blocks, block_size, (reduction_size * block_size)>>>(
+            opp_dev_verify_kernel<<<num_blocks, block_size, (reduction_size * block_size), *opp_stream>>>(
                 (OPP_REAL *)args[0].data_d,     // p_pos
                 (OPP_INT *)args[1].data_d,     // c_idx
                 (OPP_INT *)set->mesh_relation_dat->data_d,
