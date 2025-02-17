@@ -440,6 +440,9 @@ void CellMapper::generateStructuredMeshFromFile(opp_set set, const opp_dat c_gbl
 
     if (comm->rank_intra == 0) { // read only with the node-main rank   
         std::stringstream s;
+        if (opp_params->get<OPP_STRING>("opp_dh_mesh_folder", false) != "NOT FOUND") {
+            s << opp_params->get<OPP_STRING>("opp_dh_mesh_folder", false);
+        }
         s << str(set_size, "dh_c%d");
         s << str(gridSpacing, "_gs%2.4lE");
         s << str(boundingBox->domain_expansion.x, "_ex%2.4lE");
