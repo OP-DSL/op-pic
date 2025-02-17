@@ -314,11 +314,11 @@ __global__ void opp_dev_sr_{{lh.kernel}}( // Used for Segmented Reductions
     OPP_INT *__restrict__ sr_dat{{dat.id}}_keys,     // sr keys for {{dat.ptr}}
         {% endif -%}  
     {% endfor %}
-    const OPP_INT start,
-    const OPP_INT end
+    const int64_t start,
+    const int64_t end
 ) 
 {
-    const int n = OPP_DEVICE_GLOBAL_LINEAR_ID + start;
+    const int64_t n = OPP_DEVICE_GLOBAL_LINEAR_ID + start;
 
     if (n < end) {
 
@@ -356,13 +356,13 @@ __global__ void opp_dev_sr_{{lh.kernel}}( // Used for Segmented Reductions
 
         {% for arg in lh.args_expanded|dat|indirect|reduction if config.seg_red %}
             if (iter_one_flag) {
-                for (int d = 0; d < {{lh.dat(arg).dim}}; ++d) {
+                for (int64_t d = 0; d < {{lh.dat(arg).dim}}; ++d) {
                     sr_dat{{arg.dat_id}}_values[n + opp_k{{kernel_idx}}_sr_set_stride_d * d] = arg{{arg.dat_id}}_p2c_local[d];              
                 }
                 sr_dat{{arg.dat_id}}_keys[n] = p2c; // TODO : Generate for double indirections too!
             }
             else {
-                for (int d = 0; {{opt_device_cond_comp(arg)}}d < {{lh.dat(arg).dim}}; ++d)
+                for (int64_t d = 0; {{opt_device_cond_comp(arg)}}d < {{lh.dat(arg).dim}}; ++d)
             {% if arg is p2c_mapped and not double_indirect %}
                     atomicAdd(dat{{arg.dat_id}} + {{map_lookup(arg, kernel_idx)}} + (d{{stride_device(arg)}}), arg{{arg.id}}_p2c_local[d]);
             {% else %}

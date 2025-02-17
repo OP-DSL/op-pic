@@ -390,11 +390,11 @@ __global__ void opp_dev_sr_move_deposit_kernel( // Used for Segmented Reductions
     OPP_INT *__restrict__ move_count,
     OPP_REAL *__restrict__ sr_dat5_values,     // sr values for c_acc
     OPP_INT *__restrict__ sr_dat5_keys,     // sr keys for c_acc
-    const OPP_INT start,
-    const OPP_INT end
+    const int64_t start,
+    const int64_t end
 ) 
 {
-    const int n = OPP_DEVICE_GLOBAL_LINEAR_ID + start;
+    const int64_t n = OPP_DEVICE_GLOBAL_LINEAR_ID + start;
 
     if (n < end) {
 
@@ -423,13 +423,13 @@ __global__ void opp_dev_sr_move_deposit_kernel( // Used for Segmented Reductions
             );
 
             if (iter_one_flag) {
-                for (int d = 0; d < 12; ++d) {
+                for (int64_t d = 0; d < 12; ++d) {
                     sr_dat5_values[n + opp_k2_sr_set_stride_d * d] = arg5_p2c_local[d];              
                 }
                 sr_dat5_keys[n] = p2c; // TODO : Generate for double indirections too!
             }
             else {
-                for (int d = 0; d < 12; ++d)
+                for (int64_t d = 0; d < 12; ++d)
                     atomicAdd(dat5 + p2c + (d * opp_k2_dat5_stride_d), arg5_p2c_local[d]);
             }
         

@@ -394,15 +394,15 @@ __global__ void opp_dev_checkForGlobalMove3D_kernel(
 
 // --------------------------------------------------------------
 namespace opp_sr { // Segmented Reductions Routines 
-__global__ void sequence_array(OPP_INT *__restrict__ array, const int start, const int end) 
+__global__ void sequence_array(OPP_INT *__restrict__ array, const int64_t start, const int64_t end) 
 {
-    const int n = OPP_DEVICE_GLOBAL_LINEAR_ID + start;
+    const int64_t n = OPP_DEVICE_GLOBAL_LINEAR_ID + start;
     if (n < end) {
         array[n] = n; 
     }
 }
 template <typename T>
-__global__ void reset_values(T *__restrict__ values, const int start, const int end) 
+__global__ void reset_values(T *__restrict__ values, const size_t start, const size_t end) 
 {
     const int n = OPP_DEVICE_GLOBAL_LINEAR_ID + start;
     if (n < end) {
@@ -412,12 +412,12 @@ __global__ void reset_values(T *__restrict__ values, const int start, const int 
 template <typename T>
 __global__ void set_values_by_key(const OPP_INT *__restrict__ from_indices, 
     const T *__restrict__ from_values, T *__restrict__ to_array,
-    const int start, const int end, const int dim, const OPP_INT from_stride, const OPP_INT to_stride) 
+    const int64_t start, const int64_t end, const int64_t dim, const int64_t from_stride, const int64_t to_stride) 
 {
-    const int n = OPP_DEVICE_GLOBAL_LINEAR_ID + start;
+    const int64_t n = OPP_DEVICE_GLOBAL_LINEAR_ID + start;
     if (n < end) {
         const int idx = from_indices[n];
-        for (int d = 0; d < dim; d++) {
+        for (int64_t d = 0; d < dim; d++) {
             to_array[n + d * to_stride] = from_values[idx + d * from_stride];
         }
     }
@@ -425,12 +425,12 @@ __global__ void set_values_by_key(const OPP_INT *__restrict__ from_indices,
 template <typename T>
 __global__ void set_values(const OPP_INT *__restrict to_indices,
     const T *__restrict from_values, T *__restrict to_array,
-    const int start, const int end, const int dim, const OPP_INT from_stride, const OPP_INT to_stride) 
+    const int64_t start, const int64_t end, const int dim, const int64_t from_stride, const int64_t to_stride) 
 {
-    const int n = OPP_DEVICE_GLOBAL_LINEAR_ID + start;
+    const int64_t n = OPP_DEVICE_GLOBAL_LINEAR_ID + start;
     if (n < end) {
         const int idx = to_indices[n];  
-        for (int d = 0; d < dim; d++) {
+        for (int64_t d = 0; d < dim; d++) {
             to_array[idx + d * to_stride] += from_values[n + d * from_stride];
         }
     }
@@ -454,13 +454,13 @@ void init_arrays(const int reduc_dim, const size_t operating_size, const size_t 
     // Reset the key/value device arrays
     opp_profiler->start("SRM_Init");
     
-    const int num_blocks1 = (operating_size - 1) / OPP_gpu_threads_per_block + 1;
+    const size_t num_blocks1 = (operating_size - 1) / OPP_gpu_threads_per_block + 1;
     opp_sr::reset_values<OPP_INT> <<<num_blocks1, OPP_gpu_threads_per_block, 0, *opp_stream>>>(
         opp_get_dev_raw_ptr<OPP_INT>(keys1), 0, keys1.size());
     opp_sr::sequence_array<<<num_blocks1, OPP_gpu_threads_per_block, 0, *opp_stream>>>(
         opp_get_dev_raw_ptr<OPP_INT>(keys2), 0, keys2.size());
     
-    const int num_blocks2 = (values2.size() - 1) / OPP_gpu_threads_per_block + 1;
+    const size_t num_blocks2 = (values2.size() - 1) / OPP_gpu_threads_per_block + 1;
     opp_sr::reset_values<T> <<<num_blocks2, OPP_gpu_threads_per_block, 0, *opp_stream>>>(
         opp_get_dev_raw_ptr<T>(values2), 0, values2.size());
 
@@ -482,11 +482,11 @@ void clear_arrays(thrust::device_vector<OPP_INT>& keys1, thrust::device_vector<T
 }
 
 template <typename T>
-void do_segmented_reductions(opp_arg arg, const int iter_size,
+void do_segmented_reductions(opp_arg arg, const int64_t iter_size,
                              thrust::device_vector<OPP_INT>& keys1, thrust::device_vector<T>& values1,
                              thrust::device_vector<OPP_INT>& keys2, thrust::device_vector<T>& values2)
 {
-    const int num_blocks = (iter_size - 1) / OPP_gpu_threads_per_block + 1;
+    const int64_t num_blocks = (iter_size - 1) / OPP_gpu_threads_per_block + 1;
     opp_dat dat = arg.dat;
 
     // Sort by keys to bring the identical keys together and store the order in keys2
@@ -512,7 +512,7 @@ void do_segmented_reductions(opp_arg arg, const int iter_size,
         values1.begin());  
     const size_t reduced_size = (new_end.first - keys2.begin());
 
-    for (int d = 1; d < dat->dim; ++d) {
+    for (int64_t d = 1; d < dat->dim; ++d) {
         thrust::reduce_by_key(thrust::device,
             keys1.begin(), keys1.begin() + iter_size,
             values2.begin() + d * iter_size,
@@ -522,7 +522,7 @@ void do_segmented_reductions(opp_arg arg, const int iter_size,
 
     // Assign reduced values to the nodes using keys/values
     opp_profiler->start("SRM_Assign");
-    const int num_blocks2 = reduced_size / OPP_gpu_threads_per_block + 1;
+    const int64_t num_blocks2 = reduced_size / OPP_gpu_threads_per_block + 1;
     opp_sr::set_values<T> <<<num_blocks2, OPP_gpu_threads_per_block, 0, *opp_stream>>> (
         opp_get_dev_raw_ptr<OPP_INT>(keys2),
         opp_get_dev_raw_ptr<T>(values1), (T *)dat->data_d,
