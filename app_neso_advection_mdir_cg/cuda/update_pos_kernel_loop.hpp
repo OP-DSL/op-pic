@@ -24,7 +24,7 @@ __device__ inline void update_pos_kernel(const double* p_vel, double* p_pos, int
         // correct for periodic boundary conditions
         const int n_extent_offset_int = std::abs(p_pos[(dm) * opp_k1_dat1_stride_d]) + 2.0;
         const double temp_pos = p_pos[(dm) * opp_k1_dat1_stride_d] + n_extent_offset_int * CONST_extents_d[dm];
-        p_pos[(dm) * opp_k1_dat1_stride_d] = std::fmod(temp_pos, CONST_extents_d[dm]);
+        p_pos[(dm) * opp_k1_dat1_stride_d] = ((temp_pos) - (CONST_extents_d[dm]) * trunc((temp_pos) / (CONST_extents_d[dm])));
 
         p_mdir[(dm) * opp_k1_dat2_stride_d] = (offset > 0) ? 1 : -1;
     }

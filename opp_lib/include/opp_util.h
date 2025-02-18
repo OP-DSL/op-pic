@@ -45,6 +45,8 @@ extern MPI_Comm OPP_MPI_WORLD;
 #define MAX(a, b) ((a > b) ? (a) : (b))
 #endif
 
+#define FMOD(a, b) ((a) - (b) * trunc((a) / (b)))
+
 #define ROUND_UP(bytes) (((bytes) + 15) & ~15)
 #define ROUND_UP_64(bytes) (((bytes) + 63) & ~63)
 

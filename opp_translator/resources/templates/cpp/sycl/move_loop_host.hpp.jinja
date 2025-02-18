@@ -612,9 +612,12 @@ void opp_init_direct_hop_cg(double grid_spacing, const opp_dat c_gbl_id, const o
 
         // lambda function for dh mesh search loop
         auto all_cell_checker = [&](const opp_point& point, int& cid) {          
- 
+    {% for arg in lh.args|dat %}
+        {% if arg.access_type.value in [1, 3, 4, 5, 2] %} 
             // we dont want to change the original arrays during dh mesh generation, hence duplicate except OPP_READ
-            OPP_REAL arg1_temp[4];
+            {{lh.dat(arg).typ}} arg{{arg.id}}_temp[{{lh.dat(arg).dim}}];
+        {%- endif %}
+    {%- endfor +%}
             for (int ci = 0; ci < c_set_size; ++ci) {
                 opp_move_status_flag = OPP_NEED_MOVE;  
                 opp_move_hop_iter_one_flag = true;
@@ -623,6 +626,23 @@ void opp_init_direct_hop_cg(double grid_spacing, const opp_dat c_gbl_id, const o
                 
                 opp_p2c = &(temp_ci);           
                 opp_c2c = &((c2c_map->map)[temp_ci * 4]);
+    {% if lh is indirect %}
+        {% for map in lh.maps %}
+                const OPP_INT *map{{map.id}} = args[{{map.arg_id}}].map_data + (temp_ci * {{map.dim}});
+        {%- endfor %}   
+    {%- endif %}    
+    {%- for arg in lh.args|dat %}
+        {% if arg.access_type.value == 2 %} 
+
+            {%- if arg is double_indirect -%}
+            {%- set offset = " + (map%s[%d] * %d)" % (arg.map_id, arg.map_idx, lh.dat(arg).dim) -%}
+            {%- elif arg is indirect -%}
+            {%- set offset = " + (temp_ci * %d)" % (lh.dat(arg).dim) -%}
+            {%- endif %}
+                // arg{{arg.id}} is OPP_RW, hence get a copy just incase
+                std::memcpy(&arg{{arg.id}}_temp, ({{lh.dat(arg).typ}} *)args[{{arg.id}}].data{{offset}}, (sizeof({{lh.dat(arg).typ}}) * {{lh.dat(arg).dim}}));
+        {% endif %}
+    {%- endfor %}
 
                 opp_k{{kernel_idx}}::host::{{lh.kernel}}(
     {% for arg in lh.args %}

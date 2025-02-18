@@ -48,7 +48,7 @@ inline void update_pos_kernel(const OPP_REAL* p_vel, OPP_REAL* p_pos, OPP_INT* p
         // correct for periodic boundary conditions
         const OPP_INT n_extent_offset_int = std::abs(p_pos[dm]) + 2.0;
         const OPP_REAL temp_pos = p_pos[dm] + n_extent_offset_int * CONST_extents[dm];
-        p_pos[dm] = std::fmod(temp_pos, CONST_extents[dm]);
+        p_pos[dm] = FMOD(temp_pos, CONST_extents[dm]);
 
         p_mdir[dm] = (offset > 0) ? 1 : -1;
     }

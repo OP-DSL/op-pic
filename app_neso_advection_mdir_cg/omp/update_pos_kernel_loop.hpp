@@ -14,7 +14,7 @@ inline void update_pos_kernel(const double* p_vel, double* p_pos, int* p_mdir)
         // correct for periodic boundary conditions
         const int n_extent_offset_int = std::abs(p_pos[dm]) + 2.0;
         const double temp_pos = p_pos[dm] + n_extent_offset_int * CONST_extents[dm];
-        p_pos[dm] = std::fmod(temp_pos, CONST_extents[dm]);
+        p_pos[dm] = ((temp_pos) - (CONST_extents[dm]) * trunc((temp_pos) / (CONST_extents[dm])));
 
         p_mdir[dm] = (offset > 0) ? 1 : -1;
     }

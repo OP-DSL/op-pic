@@ -11,7 +11,7 @@ NVCC       = nvcc
 HIPCC      = $(HIP_COMPILER)
 SYCLCC     = icpx
 
-CPPFLAGS   = -std=c++17 -Wall -fPIC $(CPPFLAGS_ADD)
+CPPFLAGS   = -std=c++17 -Wall -fPIC -march=native $(CPPFLAGS_ADD)
 NVCCFLAGS  = -std=c++17 -m64 -Xptxas -dlcm=ca $(NVCCFLAGS_ADD)
 HIPCCFLAGS = $(HIPCCFLAGS_ADD) -std=c++17 -Wall -isystem -D__HIP_PLATFORM_AMD__
 SYCLFLAGS  = -w -fsycl -std=c++17 $(SYCLFLAGS_ADD)
@@ -24,7 +24,7 @@ ifeq ($(DEBUG), 1)
 	SYCLFLAGS  += -O0 -g
 	DEBUG_LOG   = 1
 else
-	CPPFLAGS   += -O3 -g -DLOG_HOPS
+	CPPFLAGS   += -O3
 	NVCCFLAGS  += -O3 -g -DLOG_HOPS
 	HIPCCFLAGS += -O3 -g -DLOG_HOPS
 	SYCLFLAGS  += -O3 -g -DLOG_HOPS
@@ -48,7 +48,7 @@ endif
 CUDA_INC   = -I$(CUDA_INSTALL_PATH)/include -I$(MPI_INSTALL_PATH)/include
 CUDA_LIB   = -L$(CUDA_INSTALL_PATH)/lib64 -lcudart -lcuda -I$(MPI_INSTALL_PATH)/lib -lmpi
 
-HIP_INC   = -I$(ROCM_INSTALL_DIR)/include -I$(ROCM_THRUST_DIR)/include -I$(ROCM_PRIM_DIR)/include
+HIP_INC   = -I$(ROCM_INSTALL_DIR)/include -I$(ROCM_THRUST_DIR)/include -I$(ROCM_PRIM_DIR)/include -D__HIP_PLATFORM_AMD__
 HIP_LIB   = -L$(ROCM_INSTALL_DIR)/lib -lamdhip64
 
 ALL_INC    += -I$(OPP_PATH)/include

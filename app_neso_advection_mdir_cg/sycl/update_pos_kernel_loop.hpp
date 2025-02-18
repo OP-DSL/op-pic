@@ -77,7 +77,7 @@ void opp_par_loop_all__update_pos_kernel(opp_set set,
                     // correct for periodic boundary conditions
                     const int n_extent_offset_int = std::abs(p_pos[(dm) * opp_k1_dat1_stride_sycl[0]]) + 2.0;
                     const double temp_pos = p_pos[(dm) * opp_k1_dat1_stride_sycl[0]] + n_extent_offset_int * CONST_extents_sycl[dm];
-                    p_pos[(dm) * opp_k1_dat1_stride_sycl[0]] = std::fmod(temp_pos, CONST_extents_sycl[dm]);
+                    p_pos[(dm) * opp_k1_dat1_stride_sycl[0]] = ((temp_pos) - (CONST_extents_sycl[dm]) * trunc((temp_pos) / (CONST_extents_sycl[dm])));
 
                     p_mdir[(dm) * opp_k1_dat2_stride_sycl[0]] = (offset > 0) ? 1 : -1;
                 }

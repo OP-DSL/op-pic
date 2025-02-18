@@ -51,7 +51,7 @@ CUDA_LIB   = -L$(CUDA_INSTALL_PATH)/lib64 -lcudart -lcuda
 # CUDA_INC   = -I$(CUDA_INSTALL_PATH)/include -I$(MPI_INSTALL_PATH)/include
 # CUDA_LIB   = -L$(CUDA_INSTALL_PATH)/lib64 -lcudart -lcuda -I$(MPI_INSTALL_PATH)/lib -lmpi
 
-HIP_INC   = -I$(ROCM_INSTALL_DIR)/include -I$(ROCM_THRUST_DIR)/include -I$(ROCM_PRIM_DIR)/include
+HIP_INC   = -I$(ROCM_INSTALL_DIR)/include -I$(ROCM_THRUST_DIR)/include -I$(ROCM_PRIM_DIR)/include -D__HIP_PLATFORM_AMD__
 HIP_LIB   = -L$(ROCM_INSTALL_DIR)/lib -lamdhip64
 # # for archer2 gpus
 # HIP_INC   = -I${CRAY_MPICH_DIR}/include
@@ -169,7 +169,7 @@ sycl_mpi: mklib opp_kernels_sycl_mpi cabana_opp_sycl_mpi
 opp_kernels_hip:
 		 $(HIPCC) $(HIPCCFLAGS) -DUSE_HIP -c hip/opp_kernels.cpp -o $(OBJ)/opp_kernels_hip.o $(ALL_INC) $(HIP_INC)
 cabana_opp_hip:
-	     $(MPICPP) $(CPPFLAGS) -DUSE_HIP -c cabana_opp.cpp -o $(OBJ)/cabana_opp_hip.o $(ALL_INC) -D__HIP_PLATFORM_AMD__ -I$(ROCM_INSTALL_DIR)/include
+	     $(MPICPP) $(CPPFLAGS) -DUSE_HIP -c cabana_opp.cpp -o $(OBJ)/cabana_opp_hip.o $(ALL_INC) $(HIP_INC)
 hip: mklib cabana_opp_hip opp_kernels_hip
 	     $(MPICPP) $(CPPFLAGS) -DUSE_HIP -o $(BIN)/hip \
 			$(OBJ)/cabana_opp_hip.o \
@@ -180,7 +180,7 @@ hip: mklib cabana_opp_hip opp_kernels_hip
 opp_kernels_hip_mpi:
 		 $(HIPCC) $(HIPCCFLAGS) -DUSE_HIP -DUSE_MPI -c hip/opp_kernels.cpp -o $(OBJ)/opp_kernels_hip_mpi.o $(ALL_INC) $(HIP_INC)
 cabana_opp_hip_mpi:
-	     $(MPICPP) $(CPPFLAGS) -DUSE_HIP -DUSE_MPI -c cabana_opp.cpp -o $(OBJ)/cabana_opp_hip_mpi.o $(ALL_INC) -D__HIP_PLATFORM_AMD__ -I$(ROCM_INSTALL_DIR)/include
+	     $(MPICPP) $(CPPFLAGS) -DUSE_HIP -DUSE_MPI -c cabana_opp.cpp -o $(OBJ)/cabana_opp_hip_mpi.o $(ALL_INC) $(HIP_INC)
 hip_mpi: mklib opp_kernels_hip_mpi cabana_opp_hip_mpi
 	     $(MPICPP) $(CPPFLAGS) -DUSE_HIP -o $(BIN)/hip_mpi \
 			$(OBJ)/cabana_opp_hip_mpi.o \

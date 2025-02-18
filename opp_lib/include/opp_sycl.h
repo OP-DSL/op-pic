@@ -45,6 +45,8 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
     #include <opp_mpi_core.h>
 #endif
 
+#define trunc sycl::trunc
+
 struct opp_dh_indices {
     OPP_INT* move_count = nullptr;
     OPP_INT* part_indices = nullptr;

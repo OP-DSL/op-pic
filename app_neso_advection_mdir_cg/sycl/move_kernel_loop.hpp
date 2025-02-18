@@ -336,7 +336,7 @@ void opp_init_direct_hop_cg(double grid_spacing, const opp_dat c_gbl_id, const o
         auto all_cell_checker = [&](const opp_point& point, int& cid) {          
  
             // we dont want to change the original arrays during dh mesh generation, hence duplicate except OPP_READ
-            OPP_REAL arg1_temp[4];
+            OPP_INT arg1_temp[2];
             for (int ci = 0; ci < c_set_size; ++ci) {
                 opp_move_status_flag = OPP_NEED_MOVE;  
                 opp_move_hop_iter_one_flag = true;
@@ -345,6 +345,8 @@ void opp_init_direct_hop_cg(double grid_spacing, const opp_dat c_gbl_id, const o
                 
                 opp_p2c = &(temp_ci);           
                 opp_c2c = &((c2c_map->map)[temp_ci * 4]);
+                // arg1 is OPP_RW, hence get a copy just incase
+                std::memcpy(&arg1_temp, (OPP_INT *)args[1].data, (sizeof(OPP_INT) * 2));
 
                 opp_k2::host::move_kernel(
                     (const OPP_REAL*)&point,

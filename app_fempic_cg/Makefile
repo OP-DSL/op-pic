@@ -66,7 +66,7 @@ CUDA_LIB   = -L$(CUDA_INSTALL_PATH)/lib64 -lcudart -lcuda
 CUDA_INC   = -I$(CUDA_INSTALL_PATH)/include -I$(MPI_INSTALL_PATH)/include
 CUDA_LIB   = -L$(CUDA_INSTALL_PATH)/lib64 -lcudart -lcuda -I$(MPI_INSTALL_PATH)/lib -lmpi
 
-HIP_INC   = -I$(ROCM_INSTALL_DIR)/include -I$(ROCM_THRUST_DIR)/include -I$(ROCM_PRIM_DIR)/include
+HIP_INC   = -I$(ROCM_INSTALL_DIR)/include -I$(ROCM_THRUST_DIR)/include -I$(ROCM_PRIM_DIR)/include -D__HIP_PLATFORM_AMD__
 HIP_LIB   = -L$(ROCM_INSTALL_DIR)/lib -lamdhip64
 # for archer2 gpus
 # HIP_INC   = -I${CRAY_MPICH_DIR}/include
@@ -235,15 +235,15 @@ hip: mklib fempic_opp+hip opp_kernels+hip field_solver+hip
 
 # ----------------------------------------------------------------------------------------------------------------------
 fempic_opp+hip_mpi:
-		 $(MPICPP) $(CPPFLAGS) -DUSE_MPI -DUSE_HIP -c fempic_opp.cpp -o $(OBJ)/fempic_opp_hip_mpi.o $(ALL_INC) $(HIP_INC) -D__HIP_PLATFORM_AMD__
+		 $(MPICPP) $(CPPFLAGS) -DUSE_MPI -DUSE_HIP -c fempic_opp.cpp -o $(OBJ)/fempic_opp_hip_mpi.o $(ALL_INC) $(HIP_INC)
 opp_kernels+hip_mpi:
 		 $(HIPCC) $(HIPCCFLAGS) -DUSE_MPI -DUSE_HIP -c hip/opp_kernels.cpp -o $(OBJ)/opp_kernels_hip_mpi.o $(ALL_INC) $(HIP_INC)
 field_solver+hip_mpi:
 		 $(HIPCC) $(HIPCCFLAGS) -DUSE_MPI -DUSE_HIP -c field_solver/field_solver.cpp -o $(OBJ)/field_solver_hip_mpi.o $(ALL_INC) $(HIP_INC)
 fempic_hdf5_opp+hip_mpi:
-		 $(MPICPP) $(CPPFLAGS) -DUSE_MPI -DUSE_HIP -c fempic_hdf5_opp.cpp -o $(OBJ)/fempic_hdf5_opp_hip_mpi.o $(ALL_INC) $(HIP_INC) -D__HIP_PLATFORM_AMD__
+		 $(MPICPP) $(CPPFLAGS) -DUSE_MPI -DUSE_HIP -c fempic_hdf5_opp.cpp -o $(OBJ)/fempic_hdf5_opp_hip_mpi.o $(ALL_INC) $(HIP_INC)
 opp_mpi_hdf5+hip_mpi:
-		 $(MPICPP) $(CPPFLAGS) -DUSE_MPI -DUSE_HIP -c $(OPP_PATH)/src/hdf5/opp_mpi_hdf5.cpp -o $(OBJ)/opp_mpi_hdf5_hip_mpi_hdf5.o $(ALL_INC) $(HIP_INC) -D__HIP_PLATFORM_AMD__
+		 $(MPICPP) $(CPPFLAGS) -DUSE_MPI -DUSE_HIP -c $(OPP_PATH)/src/hdf5/opp_mpi_hdf5.cpp -o $(OBJ)/opp_mpi_hdf5_hip_mpi_hdf5.o $(ALL_INC) $(HIP_INC)
 
 hip_mpi: mklib fempic_opp+hip_mpi opp_kernels+hip_mpi field_solver+hip_mpi
 		 $(MPICPP) $(CPPFLAGS) -DUSE_MPI -o $(BIN)/hip_mpi \
