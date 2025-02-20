@@ -6,6 +6,7 @@ REAL electron_temperature = 2e8
 REAL wall_potential       = 10000000
 STRING plasma_species     = Duterium
 REAL spwt                 = 2e2
+INT charge_multiple = 1
 
 # Simulation parameters
 INT num_steps          = 250
