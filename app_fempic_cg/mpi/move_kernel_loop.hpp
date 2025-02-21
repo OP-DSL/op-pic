@@ -19,10 +19,10 @@ inline void move_kernel(
             cell_det[i * 4 + 3] * point_pos[2]);
     }
 
-    if (!(point_lc[0] < 0.0 || point_lc[0] > 1.0 ||
-          point_lc[1] < 0.0 || point_lc[1] > 1.0 ||
-          point_lc[2] < 0.0 || point_lc[2] > 1.0 ||
-          point_lc[3] < 0.0 || point_lc[3] > 1.0)) {
+    if ((point_lc[0] > -1e-18) && ((point_lc[0] - 1.0) < -1e-18) &&
+        (point_lc[1] > -1e-18) && ((point_lc[1] - 1.0) < -1e-18) &&
+        (point_lc[2] > -1e-18) && ((point_lc[2] - 1.0) < -1e-18) &&
+        (point_lc[3] > -1e-18) && ((point_lc[3] - 1.0) < -1e-18)) {
 
         { opp_move_status_flag = OPP_MOVE_DONE; };
         return;
@@ -276,31 +276,6 @@ void opp_init_direct_hop_cg(double grid_spacing, const opp_dat c_gbl_id, const o
 
         if (opp_params->get<OPP_BOOL>("opp_dh_data_generate")) {
             cellMapper->generateStructuredMesh(c_gbl_id->set, c_gbl_id, all_cell_checker);
-
-            // auto cellMapper2 = std::make_shared<opp::CellMapper>(boundingBox, grid_spacing, comm);
-            // cellMapper2->generateStructuredMeshFromFile(c_gbl_id->set, c_gbl_id);
-            // cellMapper2->waitBarrier();
-            // if (OPP_rank == 0) 
-            // {                
-            //     for (size_t i = 0; i < cellMapper->globalGridSize; i++) {
-            //         if (cellMapper->structMeshToCellMapping[i] != cellMapper2->structMeshToCellMapping[i]) {
-            //             opp_printf("APP", "Incorrect value from cell file at %d - system %d - file %d",
-            //                 i, cellMapper->structMeshToCellMapping[i], cellMapper2->structMeshToCellMapping[i]);
-            //         }
-            //     }
-            //     int count = 0, non_root = 0;
-            //     for (size_t i = 0; i < cellMapper->globalGridSize; i++) {
-            //         if (cellMapper->structMeshToRankMapping[i] != cellMapper2->structMeshToRankMapping[i]) { count++;
-            //             opp_printf("APP", "Incorrect value from rank file at %d - cid %d - system %d - file %d",
-            //                 i, cellMapper->structMeshToCellMapping[i], cellMapper->structMeshToRankMapping[i], cellMapper2->structMeshToRankMapping[i]);
-            //         }
-
-            //         if (cellMapper2->structMeshToRankMapping[i] != 0 && cellMapper2->structMeshToRankMapping[i] != MAX_CELL_INDEX) {
-            //             non_root++;
-            //         }
-            //     }
-            //     opp_printf("APP", "Incorrect rank values %d non root %d", count, non_root);
-            // }
         }
         else {
             cellMapper->generateStructuredMeshFromFile(c_gbl_id->set, c_gbl_id);  
