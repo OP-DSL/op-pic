@@ -24,7 +24,7 @@ STRING wall_mesh   = /work/e723/e723/csrcnj/phd/box_mesh_gen/dats/12000/wall.dat
 BOOL invert_normals = false
 
 BOOL opp_auto_sort          = false
-REAL opp_allocation_multiple = 12
+REAL opp_allocation_multiple = 11
 INT opp_threads_per_block   = 1024
 
 BOOL opp_profile_all        = false
@@ -34,7 +34,7 @@ BOOL print_final   = true
 BOOL opp_global_move = false
 REAL grid_spacing  = 25e-6
 BOOL opp_dh_data_generate = false
-STRING opp_dh_mesh_folder  = /home/zl/phd/box_mesh_gen/fempic/dh_mesh_scaling/
+STRING opp_dh_mesh_folder  = /work/e723/e723/csrcnj/phd/box_mesh_gen/dh_meshes/fempic/
 # Use opp_dh_data_generate = true and OPP_DH_DATA_DUMP=1 in args to dump the structured mesh
 
 # block k-means mpi-block
